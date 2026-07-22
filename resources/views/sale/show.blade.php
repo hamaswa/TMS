@@ -19,7 +19,7 @@
 
                     <div class="bg-white px-3 py-4">
                         <div class="table-title mb-4 mt-2">
-                            <h5 class="text-right"> {{ $sale->customer_name }} کی فروخت کی تفصیلات </h5>
+                            <h5 class="text-right"> {{ $sale->customer?->name ?? $sale->customer_name }} کی فروخت کی تفصیلات </h5>
                         </div>
                         <div class="row">
                             <div class="col-md-12">

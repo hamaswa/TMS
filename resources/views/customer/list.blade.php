@@ -51,6 +51,7 @@
                                         <th width="20%" scope="col" class="no-sort">رقم کی ادائیگی</th>
                                         <th width="20%" scope="col" class="no-sort">تبدیلی</th>
                                         <th width="20%" scope="col" class="no-sort">آرڈر</th>
+                                        <th width="20%" scope="col" class="no-sort">مشترکہ کھاتہ</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -75,6 +76,7 @@
                                                 <a href="{{ url('admin/order', ['id' => $customer->id]) }}"
                                                     class="btn btn-blue">آرڈر</a>
                                             </td>
+                                            <td><a href="{{ route('admin.customers.statement', $customer) }}" class="btn btn-outline-primary">کھاتہ</a></td>
                                         </tr>
                                     @endforeach
                                 </tbody>

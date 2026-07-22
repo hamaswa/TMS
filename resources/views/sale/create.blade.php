@@ -16,7 +16,15 @@
                                 <div class="row" style="margin-bottom:20px;">
                                     <div class="col-sm-12">
                                         <label style="position:relative;left:90%;font-weight:600;">گاہک کا نام</label>
-                                        <input type="text" required class="form-control" name="customer_name">
+                                        <select required class="form-control" name="customer_id">
+                                            <option value="">گاہک منتخب کریں</option>
+                                            @foreach($customers as $customer)
+                                                <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>
+                                                    {{ $customer->name }} — {{ $customer->phone_number1 }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <small class="form-text text-muted text-right">ٹیلرنگ اور دکان دونوں کے لیے یہی مشترکہ گاہک کھاتہ استعمال ہوگا۔</small>
                                     </div>
                                 </div>
                                 <div class="addmore" style="margin-bottom:20px;">

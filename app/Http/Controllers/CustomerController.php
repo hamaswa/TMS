@@ -38,8 +38,6 @@ class CustomerController extends Controller
     {
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
                       ->where('parent_id', null)
-                      ->whereNotNull('necktype')
-                      ->whereNotNull('swingtype')
                       ->get();
         return view('customer.list', compact('customers'));
     }
@@ -76,6 +74,22 @@ class CustomerController extends Controller
         // dd($data);
         $data['Tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
         return view('customer.create', compact('data'));
+    }
+
+    public function statement($id)
+    {
+        $customer = $this->ownedCustomer($id);
+        $baseTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())
+            ->where('customerId', $customer->id);
+        $balances = (clone $baseTransactions)
+            ->selectRaw("COALESCE(Order_type, 'Other') as type, SUM(remainingBalance) as balance")
+            ->groupBy('Order_type')
+            ->pluck('balance', 'type');
+        $transactions = (clone $baseTransactions)->latest()->paginate(30);
+        $orders = $customer->orders()->where('userId', Auth::user()->businessOwnerId())->latest()->limit(20)->get();
+        $sales = $customer->sales()->where('user_id', Auth::user()->businessOwnerId())->latest()->limit(20)->get();
+
+        return view('customer.statement', compact('customer', 'balances', 'transactions', 'orders', 'sales'));
     }
 
     /**

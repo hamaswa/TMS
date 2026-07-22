@@ -21,4 +21,9 @@ class Sale extends Model
     {
         return $this->hasOne(Transaction::class, 'sale_id', 'id');
     }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customers::class);
+    }
 }

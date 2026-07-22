@@ -107,6 +107,9 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
 });
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 'role:shop_owner', 'business.activity'], 'as' => 'admin.'], function () {
+    Route::get('/customers/{id}/statement', [CustomerController::class, 'statement'])
+        ->middleware('business.permission:tailoring.customers|clothing.sales')
+        ->name('customers.statement');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->middleware('business.permission:finance.view')->name('financial-reports.index');
     Route::get('/financial-reports/export/{section}', [FinancialReportController::class, 'export'])->middleware('business.permission:finance.view')->name('financial-reports.export');
     Route::get('/', [HomeController::class, 'index'])->name('home');

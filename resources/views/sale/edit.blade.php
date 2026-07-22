@@ -17,7 +17,14 @@
                                 <div class="row" style="margin-bottom:20px;">
                                     <div class="col-sm-12">
                                         <label style="position:relative;left:90%;font-weight:600;">گاہک کا نام</label>
-                                        <input type="text" required class="form-control" value="{{ $sales->customer_name }}" name="customer_name">
+                                        <select required class="form-control" name="customer_id">
+                                            <option value="">گاہک منتخب کریں</option>
+                                            @foreach($customers as $customer)
+                                                <option value="{{ $customer->id }}" @selected(old('customer_id', $sales->customer_id) == $customer->id)>
+                                                    {{ $customer->name }} — {{ $customer->phone_number1 }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="addmore" style="margin-bottom:20px;">
@@ -106,4 +113,3 @@ function receivedPayment() {
 
 
 @endsection
-

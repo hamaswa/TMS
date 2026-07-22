@@ -32,7 +32,7 @@
                                         @foreach($sales as $sale)
                                         <tr>
                                             <td></td>
-                                            <td>{{$sale->customer_name}}</td>
+                                            <td>{{ $sale->customer?->name ?? $sale->customer_name }}</td>
                                             <td>{{$sale->detail->sum('price')}}</td>
                                             <td><a href="{{ url('admin/sale/'.$sale->id) }}" class=""><i class="fa fa-eye" aria-hidden="true"></i></a></td>
                                             <td>

@@ -42,9 +42,8 @@
                                                                 data-customerid="{{ $customer->id }}" data-toggle="modal"
                                                                 data-target="#myModalpayment"><i
                                                                     class="fa fa-wallet"></i></button></td>
-                                                        <td><a href="{{ url('admin/customers-detail/' . $customer->id) }}"
-                                                                class=""><i class="fa fa-eye"
-                                                                    aria-hidden="true"></i></a></td>
+                                                        <td><a href="{{ route('admin.customers.statement', $customer) }}"
+                                                                class="btn btn-sm btn-outline-primary">مشترکہ کھاتہ</a></td>
                                                         <td>
 
 

@@ -17,5 +17,20 @@ class Transaction extends Model
      public function saleDetail()
     {
         return $this->belongsTo(SaleDetail::class, 'sale_id', 'id');
+     }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customers::class, 'customerId');
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'orderId');
+    }
+
+    public function sale()
+    {
+        return $this->belongsTo(Sale::class, 'sale_id');
     }
 }
