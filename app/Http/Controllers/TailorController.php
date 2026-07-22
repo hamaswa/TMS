@@ -30,7 +30,16 @@ class TailorController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $data = Tailor::where('phone_number1', $credentials['contact'])->first();
+        $matches = Tailor::where('phone_number1', $credentials['contact'])->limit(2)->get();
+        if ($matches->count() !== 1) {
+            return redirect('tailor-login')
+                ->withInput($req->only('contact'))
+                ->with('failed', $matches->isEmpty()
+                    ? 'فون نمبر یا پاس ورڈ درست نہیں ہے۔'
+                    : 'یہ فون نمبر ایک سے زیادہ کاروبار میں موجود ہے۔ دکان کے مالک سے رابطہ کریں۔');
+        }
+
+        $data = $matches->first();
         $storedPassword = (string) ($data?->password ?? '');
         $isHashed = password_get_info($storedPassword)['algoName'] !== 'unknown';
         $passwordMatches = $data && ($isHashed
@@ -38,7 +47,9 @@ class TailorController extends Controller
             : hash_equals($storedPassword, $credentials['password']));
 
         if (!$passwordMatches) {
-            return redirect('tailor-login')->with('failed', 'Credentials Not Match!');
+            return redirect('tailor-login')
+                ->withInput($req->only('contact'))
+                ->with('failed', 'فون نمبر یا پاس ورڈ درست نہیں ہے۔');
         }
 
         if (!$isHashed || Hash::needsRehash($storedPassword)) {
@@ -58,8 +69,9 @@ class TailorController extends Controller
 
         $val = tailor_pre_week();
         $suits = $val[0];
-        $payments = $val[1];
-        return view('tailor-dashboard.tailor-card', compact('suits', 'payments'));
+        $earnings = $val[1];
+        $paid = $val[2];
+        return view('tailor-dashboard.tailor-card', compact('suits', 'earnings', 'paid'));
     }
 
     public function tailor_order_list()
@@ -575,9 +587,11 @@ function tailor_pre_week()
     $end = date("Y-m-d", $end_week);
     $suit = count_suit($start, $end);
     $payment = sum_of_payment($start, $end);
+    $paid = sum_of_paid_amount($start, $end);
     $arr = array();
     $arr[] = $suit;
     $arr[] = $payment;
+    $arr[] = $paid;
     return $arr;
 };
 
@@ -595,8 +609,16 @@ function sum_of_payment($start, $end)
 {
     $tailor_id = session()->get('tailor_id');
     return DB::table('orders')
-        ->select('orders.suitQuantity as suit')
         ->where('orders.tailorId', $tailor_id)
         ->whereBetween('orders.created_at', [$start, $end])
-        ->sum('totalPayment');
+        ->sum(DB::raw('COALESCE(orders.suitQuantity, 1) * COALESCE(orders.tailor_price, 0)'));
+}
+
+function sum_of_paid_amount($start, $end)
+{
+    $tailor_id = session()->get('tailor_id');
+    return DB::table('orders')
+        ->where('orders.tailorId', $tailor_id)
+        ->whereBetween('orders.created_at', [$start, $end])
+        ->sum('tailor_paid_amount');
 }

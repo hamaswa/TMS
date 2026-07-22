@@ -125,6 +125,34 @@ class TailorJobLifecycleTest extends TestCase
         $this->assertSame('assigned', $otherOrder->fresh()->status);
     }
 
+    public function test_tailor_can_progress_their_own_job_and_history_allows_a_session_actor(): void
+    {
+        [, $tailor, $order] = $this->job(['status' => 'assigned']);
+        $session = [
+            'tailor-login-success' => $tailor->name,
+            'tailor' => 'tailor',
+            'tailor_id' => $tailor->id,
+        ];
+
+        $this->withSession($session)
+            ->patch(route('tailor.jobs.status', $order), [
+                'status' => 'cutting',
+                'note' => 'کپڑا کاٹ دیا گیا ہے',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('cutting', $order->fresh()->status);
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'user_id' => null,
+            'tailor_id' => $tailor->id,
+            'changed_by_type' => 'tailor',
+            'from_status' => 'assigned',
+            'to_status' => 'cutting',
+        ]);
+    }
+
     public function test_tailor_payment_updates_status_and_creates_an_audit_record(): void
     {
         [$owner, $tailor, $order] = $this->job([

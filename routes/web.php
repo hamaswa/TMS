@@ -361,7 +361,7 @@ Route::group(['middleware' => 'Tailor', 'prefix' => 'tailor'], function () {
 });
 
 Route::get('tailor-login', [TailorController::class, 'tailor_login']);
-Route::post('tailor-login', [TailorController::class, 'login']);
+Route::post('tailor-login', [TailorController::class, 'login'])->middleware('throttle:5,1');
 
 
 // for user come for shopping

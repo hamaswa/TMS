@@ -128,7 +128,7 @@ class TailorJobController extends Controller
 
             OrderStatusHistory::create([
                 'order_id' => $job->id,
-                'user_id' => Auth::user()->businessOwnerId(),
+                'user_id' => Auth::id(),
                 'tailor_id' => $job->tailorId,
                 'from_status' => $fromStatus,
                 'to_status' => $nextStatus,

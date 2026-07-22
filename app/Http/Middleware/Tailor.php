@@ -19,7 +19,7 @@ class Tailor
         {
             return $next($request);
         }else{
-            return redirect('tailor-login')->with('failed','Please Login First');
+            return redirect('tailor-login')->with('failed','براہ کرم پہلے لاگ اِن کریں۔');
         }
     }
 }
