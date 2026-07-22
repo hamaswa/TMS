@@ -350,7 +350,7 @@
 
             <div style="width: 100%;">
                 <div style="width: 100%;text-align:center;font-weight:600;">
-                    <p style="font-size:13px;margin-bottom:15px;">{!! $setting->address !!}</p>
+                    <p style="font-size:13px;margin-bottom:15px;">{{ $setting->address }}</p>
                     <p style="font-size:14px;letter-spacing:1px;">{{ $setting->contact_no }}</p>
                 </div>
             </div>

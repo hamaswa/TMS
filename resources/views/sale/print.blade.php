@@ -151,7 +151,7 @@
                 <div class="mb-1">
                     <div style="width: 50%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold;position:relative;left:180%; "> : نام</span>
-                        {!!'<b style="position:absolute;left:10%">'.$sale->customer_name.'</b>'!!}
+                        <b style="position:absolute;left:10%">{{ $sale->customer_name }}</b>
                     </div>
                 </div>
 
@@ -180,34 +180,33 @@
                 <div class="mb-1">
                     <div style="width: 100%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold; position:relative;left:70%;"> : موصول رقم</span>
-                        {!!'<b style="position:absolute;left:7%;font-size:15px;">'.$transaction->recivedPayment.'</b>'!!}
+                        <b style="position:absolute;left:7%;font-size:15px;">{{ $transaction->recivedPayment }}</b>
                     </div>
 
                     <div class="mb-1">
                     <div style="width: 60%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold; position:relative;left:70%;"> : موجودہ واجب الادا ادائیگی</span>
-                        {!!'<b style="position:absolute;left:7%;font-size:15px;">'.$transaction->remainingBalance.'</b>'!!}
+                        <b style="position:absolute;left:7%;font-size:15px;">{{ $transaction->remainingBalance }}</b>
                     </div>
                     <div style="width: 100%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold; position:relative;left:53%;"> : گزشتہ واجب ادائیگی</span>
-                        {!!'<b style="position:absolute;left:7%;font-size:15px;">'.$previousBalance.'</b>'!!}
+                        <b style="position:absolute;left:7%;font-size:15px;">{{ $previousBalance }}</b>
                     </div>
 
                     <div style="width: 100%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold; position:relative;left:50%;"> : کل واجب الادا ادائیگی</span>
-                        {!!'<b style="position:absolute;left:7%;font-size:15px;">'.$latestBalance.'</b>'!!}
+                        <b style="position:absolute;left:7%;font-size:15px;">{{ $latestBalance }}</b>
                     </div>
 
 
                     <!--<div style="width: 100%; display: inline-block;font-size: 14px">-->
                     <!--    <span style="font-weight: bold; position:relative;left:50%;"> : گزشتہ رقم واجب الادا ہے</span>-->
-                    <!--    {!!'<b style="position:absolute;left:11%;font-size:15px;">'.$previousBalance.'</b>'!!}-->
                     <!--</div>-->
                 </div>
 
             <hr>
                 <div style="width: 100%;"  align="center">
-                        <p><b>{!! $setting->address !!}</b></p>
+                        <p><b>{{ $setting->address }}</b></p>
                         <p>{{$setting->contact_no}}</p>
                 </div>
             <hr>

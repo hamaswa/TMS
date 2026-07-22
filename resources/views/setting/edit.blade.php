@@ -44,7 +44,7 @@
                     <div class="form-group">
                         <label>پتہ: </label>
                         <textarea rows="4" cols="" class="form-control" name='address'
-                            required>{!! $setting->address !!}</textarea>
+                            required>{{ $setting->address }}</textarea>
                     </div>
                 </div>
                 <div class="button-group">

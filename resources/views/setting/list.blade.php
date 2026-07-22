@@ -58,7 +58,7 @@
                                                 </td>
                                                 <td>{{$setting->contact_no}}</td>
                                                 <td>{{$setting->note}}</td>
-                                                <td>{!! $setting->address !!}</td>
+                                                <td>{{ $setting->address }}</td>
 
                                                 <td class="text-right">
                                                     @if($setting->status ==0)

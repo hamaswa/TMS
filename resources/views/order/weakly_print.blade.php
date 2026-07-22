@@ -114,7 +114,7 @@
 
         <div style="width: 100%;">
             <div style="width: 100%;" align="center">
-                <p>{!! $setting->address !!}</p>
+                <p>{{ $setting->address }}</p>
                 <p>{{$setting->contact_no}}</p>
             </div>
         </div>

@@ -227,7 +227,7 @@
                     <!--//customer name-->
                     <div class="mb-3" style="text-align: right;">
                         <div style="width: 50%; display: inline-block; font-size:20px; font-weight:600;">
-                            {!! '<b style="font-size:18px; position:absolute;left:80px;">' . $orderDetail->customers->name . '</b>' !!}
+                            <b style="font-size:18px; position:absolute;left:80px;">{{ $orderDetail->customers->name }}</b>
                             <span
                                 style="font-weight:600;">:نام</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                         </div>
@@ -238,7 +238,7 @@
                     <div class="mb-3 mt-2" style="text-align: right;">
                         <div style="width: 50%; display: inline-block;font-size:20px; font-weight:600;">
                             <span style="font-weight:600;">:سوٹ کی تعداد</span>
-                            {!! '<b style="font-size:18px;position:absolute;left:100px;">' . $orderDetail->suitQuantity . '</b>' !!}
+                            <b style="font-size:18px;position:absolute;left:100px;">{{ $orderDetail->suitQuantity }}</b>
                         </div>
                     </div>
 
@@ -248,7 +248,7 @@
                         <div
                             style="width: 50%; display: inline-block; font-size:20px; font-weight:600; max-width: 400px; word-wrap: break-word; word-break: break-all;">
                             <span style="font-size:18px; font-weight:600;">:سیریل نمبر</span>
-                            {!! '<b style="font-size:18px;position:absolute;left:100px;">' . $orderDetail->suitNum . '</b>' !!}
+                            <b style="font-size:18px;position:absolute;left:100px;">{{ $orderDetail->suitNum }}</b>
                         </div>
                     </div>
 
@@ -258,7 +258,7 @@
                         <div style="width: 100%; display: inline-block; font-size:18px;">
                             <span style="font-weight:600; ">آرڈر کی رقم
                                 :</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                            {!! '<b style="font-size:18px;">' . $orderDetail->totalPayment . '</b>' !!}
+                            <b style="font-size:18px;">{{ $orderDetail->totalPayment }}</b>
                         </div>
                     </div>
 
@@ -267,7 +267,7 @@
                         <div style="width: 100%; display: inline-block; font-size:18px;">
                             <span style="font-weight:600;">موجودہ رقم کی
                                 ادائیگی:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                            {!! '<b style="font-size:18px;">' . $orderDetail->transactions[0]->recivedPayment . '</b>' !!}
+                            <b style="font-size:18px;">{{ $orderDetail->transactions[0]->recivedPayment }}</b>
                         </div>
                     </div>
                     <!-- Current due payments -->
@@ -276,7 +276,7 @@
                             <div style="width: 100%; display: inline-block; font-size:18px;">
                                 <span style="font-weight:600;">موجودہ ادائیگی واجب
                                     الادا:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                {!! '<b style="font-size:18px;">' . ($latestBalance - $previousBalance) . '</b>' !!}
+                                <b style="font-size:18px;">{{ $latestBalance - $previousBalance }}</b>
                             </div>
                         </div>
                     @endif
@@ -287,7 +287,7 @@
                             <div style="width: 100%; display: inline-block; font-size:18px;">
                                 <span style="font-weight:600;">گزشتہ ادائیگی کے
                                     واجبات:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                {!! '<b style="font-size:18px;">' . $previousBalance . '</b>' !!}
+                                <b style="font-size:18px;">{{ $previousBalance }}</b>
                             </div>
                         </div>
                     @endif
@@ -298,7 +298,7 @@
                             <div style="width: 100%; display: inline-block; font-size:18px;">
                                 <span style="font-weight:600;">کل ادائیگی واجب
                                     الادا:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                {!! '<b style="font-size:18px;">' . $latestBalance . '</b>' !!}
+                                <b style="font-size:18px;">{{ $latestBalance }}</b>
                             </div>
                         </div><br>
                     @endif
@@ -307,7 +307,7 @@
                     <div style="text-align: right; font-size:18px;">
                         <span style="font-weight:600; ">واپسی کی
                             تاریخ:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        {!! '<b style="font-size:18px;">' . $orderDetail->returnDate . '</b>' !!}
+                        <b style="font-size:18px;">{{ $orderDetail->returnDate }}</b>
                     </div>
                     <div>
                         <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;">{{$orderDetail->remarks}}
@@ -315,7 +315,7 @@
                     </div>
                     <hr>
                     <div style="width: 100%;" align="center">
-                        <p><b>{!! $setting->address !!}</b></p>
+                        <p><b>{{ $setting->address }}</b></p>
                         <p>{{ $setting->contact_no }}</p>
                         <p style="text-align:center;padding:5px;"><b></b>{{ $setting->note }}</b></p>
                     </div>
@@ -558,7 +558,7 @@
                             <div>
                                 <h3 class="text-center font-weight-400 mt-2" style="font-size: 16px;">{{$orderDetail->remarks}}</h3>
                             </div>
-                            <p>{!! $setting->address !!}</p>
+                            <p>{{ $setting->address }}</p>
                             <p>{{$setting->contact_no}}</p>
                         </div>
                     </div>

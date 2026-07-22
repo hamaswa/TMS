@@ -280,7 +280,7 @@
 
         <div style="width: 100%;">
             <div style="width: 100%;" align="center">
-                <td><b style="font-size: 18px;">{!! $setting->address !!}</b></td><br>
+                <td><b style="font-size: 18px;">{{ $setting->address }}</b></td><br>
                 <td><b style="font-size: 18px;">{{ $setting->contact_no }}</b></td>
             </div>
         </div>

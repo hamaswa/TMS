@@ -375,7 +375,7 @@
 
         <div style="width: 100%;">
             <div style="width: 100%;font-weight:900;" align="center">
-                <p><b style="font-size: 16px;">{!! $setting->address !!}</b></p>
+                <p><b style="font-size: 16px;">{{ $setting->address }}</b></p>
                 <p><b style="font-size: 16px;">{{ $setting->contact_no }}</b></p>
             </div>
         </div>
