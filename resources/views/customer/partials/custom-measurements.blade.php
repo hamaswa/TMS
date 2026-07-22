@@ -10,7 +10,7 @@
         @foreach($measurementFields as $field)
             @php($value = old('custom_measurements.'.$field->id, $measurementValues->get($field->id)))
             <div class="form-group col-md-6">
-                <label for="custom_measurement_{{ $field->id }}">{{ $field->label }} @if($field->unit)<small class="text-muted">({{ $field->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }})</small>@endif @if($field->is_required)<span class="text-danger">*</span>@endif</label>
+                <label for="custom_measurement_{{ $field->id }}">{{ $field->label }} @if($field->unit && $field->unit !== 'none')<small class="text-muted">({{ $field->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }})</small>@endif @if($field->is_required)<span class="text-danger">*</span>@endif</label>
                 @if($field->field_type === 'select')
                     <select class="form-control" id="custom_measurement_{{ $field->id }}" name="custom_measurements[{{ $field->id }}]" @required($field->is_required)>
                         <option value="">منتخب کریں</option>
