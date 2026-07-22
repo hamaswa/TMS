@@ -13,6 +13,7 @@ use App\Models\OnlineOrder;
 use App\Models\Order;
 use App\Models\Purchase;
 use App\Models\PurchaseReturn;
+use App\Models\ProductionWorker;
 use App\Models\Sale;
 use App\Models\SaleStock;
 use App\Models\Supplier;
@@ -21,6 +22,7 @@ use App\Models\Tailor;
 use App\Models\TailorRecord;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\WorkerLedgerEntry;
 use App\Models\Workers;
 use App\Services\FinancialReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,6 +70,18 @@ class FinancialReportTest extends TestCase
         Workers::create(['user_id' => $owner->id, 'Worker_Name' => 'Helper', 'Worker_salary' => 30, 'dateentered' => $date]);
         TailorRecord::create(['tailor_id' => $tailor->id, 'order_id' => $order->id, 'amount' => 100, 'comment' => 'salary', 'created_at' => $date]);
 
+        $cutter = ProductionWorker::create([
+            'user_id' => $owner->id, 'name' => 'Report Cutter', 'relationship_type' => 'contractor', 'active' => true,
+        ]);
+        WorkerLedgerEntry::create([
+            'user_id' => $owner->id, 'production_worker_id' => $cutter->id, 'entry_type' => 'earning',
+            'amount' => 50, 'entry_date' => $date,
+        ]);
+        WorkerLedgerEntry::create([
+            'user_id' => $owner->id, 'production_worker_id' => $cutter->id, 'entry_type' => 'payment',
+            'amount' => -20, 'entry_date' => $date,
+        ]);
+
         $supplier = Supplier::create(['user_id' => $owner->id, 'name' => 'Report Supplier', 'opening_balance' => 50]);
         $purchase = Purchase::create([
             'user_id' => $owner->id, 'supplier_id' => $supplier->id, 'purchase_number' => 'PO-REPORT-1',
@@ -93,11 +107,13 @@ class FinancialReportTest extends TestCase
         $report = app(FinancialReportService::class)->build($owner->id, now()->startOfMonth(), now()->endOfMonth());
 
         $this->assertEquals(1600, $report['summary']['total_revenue']);
-        $this->assertEquals(940, $report['summary']['gross_profit']);
-        $this->assertEquals(740, $report['summary']['net_profit']);
+        $this->assertEquals(890, $report['summary']['gross_profit']);
+        $this->assertEquals(690, $report['summary']['net_profit']);
         $this->assertEquals(700, $report['summary']['cash_in']);
-        $this->assertEquals(400, $report['summary']['cash_out']);
-        $this->assertEquals(300, $report['summary']['net_cash_flow']);
+        $this->assertEquals(420, $report['summary']['cash_out']);
+        $this->assertEquals(280, $report['summary']['net_cash_flow']);
+        $this->assertEquals(50, $report['direct_costs']['پروڈکشن ورکرز کی اجرت']);
+        $this->assertEquals(20, $report['cash_out_breakdown']['پروڈکشن ورکرز کو ادائیگیاں']);
         $this->assertEquals(300, $report['summary']['receivables']);
         $this->assertEquals(400, $report['summary']['payables']);
         $this->assertEquals(500, $report['summary']['purchases']);

@@ -9,7 +9,7 @@ Last updated: 2026-07-23
 - Added an English super-admin client list and details screen with filters, module access, business metrics, approval metadata, and activate/deactivate actions.
 - Preserved every existing business as active and disabled permanent client deletion to protect live data.
 - Enforced account status for business owners and employees at login and on subsequent requests, using Urdu blocked-account messages on client-facing screens.
-- Completed the full automated suite with 104 passing tests and 688 assertions.
+- Completed the full automated suite with 104 passing tests and 690 assertions.
 - Browser QA found and fixed a MySQL-only client order-count failure caused by the legacy camel-case `orders.userId` column.
 - Recorded current findings and the prioritized backlog in `docs/FULL_QA_REPORT_2026-07-23.md`.
 
@@ -129,10 +129,18 @@ Last updated: 2026-07-23
 
 ## Next when the user says "go next" or "proceed"
 
-1. Add production controls for audit retention, backup, and restore verification.
-2. Remove the unreachable legacy stock-sale branch and strengthen accounting rollback coverage.
-3. Add fine-grained read/create/update/delete permission variants only where clients demonstrate a separation-of-duties need.
-4. Review remaining legacy English client-facing validation/status messages and convert them to Urdu.
+1. Add a database row lock to production-worker payment balance validation.
+2. Add database-backed uniqueness/concurrency protection for order-work assignments.
+3. Add a shop identifier to independent-tailor login for duplicate phone numbers across clients.
+4. Implement fixed-salary and commission payroll accrual.
+5. Add dedicated portals for cutters and other production workers.
+
+## Latest accounting checkpoint — 23 July 2026
+
+- Included non-legacy production-worker earnings in tailoring direct costs and gross/net profit.
+- Included their payments in cash out and net cash flow.
+- Excluded mirrored legacy-tailor ledger entries to prevent double counting.
+- Full regression suite: 104 tests and 690 assertions passing.
 
 ## Current continuation point
 

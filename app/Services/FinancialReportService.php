@@ -42,8 +42,18 @@ class FinancialReportService
         $onlineCogs = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
             ->whereRaw('LOWER(status) != ?', ['cancelled'])->sum('cost_total') : 0;
         $tailorLabor = $tailoringEnabled ? (float) Order::where('userId', $userId)->whereBetween('created_at', [$from, $to])->sum(DB::raw('tailor_price * suitQuantity')) : 0;
+        $productionWorkerEarnings = $tailoringEnabled ? (float) DB::table('worker_ledger_entries')
+            ->join('production_workers', 'production_workers.id', '=', 'worker_ledger_entries.production_worker_id')
+            ->where('worker_ledger_entries.user_id', $userId)
+            ->whereNull('production_workers.legacy_tailor_id')
+            ->where('worker_ledger_entries.entry_type', 'earning')
+            ->whereBetween('worker_ledger_entries.entry_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('worker_ledger_entries.amount') : 0;
         $directCosts = [];
-        if ($tailoringEnabled) $directCosts['درزی کی مزدوری'] = $tailorLabor;
+        if ($tailoringEnabled) {
+            $directCosts['درزی کی مزدوری'] = $tailorLabor;
+            $directCosts['پروڈکشن ورکرز کی اجرت'] = $productionWorkerEarnings;
+        }
         if ($clothingEnabled) $directCosts += ['کاؤنٹر فروخت کی لاگت' => $counterCogs, 'آن لائن آرڈر کی لاگت' => $onlineCogs];
 
         $monthlyExpenses = (float) Expenses::where('user_id', $userId)->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
@@ -66,7 +76,14 @@ class FinancialReportService
         $supplierPayments = $clothingEnabled ? (float) SupplierPayment::where('user_id', $userId)->whereBetween('payment_date', [$start->toDateString(), $end->toDateString()])->sum('amount') : 0;
         $tailorPayments = $tailoringEnabled ? (float) TailorRecord::whereHas('tailor', fn ($query) => $query->where('user_id', $userId))
             ->whereBetween('created_at', [$from, $to])->sum('amount') : 0;
-        $cashOut = $supplierPayments + $tailorPayments + $monthlyExpenses + $dailyExpenses + $workerSalaries;
+        $productionWorkerPayments = $tailoringEnabled ? (float) DB::table('worker_ledger_entries')
+            ->join('production_workers', 'production_workers.id', '=', 'worker_ledger_entries.production_worker_id')
+            ->where('worker_ledger_entries.user_id', $userId)
+            ->whereNull('production_workers.legacy_tailor_id')
+            ->where('worker_ledger_entries.entry_type', 'payment')
+            ->whereBetween('worker_ledger_entries.entry_date', [$start->toDateString(), $end->toDateString()])
+            ->sum(DB::raw('ABS(worker_ledger_entries.amount)')) : 0;
+        $cashOut = $supplierPayments + $tailorPayments + $productionWorkerPayments + $monthlyExpenses + $dailyExpenses + $workerSalaries;
 
         $receivablesQuery = $this->receivablesQuery($userId, $end, null, $modules);
         $payablesQuery = $this->payablesQuery($userId, $end, null, $modules);
@@ -110,6 +127,7 @@ class FinancialReportService
             'cash_out_breakdown' => array_filter([
                 'سپلائر ادائیگیاں' => $clothingEnabled ? $supplierPayments : null,
                 'درزی ادائیگیاں' => $tailoringEnabled ? $tailorPayments : null,
+                'پروڈکشن ورکرز کو ادائیگیاں' => $tailoringEnabled ? $productionWorkerPayments : null,
             ], fn ($value) => $value !== null) + $operatingExpenses,
             'receivables' => $receivables,
             'payables' => $payables,

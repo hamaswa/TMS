@@ -16,7 +16,7 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Laravel migration SQL was inspected with `migrate --pretend` before execution.
 - The additive lifecycle migration ran successfully on MySQL.
 - Existing data remained present: 3 businesses, 8 users, 6 customers, 5 orders, 2 sales, 3 purchases, and all existing businesses remained active.
-- The complete automated suite passed: **104 tests, 688 assertions**.
+- The complete automated suite passed: **104 tests, 690 assertions**.
 - Live in-app browser QA covered super-admin login, client list, search/status/module controls, client details, business metrics, status history, and account actions.
 - The live client-details screen finished with no browser console errors or warnings.
 
@@ -39,12 +39,18 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 
 ## Confirmed remaining backlog
 
-1. Financial reports do not yet include production-worker earnings and payments in the main profit/cash summaries.
-2. Worker payment balance validation should use a database row lock to prevent simultaneous payments exceeding the balance.
-3. Duplicate order-work assignments should have a database-backed uniqueness/concurrency rule in addition to application validation.
-4. Independent tailor login safely rejects duplicate phone numbers across businesses, but the login screen should accept a shop identifier to make valid duplicate phone use possible.
-5. Fixed-salary and commission compensation plans are stored, but automated payroll accrual is not yet implemented.
-6. Dedicated cutter/other production-worker portals remain planned; only independent tailors currently have a worker portal.
+1. Worker payment balance validation should use a database row lock to prevent simultaneous payments exceeding the balance.
+2. Duplicate order-work assignments should have a database-backed uniqueness/concurrency rule in addition to application validation.
+3. Independent tailor login safely rejects duplicate phone numbers across businesses, but the login screen should accept a shop identifier to make valid duplicate phone use possible.
+4. Fixed-salary and commission compensation plans are stored, but automated payroll accrual is not yet implemented.
+5. Dedicated cutter/other production-worker portals remain planned; only independent tailors currently have a worker portal.
+
+## Financial reporting follow-up
+
+- Non-legacy production-worker earnings now appear as tailoring direct costs and reduce gross/net profit.
+- Payments to cutters and other new production workers now appear in the cash-out breakdown and net cash flow.
+- Legacy tailor earnings and payments remain sourced from the established order and tailor-payment tables, preventing mirrored worker-ledger entries from being counted twice.
+- Tenant, date-range, and module boundaries are applied to the new calculations.
 
 ## Git checkpoints
 
