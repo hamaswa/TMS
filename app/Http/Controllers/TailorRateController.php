@@ -16,11 +16,6 @@ class TailorRateController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
-    {
-        dd("hie");
-    }
-
     /**
      * Show the form for creating a new resource.
      *
@@ -82,11 +77,6 @@ class TailorRateController extends Controller
      * @param  \App\Models\Tailorsalary  $tailorsalary
      * @return \Illuminate\Http\Response
      */
-    public function edit(Tailorsalary $tailorsalary)
-    {
-        //
-    }
-
     /**
      * Update the specified resource in storage.
      *

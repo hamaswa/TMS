@@ -214,7 +214,6 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
     Route::post('order-status', [TailorJobController::class, 'updateLegacyStatus'])->name('order.status');
     });
     Route::middleware('business.permission:tailoring.tailors')->group(function () {
-    Route::get('payment-received/{id}', [TailorController::class, 'paymentReceived'])->name('payment-received');
     Route::get('tailor-orders/{id}', [TailorController::class, 'tailorRecord'])->name('tailor-orders');
     Route::match(['get', 'post'], 'tailor-report/{id}', [TailorController::class, 'tailorReport'])->name('tailor-report');
     Route::get('tailor-weekly-report-print/{id}', [TailorController::class, 'tailorReportPrint'])->name('report-print');
@@ -231,7 +230,6 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
     Route::get('tailors-rates/create/{id}', [TailorRateController::class, 'create'])->name('tailor-rates.create');
     Route::post('tailors-rates/store/{id}', [TailorRateController::class, 'store'])->name('tailor-rates.store');
     Route::delete('tailors-rates/delete/{id}', [TailorRateController::class, 'destroy'])->name('tailor-rates.delete');
-    Route::get('tailors-rates/edit/{id}', [TailorRateController::class, 'edit'])->name('tailor-rates.edit');
     Route::post('tailor-weakly-print/{id}', [TailorController::class, 'tailor_weekly'])->name('tailor.weekly-print');
     });
 

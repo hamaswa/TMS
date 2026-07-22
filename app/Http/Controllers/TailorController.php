@@ -408,17 +408,6 @@ class TailorController extends Controller
         }
     }
 
-    public function paymentReceived($id)
-    {
-        try {
-            $user = $this->ownedTailor($id);
-
-            dd($user->transactions);
-        } catch (\Throwable $th) {
-            throw $th;
-        }
-    }
-
 
     // admin method
 

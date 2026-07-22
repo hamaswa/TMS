@@ -153,7 +153,7 @@ class SaleController extends Controller
 
         $setting = Setting::where('user_id', auth()->user()->businessOwnerId())->where('status', 1)->first();
         if (!$setting) {
-            dd("Please Activate Your Setting");
+            return back()->with('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
         } else {
 
             $status = "default";
