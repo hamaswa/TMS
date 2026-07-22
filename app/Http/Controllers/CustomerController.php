@@ -8,6 +8,7 @@ use App\Models\Options;
 use App\Models\Customers;
 use App\Models\OptionType;
 use App\Models\Transaction;
+use App\Models\SaleStock;
 use App\Models\Notification;
 use App\Services\MeasurementService;
 use Illuminate\Http\Request;
@@ -107,9 +108,33 @@ class CustomerController extends Controller
         $orders = $canViewTailoring
             ? $customer->orders()->where('userId', $user->businessOwnerId())->latest()->limit(20)->get()
             : collect();
-        $sales = $canViewShop
-            ? $customer->sales()->where('user_id', $user->businessOwnerId())->latest()->limit(20)->get()
-            : collect();
+        $sales = collect();
+        if ($canViewShop) {
+            $legacySales = $customer->sales()
+                ->where('user_id', $user->businessOwnerId())
+                ->withCount('detail')
+                ->latest()
+                ->limit(20)
+                ->get()
+                ->map(fn ($sale) => (object) [
+                    'id' => $sale->id,
+                    'created_at' => $sale->created_at,
+                    'items_count' => $sale->detail_count,
+                ]);
+            $stockSales = SaleStock::where('user_id', $user->businessOwnerId())
+                ->where('c_id', $customer->id)
+                ->latest()
+                ->limit(100)
+                ->get()
+                ->groupBy(fn ($sale) => $sale->created_at?->format('Y-m-d H:i:s'))
+                ->map(fn ($items) => (object) [
+                    'id' => $items->first()->id,
+                    'created_at' => $items->first()->created_at,
+                    'items_count' => $items->count(),
+                ])
+                ->values();
+            $sales = $legacySales->concat($stockSales)->sortByDesc('created_at')->take(20)->values();
+        }
 
         return view('customer.statement', compact(
             'customer', 'totalBalance', 'transactions', 'orders', 'sales',

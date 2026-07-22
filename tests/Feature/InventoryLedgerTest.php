@@ -61,6 +61,11 @@ class InventoryLedgerTest extends TestCase
             'movement_type' => 'counter_sale', 'quantity' => -2, 'balance_after' => 8,
             'reference_id' => $sale->id,
         ]);
+        $this->actingAs($owner)->get(route('admin.customers.statement', $customer))
+            ->assertOk()
+            ->assertViewHas('sales', fn ($sales) => $sales->count() === 1
+                && $sales->first()->id === $sale->id
+                && $sales->first()->items_count === 1);
     }
 
     public function test_counter_sale_derives_balance_server_side_and_receipt_works_without_settings(): void
