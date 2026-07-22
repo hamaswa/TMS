@@ -34,7 +34,7 @@ class CustomerController extends Controller
 
     public function index()
     {
-        $customers = Customers::where('user_id', Auth::user()->id)
+        $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
                       ->where('parent_id', null)
                       ->whereNotNull('necktype')
                       ->whereNotNull('swingtype')
@@ -50,11 +50,11 @@ class CustomerController extends Controller
     public function create()
     {
         // $data=[];
-        // // dd(Auth::user()->id);
+        // // dd(Auth::user()->businessOwnerId());
         // $data['optionTypes'] = DB::table('options')
         //                     ->join('option_types', 'options.option_id', '=', 'option_types.id')
         //                     ->select('options.option_id','options.user_id','option_types.Name as otn','option_types.type','option_types.slug')
-        //                     ->where('options.user_id',Auth::user()->id)
+        //                     ->where('options.user_id',Auth::user()->businessOwnerId())
         //                     ->groupBy('options.option_id')
         //                     ->get();
         $data['optionTypes'] = OptionType::select(
@@ -65,14 +65,14 @@ class CustomerController extends Controller
             DB::raw('MAX(option_types.slug) as slug')
         )
         ->join('options', 'options.option_id', '=', 'option_types.id')
-        ->where('options.user_id', auth()->id())
+        ->where('options.user_id', auth()->user()->businessOwnerId())
         ->groupBy('options.option_id', 'options.user_id') // Group by both option_id and user_id
         ->get();
 
 
-        // $data['optionTypes'] = OptionType::with('options')->where('user_id',Auth::user()->id)->get();
+        // $data['optionTypes'] = OptionType::with('options')->where('user_id',Auth::user()->businessOwnerId())->get();
         // dd($data);
-        $data['Tailors'] = Tailor::where('user_id', Auth::user()->id)->get();
+        $data['Tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
         return view('customer.create', compact('data'));
     }
 
@@ -84,6 +84,14 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'contact' => ['required', 'string', 'max:50'],
+            'length' => ['nullable', 'numeric', 'min:0'],
+            'arms' => ['nullable', 'numeric', 'min:0'],
+            'teraa' => ['nullable', 'numeric', 'min:0'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
 
         $obj = new Customers;
         $obj->name = $request->name;
@@ -142,10 +150,10 @@ class CustomerController extends Controller
         $sleeve_opening_type = $request['sleeve_opening_type'] = $sleeve_opening_typeparts[1] ?? 0;
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
-        $obj->user_id = Auth::user()->id;
+        $obj->user_id = Auth::user()->businessOwnerId();
         $obj->save();
         // dd($obj);
-        return redirect('admin/Customers')->with('insert', 'Customer Added');
+        return redirect('admin/Customers')->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔');
     }
 
     /**
@@ -167,18 +175,18 @@ class CustomerController extends Controller
      */
     public function edit($id)
     {
-        $customer = Customers::find($id);
+        $customer = $this->ownedCustomer($id);
         // $optionTypes = DB::table('options')
         // ->join('option_types', 'options.option_id', '=', 'option_types.id')
         // ->select('options.option_id','options.user_id','option_types.Name as otn','option_types.type','option_types.slug')
-        // ->where('options.user_id',Auth::user()->id)
+        // ->where('options.user_id',Auth::user()->businessOwnerId())
         // ->groupBy('options.option_id')
         // ->get();
     
         // dd($customer);
         $optionTypes = OptionType::select('options.option_id', 'options.user_id', 'option_types.Name as otn', 'option_types.type', 'option_types.slug')
             ->join('options', 'options.option_id', '=', 'option_types.id')
-            ->where('options.user_id', auth()->user()->id)
+            ->where('options.user_id', auth()->user()->businessOwnerId())
             ->groupBy('options.option_id')
             ->get();
         // dd($optionTypes);
@@ -194,7 +202,15 @@ class CustomerController extends Controller
      */
     public function update(Request $request, $id)
 {
-        $obj = Customers::find($id);
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'contact' => ['required', 'string', 'max:50'],
+            'length' => ['nullable', 'numeric', 'min:0'],
+            'arms' => ['nullable', 'numeric', 'min:0'],
+            'teraa' => ['nullable', 'numeric', 'min:0'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ]);
+        $obj = $this->ownedCustomer($id);
         $obj->name = $request->name;
         $obj->phone_number1 = $request->contact;
         $obj->length = $request->length;
@@ -251,7 +267,7 @@ $obj->Daaman = $daaman;
         $sleeve_opening_type = $request['sleeve_opening_type'] = $sleeve_opening_typeparts[1] ?? 0;
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
-        $obj->user_id = Auth::user()->id;
+        $obj->user_id = Auth::user()->businessOwnerId();
         $obj->save();
         // dd($obj);
     return redirect('admin/Customers')->with('insert', 'Customer Update');
@@ -271,15 +287,20 @@ $obj->Daaman = $daaman;
 
     public function DirectPayment(Request $req)
     {
+        $validated = $req->validate([
+            'customer_id' => ['required', 'integer'],
+            'DirectPayment' => ['required', 'numeric', 'gt:0'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $customer = $this->ownedCustomer($validated['customer_id']);
         // Retrieve the current remaining balance for the customer
-        $currentBalance = Transaction::where('customerId', $req->customer_id)->sum('remainingBalance');
+        $currentBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->sum('remainingBalance');
 
         // Retrieve the customer's name
-        $customer = Customers::find($req->customer_id);
-        $customerName = $customer ? $customer->name : 'Customer';
+        $customerName = $customer->name;
 
         // Check if the DirectPayment amount is less than or equal to the current balance
-        if ($req->DirectPayment > $currentBalance) {
+        if ($validated['DirectPayment'] > $currentBalance) {
             // If the payment exceeds the current balance, show an error message
             return redirect()->back()->with([
                 'balanceError' => "موجودہ واجبات Rs: {$currentBalance} ہیں۔ {$customerName} کے لئے آپ نے  Rs : {$req->DirectPayment} کی رقم درج کی ہے جو دستیاب واجبات سے زیادہ ہے"
@@ -288,12 +309,12 @@ $obj->Daaman = $daaman;
 
         // Proceed to save the transaction if the payment is within the allowed balance
         $transaction = new Transaction;
-        $transaction->customerId = $req->customer_id;
-        $transaction->remainingBalance = (-$req->DirectPayment);
-        $transaction->recivedPayment = $req->DirectPayment;
+        $transaction->customerId = $customer->id;
+        $transaction->remainingBalance = (-$validated['DirectPayment']);
+        $transaction->recivedPayment = $validated['DirectPayment'];
         $transaction->Order_type = 'Tailor';
-        $transaction->comment = $req->comment;
-        $transaction->userId = Auth::user()->id;
+        $transaction->comment = $validated['comment'] ?? null;
+        $transaction->userId = Auth::user()->businessOwnerId();
         $transaction->save();
 
         return redirect('admin/Customers')->with('insert', " {$customerName} کے لئے آپ نے Rs{$req->DirectPayment} کی رقم درج کی ہے");
@@ -301,9 +322,10 @@ $obj->Daaman = $daaman;
 
     public function RackNo(Request $req)
     {
+        $validated = $req->validate(['RackNo' => ['required', 'string', 'max:100']]);
         $obj = new rack;
-        $obj->rack_no = $req->RackNo;
-        $obj->user_id = auth()->user()->id;
+        $obj->rack_no = $validated['RackNo'];
+        $obj->user_id = auth()->user()->businessOwnerId();
         $obj->save();
 
         return redirect('admin/Customers')->with('insert', 'Rack Number Added');
@@ -311,27 +333,32 @@ $obj->Daaman = $daaman;
 
     public function SaleDirectPayment(Request $req)
     {
+        $validated = $req->validate([
+            'customer_id' => ['required', 'integer'],
+            'DirectPayment' => ['required', 'numeric', 'gt:0'],
+            'comment' => ['nullable', 'string', 'max:100'],
+        ]);
+        $customer = $this->ownedCustomer($validated['customer_id']);
         // Retrieve the current remaining balance for the customer
-        $currentBalance = Transaction::where('customerId', $req->customer_id)->sum('remainingBalance');
+        $currentBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->sum('remainingBalance');
 
         // Retrieve the customer's name
-        $customer = Customers::find($req->customer_id);
-        $customerName = $customer ? $customer->name : 'Customer';
+        $customerName = $customer->name;
 
         // Check if the DirectPayment amount is less than or equal to the current balance
-        if ($req->DirectPayment > $currentBalance) {
+        if ($validated['DirectPayment'] > $currentBalance) {
             // If the payment exceeds the current balance, show an error message
             return redirect()->back()->with([
                 'balanceError' => "موجودہ واجبات {$currentBalance} ہیں۔ {$customerName} کے لئے آپ نے {$req->DirectPayment} کی رقم درج کی ہے جو دستیاب واجبات سے زیادہ ہے"
             ]);
         }
         $obj = new Transaction;
-        $obj->customerId = $req->customer_id;
-        $obj->remainingBalance = (-$req->DirectPayment);
-        $obj->recivedPayment = $req->DirectPayment;
-        $obj->Order_type = $req->comment;
-        $obj->comment = $req->comment;
-        $obj->userId = Auth::user()->id;
+        $obj->customerId = $customer->id;
+        $obj->remainingBalance = (-$validated['DirectPayment']);
+        $obj->recivedPayment = $validated['DirectPayment'];
+        $obj->Order_type = 'Sale';
+        $obj->comment = $validated['comment'] ?? null;
+        $obj->userId = Auth::user()->businessOwnerId();
         $obj->save();
 
         return redirect('admin/customers-record')->with('insert', " {$customerName} کے لئے آپ نے {$req->DirectPayment} کی رقم درج کی ہے");
@@ -353,13 +380,18 @@ $obj->Daaman = $daaman;
             Customers::create([
                 'name' => $validatedData['customer_name'],
                 'phone_number1' => $validatedData['customer_num'],
-                'user_id' => auth()->user()->id
+                'user_id' => auth()->user()->businessOwnerId()
             ]);
 
             return redirect()->route('admin.stock.index')->with('insert', 'نیا کسٹمر شامل کیا گیا ہے۔');
         } catch (\Exception $e) {
             return response()->json($e->getMessage());
         }
+    }
+
+    private function ownedCustomer($id): Customers
+    {
+        return Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
     }
 
 }

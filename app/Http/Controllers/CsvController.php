@@ -58,7 +58,7 @@ class CsvController extends Controller
                     'plate_type' => $record['پلیٹ'],
                     'note' => $record['نوٹ'],
                     'comments' => $record['تبصرے'],
-                    'user_id' => Auth::id(), // Assuming the user is the current logged-in user
+                    'user_id' => Auth::user()->businessOwnerId(), // Assuming the user is the current logged-in user
                 ];
 
                 // dd($customerData);
@@ -78,7 +78,7 @@ class CsvController extends Controller
     public function exportCsv()
     {
         try {
-            $customers_list = Customers::select('name', 'phone_number1', 'sleeve', 'shoulder', 'senaChorai', 'shalwar', 'teraa', 'jeab', 'length', 'damanchorai', 'button', 'shirtbutton', 'swingtype', 'arms', 'Chuta', 'necktype', 'shalwarGheer', 'pancha', 'Daaman', 'plate_type', 'note', 'comments')->where('user_id', Auth::id())->get();
+            $customers_list = Customers::select('name', 'phone_number1', 'sleeve', 'shoulder', 'senaChorai', 'shalwar', 'teraa', 'jeab', 'length', 'damanchorai', 'button', 'shirtbutton', 'swingtype', 'arms', 'Chuta', 'necktype', 'shalwarGheer', 'pancha', 'Daaman', 'plate_type', 'note', 'comments')->where('user_id', Auth::user()->businessOwnerId())->get();
 
 
             // Define Urdu headers
@@ -137,7 +137,7 @@ class CsvController extends Controller
     {
         try {
             // Fetch the cloths data along with the related colors
-            $cloths = Cloth::where('user_id', auth()->user()->id)
+            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
                 ->with(['colors']) // Only load the colors, exclude images and videos
                 ->latest()
                 ->get();
@@ -211,31 +211,31 @@ class CsvController extends Controller
                 $type_slug = Str::slug($type_name);
 
                 // Check if the brand already exists
-                $existingBrand = ClothBrand::where('name', $name)->where('user_id', Auth::user()->id)->first();
+                $existingBrand = ClothBrand::where('name', $name)->where('user_id', Auth::user()->businessOwnerId())->first();
                 if (!$existingBrand) {
                     $cloth_brand = ClothBrand::create([
                         'name' => $name,
                         'brand_slug' => $brand_slug,
-                        'user_id' => Auth::user()->id,
+                        'user_id' => Auth::user()->businessOwnerId(),
                     ]);
                 } else {
                     $cloth_brand = $existingBrand;
                 }
 
                 // Check if the type already exists
-                $existingType = ClothType::where('name', $type_name)->where('user_id', Auth::user()->id)->first();
+                $existingType = ClothType::where('name', $type_name)->where('user_id', Auth::user()->businessOwnerId())->first();
                 if (!$existingType) {
                     $cloth_type = ClothType::create([
                         'name' => $type_name,
                         'type_slug' => $type_slug,
-                        'user_id' => Auth::user()->id,
+                        'user_id' => Auth::user()->businessOwnerId(),
                     ]);
                 } else {
                     $cloth_type = $existingType;
                 }
 
                 // Check if the type already exists
-                $existingcloth = Cloth::where('cloth_type_id', $cloth_type->id)->where('user_id', Auth::user()->id)->whereNull('deleted_at')->first(); //  deleted_at becasue soft delete is used
+                $existingcloth = Cloth::where('cloth_type_id', $cloth_type->id)->where('user_id', Auth::user()->businessOwnerId())->whereNull('deleted_at')->first(); //  deleted_at becasue soft delete is used
 
                 // Get the price from the CSV record and trim any extra spaces
                 $price = trim($record['ریٹ فی میٹر']);
@@ -249,7 +249,7 @@ class CsvController extends Controller
                         'cloth_type_id' => $cloth_type->id,
                         'cloth_brand_id' => $cloth_brand->id,
                         'price' => (int)$price,
-                        'user_id' => Auth::user()->id,
+                        'user_id' => Auth::user()->businessOwnerId(),
                     ]);
                 }
 
@@ -269,7 +269,8 @@ class CsvController extends Controller
                         'cloth_id' => $cloth->id,
                         'color' => $colors,
                         'length' => $lengths,
-                        'user_id' => Auth::user()->id,
+                        'average_unit_cost' => (int) $price,
+                        'user_id' => Auth::user()->businessOwnerId(),
                     ]);
                 }
             }

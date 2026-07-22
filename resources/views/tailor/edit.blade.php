@@ -33,14 +33,15 @@
 
                                     <div class="col-sm-6">
                                         <label>پاس ورڈ</label>
-                                        <input type="number" class="form-control" name="password"
-                                            value="{{$tailorData->password}}">
+                                        <input type="password" class="form-control" name="password"
+                                            autocomplete="new-password" minlength="6"
+                                            placeholder="Leave blank to keep the current password">
                                     </div>
 
 
                                     <div class="col-sm-6">
                                         <label>نمبر</label>
-                                        <input type="number" class="form-control" name="contact"
+                                        <input type="text" class="form-control" name="contact"
                                             value="{{$tailorData->phone_number1}}">
                                     </div>
 

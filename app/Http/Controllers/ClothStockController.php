@@ -21,6 +21,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use App\Services\InventoryService;
 
 class ClothStockController extends Controller
 {
@@ -67,7 +68,7 @@ class ClothStockController extends Controller
         try {
 
             // New Code
-            $cloths = Cloth::where('user_id', auth()->user()->id)->with(['colors', 'images'])->latest()->get();
+            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with(['colors', 'images'])->latest()->get();
 
 
             return view('stock.index', compact('cloths'));
@@ -91,9 +92,9 @@ class ClothStockController extends Controller
     {
         try {
 
-            $cloths = ClothBrand::all();
-            $cloth_types = ClothType::latest()->get();
-            $cloth_brands = ClothBrand::latest()->get();
+            $cloths = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->get();
+            $cloth_types = ClothType::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
+            $cloth_brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
             return view('stock.create', compact('cloths', 'cloth_types', 'cloth_brands'));
         } catch (\Throwable $th) {
             throw $th;
@@ -113,25 +114,38 @@ class ClothStockController extends Controller
         try {
             // New Code
             $formData = $request->validate([
-                'cloth_type_id' => 'required|string',
-                'cloth_brand_id' => 'required',
-                'color' => 'required|string',
-                'length' => 'required|numeric',
-                'price' => 'required|numeric', // No change here
-                'image' => 'required|mimes:png,jpg,jpeg', //new change
+                'cloth_type_id' => ['required', 'integer'],
+                'cloth_brand_id' => ['required', 'integer'],
+                'color' => ['required', 'string', 'max:100'],
+                'length' => ['required', 'numeric', 'min:0'],
+                'price' => ['required', 'numeric', 'min:0'],
+                'image' => ['required', 'image', 'max:4096'],
             ]);
+            ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($formData['cloth_type_id']);
+            ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($formData['cloth_brand_id']);
             $file = $formData['image'];
-            $fileName = $file->getClientOriginalName();
-            $path = $request->image->move('public/images/setting/', $fileName);
+            $fileName = $file->store('ClothImages', 'public');
 
-            Cloth::create([
-                'cloth_type_id' => $formData['cloth_type_id'],
-                'cloth_brand_id' => $formData['cloth_brand_id'],
-                'color' => $formData['color'],
-                'length' => $formData['length'],
-                'price' => $formData['price'],
-                'image' => $fileName,
-            ]);
+            DB::transaction(function () use ($formData, $fileName) {
+                $cloth = Cloth::create([
+                    'cloth_type_id' => $formData['cloth_type_id'],
+                    'cloth_brand_id' => $formData['cloth_brand_id'],
+                    'price' => $formData['price'],
+                    'sale_price' => $formData['price'],
+                    'user_id' => Auth::user()->businessOwnerId(),
+                ]);
+                $cloth->colors()->create([
+                    'color' => $formData['color'],
+                    'length' => $formData['length'],
+                    'average_unit_cost' => $formData['price'],
+                    'user_id' => Auth::user()->businessOwnerId(),
+                ]);
+                $cloth->images()->create([
+                    'images' => $fileName,
+                    'image_color' => $formData['color'],
+                    'user_id' => Auth::user()->businessOwnerId(),
+                ]);
+            });
 
             return redirect()->route('admin.stock.index')->with('insert', 'اسٹاک کامیابی کے ساتھ شامل ہو گیا۔');
         } catch (\Throwable $th) {
@@ -151,8 +165,8 @@ class ClothStockController extends Controller
             // }
 
             // Get all the cloth brands,types and colths table table
-            $cloths = Cloth::where('user_id', auth()->user()->id)->with('colors')->get();
-            $id = auth()->user()->id;
+            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with('colors')->get();
+            $id = auth()->user()->businessOwnerId();
             // dd($id);
             $customers = Customers::where('user_id', $id)->get();
             // dd($customers);
@@ -166,7 +180,7 @@ class ClothStockController extends Controller
     {
         try {
             $id = $request->input('id');
-            $data = Customers::select('id', 'phone_number1')->where('id', $id)->where('user_id', auth()->user()->id)->first();
+            $data = Customers::select('id', 'phone_number1')->where('id', $id)->where('user_id', auth()->user()->businessOwnerId())->first();
 
             return response()->json(['data' => $data]);
         } catch (\Exception $e) {
@@ -178,7 +192,7 @@ class ClothStockController extends Controller
     {
         try {
             $name = $request->input('name');
-            $data = ClothBrand::select('id')->where('name', $name)->first();
+            $data = ClothBrand::select('id')->where('user_id', Auth::user()->businessOwnerId())->where('name', $name)->first();
 
             return response()->json(['data' => $data]);
         } catch (\Exception $e) {
@@ -191,6 +205,8 @@ class ClothStockController extends Controller
 
     public function sellStock(Request $request)
     {
+        return $this->processStockSale($request);
+
         // Retrieve the stock based on the selected brand name
         $brandNames = $request->input('brand_name');
         $clothTypes = $request->input('cloth_type');
@@ -229,7 +245,7 @@ class ClothStockController extends Controller
             $saleStock->sellDate = now();
             $saleStock->clothes_rack = $clothesRacks[$i];
             $saleStock->selling_price = $perMeters[$i];
-            $saleStock->user_id = Auth::id();
+            $saleStock->user_id = Auth::user()->businessOwnerId();
 
             // Fetch the price from the cloths table
             $cloth = Cloth::where('cloth_type_id', $clothTypes[$i])
@@ -297,7 +313,7 @@ class ClothStockController extends Controller
             'customerId' => $cust_id,
             'Order_type' => 'Sale',
             'sale_id' => $sellStock->first()->id,
-            'userId' => auth()->user()->id
+            'userId' => auth()->user()->businessOwnerId()
         ]);
 
 
@@ -337,7 +353,7 @@ class ClothStockController extends Controller
         //         'c_name' => $cust_name,
         //         'c_id' => $cust_id,
         //         'phone' => $phone,
-        //         'user_id' => auth()->user()->id,
+        //         'user_id' => auth()->user()->businessOwnerId(),
         //         'cloth_brand_id' => $brandName,
         //         'cloth_type_id ' => $clothTypes,
         //         'cloth_id' => $clothIds,
@@ -368,7 +384,7 @@ class ClothStockController extends Controller
         //         'customerId' => $id,
         //         'Order_type' => 'Sale',
         //         'sale_id' => $saleId,
-        //         'userId' => auth()->user()->id
+        //         'userId' => auth()->user()->businessOwnerId()
         //     ]);
         // }
 
@@ -381,10 +397,10 @@ class ClothStockController extends Controller
     public function printStock($id, $customerId)
     {
         $sale_id = $id;
-        $setting = Setting::where('user_id', Auth::user()->id)->where('status', 1)->first();
-        $latestSaleStock = SaleStock::latest('created_at')->first();
+        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->where('status', 1)->first();
+        $latestSaleStock = SaleStock::where('user_id', Auth::user()->businessOwnerId())->findOrFail($sale_id);
 
-        $customers = Customers::where('user_id', auth()->user()->id)
+        $customers = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->findOrFail($customerId);
 
         $id = $customers->id;
@@ -392,7 +408,7 @@ class ClothStockController extends Controller
 
         $gettransactions = Transaction::where('customerId', $id)
             ->where('Order_type', 'Sale')
-            ->where('userId', auth()->user()->id)
+            ->where('userId', auth()->user()->businessOwnerId())
             ->where('sale_id', $sale_id)
             ->first();
 
@@ -401,7 +417,7 @@ class ClothStockController extends Controller
 
         $transactions = Transaction::where('customerId', $id)
             ->where('Order_type', 'Sale')
-            ->where('userId', auth()->user()->id)
+            ->where('userId', auth()->user()->businessOwnerId())
             ->get();
         // dd($transactions);
 
@@ -423,6 +439,7 @@ class ClothStockController extends Controller
         )
             ->where('customerId', $id)
             ->where('Order_type', 'Tailor')
+            ->where('userId', Auth::user()->businessOwnerId())
             ->groupBy('customerId')
             ->first();
 
@@ -432,7 +449,7 @@ class ClothStockController extends Controller
         if ($latestSaleStock) {
             $customerName = $latestSaleStock->c_name;
             $phone = $latestSaleStock->phone;
-            $sellStock = SaleStock::where('created_at', $latestSaleStock->created_at)->get();
+            $sellStock = SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('created_at', $latestSaleStock->created_at)->get();
 
             return view('stock.stockPrint', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'tailortransactions', 'previousBalance', 'latestBalance', 'remaining', 'payment', 'id'));
         } else {
@@ -445,9 +462,9 @@ class ClothStockController extends Controller
     {
         $sale_id = $id;
         // dd($id);
-        $setting = Setting::where('user_id', Auth::user()->id)->where('status', 1)->first();
+        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->where('status', 1)->first();
 
-        $customers = Customers::where('user_id', auth()->user()->id)
+        $customers = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->findOrFail($customerId);
 
         $id = $customers->id;
@@ -455,7 +472,7 @@ class ClothStockController extends Controller
         $transactions = Transaction::where('customerId', $id)
             ->where('Order_type', 'Sale')
             ->where('sale_id', $sale_id)
-            ->where('userId', auth()->user()->id)
+            ->where('userId', auth()->user()->businessOwnerId())
             ->get();
         // dd($transactions);
 
@@ -464,7 +481,7 @@ class ClothStockController extends Controller
 
         $latestTransaction = Transaction::where('customerId', $id)
             ->where('Order_type', 'Sale')
-            ->where('userId', auth()->user()->id)
+            ->where('userId', auth()->user()->businessOwnerId())
             ->latest() // Order by creation date in descending order
             ->first(); // Retrieve the first (latest) transaction
 
@@ -476,8 +493,8 @@ class ClothStockController extends Controller
         // dd($latestReceivedPayment);
         $previousTransactions = Transaction::where('customerId', $id)
             ->where('Order_type', 'Sale')
-            ->where('userId', auth()->user()->id)
-            ->where('id', '<>', $latestTransaction->id) // Exclude the latest transaction
+            ->where('userId', auth()->user()->businessOwnerId())
+            ->when($latestTransaction, fn ($query) => $query->where('id', '<>', $latestTransaction->id))
             ->get();
 
         $previousBalance = $previousTransactions->sum('remainingBalance');
@@ -485,9 +502,10 @@ class ClothStockController extends Controller
         if ($customers) {
             $customerName = $customers->name;
             $phone = $customers->phone_number1;
-            $sellStock = SaleStock::where('id', $sale_id)->where('c_id', $id)->first();
+            $sellStock = SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('id', $sale_id)->where('c_id', $id)->firstOrFail();
             // dd($sellStock);
             $saleStocks = SaleStock::where('created_at', $sellStock->created_at)
+                ->where('user_id', Auth::user()->businessOwnerId())
                 ->where('c_id', $id)
                 ->get();
             // dd($saleStock);
@@ -512,7 +530,7 @@ class ClothStockController extends Controller
     public function destroy(Stock $stock)
     {
         try {
-
+            abort_unless((int) $stock->user_id === (int) Auth::user()->businessOwnerId(), 404);
             $stock->delete();
             return back()->with('delete', "اسٹاک کامیابی سے حذف ہو گیا۔");
         } catch (\Throwable $th) {
@@ -541,7 +559,7 @@ class ClothStockController extends Controller
                     DB::raw('SUM(loss) as total_loss')
                 )
                 ->whereBetween('sellDate', [date($start_date), date($end_date)])
-                ->where('user_id', auth()->user()->id)
+                ->where('user_id', auth()->user()->businessOwnerId())
                 ->groupBy('sellDate', 'c_name', 'cloth_brand_id', 'cloth_type_id', 'selling_price')->get();
 
             return response()->json($stocks);
@@ -552,15 +570,15 @@ class ClothStockController extends Controller
 
     public function showList()
     {
-        $customerIdsWithTransactions = Transaction::distinct('customerId')->pluck('customerId')->toArray();
+        $customerIdsWithTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())->distinct('customerId')->pluck('customerId')->toArray();
 
-        $customers = Customers::where('user_id', auth()->user()->id)
+        $customers = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->get();
 
         $customerTransactions = [];
 
         foreach ($customers as $customer) {
-            $transactions = Transaction::where('customerId', $customer->id)->get();
+            $transactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->get();
             $totalTransactions = $transactions->sum(function ($transaction) {
                 return $transaction->remainingBalance;
             });
@@ -574,7 +592,7 @@ class ClothStockController extends Controller
     public function customersDetail($id)
     {
         //sale
-        $customer = Customers::findOrFail($id);
+        $customer = Customers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         $name = $customer->name;
         $id = $customer->id;
         $stocks = SaleStock::select(
@@ -587,6 +605,7 @@ class ClothStockController extends Controller
         )
             ->where('c_name', $name)
             ->where('c_id', $id)
+            ->where('user_id', Auth::user()->businessOwnerId())
             ->groupBy('sellDate', 'c_name', 'cloth_brand_id', 'cloth_type_id', 'selling_price')->get();
         // dd($stocks);
         $transactions = Transaction::select(
@@ -596,6 +615,7 @@ class ClothStockController extends Controller
         )
             ->where('customerId', $id)
             ->where('Order_type', 'Sale')
+            ->where('userId', Auth::user()->businessOwnerId())
             ->groupBy('customerId')
             ->get();
 
@@ -606,7 +626,7 @@ class ClothStockController extends Controller
         // dd($extransactions);
 
         //tailor
-        $tailorcustomer = Customers::findOrFail($id);
+        $tailorcustomer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $tailortransactions = Transaction::select(
             'created_at',
             DB::raw('SUM(recivedPayment) as Payment'),
@@ -614,6 +634,7 @@ class ClothStockController extends Controller
         )
             ->where('customerId', $id)
             ->where('Order_type', 'Tailor')
+            ->where('userId', Auth::user()->businessOwnerId())
             ->groupBy('customerId')
             ->get();
 
@@ -629,7 +650,7 @@ class ClothStockController extends Controller
 
     public function dlt($id)
     {
-        $customer = Customers::findOrFail($id);
+        $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         if ($customer) {
             $customer->delete();
             return redirect()->back();
@@ -640,7 +661,7 @@ class ClothStockController extends Controller
     {
         $currentMonth = Carbon::now()->month;
 
-        // $stock = SaleStock::where('user_id', auth()->user()->id)
+        // $stock = SaleStock::where('user_id', auth()->user()->businessOwnerId())
         //     ->whereMonth('sellDate', $currentMonth)
         //     ->get();
 
@@ -652,7 +673,7 @@ class ClothStockController extends Controller
             DB::raw('SUM(profit) as total_profit'),
             DB::raw('SUM(loss) as total_loss')
         )
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', auth()->user()->businessOwnerId())
             ->groupBy('cloth_type_id', 'cloth_brand_id', 'selling_price')->get();
 
         // dd($stocks);
@@ -666,15 +687,15 @@ class ClothStockController extends Controller
 
         // Loop through each month (assuming 1 for January, 2 for February, etc.)
         for ($month = 1; $month <= 12; $month++) {
-            $sales = SaleStock::where('user_id', auth()->user()->id)->whereMonth('created_at', $month)->sum(DB::raw('selling_price * length'));
+            $sales = SaleStock::where('user_id', auth()->user()->businessOwnerId())->whereMonth('created_at', $month)->sum(DB::raw('selling_price * length'));
 
-            $extra_expense = DaliyExpenses::where('user_id', auth()->user()->id)->whereMonth('created_at', $month)->sum('Expense_payment');
+            $extra_expense = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->whereMonth('created_at', $month)->sum('Expense_payment');
 
-            $monthly_bills = Expenses::where('user_id', auth()->user()->id)->whereMonth('created_at', $month)->sum('Monthly_Bill');
+            $monthly_bills = Expenses::where('user_id', auth()->user()->businessOwnerId())->whereMonth('created_at', $month)->sum('Monthly_Bill');
 
-            $monthly_rent = Expenses::where('user_id', auth()->user()->id)->whereMonth('created_at', $month)->sum('Monthly_Rent');
+            $monthly_rent = Expenses::where('user_id', auth()->user()->businessOwnerId())->whereMonth('created_at', $month)->sum('Monthly_Rent');
 
-            $monthly_salary = Workers::where('user_id', auth()->user()->id)->whereMonth('created_at', $month)->sum('Worker_salary');
+            $monthly_salary = Workers::where('user_id', auth()->user()->businessOwnerId())->whereMonth('created_at', $month)->sum('Worker_salary');
 
             // Convert numeric month to month name
             $monthName = DateTime::createFromFormat('!m', $month)->format('F');
@@ -696,8 +717,9 @@ class ClothStockController extends Controller
     public function getSale(Request $req)
     {
         try {
-            $id = $req->id;
-            $sales = SaleStock::where('c_id', $id)
+            $id = $req->validate(['id' => ['required', 'integer']])['id'];
+            Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+            $sales = SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('c_id', $id)
                 ->get();
 
             $data = [];
@@ -727,11 +749,102 @@ class ClothStockController extends Controller
     {
         try {
             $id = $request->input('id');
-            $data = Cloth::with('type')->select('cloth_type_id')->where('cloth_brand_id', $id)->where('user_id', auth()->user()->id)->get();
+            $data = Cloth::with('type')->select('cloth_type_id')->where('cloth_brand_id', $id)->where('user_id', auth()->user()->businessOwnerId())->get();
 
             return response()->json(['data' => $data]);
         } catch (\Exception $e) {
             return response()->json($e->getMessage());
         }
+    }
+
+    private function processStockSale(Request $request)
+    {
+        $validated = $request->validate([
+            'brand_name' => ['required', 'array', 'min:1'],
+            'brand_name.*' => ['required', 'integer'],
+            'cloth_type' => ['required', 'array'],
+            'cloth_type.*' => ['required', 'integer'],
+            'color' => ['required', 'array'],
+            'color.*' => ['required', 'string', 'max:100'],
+            'per_meter' => ['required', 'array'],
+            'per_meter.*' => ['required', 'numeric', 'min:0'],
+            'clothes_rack' => ['required', 'array'],
+            'clothes_rack.*' => ['nullable', 'string', 'max:100'],
+            'length' => ['required', 'array'],
+            'length.*' => ['required', 'numeric', 'gt:0'],
+            'c_name' => ['required', 'string', 'regex:/^.+\|\d+$/'],
+            'payment' => ['required', 'numeric', 'min:0'],
+            'remain' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $itemCount = count($validated['brand_name']);
+        foreach (['cloth_type', 'color', 'per_meter', 'clothes_rack', 'length'] as $field) {
+            abort_unless(count($validated[$field]) === $itemCount, 422, 'Sale item fields are incomplete.');
+        }
+
+        [, $customerId] = explode('|', $validated['c_name'], 2);
+        $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($customerId);
+
+        $firstSale = DB::transaction(function () use ($validated, $customer, $itemCount) {
+            $inventory = app(InventoryService::class);
+            $firstSale = null;
+            $soldAt = now();
+
+            for ($i = 0; $i < $itemCount; $i++) {
+                $cloth = Cloth::where('user_id', Auth::user()->businessOwnerId())
+                    ->where('cloth_type_id', $validated['cloth_type'][$i])
+                    ->where('cloth_brand_id', $validated['brand_name'][$i])
+                    ->firstOrFail();
+                $clothColor = $cloth->colors()
+                    ->where('color', $validated['color'][$i])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ((float) $clothColor->length < (float) $validated['length'][$i]) {
+                    throw ValidationException::withMessages([
+                        'length.' . $i => 'Not enough stock is available for the selected cloth.',
+                    ]);
+                }
+
+                $costPrice = (float) $clothColor->average_unit_cost ?: (float) $cloth->price;
+                $salePrice = (float) $validated['per_meter'][$i];
+                $sale = SaleStock::create([
+                    'cloth_type_id' => $validated['cloth_type'][$i],
+                    'cloth_brand_id' => $validated['brand_name'][$i],
+                    'color' => $validated['color'][$i],
+                    'c_name' => $customer->name,
+                    'c_id' => $customer->id,
+                    'phone' => $customer->phone_number1,
+                    'length' => $validated['length'][$i],
+                    'sellDate' => $soldAt,
+                    'clothes_rack' => $validated['clothes_rack'][$i] ?? null,
+                    'selling_price' => $salePrice,
+                    'profit' => max(0, $salePrice - $costPrice),
+                    'loss' => max(0, $costPrice - $salePrice),
+                    'user_id' => Auth::user()->businessOwnerId(),
+                    'cloth_id' => $cloth->id,
+                    'cloth_color_id' => $clothColor->id,
+                    'cost_per_meter' => $costPrice,
+                    'cost_total' => round($costPrice * (float) $validated['length'][$i], 2),
+                    'created_at' => $soldAt,
+                    'updated_at' => $soldAt,
+                ]);
+                $inventory->issue($clothColor, (float) $validated['length'][$i], 'counter_sale', $sale, 'Counter sale #' . $sale->id, $costPrice);
+                $firstSale ??= $sale;
+            }
+
+            Transaction::create([
+                'remainingBalance' => $validated['remain'],
+                'recivedPayment' => $validated['payment'],
+                'customerId' => $customer->id,
+                'Order_type' => 'Sale',
+                'sale_id' => $firstSale->id,
+                'userId' => Auth::user()->businessOwnerId(),
+            ]);
+
+            return $firstSale;
+        });
+
+        return redirect()->route('admin.printStock', ['id' => $firstSale->id, 'customerId' => $customer->id]);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\ServerNotifications;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -19,22 +20,30 @@ class UserController extends Controller
 
     public function edit($id)
     {
-        $user = User::find($id);
+        abort_unless((int) $id === (int) Auth::id(), 403);
+        $user = Auth::user();
         return view('user.edit', compact('user'));
     }
 
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        abort_unless((int) $id === (int) Auth::id(), 403);
+        $user = Auth::user();
+        $validated = $request->validate([
+            'userName' => ['required', 'string', 'max:255'],
+            'userEmail' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'oldPassword' => ['required_with:newPassword', 'nullable', 'current_password'],
+            'newPassword' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
 
         $data = [
-            'name' => $request->input('userName'),
-            'email' => $request->input('userEmail'),
+            'name' => $validated['userName'],
+            'email' => $validated['userEmail'],
         ];
 
         // Only update password if new one is provided
         if ($request->filled('newPassword')) {
-            $data['password'] = Hash::make($request->input('newPassword'));
+            $data['password'] = Hash::make($validated['newPassword']);
         }
 
         $user->update($data);

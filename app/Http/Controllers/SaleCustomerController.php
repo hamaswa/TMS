@@ -54,7 +54,7 @@ class SaleCustomerController extends Controller
         $directoryPath = resource_path('views/layouts/' . $name);
 
         if (is_dir($directoryPath)) {
-            $user = User::where('id', auth()->user()->id)->first();
+            $user = User::where('id', auth()->user()->businessOwnerId())->first();
             return view('layouts.' . $name . '.account', compact('user', 'slug'));
         }
     }
@@ -140,7 +140,7 @@ class SaleCustomerController extends Controller
 
             if ($selectedBrandId) {
                 $query->where('cloth_brand_id', $selectedBrandId);
-                $brand_name = ClothBrand::find($selectedBrandId);
+                $brand_name = ClothBrand::where('user_id', $shop->user_id)->find($selectedBrandId);
             }
 
             if ($selectedTypeId) {
@@ -162,13 +162,15 @@ class SaleCustomerController extends Controller
     }
 
 
-    public function delete($slug, $id)
+    public function delete(Request $request, $slug, $id)
     {
         try {
-            $user = User::find($id);
-            if ($user) {
-                $user->delete();
-            }
+            abort_unless((int) Auth::user()->businessOwnerId() === (int) $id, 403);
+            $user = Auth::user();
+            Auth::logout();
+            $user->delete();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
             return response()->json('Account Successfully Deleted');
         } catch (\Exception $e) {
             return response()->json($e->getMessage());

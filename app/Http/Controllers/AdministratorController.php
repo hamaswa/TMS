@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Exception;
+use App\Models\Business;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
@@ -12,19 +13,19 @@ use Illuminate\Support\Facades\Hash;
 use App\Notifications\AdminNotification;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\Rule;
 
 class AdministratorController extends Controller
 {
     public function showData()
     {
-        $users = User::all();
+        $users = User::with('roles')->orderBy('name')->get();
         return view('Administrator.index', compact('users'));
     }
     public function index()
     {
         $allRoles = Role::all();
-        $allPermissions = Permission::all();
-        return view('Administrator.create', compact('allRoles', 'allPermissions'));
+        return view('Administrator.create', compact('allRoles'));
     }
     public function show()
     {
@@ -34,90 +35,81 @@ class AdministratorController extends Controller
 
     public function insert(Request $req)
     {
-        $user_name = $req->input('name');
-        $user_mail = $req->input('email');
-        $user_password = $req->input('password');
-        $role = $req->input('role');
-        $permission = $req->input('permission');
-
+        $validated = $this->validateAccount($req);
+        $modules = $validated['modules'] ?? [];
         $user = User::create([
-            'name' => $user_name,
-            'email' => $user_mail,
-            'password' => Hash::make($user_password)
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'tailoring_access' => $validated['role'] === 'shop_owner' && in_array('tailoring', $modules, true),
+            'clothing_access' => $validated['role'] === 'shop_owner' && in_array('clothing', $modules, true),
         ]);
-        // Assign role
-        if ($role) {
-            $roleModel = Role::where('name', $role)->first();
-            if ($roleModel) {
-                $user->assignRole($roleModel);
-            }
+        $user->syncRoles([$validated['role']]);
+
+        if ($validated['role'] === 'shop_owner') {
+            $business = Business::create([
+                'name' => $user->name,
+                'owner_user_id' => $user->id,
+                'tailoring_enabled' => $user->tailoring_access,
+                'clothing_enabled' => $user->clothing_access,
+            ]);
+            $user->forceFill(['business_id' => $business->id, 'is_business_owner' => true])->save();
         }
 
-        // Assign permissions
-        if ($permission) {
-            $permissionModel = Permission::where('name', $permission)->first();
-
-            if ($permissionModel) {
-                $user->givePermissionTo($permissionModel);
-                $roleModel->givePermissionTo($permissionModel);
-            }
-        }
-
-        return redirect()->route('administrator.index');
+        return redirect()->route('administrator.index')->with('success', 'Client account created.');
     }
 
     public function edit($id)
     {
-        $user = User::find($id);
+        $user = User::findOrFail($id);
         $allRoles = Role::all();
-        $allPermissions = Permission::all();
-        $user->with('roles.permissions')->get();
-        return view('Administrator.edit', compact('user', 'allRoles', 'allPermissions'));
+        return view('Administrator.edit', compact('user', 'allRoles'));
     }
 
     public function update(Request $req, $id)
 {
-    $user = User::find($id);
-
-    $user_name = $req->input('name');
-    $user_mail = $req->input('email');
-    $user_password = $req->input('password');  // Password field from the form
-    $role = $req->input('role');
-    $permission = $req->input('permission');
-
-    // Update the user's name and email
-    $user->name = $user_name;
-    $user->email = $user_mail;
-
-    // Only update the password if a new one is provided
-    if (!empty($user_password)) {
-        $user->password = Hash::make($user_password);
+    $user = User::findOrFail($id);
+    $validated = $this->validateAccount($req, $user);
+    $modules = $validated['modules'] ?? [];
+    $user->fill([
+        'name' => $validated['name'],
+        'email' => $validated['email'],
+        'tailoring_access' => $validated['role'] === 'shop_owner' && in_array('tailoring', $modules, true),
+        'clothing_access' => $validated['role'] === 'shop_owner' && in_array('clothing', $modules, true),
+    ]);
+    if (! empty($validated['password'])) {
+        $user->password = Hash::make($validated['password']);
     }
-
-    // Save the updated user data
     $user->save();
+    $user->syncRoles([$validated['role']]);
 
-    // Assign role
-    if ($role) {
-        $roleModel = Role::where('name', $role)->first();
-        if ($roleModel) {
-            $user->syncRoles([$roleModel->name]);
-        }
+    if ($validated['role'] === 'shop_owner') {
+        $business = $user->ownedBusiness()->firstOrCreate(
+            ['owner_user_id' => $user->id],
+            ['name' => $user->name]
+        );
+        $business->update([
+            'name' => $user->name,
+            'tailoring_enabled' => $user->tailoring_access,
+            'clothing_enabled' => $user->clothing_access,
+        ]);
+        $user->forceFill(['business_id' => $business->id, 'is_business_owner' => true])->save();
     }
 
-    // Assign permissions
-    if ($permission) {
-        $permissionModel = Permission::where('name', $permission)->first();
-        if ($permissionModel) {
-            $user->syncPermissions([$permissionModel->name]);
-            if ($roleModel) {
-                $roleModel->syncPermissions([$permissionModel->name]);
-            }
-        }
-    }
-
-    return redirect()->route('administrator.index');
+    return redirect()->route('administrator.index')->with('success', 'Client access updated.');
 }
+
+    private function validateAccount(Request $request, ?User $user = null): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
+            'password' => [$user ? 'nullable' : 'required', 'string', 'min:8'],
+            'role' => ['required', Rule::exists('roles', 'name')],
+            'modules' => [Rule::requiredIf(fn () => $request->input('role') === 'shop_owner'), 'array', 'min:1'],
+            'modules.*' => [Rule::in(['tailoring', 'clothing'])],
+        ]);
+    }
 
     public function delete($id)
     {
@@ -157,14 +149,8 @@ class AdministratorController extends Controller
             // Update user's permissions
             $user->syncPermissions($req->input('userPermissions', []));
 
-            // Get the user's role after syncing roles
-            $role = $user->roles->first();
-
-            // Check if the user has a role before giving permissions
-            if ($role) {
-                $permissions = $req->input('userPermissions');
-                $role->syncPermissions($permissions);
-            }
+            // Direct permissions belong to this account only. Shared role permissions
+            // must not be changed while editing one client.
         }
 
         return redirect()->route('administrator.roles');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClothBrand;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ClothBrandController extends Controller
 {
@@ -16,7 +17,7 @@ class ClothBrandController extends Controller
     public function index()
     {
         try {
-            $cloth_brands = ClothBrand::where('user_id',auth()->user()->id)->latest()->get();
+            $cloth_brands = ClothBrand::where('user_id',auth()->user()->businessOwnerId())->latest()->get();
             return view('clothbrand.index', compact('cloth_brands'));
         } catch (\Throwable $th) {
             throw $th;
@@ -47,16 +48,17 @@ class ClothBrandController extends Controller
     public function store(Request $request)
     {
         try {
-            $name = $request->input('name');
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'file' => ['required', 'image', 'max:2048'],
+            ]);
+            $name = $validated['name'];
             $file = $request->file('file');
-            $fileName = $file->getClientOriginalName();
-            // $image->move('public/images/setting/', $imageName);
-            // $path = $file->storeAs('BrandImages', $fileName, 'public');
-            $file->move('public/images/setting/', $fileName);
-            $user_id = auth()->user()->id;
+            $fileName = $file->store('BrandImages', 'public');
+            $user_id = Auth::user()->businessOwnerId();
 
             // Check if the brand name already exists
-            $existingBrand = ClothBrand::where('name', $name)->first();
+            $existingBrand = ClothBrand::where('user_id', $user_id)->where('name', $name)->first();
 
             if ($existingBrand) {
                 // If the brand name exists, use the existing slug
@@ -97,7 +99,7 @@ class ClothBrandController extends Controller
     public function edit($id)
     {
         try {
-            $cloth_brand = ClothBrand::find($id);
+            $cloth_brand = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
             return view('clothbrand.edit', compact('cloth_brand'));
         } catch (\Throwable $th) {
             throw $th;
@@ -115,20 +117,21 @@ class ClothBrandController extends Controller
     {
         try {
 
-            $cloth_brand = ClothBrand::find($id);
-            $name = $request->input('name');
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'file' => ['nullable', 'image', 'max:2048'],
+            ]);
+            $cloth_brand = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+            $name = $validated['name'];
             $file = $request->file('file');
+            $attributes = [
+                'name' => $name,
+                'brand_slug' => Str::slug($name),
+            ];
             if ($file) {
-                $fileName = $file->getClientOriginalName();
-                // $path = $file->storeAs('BrandImages', $fileName, 'public');
-                $path = $file->move('public/images/setting/', $fileName);
-                $cloth_brand->update([
-                    'name' => $name,
-                    'brand_logo' => $fileName,
-                ]);
-            }else{
-                return 'Something went wrong';
+                $attributes['brand_logo'] = $file->store('BrandImages', 'public');
             }
+            $cloth_brand->update($attributes);
 
             return redirect()->route('admin.clothbrand.index')->with('insert', 'کپڑے کی کمپنی کامیابی کے ساتھ اپ ڈیٹ ہو گئی۔');
         } catch (\Throwable $th) {
@@ -145,7 +148,7 @@ class ClothBrandController extends Controller
     public function destroy($id)
     {
         try {
-            $cloth_brand = ClothBrand::find($id)->delete();
+            ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id)->delete();
             return back()->with('delete', 'ریکارڈ کامیابی سے حذف ہو گیا۔');
         } catch (\Throwable $th) {
             throw $th;

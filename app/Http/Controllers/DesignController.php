@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Design;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DesignController extends Controller
 {
     public function index()
     {
-        $designs = Design::all();
+        $designs = Design::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
         return view('Design.index',compact('designs'));
     }
 
@@ -20,11 +21,17 @@ class DesignController extends Controller
 
     public function store(Request $request)
     {
-        $name = $request->input('name');
-        $rupee = $request->input('rupee');
+        $validated = $request->validate([
+            'name' => ['required', 'array', 'min:1'],
+            'name.*' => ['required', 'string', 'max:255'],
+            'rupee' => ['required', 'array'],
+            'rupee.*' => ['required', 'numeric', 'min:0'],
+        ]);
+        abort_unless(count($validated['name']) === count($validated['rupee']), 422);
 
-        foreach (array_map(null, $name, $rupee) as [$name, $rupee]) {
+        foreach (array_map(null, $validated['name'], $validated['rupee']) as [$name, $rupee]) {
             Design::create([
+                'user_id' => Auth::user()->businessOwnerId(),
                 'design_name' => $name,
                 'design_price' => $rupee,
             ]);
@@ -35,17 +42,22 @@ class DesignController extends Controller
 
     public function edit($id)
     {
-        $data = Design::find($id);
+        $data = Design::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         return view('Design.edit',compact('data'));
     }
 
     public function update(Request $request,$id)
     {
-        $data = Design::find($id);
-        $name = $request->input('name');
-        $rupee = $request->input('rupee');
+        $data = Design::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $validated = $request->validate([
+            'name' => ['required', 'array', 'min:1'],
+            'name.*' => ['required', 'string', 'max:255'],
+            'rupee' => ['required', 'array'],
+            'rupee.*' => ['required', 'numeric', 'min:0'],
+        ]);
+        abort_unless(count($validated['name']) === count($validated['rupee']), 422);
 
-        foreach (array_map(null, $name, $rupee) as [$name, $rupee]) {
+        foreach (array_map(null, $validated['name'], $validated['rupee']) as [$name, $rupee]) {
             $data->update([
                 'design_name' => $name,
                 'design_price' => $rupee,
@@ -57,17 +69,14 @@ class DesignController extends Controller
 
     public function delete($id)
     {
-        $data = Design::find($id);
-        if($data){
-            $data->delete();
-        }
+        Design::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id)->delete();
         return redirect()->back();
     }
 
     public function price($name)
     {
         // Retrieve the design by ID
-        $design = Design::findOrFail($name);
+        $design = Design::where('user_id', Auth::user()->businessOwnerId())->findOrFail($name);
 
         // Return the price of the design
         return $design->design_price;

@@ -206,17 +206,18 @@
                                 <td>{{ $order->status }}</td>
                                 @if ($order->status == 'pending')
                                     <td>
-                                        <a href="{{ route('user.order.cancel', ['slug' => $slug, 'id' => $order->id]) }}"
-                                            class="btn btn-danger @if ($daysDifference > 3) btn-disabled @endif">
-                                            Cancel Order
-                                        </a>
+                                        <form action="{{ route('user.order.cancel', ['slug' => $slug, 'id' => $order->id]) }}" method="POST">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="btn btn-danger @if ($daysDifference > 3) btn-disabled @endif" @disabled($daysDifference > 3)>Cancel Order</button>
+                                        </form>
                                     </td>
                                 @else
                                     <td>
-                                        <a href="{{ route('user.order.again', ['slug' => $slug, 'id' => $order->id]) }}"
-                                            class="btn btn-primary">
-                                            Again Order
-                                        </a>
+                                        <form action="{{ route('user.order.again', ['slug' => $slug, 'id' => $order->id]) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="btn btn-primary">Again Order</button>
+                                        </form>
                                     </td>
                                 @endif
                             </tr>

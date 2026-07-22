@@ -7,6 +7,7 @@ use App\Models\Options;
 use App\Models\OptionType;
 use App\Models\Tailorsalary;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class TailorRateController extends Controller
 {
@@ -28,8 +29,8 @@ class TailorRateController extends Controller
     public function create($id)
     {
         try {
-            $tailor=Tailor::find($id);
-            $types=Options::where('option_id',1)->where('user_id',auth()->user()->id)->get();
+            $tailor=Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+            $types=Options::where('option_id',1)->where('user_id',auth()->user()->businessOwnerId())->get();
 
             return view('tailor.rate-create',compact('types','tailor'));
 
@@ -47,11 +48,12 @@ class TailorRateController extends Controller
     public function store(Request $request,$id)
     {
         try {
+            Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
             $request['tailor_id']=$id;
             $formData=$request->validate([
-                'tailor_id' => 'required',
-                'options_id' => 'required',
-                'price' => 'required'
+                'tailor_id' => ['required', 'integer'],
+                'options_id' => ['required', 'integer'],
+                'price' => ['required', 'numeric', 'min:0']
             ]);
             
             Tailorsalary::create($formData);
@@ -107,7 +109,9 @@ class TailorRateController extends Controller
     {
         try {
 
-            $rate=Tailorsalary::find($id);
+            $rate = Tailorsalary::whereHas('tailor', function ($query) {
+                $query->where('user_id', Auth::user()->businessOwnerId());
+            })->findOrFail($id);
 
             $rate->delete();
 

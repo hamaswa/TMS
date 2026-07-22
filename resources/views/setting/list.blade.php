@@ -62,21 +62,28 @@
 
                                                 <td class="text-right">
                                                     @if($setting->status ==0)
-                                                    <a href="{{ url('admin/setting/active',$setting->id)}}"
-                                                        class="delete-tr">Active</a>
+                                                    <form action="{{ route('admin.active-setting', $setting->id) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="btn btn-link p-0 delete-tr">Active</button>
+                                                    </form>
                                                     @else
-                                                    <a href="{{ url('admin/setting/deactive',$setting->id)}}"
-                                                        class="delete-tr">
-                                                        Deactive</a>
+                                                    <form action="{{ route('admin.deactive-setting', $setting->id) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="btn btn-link p-0 delete-tr">Deactive</button>
+                                                    </form>
                                                     @endif
                                                 </td>
                                                 <td class="text-right">
                                                     <a href="{{ url('admin/setting/edit',$setting->id)}}">
                                                         <i class="fa fa-edit" aria-hidden="true"></i>
                                                         </a>
-                                                    <a href="{{ url('admin/setting/delete',$setting->id)}}"
-                                                        class="delete-tr"><i class="fa fa-trash"
-                                                            aria-hidden="true"></i></a>
+                                                    <form action="{{ route('admin.delete-setting', $setting->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this setting?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-link p-0 delete-tr" aria-label="Delete setting"><i class="fa fa-trash" aria-hidden="true"></i></button>
+                                                    </form>
                                                 </td>
                                             </tr>
                                             @endforeach

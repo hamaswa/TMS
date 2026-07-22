@@ -31,7 +31,11 @@
                             <td><b>{{ $records->price }}</b></td>
                             <td><b>{{ $records->price * $records->length}}</b></td>
                             <td>
-                                <a href="{{ route('user.cart.delete',['slug'=>$slug,'id'=>$records->id]) }}" class="btn btn-primary">Remove</a>
+                                <form action="{{ route('user.cart.delete', ['slug' => $slug, 'id' => $records->id]) }}" method="POST">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-primary">Remove</button>
+                                </form>
                             </td>
                             <td>
                                 <form action="{{ route('user.cart.buy',['slug'=>$slug,'id'=>$records->id]) }}" method="POST">

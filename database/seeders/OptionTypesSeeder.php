@@ -11,7 +11,7 @@ class OptionTypesSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('option_types')->insert([
+        DB::table('option_types')->upsert([
             [
                 'id' => 1,
                 'slug' => 'add_sewing_type',
@@ -84,6 +84,6 @@ class OptionTypesSeeder extends Seeder
                 'updated_at' => Carbon::now(),
                 'user_id'    => 1,
             ],
-        ]);
+        ], ['id'], ['slug', 'Name', 'type', 'updated_at', 'user_id']);
     }
 }

@@ -20,11 +20,11 @@
                                     </div>
                                     <div class="col-sm-6">
                                         <label>پاس ورڈ</label>
-                                        <input type="number" class="form-control" name="password" required>
+                                        <input type="password" class="form-control" name="password" autocomplete="new-password" minlength="6" required>
                                     </div>
                                     <div class="col-sm-6 mt-1">
                                         <label>نمبر</label>
-                                        <input type="number" class="form-control" name="contact" required>
+                                        <input type="text" class="form-control" name="contact" required>
                                     </div>
                                     {{-- <div class="col-sm-6 mt-1">
                                         <label>درزی کے مختلف نرخ</label>

@@ -15,22 +15,17 @@
 
 <!-- JavaScript
 ================================================== -->
-<script src="{{ asset('public/assets/js/popper.min.js')}}"></script>
-<script src="{{ asset('public/assets/js/jquery.dataTables.min.js')}}"></script>
-<script src="{{ asset('public/assets/owlcarousel/owl.carousel.min.js')}}"></script>
-<script src="{{ asset('public/assets/js/main.js')}}"></script>
-<script src="{{asset('public/assets/js/custom.js')}}"></script>
+<script src="{{ asset('assets/js/popper.min.js')}}"></script>
+<script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>
+<script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>
+<script src="{{ asset('assets/js/main.js')}}"></script>
+<script src="{{asset('assets/js/custom.js')}}"></script>
 <!--<script src="{{ asset('assets/js/popper.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/js/main.js')}}"></script>-->
 <!--<script src="{{asset('assets/js/custom.js')}}"></script>-->
 <!--{{-- <script src="{{asset('public/assets/js/notifications.js')}}"></script> --}}-->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-tagsinput/0.8.0/bootstrap-tagsinput.js" crossorigin="anonymous"></script>
-<script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-
-
-
 <!-- <script src="https://cdn.ckeditor.com/4.9.2/standard/ckeditor.js"></script> -->
 
 </body>

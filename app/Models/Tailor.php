@@ -19,6 +19,8 @@ class Tailor extends Model
 
     protected $fillable = ['name','phone_number1','updated_at','user_id','email','password','advance'];
 
+    protected $hidden = ['password'];
+
     public function orders()
     {
         return $this->hasMany(Order::class,'tailorId','id');

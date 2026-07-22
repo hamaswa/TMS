@@ -53,9 +53,11 @@
                                                             <a href="{{ url('admin/tailors-rates/edit/'.$rate->id)}}"
                                                                 class="delete-tr"><i class="fa fa-edit" aria-hidden="true"></i></a>
             
-                                                            <a href="{{ url('admin/tailors-rates/delete/'.$rate->id)}}"
-                                                                class="delete-tr"><i class="fa fa-trash-alt"
-                                                                    aria-hidden="true"></i></a>
+                                                            <form action="{{ route('admin.tailor-rates.delete', $rate->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this rate?')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-link p-0 delete-tr" aria-label="Delete rate"><i class="fa fa-trash-alt" aria-hidden="true"></i></button>
+                                                            </form>
                                                         </td>
                                                     </tr>
                                                 @endforeach

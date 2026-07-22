@@ -19,6 +19,8 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Admin',
                 'password' => Hash::make('admin@1234'),
+                'tailoring_access' => false,
+                'clothing_access' => false,
             ]
         );
 
@@ -30,6 +32,8 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Itlinked',
                 'password' => Hash::make('itlinked@1234'),
+                'tailoring_access' => true,
+                'clothing_access' => true,
             ]
         );
 
@@ -37,8 +41,8 @@ class UserSeeder extends Seeder
         // 3. Assign Roles safely
         // -------------------------
 
-        $adminRole = Role::find(1);
-        $userRole  = Role::find(2);
+        $adminRole = Role::where('name', 'administrative')->first();
+        $userRole = Role::where('name', 'shop_owner')->first();
 
         if ($adminRole) {
             $admin->syncRoles([$adminRole]);

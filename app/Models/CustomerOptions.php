@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -32,7 +32,7 @@ class CustomerOptions extends Model
      */
     public function customer()
     {
-        return $this->belongsTo('App\Customer');
+        return $this->belongsTo(Customers::class, 'customer_id');
     }
 
     /**
@@ -40,6 +40,6 @@ class CustomerOptions extends Model
      */
     public function option()
     {
-        return $this->belongsTo('App\Option');
+        return $this->belongsTo(Options::class, 'option_id');
     }
 }

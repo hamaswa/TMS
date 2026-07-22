@@ -8,12 +8,14 @@ use App\Models\Sale;
 use App\Models\Saledetail;
 use App\Models\Transaction;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class SaleController extends Controller
 {
     public function index()
     {
-        $sales = Sale::all();
+        $sales = Sale::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
 
         return view("sale.list", compact('sales'));
     }
@@ -25,39 +27,42 @@ class SaleController extends Controller
 
     public function show($id)
     {
-        $sale = Sale::findOrFail($id);
-        $transaction = Transaction::where('Order_type', 'Sale')->where('sale_id', $id)->get();
+        $sale = $this->ownedSale($id);
+        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('Order_type', 'Sale')->where('sale_id', $id)->get();
         // dd($transaction);
         return view('sale.show', compact('sale', 'transaction'));
     }
 
     public function store(Request $req)
     {
+        $validated = $this->validateSale($req);
 
-        $sale = Sale::create([
-            "customer_name" => $req->customer_name
-        ]);
-
-        $input = $req->all();
-
-        for ($i = 0; $i < count($_POST['name']); $i++) {
-            $sale->detail()->create([
-                "product_name" => $input['name'][$i],
-                "quantity" => $input['quantity'][$i],
-                "price" => $input['price'][$i],
+        $sale = DB::transaction(function () use ($validated) {
+            $sale = Sale::create([
+                'user_id' => Auth::user()->businessOwnerId(),
+                'customer_name' => $validated['customer_name'],
             ]);
-        }
+
+            foreach ($validated['name'] as $index => $productName) {
+                $sale->detail()->create([
+                    'product_name' => $productName,
+                    'quantity' => $validated['quantity'][$index],
+                    'price' => $validated['price'][$index],
+                ]);
+            }
+
+            Transaction::create([
+                'remainingBalance' => $validated['remaining_balance'],
+                'recivedPayment' => $validated['received_payment'],
+                'Order_type' => 'Sale',
+                'sale_id' => $sale->id,
+                'userId' => Auth::user()->businessOwnerId(),
+            ]);
+
+            return $sale;
+        });
 
         $Id = $sale->id;
-
-        //Insert into transactions table
-        $transaction = Transaction::create([
-            'remainingBalance' => $req->input('remaining_balance'),
-            'recivedPayment' => $req->input('received_payment'),
-            'Order_type' => 'Sale',
-            'sale_id' => $Id,
-            'userId' => auth()->user()->id,
-        ]);
 
         // dd($transaction);
         return redirect(url('admin/sale/print', [$Id]));
@@ -65,9 +70,8 @@ class SaleController extends Controller
 
     public function edit($id)
     {
-        $sales = Sale::findOrFail($id);
-        $transaction = Transaction::where("sale_id", $id)->first();
-        $transaction = Transaction::where("sale_id", $id)->get();
+        $sales = $this->ownedSale($id);
+        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where("sale_id", $id)->get();
 
         // Calculate the latest balance
         $latestBalance = $transaction->sum('remainingBalance');
@@ -80,37 +84,29 @@ class SaleController extends Controller
 
     public function update(Request $request, $id)
     {
-        $sale = Sale::findOrFail($id);
+        $validated = $this->validateSale($request);
+        $sale = $this->ownedSale($id);
 
-        $sale->update([
-            "customer_name" => $request->customer_name,
-        ]);
+        DB::transaction(function () use ($validated, $sale) {
+            $sale->update(['customer_name' => $validated['customer_name']]);
+            $sale->detail()->delete();
 
-        $input = $request->all();
-        $sale->detail()->delete();
+            foreach ($validated['name'] as $index => $productName) {
+                $sale->detail()->create([
+                    'product_name' => $productName,
+                    'quantity' => $validated['quantity'][$index],
+                    'price' => $validated['price'][$index],
+                ]);
+            }
 
-        $totalRemainingBalance = 0;
-
-        for ($i = 0; $i < count($input['name']); $i++) {
-            $detail = $sale->detail()->create([
-                "product_name" => $input['name'][$i],
-                "quantity" => $input['quantity'][$i],
-                "price" => $input['price'][$i],
-            ]);
-
-            $totalRemainingBalance += $detail->price;
-        }
-        $receivedPayment = $request->input('received_payment');
-
-        $remainingBalance = $totalRemainingBalance - $receivedPayment;
-
-
-        $transaction = new Transaction([
-            'remainingBalance' => $remainingBalance,
-            'recivedPayment' => $receivedPayment,
-        ]);
-
-        $sale->transaction()->save($transaction);
+            Transaction::updateOrCreate(
+                ['sale_id' => $sale->id, 'userId' => Auth::user()->businessOwnerId(), 'Order_type' => 'Sale'],
+                [
+                    'remainingBalance' => $validated['remaining_balance'],
+                    'recivedPayment' => $validated['received_payment'],
+                ]
+            );
+        });
 
         return redirect(url('admin/sale/print', [$id]));
     }
@@ -119,26 +115,29 @@ class SaleController extends Controller
 
     public function destroy($id)
     {
-        $sale = Sale::findOrFail($id);
+        $sale = $this->ownedSale($id);
 
-        $sale->delete();
+        DB::transaction(function () use ($sale) {
+            Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $sale->id)->delete();
+            $sale->delete();
+        });
 
         return back()->with("delete", "فروخت کو کامیابی کے ساتھ حذف کر دیا گیا ہے۔");
     }
 
     public function print($id)
     {
-        $sale = Sale::find($id);
+        $sale = $this->ownedSale($id);
 
         $saleid = $sale->id;
 
 
-        $customerTransactions = Transaction::where("sale_id", $saleid)->get();
+        $customerTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where("sale_id", $saleid)->get();
 
         // Calculate the latest balance
         $latestBalance = $customerTransactions->sum('remainingBalance');
 
-        $transaction = Transaction::where('sale_id', $id)->latest()->first();
+        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $id)->latest()->first();
 
 
         // Calculate the previous balance
@@ -150,9 +149,9 @@ class SaleController extends Controller
             $previousBalance = $customerTransactions->where('id', '<', $latestTransaction->id)->sum('remainingBalance');
         }
 
-        // $setting = Setting::where('user_id',auth()->user()->id)->where('status',1)->first();
+        // $setting = Setting::where('user_id',auth()->user()->businessOwnerId())->where('status',1)->first();
 
-        $setting = Setting::where('user_id', auth()->user()->id)->where('status', 1)->first();
+        $setting = Setting::where('user_id', auth()->user()->businessOwnerId())->where('status', 1)->first();
         if (!$setting) {
             dd("Please Activate Your Setting");
         } else {
@@ -160,5 +159,34 @@ class SaleController extends Controller
             $status = "default";
             return view('sale.print', compact('sale', 'setting', 'status', 'transaction', 'latestBalance', 'previousBalance'));
         }
+    }
+
+    private function ownedSale($id): Sale
+    {
+        return Sale::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
+
+    private function validateSale(Request $request): array
+    {
+        $validated = $request->validate([
+            'customer_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'array', 'min:1'],
+            'name.*' => ['required', 'string', 'max:255'],
+            'quantity' => ['required', 'array'],
+            'quantity.*' => ['required', 'integer', 'min:1'],
+            'price' => ['required', 'array'],
+            'price.*' => ['required', 'numeric', 'min:0'],
+            'received_payment' => ['required', 'numeric', 'min:0'],
+            'remaining_balance' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        abort_unless(
+            count($validated['name']) === count($validated['quantity'])
+                && count($validated['name']) === count($validated['price']),
+            422,
+            'Sale item fields are incomplete.'
+        );
+
+        return $validated;
     }
 }

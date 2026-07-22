@@ -38,8 +38,37 @@ class LoginController extends Controller
         $this->middleware('guest')->except('logout');
         // $this->middleware('auth')->only('logout');
     }
+
+    protected function credentials(Request $request): array
+    {
+        $login = trim((string) $request->input('email'));
+
+        return [
+            filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username' => $login,
+            'password' => $request->input('password'),
+        ];
+    }
+
     protected function authenticated(Request $request, $user)
     {
+        if ($user->business_id && ! $user->isBusinessOwner() && ! $user->employee_active) {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors(['email' => 'آپ کا ملازم اکاؤنٹ غیر فعال ہے۔']);
+        }
+
+        if ($user->business_id && ! $user->isBusinessOwner() && ($user->must_change_password || $user->employeePasswordExpired())) {
+            return redirect()->route('employee.password.edit');
+        }
+
+        if ($user->isBusinessMember()) {
+            $request->session()->forget('active_workspace');
+
+            return redirect()->route('admin.home');
+        }
+
         // Check if the authenticated user has the role of 'stock_seller'
         if ($user->hasRole('stock_seller')) {
             // Redirect the user to the appropriate stock-related route

@@ -27,8 +27,11 @@
                                     </td>
                                     <td>
                                         <!-- Edit button -->
-                                        <a href="{{route('administrator.role.delete',['id'=>$role->id])}}"
-                                            class="btn btn-danger">Delete</a>
+                                        <form action="{{ route('administrator.role.delete', ['id' => $role->id]) }}" method="POST" onsubmit="return confirm('Delete this role?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                             @endforeach
@@ -61,8 +64,11 @@
                                     </td>
                                     <td>
                                         <!-- Edit button -->
-                                        <a href="{{route('administrator.perm.delete',['id'=>$permission->id])}}"
-                                            class="btn btn-danger">Delete</a>
+                                        <form action="{{ route('administrator.perm.delete', ['id' => $permission->id]) }}" method="POST" onsubmit="return confirm('Delete this permission?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                             @endforeach

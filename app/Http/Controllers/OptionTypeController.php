@@ -17,8 +17,8 @@ class OptionTypeController extends Controller
      */
     public function index()
     {
-        $user_id = Auth::user()->id;
-        $OptionTypes = OptionType::get();
+        $user_id = Auth::user()->businessOwnerId();
+        $OptionTypes = $this->availableOptionTypes()->get();
       
         $options = DB::table('option_types')
                 ->select('options.*','option_types.name as otname')
@@ -49,9 +49,11 @@ class OptionTypeController extends Controller
      */
     public function store(Request $request)
     {
-        $slug = Str::slug($request->input('Name'), '_');
+        $validated = $request->validate(['Name' => ['required', 'string', 'max:255']]);
+        $slug = Str::slug($validated['Name'], '_');
         $obj = new OptionType();
-        $obj->Name =$request->input('Name');
+        $obj->user_id = Auth::user()->businessOwnerId();
+        $obj->Name =$validated['Name'];
         $obj->slug =$slug;
         $obj->type =$slug;
         $obj->save();
@@ -79,8 +81,8 @@ class OptionTypeController extends Controller
      */
     public function edit($id)
     {
-       $OptionType = OptionType::find($id);
-       $OptionTypes = OptionType::get();
+       $OptionType = OptionType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+       $OptionTypes = $this->availableOptionTypes()->get();
        return view('OptionType.edit',compact('OptionTypes','OptionType'));
     }
 
@@ -93,9 +95,10 @@ class OptionTypeController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $slug = Str::slug($request->input('Name'), '_');
-        $obj = OptionType::find($id);
-        $obj->Name =$request->input('Name');
+        $validated = $request->validate(['Name' => ['required', 'string', 'max:255']]);
+        $slug = Str::slug($validated['Name'], '_');
+        $obj = OptionType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $obj->Name =$validated['Name'];
         $obj->slug =$slug;
         $obj->type =$slug;
         $obj->save();
@@ -110,8 +113,15 @@ class OptionTypeController extends Controller
      */
     public function destroy($id)
     {
-        $obj = OptionType::find($id);
+        $obj = OptionType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $obj->delete();
         return back()->with('del','OptionType Deleted!');
+    }
+
+    private function availableOptionTypes()
+    {
+        return OptionType::where(function ($query) {
+            $query->whereNull('user_id')->orWhere('user_id', Auth::user()->businessOwnerId());
+        });
     }
 }

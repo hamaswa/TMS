@@ -23,6 +23,10 @@ class AdministratorMiddleware
             if (Auth::user()->hasRole($role)) {
                 return $next($request);
             }
+
+            if (in_array('shop_owner', explode('|', $role), true) && Auth::user()->isBusinessMember()) {
+                return $next($request);
+            }
         }
 
         // If the user does not have the required role, throw an UnauthorizedException

@@ -56,6 +56,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'stock_seller' => \App\Http\Middleware\StockSellerMiddleware::class,
             'role' => \App\Http\Middleware\AdministratorMiddleware::class,
             'user' => \App\Http\Middleware\UserMiddleware::class,
+            'module' => \App\Http\Middleware\EnsureModuleAccess::class,
+            'business.permission' => \App\Http\Middleware\EnsureBusinessPermission::class,
+            'business.activity' => \App\Http\Middleware\RecordBusinessActivity::class,
+            'password.changed' => \App\Http\Middleware\EnsureEmployeePasswordChanged::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

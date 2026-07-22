@@ -1,394 +1,86 @@
-<!DOCTYPE html>
-<html lang="en" dir="rtl">
-
+@php($isSuperAdmin = Auth::check() && Auth::user()->hasRole('administrative'))
+@php($enabledWorkspaces = Auth::check() && Auth::user()->isBusinessMember() ? Auth::user()->enabledModules() : [])
+@php($hasMultipleWorkspaces = count($enabledWorkspaces) > 1)
+@php($activeWorkspace = session('active_workspace'))
+@php($canShopSales = Auth::check() && Auth::user()->hasBusinessPermission('clothing.sales'))
+@php($canShopInventory = Auth::check() && Auth::user()->hasBusinessPermission('clothing.inventory'))
+@php($canShopPurchases = Auth::check() && Auth::user()->hasBusinessPermission('clothing.purchases'))
+@php($canShopSuppliers = Auth::check() && Auth::user()->hasBusinessPermission('clothing.suppliers'))
+@php($canTailorCustomers = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.customers'))
+@php($canTailorWorkshop = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.workshop'))
+@php($canTailorOrders = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.orders'))
+@php($canTailorTailors = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.tailors'))
+@php($canTailorConfiguration = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.configuration'))
+<!doctype html>
+<html lang="{{ $isSuperAdmin ? 'en' : 'ur' }}" dir="{{ $isSuperAdmin ? 'ltr' : 'rtl' }}">
 <head>
-    <title>Tailor</title>
-
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="keywords" content="" />
-    <meta name="author" content="" />
-
-    <link href="https://example.com/" rel="canonical" /> <!-- preferred URL - change for you site -->
-    <link rel="icon" href="{{ asset('public/assets/images/web-app-manifest-192x192.png') }}" type="image/png">
-    <link rel="icon" href="{{ asset('public/assets/images/favicon.ico') }}" type="image/x-icon">
-    <link rel="icon" href="{{ asset('images/favicon.ico') }}" type="image/x-icon">
-
-    <!--fonts-->
-    <link
-        href="https://fonts.googleapis.com/css?family=Alegreya+SC:400,700|Permanent+Marker|Abril+Fatface|Poppins:300,400,500,600,700"
-        rel="stylesheet">
+    <title>{{ $isSuperAdmin ? 'TMS Super Admin' : 'ٹیلر مینجمنٹ سسٹم' }}</title>
+    <link rel="icon" href="{{ asset('assets/images/favicon.ico') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-    <!-- css -->
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css"
-        integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
-    <link href="{{ asset('public/assets/css/bootstrap.min.css') }}" rel="stylesheet">
-    <!--<link href="{{ asset('assets/css/bootstrap.min.css') }}" rel="stylesheet">-->
-    <link rel="stylesheet" href="{{ asset('public/assets/owlcarousel/assets/owl.carousel.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('public/assets/css/jquery.dataTables.min.css') }}">
-    <link href="{{ asset('public/assets/css/main.css') }}" rel="stylesheet">
-    <link href="{{ asset('public/assets/css/responsive.css') }}" rel="stylesheet">
-    <!--<link rel="stylesheet" href="{{ asset('assets/owlcarousel/assets/owl.carousel.min.css') }}">-->
-    <!--<link rel="stylesheet" href="{{ asset('assets/css/jquery.dataTables.min.css') }}">-->
-    <!--<link href="{{ asset('assets/css/main.css') }}" rel="stylesheet">-->
-    <!--<link href="{{ asset('assets/css/responsive.css') }}" rel="stylesheet">-->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <link href="{{ asset('public/assets/css/style.css') }}" rel="stylesheet">
-    <!--<link href="{{ asset('assets/css/style.css') }}" rel="stylesheet">-->
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-tagsinput/0.8.0/bootstrap-tagsinput.css"
-        crossorigin="anonymous" />
-    
-
-    <style type="text/css">
-        body {
-            font-family: 'Noto Nastaliq Urdu', serif;
-        }
-
-        .bootstrap-tagsinput {
-            width: 100%;
-        }
-
-        .label-info {
-            background-color: #17a2b8;
-
-        }
-
-        .label {
-            display: inline-block;
-            padding: .25em .4em;
-            font-size: 75%;
-            font-weight: 700;
-            line-height: 1;
-            text-align: center;
-            white-space: nowrap;
-            vertical-align: baseline;
-            border-radius: .25rem;
-            transition: color .15s ease-in-out, background-color .15s ease-in-out,
-                border-color .15s ease-in-out, box-shadow .15s ease-in-out;
-        }
-
-        .notification-icon {
-            position: relative;
-            display: inline-block;
-            color: #17a2b8;
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        .notification-icon .count {
-            position: relative;
-            top: -12px;
-        }
-
-        .notification-dropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 10px;
-            /* Adjust for alignment */
-            background-color: white;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 250px;
-            max-height: 300px;
-            overflow-y: auto;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            font-size: 18px;
-        }
-
-
-
-        .notification-dropdown ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .notification-dropdown li {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .notification-dropdown li a {
-            text-decoration: none;
-            color: #333;
-        }
-
-        .notification-dropdown li a:hover {
-            background-color: #f5f5f5;
-        }
-
-        .notification-icon:hover .notification-dropdown {
-            display: block;
-        }
+    <link href="{{ asset('assets/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/css/main.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/css/responsive.css') }}" rel="stylesheet">
+    <style>
+        body{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};background:#f5f7fa;color:#243b53;font-family:{{ $isSuperAdmin ? 'Arial,sans-serif' : '"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif' }}}.tms-nav{background:linear-gradient(90deg,#102a43,#174f78);box-shadow:0 5px 18px rgba(15,42,67,.18)}.tms-nav .navbar-brand{font-weight:800;letter-spacing:.04em}.tms-nav .nav-link{color:rgba(255,255,255,.82)!important;font-weight:600;padding:.8rem .72rem!important}.tms-nav .nav-link:hover{color:#fff!important}.tms-nav .dropdown-menu{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};border:0;border-radius:12px;box-shadow:0 14px 35px rgba(31,45,61,.18);padding:.5rem}.tms-nav .dropdown-item{border-radius:8px;padding:.55rem .8rem}.module-pill{font-size:.65rem;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:.25rem .5rem;color:#bfe8f3}.main-content{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};min-height:calc(100vh - 70px)}body{top:0!important}
     </style>
-    {{-- jquery and bootstarp js files --}}
-    <script src="{{ asset('public/assets/js/jquery-3.5.1.min.js') }}"></script>
-    <script src="{{ asset('public/assets/js/bootstrap.min.js') }}"></script>
-    <!--<script src="{{ asset('assets/js/jquery-3.5.1.min.js') }}"></script>-->
-    <!--<script src="{{ asset('assets/js/bootstrap.min.js') }}"></script>-->
+    <script src="{{ asset('assets/js/jquery-3.5.1.min.js') }}"></script>
+    <script src="{{ asset('assets/js/bootstrap.min.js') }}"></script>
 </head>
-
 <body>
-    {{-- @vite('resources/js/app.js') --}}
-    <header class="bg-dark">
-        <div class="container">
-            <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-                @if (Session::get('tailor'))
-                    <a class="navbar-brand" href="{{ url('tailor/tailor-dashboard') }}">Dashboard</a>
-                @else
-                    @role('shop_owner')
-                        <a class="navbar-brand" href="{{ url('/') }}">Dashboard</a>
-                    @endrole()
-                @endif
-                <button class="navbar-toggler" type="button" data-toggle="collapse"
-                    data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
-                    aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="text-white mr-5">
-                    @auth
-                        {{ Auth::user()->name }}
-                    @endauth
-                </div>
-                {{-- @auth
-                    <div class="text-white mr-5">
-                        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                            <ul class="navbar-nav ml-auto">
-                                <li class="nav-item dropdown">
-                                    <div class="dropdown-menu" aria-labelledby="user-dropdown">
-                                        @if (Auth::user()->hasRole('administrative'))
-                                            <a class="dropdown-item" href="{{ route('administrator.index') }}">صارفین</a>
-                                            <a class="dropdown-item" href="{{ route('administrator.roles') }}">رول چیک کریں۔</a>
-                                        @endif
-
-                                        <a class="dropdown-item" href="{{ route('logout') }}"
-                                            onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                            لاگ آوٹ
-                                        </a>
-
-                                        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                                            @csrf
-                                        </form>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                @endauth --}}
-
-
-                {{-- end administrative role --}}
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <ul class="navbar-nav ml-auto">
-                        <!-- <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarOptions" role="button"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                Options
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarOptions">
-                                <a class="dropdown-item" href="#">Add Sewing Type</a>
-                                <a class="dropdown-item" href="#">Add Shirt Button Type</a>
-                                <a class="dropdown-item" href="#">Add Neck Type</a>
-                                <a class="dropdown-item" href="#">Add Sleeve Opening Type</a>
-                                <a class="dropdown-item" href="#">Add Pocket Type</a>
-                                <a class="dropdown-item" href="#">Add Button Type</a>
-                                <a class="dropdown-item" href="#">Plate Type</a>
-                            </div>
-                        </li> -->
-                        @if (Session::get('tailor'))
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="navBarCustomers" role="button"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    درزی </a>
-                                <div class="dropdown-menu" aria-labelledby="navBarCustomers">
-                                    <a class="dropdown-item" href="{{ url('tailor/tailor-order-list') }}">Orders</a>
-                                    <a class="dropdown-item" href="{{ url('tailor/logout') }}">Logout</a>
-                                </div>
-
-                            </li>
-                        @else
-                            @role('shop_owner')
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navBarCustomers"
-                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false">
-                                        گاہک
-                                    </a>
-                                    <div class="dropdown-menu" aria-labelledby="navBarCustomers">
-                                        <a class="dropdown-item" href="{{ url('admin/Customers/create') }}">نیا گاہک شامل
-                                            کریں</a>
-                                        <a class="dropdown-item" href="{{ url('admin/Customers') }}">تمام گاہک</a>
-                                        <a class="dropdown-item" href="{{ url('admin/Tailor') }}">تمام درزی</a>
-                                        <a class="dropdown-item" href="{{ url('admin/OptionType') }}">آپشن کی قسم</a>
-
-                                        <!--<a class="dropdown-item" href="{{ url('admin/design') }}">ڈیزائن کی قسم</a>-->
-                                        {{-- <a class="dropdown-item" href="{{ url('admin/sale') }}">فروخت</a> --}}
-                                        <a class="dropdown-item" href="{{ url('admin/setting') }}">ترتیب </a>
-                                        <a class="dropdown-item" href="{{ route('admin.users') }}">اکاؤنٹ کی تفصیلات</a>
-                                        <a class="dropdown-item" href="{{ route('logout') }}"
-                                            onclick="event.preventDefault();
-                                                     document.getElementById('logout-form').submit();">
-                                            لاگ آوٹ
-                                        </a>
-
-                                        <form id="logout-form" action="{{ route('logout') }}" method="POST"
-                                            class="d-none">
-                                            @csrf
-                                        </form>
-                                    </div>
-                                </li>
-                            @endrole
-
-                            @hasanyrole(['stock_seller', 'shop_owner'])
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navBarCustomers"
-                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false">
-                                        کپڑے
-                                    </a>
-                                    <div class="dropdown-menu" aria-labelledby="navBarCustomers">
-                                        <a class="dropdown-item" href="{{ url('admin/cloth') }}">کپڑوں کی فہرست</a>
-                                        <a class="dropdown-item" href="{{ url('admin/clothtype') }}"> کپڑے کی اقسام کی
-                                            فہرست </a>
-                                        <a class="dropdown-item" href="{{ url('admin/clothbrand') }}"> کپڑے کی کمپنی کی
-                                            فہرست </a>
-                                    </div>
-                                </li>
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navBarCustomers"
-                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false">
-                                        کپڑے کا ذخیرہ
-                                    </a>
-                                    <div class="dropdown-menu" aria-labelledby="navBarCustomers">
-                                        <a class="dropdown-item" href="{{ url('admin/stock') }}"> کپڑے کے اسٹاک کی
-                                            فہرست</a>
-
-                                        {{-- to show to only seller --}}
-                                        @role('stock_seller')
-                                            <a class="dropdown-item" href="{{ url('admin/setting') }}">ترتیب </a>
-                                            <a class="dropdown-item" href="{{ route('admin.users') }}">اکاؤنٹ کی تفصیلات</a>
-                                            <a class="dropdown-item" href="{{ route('logout') }}"
-                                                onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                                لاگ آوٹ
-                                            </a>
-
-                                            <form id="logout-form" action="{{ route('logout') }}" method="POST"
-                                                class="d-none">
-                                                @csrf
-                                            </form>
-                                        @endrole
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navBarCustomers"
-                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false">
-                                        اخراجات
-                                    </a>
-                                    <div class="dropdown-menu" aria-labelledby="navBarCustomers">
-                                        <a class="dropdown-item" href="{{ route('admin.dailyexpense.index') }}">
-                                            روزمرہ کے اخراجات</a>
-                                        <a class="dropdown-item" href="{{ route('admin.expense.index') }}">
-                                            ماہانہ اخراجات</a>
-                                    </div>
-                                </li>
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navBarCustomers"
-                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false">
-                                        فروخت
-                                    </a>
-                                    <div class="dropdown-menu" aria-labelledby="navBarCustomers">
-                                        <a class="dropdown-item" href="{{ route('admin.sales.total') }}">
-                                            کل فروخت</a>
-                                        <a class="dropdown-item" href="{{ route('admin.earning.total') }}"> کل کمائی </a>
-
-                                        @role('shop_owner')
-                                            <a class="dropdown-item" href="{{ route('admin.order.total') }}"> کل آرڈر </a>
-                                        @endrole
-                                    </div>
-                                </li>
-                                {{-- for notifications --}}
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navBarCustomers"
-                                        role="button" data-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false">
-                                        نوٹیفکیشن
-                                    </a>
-                                    <div class="dropdown-menu" aria-labelledby="navBarCustomers">
-                                        <a class="dropdown-item" href="{{ route('admin.notify') }}">
-                                            ایڈمن نوٹیفکیشن</a>
-                                        <a class="dropdown-item" href="{{ route('admin.user') }}">
-                                            گاہک نوٹیفکیشن</a>
-                                    </div>
-                                </li>
-                    </div>
-                    </li>
-                    @php
-                        // Get count of unread notifications
-                        $notiCount = Auth::user()->unreadNotifications->count();
-                        // Get unread notifications
-                        $unreadNotifications = Auth::user()->unreadNotifications;
-                    @endphp
-
-                    <span class="notification-icon" id="notificationIcon" data-count="{{ $notiCount }}">
-                        <i class="fa fa-bell"><span class="count">{{ $notiCount }}</span></i>
-                        <div class="notification-dropdown" id="notificationDropdown">
-                            <ul>
-                                @forelse ($unreadNotifications as $notification)
-                                    <li>
-                                        <a href="#">
-                                            {{ $notification->data['message'] ?? 'A new order has been placed.' }}
-                                        </a>
-                                    </li>
-                                @empty
-                                    <li>No new notifications</li>
-                                @endforelse
-                            </ul>
-
-                            <!-- Show Notifications link -->
-                            @if ($notiCount >= 0)
-                                <div class="show-notifications-link">
-                                    <a href="{{ route('admin.notifications.index') }}">Show All Notifications</a>
-                                </div>
-                            @endif
-                        </div>
-                    </span>
-                @endhasanyrole
-
-                @if (Auth::user()->hasRole('administrative'))
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navBarCustomers" role="button"
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            صارفین
-                        </a>
-                        <div class="dropdown-menu" aria-labelledby="navBarCustomers">
-
-                            <a class="dropdown-item" href="{{ route('administrator.role.new') }}">نیا رول اور
-                                اجازت</a>
-                            <a class="dropdown-item" href="{{ route('administrator.index') }}">صارفین</a>
-                            <a class="dropdown-item" href="{{ route('administrator.roles') }}">رول چیک
-                                کریں۔</a>
-                            <a class="dropdown-item" href="{{ route('logout') }}"
-                                onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                لاگ آوٹ
-                            </a>
-
-                            <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                                @csrf
-                            </form>
-                        </div>
-                    </li>
-                @endif
-                @endif
-                </ul>
-        </div>
-        </nav>
-        </div>
-    </header>
+<header class="tms-nav sticky-top"><div class="container-fluid px-3 px-lg-4"><nav class="navbar navbar-expand-xl navbar-dark p-0">
+    @if(Session::get('tailor'))
+        <a class="navbar-brand" href="{{ url('tailor/tailor-dashboard') }}"><i class="fas fa-cut mr-2"></i>TMS</a>
+    @else
+        <a class="navbar-brand" href="{{ Auth::check() && Auth::user()->hasRole('administrative') ? route('administrator.index') : route('admin.home') }}"><i class="fas fa-cut mr-2"></i>TMS</a>
+    @endif
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#tmsNavigation" aria-controls="tmsNavigation" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+    <div class="collapse navbar-collapse" id="tmsNavigation"><ul class="navbar-nav mr-auto align-items-xl-center">
+        @if(Session::get('tailor'))
+            <li class="nav-item"><a class="nav-link" href="{{ route('tailor.jobs.index') }}">میرے کام</a></li><li class="nav-item"><a class="nav-link" href="{{ url('tailor/logout') }}">لاگ آؤٹ</a></li>
+        @elseif(Auth::check() && Auth::user()->isBusinessMember())
+            <li class="nav-item"><a class="nav-link" href="{{ $activeWorkspace ? route('admin.workspace.current') : route('admin.home') }}">ڈیش بورڈ</a></li>
+            @if(Auth::user()->hasModule('tailoring') && (! $hasMultipleWorkspaces || $activeWorkspace === 'tailoring'))
+                <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="tailoringMenu" data-toggle="dropdown">ٹیلرنگ <span class="module-pill ml-1">فعال</span></a><div class="dropdown-menu" aria-labelledby="tailoringMenu">
+                    @if($canTailorWorkshop)<a class="dropdown-item" href="{{ route('admin.tailor-jobs.index') }}"><i class="fas fa-tasks fa-fw ml-2 text-primary"></i>کام کی فہرست</a>@endif
+                    @if($canTailorOrders)<a class="dropdown-item" href="{{ route('admin.order.total') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i>ٹیلرنگ آرڈرز</a>@endif
+                    @if($canTailorCustomers)<a class="dropdown-item" href="{{ route('admin.Customers.index') }}"><i class="fas fa-user-friends fa-fw ml-2 text-primary"></i>گاہک اور پیمائش</a>@endif
+                    @if($canTailorTailors)<a class="dropdown-item" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-user-cog fa-fw ml-2 text-primary"></i>درزی</a>@endif
+                    @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.OptionType.index') }}"><i class="fas fa-ruler-combined fa-fw ml-2 text-primary"></i>پیمائش کے اختیارات</a>@endif
+                </div></li>
+            @endif
+            @if(Auth::user()->hasModule('clothing') && (! $hasMultipleWorkspaces || $activeWorkspace === 'clothing'))
+                <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="clothingMenu" data-toggle="dropdown">کپڑے کی خرید و فروخت <span class="module-pill ml-1">فعال</span></a><div class="dropdown-menu" aria-labelledby="clothingMenu">
+                    @if($canShopInventory)
+                    <a class="dropdown-item" href="{{ route('admin.stock.index') }}"><i class="fas fa-layer-group fa-fw ml-2 text-info"></i>اسٹاک</a>
+                    <a class="dropdown-item" href="{{ route('admin.cloth.index') }}"><i class="fas fa-swatchbook fa-fw ml-2 text-info"></i>کپڑے کی فہرست</a>
+                    <a class="dropdown-item" href="{{ route('admin.inventory-ledger.index') }}"><i class="fas fa-exchange-alt fa-fw ml-2 text-info"></i>اسٹاک کھاتہ</a>
+                    <a class="dropdown-item" href="{{ route('admin.inventory-valuation.index') }}"><i class="fas fa-balance-scale fa-fw ml-2 text-info"></i>اسٹاک کی مالیت</a>
+                    @endif
+                    @if($canShopSales)<a class="dropdown-item" href="{{ route('admin.sellCloth') }}"><i class="fas fa-cash-register fa-fw ml-2 text-info"></i>نئی فروخت</a>@endif
+                    @if($canShopPurchases)<a class="dropdown-item" href="{{ route('admin.purchases.index') }}"><i class="fas fa-truck-loading fa-fw ml-2 text-info"></i>خریداری</a>@endif
+                    @if($canShopSuppliers)<a class="dropdown-item" href="{{ route('admin.suppliers.index') }}"><i class="fas fa-building fa-fw ml-2 text-info"></i>سپلائرز</a>@endif
+                </div></li>
+            @endif
+            @if($hasMultipleWorkspaces)
+                <li class="nav-item"><a class="nav-link" href="{{ route('admin.home') }}"><i class="fas fa-random ml-1"></i>ورک اسپیس تبدیل کریں</a></li>
+            @endif
+            <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="businessMenu" data-toggle="dropdown">کاروبار</a><div class="dropdown-menu" aria-labelledby="businessMenu">
+                @if(Auth::user()->hasBusinessPermission('finance.view'))<a class="dropdown-item" href="{{ route('admin.financial-reports.index') }}"><i class="fas fa-chart-line fa-fw ml-2 text-success"></i>مالیاتی ڈیش بورڈ</a>@endif
+                @if(Auth::user()->hasBusinessPermission('expenses.manage'))<a class="dropdown-item" href="{{ route('admin.dailyexpense.index') }}"><i class="fas fa-receipt fa-fw ml-2 text-warning"></i>روزانہ اخراجات</a>
+                <a class="dropdown-item" href="{{ route('admin.expense.index') }}"><i class="fas fa-calendar-alt fa-fw ml-2 text-warning"></i>ماہانہ اخراجات</a>@endif
+                @if(Auth::user()->hasBusinessPermission('team.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.team.index') }}"><i class="fas fa-users-cog fa-fw ml-2 text-primary"></i>ملازمین اور اجازتیں</a>@endif
+                @if(Auth::user()->hasBusinessPermission('activity.view'))<a class="dropdown-item" href="{{ route('admin.activity.index') }}"><i class="fas fa-history fa-fw ml-2 text-primary"></i>ملازمین کی سرگرمی</a>@endif
+            </div></li>
+        @elseif(Auth::check() && Auth::user()->hasRole('administrative'))
+            <li class="nav-item"><a class="nav-link" href="{{ route('administrator.index') }}">Clients</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.create') }}">Create client</a></li>
+        @endif
+    </ul>
+    @auth<ul class="navbar-nav ml-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="accountMenu" data-toggle="dropdown"><i class="fas fa-user-circle mr-1"></i>{{ Auth::user()->name }}</a><div class="dropdown-menu dropdown-menu-right" aria-labelledby="accountMenu">
+        @if(Auth::user()->isBusinessOwner())<a class="dropdown-item" href="{{ route('admin.setting.index') }}">دکان کی ترتیبات</a><a class="dropdown-item" href="{{ route('admin.users') }}">اکاؤنٹ کی تفصیل</a><div class="dropdown-divider"></div>@else<a class="dropdown-item" href="{{ route('employee.password.edit') }}">پاس ورڈ تبدیل کریں</a><div class="dropdown-divider"></div>@endif
+        <a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault();document.getElementById('logout-form').submit();">{{ $isSuperAdmin ? 'Logout' : 'لاگ آؤٹ' }}</a><form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">@csrf</form>
+    </div></li></ul>@endauth
+    </div>
+</nav></div></header>

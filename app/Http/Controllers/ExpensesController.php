@@ -19,9 +19,9 @@ class ExpensesController extends Controller
     $currentDate = Carbon::now()->toDateString();
 
     // Retrieve expenses for the current day
-    $expenses = Expenses::where('user_id',auth()->user()->id)->get();
+    $expenses = Expenses::where('user_id',auth()->user()->businessOwnerId())->get();
 
-    $workers = Workers::where('user_id',auth()->user()->id)->get();
+    $workers = Workers::where('user_id',auth()->user()->businessOwnerId())->get();
 
     // Calculate total expenses
     $totalExpenses = $expenses->sum('Monthly_Rent') + $expenses->sum('Monthly_Bill');
@@ -40,7 +40,7 @@ class ExpensesController extends Controller
     {
         $monthly_bill = $request->input('bill');
         $monthly_rent = $request->input('rent');
-        $user_id = auth()->user()->id;
+        $user_id = auth()->user()->businessOwnerId();
 
         Expenses::create([
             'Monthly_Rent' => $monthly_rent ?? 0,
@@ -82,13 +82,13 @@ class ExpensesController extends Controller
 
     public function edit($id)
     {
-        $data = Expenses::find($id);
+        $data = Expenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         return view('Expenses.expense_edit',compact('data'));
     }
 
     public function update(Request $request, $id)
     {
-        $data = Expenses::find($id);
+        $data = Expenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         $monthly_bill = $request->input('bill');
         $monthly_rent = $request->input('rent');
         $monthly_extra = $request->input('extra');
@@ -102,7 +102,7 @@ class ExpensesController extends Controller
     }
     public function delete($id)
     {
-        $data = Expenses::find($id);
+        $data = Expenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
 
         if($data)
         {
@@ -113,13 +113,13 @@ class ExpensesController extends Controller
 
     public function workersedit($id)
     {
-        $data = Workers::find($id);
+        $data = Workers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         return view('Expenses.workers_edit',compact('data'));
     }
 
     public function workersupdate(Request $request,$id)
     {
-        $data = Workers::find($id);
+        $data = Workers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         $employee_name = $request->input('name');
         $employee_salary = $request->input('salary');
 
@@ -133,7 +133,7 @@ class ExpensesController extends Controller
 
     public function workersdelete($id)
     {
-        $data = Workers::find($id);
+        $data = Workers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
 
         if($data)
         {
@@ -154,24 +154,24 @@ class ExpensesController extends Controller
         // Fetching expenses details
         $expenses_detail = Expenses::select('Monthly_Rent', 'Monthly_Bill', 'expense_date')
             ->whereBetween('expense_date', [date($start_date), date($end_date)])
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', auth()->user()->businessOwnerId())
             ->get();
 
         // Calculating total expenses
         $expenses = Expenses::whereBetween('expense_date', [date($start_date), date($end_date)])
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', auth()->user()->businessOwnerId())
             ->sum(DB::raw('Monthly_Rent + Monthly_Bill'));
 
         // Fetching salaries details
         $salaries_detail = Workers::select('Worker_Name', 'Worker_salary')
             ->whereBetween('dateentered', [date($start_date), date($end_date)])
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', auth()->user()->businessOwnerId())
             ->get();
 
         // dd($salaries_detail);
 
         $salaries = Workers::whereBetween('dateentered', [date($start_date), date($end_date)])
-        ->where('user_id', auth()->user()->id)
+        ->where('user_id', auth()->user()->businessOwnerId())
         ->sum('Worker_salary');
 
         // dd($salaries);
@@ -189,7 +189,7 @@ class ExpensesController extends Controller
     public function Dailyindex()
     {
         $currentDate = Carbon::now()->toDateString();
-        $expense = DaliyExpenses::where('user_id', auth()->user()->id)
+        $expense = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())
                              ->get();
         return view('DailyExpenses.index',compact('expense'));
     }
@@ -203,7 +203,7 @@ class ExpensesController extends Controller
     {
         $name = $request->input('name');
         $rupee = $request->input('rupee');
-        $user_id = auth()->user()->id;
+        $user_id = auth()->user()->businessOwnerId();
 
         foreach (array_map(null, $name, $rupee) as [$name, $rupee]) {
             DaliyExpenses::create([
@@ -218,13 +218,13 @@ class ExpensesController extends Controller
 
     public function Dailyedit($id)
     {
-        $data = DaliyExpenses::find($id);
+        $data = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         return view('DailyExpenses.edit',compact('data'));
     }
 
     public function Dailyupdate(Request $request,$id)
     {
-        $data = DaliyExpenses::find($id);
+        $data = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         $name = $request->input('name');
         $rupee = $request->input('rupee');
 
@@ -240,7 +240,7 @@ class ExpensesController extends Controller
 
     public function Dailydelete($id)
     {
-        $data = DaliyExpenses::find($id);
+        $data = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         if($data){
             $data->delete();
         }
@@ -256,7 +256,7 @@ class ExpensesController extends Controller
         $end_date = $date_parts[1];
         // dd($start_date,$end_date);
 
-        $daily_expense = DaliyExpenses::whereBetween('created_at',[date($start_date),date($end_date)])->where('user_id',auth()->user()->id)->get();
+        $daily_expense = DaliyExpenses::whereBetween('created_at',[date($start_date),date($end_date)])->where('user_id',auth()->user()->businessOwnerId())->get();
 
         return response()->json(['expense' => $daily_expense]);
 

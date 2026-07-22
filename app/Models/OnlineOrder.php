@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class OnlineOrder extends Model
 {
     use HasFactory,SoftDeletes;
-    protected $fillable = ['user_id','cloth_id','length','price','status','admin_user_id','created_at','cancel_at','color'];
+    protected $fillable = ['user_id','cloth_id','length','price','status','admin_user_id','created_at','cancel_at','color','cost_per_meter','cost_total'];
 
     public function user()
     {

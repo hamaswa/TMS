@@ -23,6 +23,10 @@ class SaleStock extends Model
         'sellDate',
         'clothes_rack',
         'selling_price',
+        'cloth_id',
+        'cloth_color_id',
+        'cost_per_meter',
+        'cost_total',
     ];
 
     protected $table = 'sale_stocks';

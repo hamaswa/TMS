@@ -43,6 +43,13 @@
                 </div>
             </div>
 
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label style="float:right;font-size:20px;">نئے پاس ورڈ کی تصدیق:</label>
+                    <input type="password" class="form-control" name="newPassword_confirmation">
+                </div>
+            </div>
+
         </div>
 
         <div class="text-right mt-3">

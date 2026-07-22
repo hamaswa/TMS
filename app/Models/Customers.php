@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 
 /**
@@ -31,9 +32,9 @@ use Illuminate\Notifications\Notifiable;
  * @property string $updated_at
  * @property CustomerOption[] $customerOptions
  */
-class Customers extends Model
+class Customers extends Authenticatable
 {
-    use SoftDeletes,Notifiable; // Use the trait here
+    use HasApiTokens, SoftDeletes, Notifiable;
     /**
      * The "type" of the auto-incrementing ID.
      *

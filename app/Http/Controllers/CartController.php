@@ -10,39 +10,42 @@ use App\Models\Setting;
 use App\Models\OnlineOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\NewOnlineOrderNotification;
 use App\Notifications\OrderCancelNotification;
+use App\Services\InventoryService;
 
 class CartController extends Controller
 {
     public function AddCart($slug, Request $request)
     {
         try {
-            $slug = $slug;
-            $shop = Setting::where('shop_slug', $slug)->first();
-            $stockId = $request->input('Stock');
-            $length = $request->input('length');
-            $price = $request->input('price');
-            $color = $request->input('color');
-            $userId = auth()->user()->id;
-            // return response()->json($color);
-            $cloth = ClothColor::where('cloth_id', $stockId)->where('color',$color)->first();
-            if (!$cloth) {
-                return response()->json('Cloth not found for the selected color', 404);
-            }
-            $cloth_length = $cloth->length;
-            $cloth->update([
-                'length' => $cloth_length - $length
+            $validated = $request->validate([
+                'Stock' => ['required', 'integer'],
+                'length' => ['required', 'numeric', 'gt:0'],
+                'color' => ['required', 'string', 'max:100'],
             ]);
-            Cart::create([
-                'user_id' => $userId,
-                'cloth_id' => $stockId,
-                'length' => $length,
-                'price' => $price,
-                'color' => $color,
-                'shop_name' => $shop->name
-            ]);
+            $shop = Setting::where('shop_slug', $slug)->firstOrFail();
+            $stock = Cloth::where('user_id', $shop->user_id)->findOrFail($validated['Stock']);
+
+            DB::transaction(function () use ($validated, $shop, $stock) {
+                $inventory = app(InventoryService::class);
+                $cloth = ClothColor::where('cloth_id', $stock->id)
+                    ->where('color', $validated['color'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                abort_if((float) $cloth->length < (float) $validated['length'], 422, 'Not enough cloth is available.');
+                $cart = Cart::create([
+                    'user_id' => Auth::user()->businessOwnerId(),
+                    'cloth_id' => $stock->id,
+                    'length' => $validated['length'],
+                    'price' => $stock->sale_price ?? $stock->price,
+                    'color' => $validated['color'],
+                    'shop_name' => $shop->name,
+                ]);
+                $inventory->issue($cloth, (float) $validated['length'], 'cart_reservation', $cart, 'Reserved in customer cart');
+            });
             return response()->json('Added to Cart Successfully');
         } catch (\Exception $e) {
             return response()->json($e->getMessage());
@@ -60,8 +63,12 @@ class CartController extends Controller
             $directoryPath = resource_path('views/layouts/' . $name);
 
             if (is_dir($directoryPath)) {
-                $userId = auth()->user()->id;
-                $cart_records = Cart::where('user_id', $userId)->get();
+                $userId = auth()->user()->businessOwnerId();
+                $cart_records = Cart::where('user_id', $userId)
+                    ->whereHas('cloth', function ($query) use ($shop) {
+                        $query->where('user_id', $shop->user_id);
+                    })
+                    ->get();
 
                 return view('layouts.' . $name . '.cart', compact('cart_records', 'slug'));
                 // return view('layouts.' . $name . '.stock', compact('stocks', 'types', 'brand_name', 'color', 'slug'));
@@ -74,41 +81,45 @@ class CartController extends Controller
 
     public function DeleteCart($slug, $id)
     {
-        $slug = $slug;
-        $cart = Cart::find($id);
-        $cloth_id = $cart->cloth_id;
-        $cart_legth = $cart->length;
-        $color = $cart->color;
-        $cloth = ClothColor::where('cloth_id', $cloth_id)->where('color',$color)->first();
-        $cloth_length = $cloth->length;
-        $cloth->update([
-            'length' => $cloth_length + $cart_legth
-        ]);
+        DB::transaction(function () use ($id) {
+            $inventory = app(InventoryService::class);
+            $cart = Cart::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($id);
+            $cloth = ClothColor::where('cloth_id', $cart->cloth_id)
+                ->where('color', $cart->color)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $inventory->restore($cloth, (float) $cart->length, 'cart_release', $cart, 'Customer removed cart item');
+            $cart->delete();
+        });
 
-        $cart->delete();
         return redirect()->route('user.cart.show', ['slug' => $slug]);
     }
 
     public function BuyCart($slug, $id)
     {
         try {
+            $shop = Setting::where('shop_slug', $slug)->firstOrFail();
+            $order = DB::transaction(function () use ($id, $shop) {
+                $cart = Cart::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($id);
+                $stock = Cloth::where('user_id', $shop->user_id)->findOrFail($cart->cloth_id);
+                $color = ClothColor::where('cloth_id', $stock->id)->where('color', $cart->color)->firstOrFail();
+                $unitCost = (float) $color->average_unit_cost ?: (float) $stock->price;
 
-            $slug = $slug;
-            $shop = Setting::where('shop_slug', $slug)->first();
-            $cart = Cart::find($id);
-            $stockId = $cart->cloth_id;
-            $length = $cart->length;
-            $price = $cart->price;
-            $userId = auth()->user()->id;
+                $order = OnlineOrder::create([
+                    'user_id' => Auth::user()->businessOwnerId(),
+                    'cloth_id' => $stock->id,
+                    'length' => $cart->length,
+                    'price' => $stock->sale_price ?? $stock->price,
+                    'color' => $cart->color,
+                    'status' => 'pending',
+                    'admin_user_id' => $shop->user_id,
+                    'cost_per_meter' => $unitCost,
+                    'cost_total' => round($unitCost * (float) $cart->length, 2),
+                ]);
+                $cart->delete();
 
-            $order = OnlineOrder::create([
-                'user_id' => $userId,
-                'cloth_id' => $stockId,
-                'length' => $length,
-                'price' => $price,
-                'admin_user_id' => $shop->user_id
-            ]);
-            $cart->delete();
+                return $order;
+            });
 
             $userId = $shop->user_id;
 
@@ -146,27 +157,36 @@ class CartController extends Controller
     public function AddOrder($slug, Request $request)
     {
         try {
-            $shop = Setting::where('shop_slug', $slug)->first();
-            $stockId = $request->input('Stock');
-            $length = $request->input('length');
-            $price = $request->input('price');
-            $color = $request->input('color');
-            $userId = auth()->user()->id;
+            $validated = $request->validate([
+                'Stock' => ['required', 'integer'],
+                'length' => ['required', 'numeric', 'gt:0'],
+                'color' => ['required', 'string', 'max:100'],
+            ]);
+            $shop = Setting::where('shop_slug', $slug)->firstOrFail();
+            $stock = Cloth::where('user_id', $shop->user_id)->findOrFail($validated['Stock']);
 
-            $cloth = ClothColor::where('cloth_id', $stockId)->where('color',$color)->first();
-            $cloth_length = $cloth->length;
-            $cloth->update([
-                'length' => $cloth_length - $length
-            ]);
-            $order = OnlineOrder::create([
-                'user_id' => $userId,
-                'cloth_id' => $stockId,
-                'length' => $length,
-                'price' => $price,
-                'color' => $color,
-                'status' => 'pending',
-                'admin_user_id' => $shop->user_id
-            ]);
+            $order = DB::transaction(function () use ($validated, $shop, $stock) {
+                $inventory = app(InventoryService::class);
+                $cloth = ClothColor::where('cloth_id', $stock->id)
+                    ->where('color', $validated['color'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                abort_if((float) $cloth->length < (float) $validated['length'], 422, 'Not enough cloth is available.');
+                $unitCost = (float) $cloth->average_unit_cost ?: (float) $stock->price;
+                $order = OnlineOrder::create([
+                    'user_id' => Auth::user()->businessOwnerId(),
+                    'cloth_id' => $stock->id,
+                    'length' => $validated['length'],
+                    'price' => $stock->sale_price ?? $stock->price,
+                    'color' => $validated['color'],
+                    'status' => 'pending',
+                    'admin_user_id' => $shop->user_id,
+                    'cost_per_meter' => $unitCost,
+                    'cost_total' => round($unitCost * (float) $validated['length'], 2),
+                ]);
+                $inventory->issue($cloth, (float) $validated['length'], 'online_order', $order, 'Online order placed');
+                return $order;
+            });
 
 
             $userId = $shop->user_id;
@@ -219,19 +239,30 @@ class CartController extends Controller
         if (is_dir($directoryPath)) {
 
             // Fetch the authenticated user's orders
-            $orders = OnlineOrder::where('user_id', Auth::id())->latest()->get();
+            $orders = OnlineOrder::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
             return view('layouts.' . $name . '.history', compact('slug','orders','shop'));
         }
     }
 
     public function CancelOrder($slug,$id)
     {
-        $order = OnlineOrder::where('id',$id)->first();
+        $order = DB::transaction(function () use ($id) {
+            $inventory = app(InventoryService::class);
+            $order = OnlineOrder::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($id);
+            abort_unless(strtolower((string) $order->status) === 'pending', 422, 'Only pending orders can be cancelled.');
 
-        $order->update([
-            'status' => 'Cancelled',
-            'cancel_at' => now()
-        ]);
+            $cloth = ClothColor::where('cloth_id', $order->cloth_id)
+                ->where('color', $order->color)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $inventory->restore($cloth, (float) $order->length, 'online_cancellation', $order, 'Online order cancelled');
+            $order->update([
+                'status' => 'Cancelled',
+                'cancel_at' => now(),
+            ]);
+
+            return $order;
+        });
         // dd($order);
         $admin_id = $order->admin_user_id;
 
@@ -258,12 +289,25 @@ class CartController extends Controller
 
     public function AgainOrder($slug,$id)
     {
-        $order = OnlineOrder::where('id',$id)->first();
+        $order = DB::transaction(function () use ($id) {
+            $inventory = app(InventoryService::class);
+            $order = OnlineOrder::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($id);
+            abort_unless(strtolower((string) $order->status) === 'cancelled', 422, 'Only cancelled orders can be placed again.');
 
-        $order->update([
-            'status' => 'pending',
-            'created_at' => now()
-        ]);
+            $cloth = ClothColor::where('cloth_id', $order->cloth_id)
+                ->where('color', $order->color)
+                ->lockForUpdate()
+                ->firstOrFail();
+            abort_if((float) $cloth->length < (float) $order->length, 422, 'Not enough cloth is available.');
+            $inventory->issue($cloth, (float) $order->length, 'online_reorder', $order, 'Cancelled online order placed again');
+            $order->update([
+                'status' => 'pending',
+                'created_at' => now(),
+                'cancel_at' => null,
+            ]);
+
+            return $order;
+        });
         // dd($order);
         $admin_id = $order->admin_user_id;
 

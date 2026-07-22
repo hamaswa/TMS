@@ -24,7 +24,7 @@ class OptionType extends Model
     /**
      * @var array
      */
-    protected $fillable = ['slug', 'Name', 'created_at', 'updated_at'];
+    protected $fillable = ['user_id', 'slug', 'Name', 'type', 'created_at', 'updated_at'];
 
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasMany

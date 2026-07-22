@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('cloth_brands', function (Blueprint $table) {
+        if (! Schema::hasTable('cloth_brands')) {
+            Schema::create('cloth_brands', function (Blueprint $table) {
             $table->engine = 'InnoDB';
 
             $table->id();
@@ -16,18 +17,22 @@ return new class extends Migration
             $table->string('brand_logo')->nullable();
             $table->foreignId('user_id')->nullable();
             $table->timestamps();
-        });
+            });
+        }
 
-         Schema::create('cloth_types', function (Blueprint $table) {
+        if (! Schema::hasTable('cloth_types')) {
+            Schema::create('cloth_types', function (Blueprint $table) {
             $table->engine = 'InnoDB';
 
             $table->id();
             $table->string('name');
             $table->foreignId('user_id');
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('cloths', function (Blueprint $table) {
+        if (! Schema::hasTable('cloths')) {
+            Schema::create('cloths', function (Blueprint $table) {
             $table->engine = 'InnoDB';
 
             $table->id();
@@ -50,7 +55,8 @@ return new class extends Migration
 
             $table->softDeletes();
             $table->timestamps();
-        });
+            });
+        }
     }
 
     public function down(): void

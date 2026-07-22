@@ -13,6 +13,7 @@ use App\Models\Tailorsalary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 
 class TailorController extends Controller
@@ -24,23 +25,38 @@ class TailorController extends Controller
 
     public function login(Request $req)
     {
-        $password = $req->password;
-        $contact = $req->contact;
-        $data = Tailor::where('password', $password)->where('phone_number1', $contact)->first();
-        if (!$data) {
+        $credentials = $req->validate([
+            'contact' => ['required', 'string', 'max:50'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $data = Tailor::where('phone_number1', $credentials['contact'])->first();
+        $storedPassword = (string) ($data?->password ?? '');
+        $isHashed = password_get_info($storedPassword)['algoName'] !== 'unknown';
+        $passwordMatches = $data && ($isHashed
+            ? Hash::check($credentials['password'], $storedPassword)
+            : hash_equals($storedPassword, $credentials['password']));
+
+        if (!$passwordMatches) {
             return redirect('tailor-login')->with('failed', 'Credentials Not Match!');
-        } else {
-            Auth::logout();
-            session()->put('tailor-login-success', $data->name);
-            session()->put('tailor', 'tailor');
-            session()->put('tailor_id', $data->id);
-            return redirect('tailor/tailor-dashboard');
         }
+
+        if (!$isHashed || Hash::needsRehash($storedPassword)) {
+            $data->forceFill(['password' => Hash::make($credentials['password'])])->save();
+        }
+
+        Auth::logout();
+        $req->session()->regenerate();
+        session()->put('tailor-login-success', $data->name);
+        session()->put('tailor', 'tailor');
+        session()->put('tailor_id', $data->id);
+
+        return redirect('tailor/tailor-dashboard');
     }
     public function tailor_dashboard()
     {
 
-        $val = pre_week();
+        $val = tailor_pre_week();
         $suits = $val[0];
         $payments = $val[1];
         return view('tailor-dashboard.tailor-card', compact('suits', 'payments'));
@@ -65,7 +81,7 @@ class TailorController extends Controller
      */
     public function index()
     {
-        $Tailors = Tailor::where('user_id', Auth::user()->id)->orderBy('id', 'DESC')->get();
+        $Tailors = Tailor::where('user_id', Auth::user()->businessOwnerId())->orderBy('id', 'DESC')->get();
         return view('tailor.list', compact('Tailors'));
     }
 
@@ -87,23 +103,27 @@ class TailorController extends Controller
      */
     public function store(Request $request)
     {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'contact' => ['required', 'string', 'max:50'],
+            'password' => ['required', 'string', 'min:6', 'max:255'],
+            'tailor_rates' => ['nullable', 'string'],
+        ]);
 
-        $obj = new Tailor;
-        $obj->name = $request->name;
-        $obj->user_id = Auth::user()->id;
-        $obj->phone_number1 = $request->contact;
-        $obj->password = $request->password;
-        $obj->save();
+        DB::transaction(function () use ($validated) {
+            $obj = Tailor::create([
+                'name' => $validated['name'],
+                'user_id' => Auth::user()->businessOwnerId(),
+                'phone_number1' => $validated['contact'],
+                'password' => Hash::make($validated['password']),
+            ]);
 
-        if ($request->tailor_rates) {
-            $rates = explode(',', $request->tailor_rates);
-
-            foreach ($rates as $rate) {
-                $obj->tailorsalary()->create([
-                    "price" => $rate
-                ]);
+            if (!empty($validated['tailor_rates'])) {
+                foreach (explode(',', $validated['tailor_rates']) as $rate) {
+                    $obj->tailorsalary()->create(['price' => trim($rate)]);
+                }
             }
-        }
+        });
 
         return redirect('admin/Tailor')->with('insert', 'Tailor Add');
     }
@@ -127,7 +147,7 @@ class TailorController extends Controller
      */
     public function edit($id)
     {
-        $tailorData = Tailor::find($id);
+        $tailorData = $this->ownedTailor($id);
 
         return view('tailor.edit', compact('tailorData'));
     }
@@ -141,10 +161,18 @@ class TailorController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $obj = Tailor::find($id);
-        $obj->name = $request->name;
-        $obj->password = $request->password;
-        $obj->phone_number1 = $request->contact;
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'contact' => ['required', 'string', 'max:50'],
+            'password' => ['nullable', 'string', 'min:6', 'max:255'],
+        ]);
+
+        $obj = $this->ownedTailor($id);
+        $obj->name = $validated['name'];
+        $obj->phone_number1 = $validated['contact'];
+        if (!empty($validated['password'])) {
+            $obj->password = Hash::make($validated['password']);
+        }
         $obj->save();
         return redirect('admin/Tailor')->with('update', 'Tailor Data Update');
     }
@@ -157,20 +185,19 @@ class TailorController extends Controller
      */
     public function destroy($id)
     {
-        $obj = Tailor::find($id);
-        $obj->delete();
+        $this->ownedTailor($id)->delete();
         return back()->with('delete', 'Tailor Data Delete');
     }
 
     public function tailorRecord($id)
     {
         $data = [];
-        $tailor = Tailor::find($id);
+        $tailor = $this->tailorForCurrentActor($id);
         $data['tailor-name'] = $tailor->name;
         $data['tailor-id'] = $tailor->id;
         $Tailor_records = Tailor::with(['orders' => function ($query) {
             $query->orderBy('created_at', 'desc');  // Order by 'created_at' in descending order
-        }, 'orders.customers'])->find($id);
+        }, 'orders.customers'])->where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         // dd($Tailor_records);
         return view('tailor.tailor-record', compact('data', 'Tailor_records'));
     }
@@ -196,9 +223,11 @@ class TailorController extends Controller
 
     public function tailorReport($id, Request $request)
     {
-        $tailor = Tailor::find($id);
+        $tailor = $this->ownedTailor($id);
 
-        $filterType = $request->input('filterType', 'weekly');
+        $filterType = $request->validate([
+            'filterType' => ['nullable', 'in:weekly,monthly'],
+        ])['filterType'] ?? 'weekly';
         $startDate = Carbon::now()->startOfWeek(Carbon::SATURDAY)->startOfDay();
         $endDate = Carbon::now()->endOfWeek(Carbon::THURSDAY)->endOfDay();
         // $startDate = Carbon::now()->startOfWeek()->startOfDay();
@@ -208,10 +237,14 @@ class TailorController extends Controller
             $startDate = Carbon::now()->startOfMonth()->startOfDay();
         }
 
+        $totalReceivedExpression = $filterType === 'monthly'
+            ? 'SUM(tailor_records.amount) as total_received'
+            : 'MAX(tailor_records.amount) as total_received';
+
         $result = DB::table('orders')
             ->leftJoin('tailor_records', 'orders.tailorId', '=', 'tailor_records.tailor_id')
             ->select(
-                DB::raw("IF('$filterType' = 'monthly', SUM(tailor_records.amount), tailor_records.amount) as total_received"),
+                DB::raw($totalReceivedExpression),
                 'tailor_records.comment as comments',
                 'orders.suitQuantity as quantity',
                 'orders.suitNum as suitNum',
@@ -221,6 +254,7 @@ class TailorController extends Controller
                 'orders.created_at'
             )
             ->where('orders.tailorId', $id)
+            ->where('orders.userId', $tailor->user_id)
             ->whereBetween('orders.created_at', [$startDate, $endDate])
             ->groupBy(
                 'orders.created_at',
@@ -253,10 +287,15 @@ class TailorController extends Controller
 
     public function addRecord(Request $request, $id)
     {
+        $this->ownedTailor($id);
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0'],
+            'comment' => ['nullable', 'string', 'max:500'],
+        ]);
         $tailorRecord = new TailorRecord();
         $tailorRecord->tailor_id = $id;
-        $tailorRecord->amount = $request->input('amount');
-        $tailorRecord->comment = $request->input('comment');
+        $tailorRecord->amount = $validated['amount'];
+        $tailorRecord->comment = $validated['comment'] ?? null;
         $tailorRecord->save();
 
         return redirect(url('admin/tailor-report', $id))->with('success', 'Record added successfully!');
@@ -264,41 +303,39 @@ class TailorController extends Controller
 
     public function addAdnvanceRecord(Request $request, $id)
     {
-        try {
-            $tailorRecord = Tailor::findOrFail($id);
-            $tailorRecord->update([
-                'advance' => $request->input('amount')
-            ]);
-        } catch (\Exception $e) {
-            // Handle the case where the tailor record is not found
-            return response()->json($e->getMessage());
-        }
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0'],
+        ]);
+        $this->ownedTailor($id)->update(['advance' => $validated['amount']]);
 
         return redirect()->back();
     }
 
     public function cutAdvanceRecord(Request $request, $id)
     {
-        try {
-            $tailorRecord = Tailor::findOrFail($id);
-            $advance = $tailorRecord->advance;
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0'],
+            'total' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($validated, $id) {
+            $tailorRecord = Tailor::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($id);
+            $advance = (float) $tailorRecord->advance;
+            $amount = min((float) $validated['amount'], $advance);
             $tailorRecord->update([
-                'advance' => $advance - $request->input('amount')
+                'advance' => $advance - $amount
             ]);
 
-            $total = $request->input('total');
+            $total = (float) $validated['total'];
 
             Transaction::create([
-                'remainingBalance' => $request->input('amount'),
-                'recivedPayment' => $total - $request->input('amount'),
+                'remainingBalance' => $amount,
+                'recivedPayment' => max(0, $total - $amount),
                 'Order_type' => 'Tailor_Advance_Cut',
-                'tailorId' => $request->input('tailor_id'), //hidden field in modal form
-                'userId' => auth()->user()->id
+                'tailorId' => $tailorRecord->id,
+                'userId' => Auth::user()->businessOwnerId()
             ]);
-        } catch (\Exception $e) {
-            // Handle the case where the tailor record is not found
-            return response()->json($e->getMessage());
-        }
+        });
 
         return redirect()->back();
     }
@@ -307,7 +344,7 @@ class TailorController extends Controller
     public function tailorReportPrint($id)
     {
         try {
-            $tailor = Tailor::find($id);
+            $tailor = $this->ownedTailor($id);
 
             $user_id = $tailor->user_id;
 
@@ -361,7 +398,7 @@ class TailorController extends Controller
     {
         try {
 
-            $tailor = Tailor::find($id);
+            $tailor = $this->ownedTailor($id);
 
             $tailor_rates = $tailor->tailorsalary;
 
@@ -374,7 +411,7 @@ class TailorController extends Controller
     public function paymentReceived($id)
     {
         try {
-            $user = Tailor::find($id);
+            $user = $this->ownedTailor($id);
 
             dd($user->transactions);
         } catch (\Throwable $th) {
@@ -412,19 +449,15 @@ class TailorController extends Controller
 
     public function tailor_weekly(Request $req, $id)
     {
-        if ($req->Date == "") {
-            return back();
-        }
+        $validated = $req->validate([
+            'Date' => ['required', 'string', 'regex:/^\d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}$/'],
+        ]);
 
-        $tailor = Tailor::find($id);
-
-        if (!$tailor) {
-            abort(404); // Handle the case when the Tailor is not found
-        }
+        $tailor = $this->tailorForCurrentActor($id);
 
         $user_id = $tailor->user_id;
 
-        $dateRange = explode(" to ", $req->Date);
+        $dateRange = explode(" to ", $validated['Date']);
         $startDate = $dateRange[0];
         $endDate = $dateRange[1];
 
@@ -433,6 +466,7 @@ class TailorController extends Controller
             ->select('orders.created_at as date', 'orders.totalPayment as t_payment', 'orders.advancePayment as advance_payment', 'orders.suitQuantity as suit', 'customers.name as c_name')
             ->leftJoin('customers', 'orders.customerId', '=', 'customers.id')
             ->where('orders.tailorId', $id)
+            ->where('orders.userId', $tailor->user_id)
             ->whereBetween('orders.created_at', [$startDate, $endDate])
             ->get();
 
@@ -470,6 +504,7 @@ class TailorController extends Controller
         try {
             $html = '';
 
+            $this->ownedTailor($tailor_id);
             $rates = Tailorsalary::where("tailor_id", $tailor_id)->get();
 
             $html .= '<select class="form-control" name="tailor_price" required dir="rtl">
@@ -488,6 +523,7 @@ class TailorController extends Controller
 
     public function showSpecificRecord(Request $request, $id)
     {
+        $this->ownedTailor($id);
         // Get date range from request
         $data_range = $request->input('date_range');
 
@@ -514,7 +550,7 @@ class TailorController extends Controller
         // Query to fetch tailor records within the date range
         $tailor_records = Order::where('tailorId', $id) // Filter by Tailor id
             ->whereBetween('created_at', [$start_date, $end_date])
-            ->where('userId', Auth::user()->id)
+            ->where('userId', Auth::user()->businessOwnerId())
             ->get();
 
         // Return the data as JSON
@@ -522,8 +558,24 @@ class TailorController extends Controller
             'tailors' => $tailor_records,
         ]);
     }
+
+    private function ownedTailor($id): Tailor
+    {
+        return Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
+
+    private function tailorForCurrentActor($id): Tailor
+    {
+        if (Auth::check()) {
+            return $this->ownedTailor($id);
+        }
+
+        abort_unless((int) session('tailor_id') === (int) $id, 403);
+
+        return Tailor::findOrFail($id);
+    }
 }
-function pre_week()
+function tailor_pre_week()
 {
     $previous_week = strtotime("-1 week +1 day");
     $start_week = strtotime("last saturday midnight", $previous_week);

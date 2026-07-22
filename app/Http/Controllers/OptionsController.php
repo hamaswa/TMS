@@ -19,7 +19,7 @@ class OptionsController extends Controller
     public function index()
     {
         
-        $OptionTypes = OptionType::get();
+        $OptionTypes = $this->availableOptionTypes()->get();
         return view("Options.list",compact('OptionTypes'));
     }
 
@@ -30,21 +30,21 @@ class OptionsController extends Controller
      */
     public function create()
     {
-        $OptionTypes = OptionType::get();
+        $OptionTypes = $this->availableOptionTypes()->get();
         return view("Options.index",compact('OptionTypes'));
     }
 
     public function add($id)
     {
-        $OptionTypes = OptionType::get();  //for side menu
-        $optionType = OptionType::find($id); //this for title top of options list
+        $OptionTypes = $this->availableOptionTypes()->get();  //for side menu
+        $optionType = $this->availableOptionTypes()->findOrFail($id); //this for title top of options list
              
-        // $options = User::with('options.optiontype')->where('id', Auth::user()->id)->find($id);
+        // $options = User::with('options.optiontype')->where('id', Auth::user()->businessOwnerId())->find($id);
         $options = DB::table('option_types')
         ->select('options.*','option_types.name as otname')
         ->leftjoin('options','option_types.id','=','options.option_id')
         ->leftjoin('users','options.user_id','=','users.id')
-        ->where('users.id',Auth::user()->id)
+        ->where('users.id',Auth::user()->businessOwnerId())
         ->where('option_types.id',$id)
         ->get(); 
     //    dd($options);
@@ -58,15 +58,20 @@ class OptionsController extends Controller
      */
     public function store(Request $request)
     {
-        $slug = Str::slug($request->input('Name'), '_');
+        $validated = $request->validate([
+            'Name' => ['required', 'string', 'max:255'],
+            'OptionTypeId' => ['required', 'integer'],
+        ]);
+        $this->availableOptionTypes()->findOrFail($validated['OptionTypeId']);
+        $slug = Str::slug($validated['Name'], '_');
         $obj = new Options;
-        $obj->Name = $request->input('Name');
+        $obj->Name = $validated['Name'];
         $obj->slug = $slug;
-        $obj->option_id=$request->OptionTypeId;
-        $obj->user_id = Auth::user()->id;
+        $obj->option_id=$validated['OptionTypeId'];
+        $obj->user_id = Auth::user()->businessOwnerId();
         $obj->save();
         // dd($obj);
-        return redirect('admin/Options/add/'.$request->OptionTypeId);
+        return redirect('admin/Options/add/'.$validated['OptionTypeId']);
     }
 
     /**
@@ -88,8 +93,8 @@ class OptionsController extends Controller
      */
     public function edit($id)
     {
-        $Option = Options::find($id);
-        $OptionTypes = OptionType::get();
+        $Option = Options::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $OptionTypes = $this->availableOptionTypes()->get();
         return view('Options.edit',compact('Option','OptionTypes'));
     }
 
@@ -102,10 +107,15 @@ class OptionsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $OptionTypeId = $request->OptionTypeId; // this is a OptionTYPE id for redirect page bcz we need in url
-        $slug = Str::slug($request->input('Name'), '_');
-        $obj = Options::find($id);
-        $obj->Name = $request->input('Name');
+        $validated = $request->validate([
+            'Name' => ['required', 'string', 'max:255'],
+            'OptionTypeId' => ['required', 'integer'],
+        ]);
+        $OptionTypeId = $validated['OptionTypeId'];
+        $this->availableOptionTypes()->findOrFail($OptionTypeId);
+        $slug = Str::slug($validated['Name'], '_');
+        $obj = Options::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $obj->Name = $validated['Name'];
         $obj->slug = $slug;
         $obj->save();
         return redirect('admin/Options/add/'.$OptionTypeId)->with('update','Option Updated!');
@@ -119,8 +129,15 @@ class OptionsController extends Controller
      */
     public function destroy($id)
     {
-        $obj = Options::find($id);
+        $obj = Options::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $obj->delete();
         return back()->with('del','Option Deleted');
+    }
+
+    private function availableOptionTypes()
+    {
+        return OptionType::where(function ($query) {
+            $query->whereNull('user_id')->orWhere('user_id', Auth::user()->businessOwnerId());
+        });
     }
 }

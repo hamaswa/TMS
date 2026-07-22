@@ -31,18 +31,18 @@ class OrderController extends Controller
     public function edit($id)
     {
 
-        $data = Order::findOrFail($id);
-        $sub_customer = Customers::find($data->sub_customer);
-        $customer = Customers::find($data->customerId);
-        $tailors = Tailor::where('user_id', Auth::user()->id)->get();
+        $data = $this->ownedOrder($id);
+        $sub_customer = Customers::where('user_id', Auth::user()->businessOwnerId())->find($data->sub_customer);
+        $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($data->customerId);
+        $tailors = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
         $tailor = Tailorsalary::where('id', $data->rateId)->first();
         // dd($tailor);
         // Fetch the tailor rate and options
         $tailorRate = Tailorsalary::with('options')->where('id', $data->rateId)->first();
         $currentTailorRate = $tailorRate ? $tailorRate->price : null;
         $optionName = $tailorRate && $tailorRate->options ? $tailorRate->options->Name : '';
-        $remainingBalance = Transaction::where("customerId", $data->customerId)->sum('remainingBalance');
-        $recivedPayment = Transaction::where("customerId", $data->customerId)->where("orderId", $data->id)->first()->recivedPayment;
+        $remainingBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->sum('remainingBalance');
+        $recivedPayment = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->where("orderId", $data->id)->value('recivedPayment') ?? 0;
         $data['design'] = Options::where('option_id', 1)->get();
         // $currentTailorRate = 1220;
         return view('order.edit', compact('data', 'tailors', 'remainingBalance', 'recivedPayment', 'sub_customer', 'customer', 'currentTailorRate', 'optionName'));
@@ -50,38 +50,57 @@ class OrderController extends Controller
 
     public function update(Request $request, $id)
     {
-        $order = Order::findOrFail($id);
+        $validated = $request->validate([
+            'sub_id' => ['nullable', 'integer'],
+            'customerId' => ['required', 'integer'],
+            'suitQuantity' => ['required', 'integer', 'min:1'],
+            'totalPayment' => ['required', 'numeric', 'min:0'],
+            'recivedPayment' => ['required', 'numeric', 'min:0'],
+            'tailorId' => ['required', 'integer'],
+            'tailor_price' => ['nullable', 'string', 'max:255'],
+            'returnDate' => ['required', 'date'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $order = $this->ownedOrder($id);
+        $this->ownedCustomer($validated['customerId']);
+        $this->ownedTailor($validated['tailorId']);
+        if (!empty($validated['sub_id'])) {
+            $this->ownedCustomer($validated['sub_id']);
+        }
+
         //new change
-        $parts = explode("-", $request->tailor_price);
+        $parts = explode("-", $validated['tailor_price'] ?? '', 2);
         // Use old values if parts don't have new values
         $rateId = isset($parts[0]) && $parts[0] !== '' ? $parts[0] : $order->rateId;
         $tailorPrice = isset($parts[1]) && $parts[1] !== '' ? $parts[1] : $order->tailor_price;
-        $remainingBalance = $request->totalPayment - $request->recivedPayment;
+        Tailorsalary::where('tailor_id', $validated['tailorId'])->findOrFail($rateId);
+        $remainingBalance = max(0, $validated['totalPayment'] - $validated['recivedPayment']);
 
-        $order->update([
-            "sub_customer" => $request->sub_id,
-            "customerId" => $request->customerId,
-            "suitQuantity" => $request->suitQuantity,
-            "totalPayment" => $request->totalPayment,
-            "tailorId" => $request->tailorId,
-            "rateId" => $rateId, //new change
-            "tailor_price" => $tailorPrice, //new change
-            "userId" => auth()->user()->id,
-            "returnDate" => $request->returnDate,
-            "remarks" => $request->remarks,
-            "tailor_price" => $tailorPrice
-        ]);
+        DB::transaction(function () use ($validated, $order, $rateId, $tailorPrice, $remainingBalance) {
+            $order->update([
+                "sub_customer" => $validated['sub_id'] ?? $validated['customerId'],
+                "customerId" => $validated['customerId'],
+                "suitQuantity" => $validated['suitQuantity'],
+                "totalPayment" => $validated['totalPayment'],
+                "tailorId" => $validated['tailorId'],
+                "rateId" => $rateId,
+                "tailor_price" => $tailorPrice,
+                "userId" => Auth::user()->businessOwnerId(),
+                "returnDate" => $validated['returnDate'],
+                "remarks" => $validated['remarks'] ?? null,
+            ]);
 
-
-
-        $transaction = Transaction::where("orderId", $order->id)->first();
-        $transaction->update([
-            "recivedPayment" => $request->recivedPayment,
-            "remainingBalance" => $remainingBalance,
-            "Order_type" => 'Tailor',
-            "customerId" => $request->customerId,
-            "userId" => auth()->user()->id,
-        ]);
+            Transaction::updateOrCreate(
+                ['orderId' => $order->id, 'userId' => Auth::user()->businessOwnerId()],
+                [
+                    "recivedPayment" => $validated['recivedPayment'],
+                    "remainingBalance" => $remainingBalance,
+                    "Order_type" => 'Tailor',
+                    "customerId" => $validated['customerId'],
+                ]
+            );
+        });
 
         return redirect('admin/Customers')->with('insert', 'Order Updated');
     }
@@ -89,15 +108,15 @@ class OrderController extends Controller
     public function createOrder($id)
     {
         // Retrieve all customers for the authenticated user
-        $customers = Customers::where('user_id', auth()->user()->id)->get();
+        $customers = Customers::where('user_id', auth()->user()->businessOwnerId())->get();
         // Find the customer based on the given ID
-        $customer = $customers->where('id', $id)->first();
+        $customer = $customers->where('id', $id)->firstOrFail();
         $data = [];
         $data['customer'] = $customer;
-        $data['remainingBalance'] = Transaction::where('customerId', $id)->where('Order_type', 'Tailor')->sum('remainingBalance');
-        $data['tailors'] = Tailor::where('user_id', Auth::user()->id)->get();
+        $data['remainingBalance'] = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $id)->where('Order_type', 'Tailor')->sum('remainingBalance');
+        $data['tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
         $data['childData'] = Customers::where('parent_id', $id)->get();
-        $data['design'] = Options::where('option_id', 1)->where('user_id', auth()->user()->id)->get();
+        $data['design'] = Options::where('option_id', 1)->where('user_id', auth()->user()->businessOwnerId())->get();
 
         // Get the serial number by searching through the collection
         $data['serialNumber'] = $customers->search(function ($item) use ($customer) {
@@ -108,53 +127,67 @@ class OrderController extends Controller
 
     public function insert(Request $req)
     {
-        //new change
-        $parts = explode("-", $req->tailor_price);
-        $designParts = explode("-", $req->design);
+        $validated = $req->validate([
+            'customerId' => ['required', 'integer'],
+            'sub_id' => ['nullable', 'integer'],
+            'suitQuantity' => ['required', 'integer', 'min:1'],
+            'totalPayment' => ['required', 'numeric', 'min:0'],
+            'recivedPayment' => ['required', 'numeric', 'min:0'],
+            'balance' => ['required', 'numeric', 'min:0'],
+            'returnDate' => ['required', 'date'],
+            'design' => ['nullable', 'string', 'max:255'],
+            'designPrice' => ['nullable', 'numeric', 'min:0'],
+            'tailorId' => ['required', 'integer'],
+            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
+            'serail' => ['nullable', 'string', 'max:255'],
+        ]);
 
-        $req['rateId'] =      $parts[0];
-        $req['tailor_price'] = $parts[1]; //new change
-
-        $req['design_name'] = $designParts[0] ?? 0;
-        $req['desId'] = $designParts[1] ?? 0;
-        // dd($req['design_name']);
-        $sub_customer_id = "";
-        if ($req->sub_id) {
-            $sub_customer_id = $req->sub_id;
-        } else {
-            $sub_customer_id = $req->customerId;
+        $this->ownedCustomer($validated['customerId']);
+        $tailor = $this->ownedTailor($validated['tailorId']);
+        if (!empty($validated['sub_id'])) {
+            $this->ownedCustomer($validated['sub_id']);
         }
 
-        $sub_customer_id = $req->sub_id ? $req->sub_id : $req->customerId; //new change
+        [$rateId, $tailorPrice] = explode('-', $validated['tailor_price'], 2);
+        Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+        $designParts = explode('-', $validated['design'] ?? '', 2);
+        $subCustomerId = $validated['sub_id'] ?? $validated['customerId'];
 
-        $obj = new Order;
-        $obj->customerId = $req['customerId'];
-        $obj->sub_customer = $sub_customer_id;
-        $obj->suitQuantity = $req['suitQuantity'];
-        $obj->totalPayment = $req['totalPayment'];
-        $obj->returnDate = $req['returnDate'];
-        // $suitNumbers = $req->input('suitNum');
-        $obj->design = $req['design_name'];
-        $obj->tailorId = $req['tailorId'];
-        $obj->rateId = $req['rateId'];
-        $obj->userId = Auth::user()->id;
-        $obj->remarks = $req['remarks'];
-        $obj->tailor_price = $req['tailor_price']; //new change
-        $obj->suitNum = $req['serail'];
-        $obj->designPrice = $req['designPrice'] ?? 0;
-        $obj->save();
+        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $designParts, $subCustomerId) {
+            $obj = Order::create([
+                'customerId' => $validated['customerId'],
+                'sub_customer' => $subCustomerId,
+                'suitQuantity' => $validated['suitQuantity'],
+                'totalPayment' => $validated['totalPayment'],
+                'returnDate' => $validated['returnDate'],
+                'design' => $designParts[0] ?: 0,
+                'tailorId' => $validated['tailorId'],
+                'rateId' => $rateId,
+                'userId' => Auth::user()->businessOwnerId(),
+                'remarks' => $validated['remarks'] ?? null,
+                'tailor_price' => $tailorPrice,
+                'suitNum' => $validated['serail'] ?? null,
+                'designPrice' => $validated['designPrice'] ?? 0,
+                'status' => 'assigned',
+                'status_changed_at' => now(),
+                'tailor_paid_amount' => 0,
+                'tailor_payment_status' => 'unpaid',
+            ]);
+
+            $transaction = Transaction::create([
+                'recivedPayment' => $validated['recivedPayment'],
+                'remainingBalance' => $validated['balance'],
+                'orderId' => $obj->id,
+                'customerId' => $validated['customerId'],
+                'userId' => Auth::user()->businessOwnerId(),
+                'Order_type' => 'Tailor',
+            ]);
+
+            return [$obj, $transaction];
+        });
 
         $Id = $obj->id;
-
-        // transaction
-        $transaction = new Transaction;
-        $transaction->recivedPayment = $req['recivedPayment'];
-        $transaction->remainingBalance = $req['balance'];
-        $transaction->orderId = $Id;
-        $transaction->customerId = $req['customerId'];
-        $transaction->userId = Auth::user()->id;
-        $transaction->Order_type = 'Tailor';
-        $transaction->save();
 
         // find shop
         $setting = Setting::where('user_id', $obj->userId)->first();
@@ -162,11 +195,18 @@ class OrderController extends Controller
         // Create the notification
         $notification = new NewOrderNotification($obj, $transaction, $setting);
 
-        $customer = Customers::find($req['customerId']);
+        $customer = $this->ownedCustomer($validated['customerId']);
         // dd($customer);
 
         // Notify the user (adjust the 'user' to the correct user model)
-        Notification::send($customer, $notification);
+        try {
+            Notification::send($customer, $notification);
+        } catch (\Throwable $exception) {
+            Log::warning('Order created but customer notification failed.', [
+                'order_id' => $obj->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         // event(new NotificationEvent("You have notification from {$setting->name}"));
 
@@ -181,23 +221,20 @@ class OrderController extends Controller
                 ->join('tailors', 'orders.tailorId', '=', 'tailors.id')
                 ->select('orders.*', 'tailors.name as tailor_name')
                 ->where('orders.customerId', $id)
+                ->where('orders.userId', Auth::user()->businessOwnerId())
                 ->get();
-            $racks = rack::where('user_id', auth()->user()->id)->get();
+            $racks = rack::where('user_id', auth()->user()->businessOwnerId())->get();
 
             $data = [];
             $i = 1;
             foreach ($Orders as $order) {
-                $button = '';
-                if ($order->status == 'new') {
-                    $button = 'New';
-                    $btn = 'btn-primary';
-                } elseif ($order->status == 'start') {
-                    $button = 'Start';
-                    $btn = 'btn-warning';
-                } else {
-                    $button = 'Complete';
-                    $btn = 'btn-success';
-                }
+                $button = ucfirst($order->status ?: 'assigned');
+                $btn = match ($order->status) {
+                    'assigned' => 'btn-primary',
+                    'cutting', 'stitching', 'trial' => 'btn-warning',
+                    'ready', 'delivered' => 'btn-success',
+                    default => 'btn-secondary',
+                };
                 $data[] = [
                     'number' => $i++,
                     'totalPayment' => $order->totalPayment,
@@ -223,20 +260,20 @@ class OrderController extends Controller
 
     public function print($id)
     {
-        $order = Order::find($id);
+        $order = $this->ownedOrder($id);
         $tailor_id = $order->tailorId;
-        $tailor = Tailor::find($tailor_id);
+        $tailor = $this->ownedTailor($tailor_id);
 
 
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = Order::where('customerId', $customerId)->latest()->first();
+        $orderDetail = Order::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customerId)->latest()->first();
         
         // dd($orderDetail);
 
         // Filter transactions for the current customer
-        $customerTransactions = Transaction::where("customerId", $customerId)->where('Order_type', 'Tailor')->get();
+        $customerTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $customerId)->where('Order_type', 'Tailor')->get();
 
         // Calculate the latest balance
         $latestBalance = $customerTransactions->sum('remainingBalance');
@@ -250,7 +287,7 @@ class OrderController extends Controller
             $previousBalance = $customerTransactions->where('id', '<', $latestTransaction->id)->sum('remainingBalance');
         }
 
-        $setting = Setting::where('user_id', Auth::user()->id)->where('status', 1)->first();
+        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->where('status', 1)->first();
 
         if (!$setting) {
             dd("Please Activate Your Setting");
@@ -273,7 +310,7 @@ class OrderController extends Controller
 
     //     $balance=Transaction::where("customerId",$customerId)->sum('remainingBalance');
 
-    //     $setting = Setting::where('user_id',Auth::user()->id)->where('status',1)->first();
+    //     $setting = Setting::where('user_id',Auth::user()->businessOwnerId())->where('status',1)->first();
     //     if(!$setting)
     //     {
     //         dd("Please Activate Your Setting");
@@ -285,18 +322,18 @@ class OrderController extends Controller
     // }
     public function two_prints($id)
     {
-        $order = Order::find($id);
+        $order = $this->ownedOrder($id);
         $tailor_id = $order->tailorId;
-        $tailor = Tailor::find($tailor_id);
+        $tailor = $this->ownedTailor($tailor_id);
 
 
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = Order::where('customerId', $customerId)->latest()->first();
+        $orderDetail = Order::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customerId)->latest()->first();
         
         // Filter transactions for the current customer
-        $customerTransactions = Transaction::where("customerId", $customerId)->where('Order_type', 'Tailor')->get();
+        $customerTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $customerId)->where('Order_type', 'Tailor')->get();
 
         // Calculate the latest balance
         $latestBalance = $customerTransactions->sum('remainingBalance');
@@ -310,7 +347,7 @@ class OrderController extends Controller
             $previousBalance = $customerTransactions->where('id', '<', $latestTransaction->id)->sum('remainingBalance');
         }
 
-        $setting = Setting::where('user_id', Auth::user()->id)->where('status', 1)->first();
+        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->where('status', 1)->first();
 
         if (!$setting) {
             dd("Please Activate Your Setting");
@@ -322,9 +359,13 @@ class OrderController extends Controller
 
     public function search(Request $req)
     {
-        $data = Customers::where('name', 'like', '%' . $req->sub_search . '%')
-            ->orWhere('phone_number1', 'like', '%' . $req->sub_search . '%')
-            ->orWhere('id', 'like', '%' . $req->sub_search . '%')
+        $search = $req->validate(['sub_search' => ['nullable', 'string', 'max:255']])['sub_search'] ?? '';
+        $data = Customers::where('user_id', Auth::user()->businessOwnerId())
+            ->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('phone_number1', 'like', '%' . $search . '%')
+                    ->orWhere('id', 'like', '%' . $search . '%');
+            })
             ->get();
         $html = "";
         $html .= "<select class='form-control' style='height:50px' name='sub_id'>";
@@ -337,10 +378,12 @@ class OrderController extends Controller
 
     public function order_status(Request $req)
     {
-        $req->order_status;
-        $req->order_id;
-        $obj = Order::find($req->order_id);
-        $obj->status = $req->order_status;
+        $validated = $req->validate([
+            'order_id' => ['required', 'integer'],
+            'order_status' => ['required', 'in:new,start,complete'],
+        ]);
+        $obj = $this->ownedOrder($validated['order_id']);
+        $obj->status = $validated['order_status'];
         $obj->save();
         return back();
     }
@@ -350,7 +393,7 @@ class OrderController extends Controller
         $monthly_orders = [];
 
         for ($month = 1; $month <= 12; $month++) {
-            $orders = Order::where('userId', auth()->user()->id)
+            $orders = Order::where('userId', auth()->user()->businessOwnerId())
                 ->whereMonth('created_at', $month)
                 ->get();
 
@@ -358,9 +401,9 @@ class OrderController extends Controller
             $totalSuitQuantity = $orders->sum('suitQuantity');
             $totalpayment = $orders->sum('totalPayment');
 
-            $newOrdersCount = $orders->where('status', 'new')->count();
-            $processingOrdersCount = $orders->where('status', 'start')->count();
-            $completedOrdersCount = $orders->where('status', 'complete')->count();
+            $newOrdersCount = $orders->where('status', 'assigned')->count();
+            $processingOrdersCount = $orders->whereIn('status', ['cutting', 'stitching', 'trial'])->count();
+            $completedOrdersCount = $orders->whereIn('status', ['ready', 'delivered'])->count();
 
             $monthname = DateTime::createFromFormat('!m', $month)->format('F');
 
@@ -379,12 +422,10 @@ class OrderController extends Controller
 
     public function updateRackNo(Request $request, $orderId)
     {
-        $order = Order::find($orderId);
-        if (!$order) {
-            return response()->json(['error' => 'Order not found'], 404);
-        }
+        $validated = $request->validate(['rack_no' => ['nullable', 'string', 'max:255']]);
+        $order = $this->ownedOrder($orderId);
 
-        $order->rack_no = $request->input('rack_no');
+        $order->rack_no = $validated['rack_no'] ?? null;
         $order->save();
 
         return response()->json(['message' => 'Rack number updated successfully'], 200);
@@ -394,7 +435,8 @@ class OrderController extends Controller
     {
         Log::info('Order ID:', ['id' => $request->order_id]);
 
-        $order = Order::with('transactions')->where('id', $request->order_id)->first();
+        $validated = $request->validate(['order_id' => ['required', 'integer']]);
+        $order = Order::with('transactions')->where('userId', Auth::user()->businessOwnerId())->where('id', $validated['order_id'])->first();
         if ($order) {
             Log::info('Order found:', ['order' => $order]);
             $setting = Setting::where('user_id', $order->userId)->first();
@@ -429,5 +471,26 @@ class OrderController extends Controller
         } else {
             return response()->json(['message' => 'Order not found.'], 404);
         }
+    }
+
+    private function ownedOrder($id): Order
+    {
+        if (Auth::check()) {
+            return Order::where('userId', Auth::user()->businessOwnerId())->findOrFail($id);
+        }
+
+        abort_unless(session('tailor') === 'tailor' && session()->has('tailor_id'), 403);
+
+        return Order::where('tailorId', session('tailor_id'))->findOrFail($id);
+    }
+
+    private function ownedCustomer($id): Customers
+    {
+        return Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
+
+    private function ownedTailor($id): Tailor
+    {
+        return Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
     }
 }

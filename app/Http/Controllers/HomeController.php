@@ -2,79 +2,97 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\ClothColor;
+use App\Models\Order;
+use App\Models\Purchase;
+use App\Models\SaleStock;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
-    /**
-     * Create a new controller instance.
-     *
-     * @return void
-     */
-    // public function __construct()
-    // {
-    //     $this->middleware('auth');
-    // }
-
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
     public function index()
     {
-        logout_tailor();
-       $current_week = current_week();
-       $pre_week = pre_week();
-       $current_month = current_month();
-       $pre_month = pre_month();
-      return view('dashboard.index',compact('current_week','pre_week','current_month','pre_month'));
+        session()->forget(['tailor-login-success', 'tailor', 'tailor_id']);
+        $user = Auth::user();
+        $modules = $user->enabledModules();
+
+        if ($modules === [User::MODULE_TAILORING]) {
+            return redirect()->route('admin.dashboard.tailoring');
+        }
+
+        if ($modules === [User::MODULE_CLOTHING]) {
+            return redirect()->route('admin.dashboard.clothing');
+        }
+
+        abort_if($modules === [], 403, 'آپ کے اکاؤنٹ کے لیے کوئی کاروباری سہولت فعال نہیں ہے۔');
+
+        session()->forget('active_workspace');
+
+        return view('dashboard.select');
     }
-}
-function logout_tailor()
-{
-        session()->forget('tailor-login-success');
-        session()->forget('tailor');
-        session()->forget('tailor_id');
-}
-function current_week(){
-        $sat = strtotime('next Saturday -1 week');
-        $sat = date('w', $sat)==date('w') ? strtotime(date("Y-m-d",$sat)." +7 days") : $sat;
-        $friday = strtotime(date("Y-m-d",$sat)." +6 days");
-        $start = date("Y-m-d",$sat);
-        $end = date("Y-m-d",$friday);
-        $cur_week = common_date_btw($start, $end);
-        return $cur_week;
-};
-function pre_week(){
-        $previous_week = strtotime("-1 week +1 day");
-        $start_week = strtotime("last saturday midnight",$previous_week);
-        $end_week = strtotime("next friday",$start_week);
-        $start = date("Y-m-d",$start_week);
-        $end = date("Y-m-d",$end_week);
-        return common_date_btw($start, $end);
-};
-function current_month(){
-     $start = date('Y-m-01');
-     $end = date('Y-m-t');
-     return common_date_btw($start, $end);
-};
-function pre_month(){
-    $start = date('Y-m-01',strtotime('last month'));
-    $end = date('Y-m-t',strtotime('last month'));
-    return common_date_btw($start, $end);
-};
 
+    public function switch(string $workspace)
+    {
+        abort_unless(in_array($workspace, Auth::user()->enabledModules(), true), 403, 'یہ ورک اسپیس آپ کے اکاؤنٹ کے لیے فعال نہیں ہے۔');
 
-// comman function
-function common_date_btw($start, $end)
-{
-    $u_id = Auth::user()->id;
-    return DB::table('orders')
-           ->select('orders.suitQuantity as suit')
-           ->where('orders.userId',$u_id)
-           ->whereBetween('orders.created_at',[$start, $end])
-           ->sum('suitQuantity');
+        session(['active_workspace' => $workspace]);
+        Auth::user()->forceFill(['preferred_workspace' => $workspace])->save();
+
+        return redirect()->route($workspace === User::MODULE_TAILORING
+            ? 'admin.dashboard.tailoring'
+            : 'admin.dashboard.clothing');
+    }
+
+    public function current()
+    {
+        $workspace = session('active_workspace');
+
+        if ($workspace && Auth::user()->hasModule($workspace)) {
+            return $this->switch($workspace);
+        }
+
+        return redirect()->route('admin.home');
+    }
+
+    public function tailoring()
+    {
+        session(['active_workspace' => User::MODULE_TAILORING]);
+        $user = Auth::user();
+        $ownerId = $user->businessOwnerId();
+        $canWorkshop = $user->hasBusinessPermission('tailoring.workshop');
+        $canOrders = $user->hasBusinessPermission('tailoring.orders');
+        $orders = Order::where('userId', $ownerId);
+        $tailoring = [
+            'active' => $canWorkshop ? (clone $orders)->where('status', '!=', 'delivered')->count() : null,
+            'due_today' => $canWorkshop ? (clone $orders)->whereDate('returnDate', today())->where('status', '!=', 'delivered')->count() : null,
+            'ready' => $canWorkshop ? (clone $orders)->where('status', 'ready')->count() : null,
+            'month_suits' => $canOrders ? (int) (clone $orders)->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->sum('suitQuantity') : null,
+        ];
+
+        return view('dashboard.tailoring', compact('tailoring', 'canWorkshop', 'canOrders'));
+    }
+
+    public function clothing()
+    {
+        session(['active_workspace' => User::MODULE_CLOTHING]);
+        $user = Auth::user();
+        $ownerId = $user->businessOwnerId();
+        $canInventory = $user->hasBusinessPermission('clothing.inventory');
+        $canPurchases = $user->hasBusinessPermission('clothing.purchases');
+        $canSales = $user->hasBusinessPermission('clothing.sales');
+        $colors = ClothColor::where('user_id', $ownerId);
+        $clothing = [
+            'meters' => $canInventory ? (float) (clone $colors)->sum('length') : null,
+            'inventory_value' => $canInventory ? (float) (clone $colors)->sum(DB::raw('length * average_unit_cost')) : null,
+            'low_stock' => $canInventory ? (clone $colors)->where('length', '<=', 5)->count() : null,
+            'draft_purchases' => $canPurchases ? Purchase::where('user_id', $ownerId)->where('status', 'draft')->count() : null,
+            'month_sales' => $canSales ? (float) SaleStock::where('user_id', $ownerId)
+                ->whereBetween('sellDate', [now()->startOfMonth(), now()->endOfMonth()])
+                ->sum(DB::raw('selling_price * length')) : null,
+        ];
+
+        return view('dashboard.clothing', compact('clothing', 'canInventory', 'canPurchases', 'canSales'));
+    }
 }

@@ -11,7 +11,7 @@ class SettingController extends Controller
 {
     public function list()
     {
-        $settings = Setting::where('user_id',Auth::user()->id)->get();
+        $settings = Setting::where('user_id',Auth::user()->businessOwnerId())->get();
         return view('setting.list',compact('settings'));
     }
     public function add()
@@ -20,69 +20,83 @@ class SettingController extends Controller
     }
     public function insert(Request $req)
     {
+        $validated = $req->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'contact_no' => ['nullable', 'string', 'max:50'],
+            'logo' => ['required', 'image', 'max:2048'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'address' => ['nullable', 'string', 'max:2000'],
+        ]);
         $image = $req->file('logo');
-        $imageName = $image->getClientOriginalName();
-        $image->move('public/images/setting/',$imageName);
+        $imageName = $image->hashName();
+        $image->move(public_path('images/setting'), $imageName);
         $obj = new Setting();
-        $obj->name=$req->title;
+        $obj->name=$validated['title'];
         $parts = explode(' ', $obj->name);
         $firstPart = strtolower($parts[0]);
         $slug = $firstPart . '_shop';
-        $obj->contact_no=$req->contact_no;
+        $obj->contact_no=$validated['contact_no'] ?? null;
         $obj->logo=$imageName;
         $obj->shop_slug = $slug;
-        $obj->note=$req->note;
-        $obj->user_id=Auth::user()->id;
-        $obj->address=$req->address;
+        $obj->note=$validated['note'] ?? null;
+        $obj->user_id=Auth::user()->businessOwnerId();
+        $obj->address=$validated['address'] ?? null;
         $obj->save();
         return redirect('admin/setting')->with('success','Setting Added');
     }
     public function update(Request $req, $id)
     {
-        $imageName="";
-        if($req->has('logo'))
+        $validated = $req->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'contact_no' => ['nullable', 'string', 'max:50'],
+            'logo' => ['nullable', 'image', 'max:2048'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'address' => ['nullable', 'string', 'max:2000'],
+        ]);
+        $obj = Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $imageName = $obj->logo;
+        if($req->hasFile('logo'))
         {
             $image = $req->file('logo');
-            $imageName = $image->getClientOriginalName();
-            $image->move('public/images/setting/',$imageName);
-        }else{
-            $imageName = $req->oldlogo;
+            $imageName = $image->hashName();
+            $image->move(public_path('images/setting'), $imageName);
         }
-        
-        $obj = Setting::find($id);
-        $obj->name=$req->title;
+
+        $obj->name=$validated['title'];
         $parts = explode(' ', $obj->name);
         $firstPart = strtolower($parts[0]);
-        $obj->contact_no=$req->contact_no;
+        $obj->contact_no=$validated['contact_no'] ?? null;
         $slug = $firstPart . '_shop';
         // dd($slug);
         $obj->shop_slug = $slug;
         $obj->logo=$imageName;
-        $obj->note=$req->note;
-        $obj->user_id=Auth::user()->id;
-        $obj->address=$req->address;
+        $obj->note=$validated['note'] ?? null;
+        $obj->user_id=Auth::user()->businessOwnerId();
+        $obj->address=$validated['address'] ?? null;
         $obj->save();
         return redirect('admin/setting')->with('update','Setting Updated');
     }
     public function edit($id)
     {
-        $setting = Setting::find($id);
+        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         return view('setting.edit',compact('setting'));
     }
     public function delete($id)
     {
-        echo 'delte:'.$id;
+        Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id)->delete();
+
+        return back()->with('delete', 'Setting deleted');
     }
     public function active($id)
     {
-        $setting = Setting::find($id);
+        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $setting->status = 1;
         $setting->save();
         return back()->with('success','Setting Activated');
     }
     public function deactive($id)
     {
-        $setting = Setting::find($id);
+        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $setting->status = 0;
         $setting->save();
         return back()->with('delete','Setting Deactivated');

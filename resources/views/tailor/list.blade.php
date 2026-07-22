@@ -34,7 +34,6 @@
                                             <th scope="col" class="no-sort">رقم ادائیگی</th>
                                             <th scope="col" class="no-sort">نام</th>
                                             <th scope="col" class="no-sort">نمبر</th>
-                                            <th scope="col" class="no-sort">پاس ورڈ</th>
                                             <th scope="col" class="no-sort">ایڈوانس</th>
                                             {{-- <th scope="col" class="no-sort">موصول ہوئی رقم</th> --}}
                                             <th scope="col" class="no-sort"> موجودہ ہفتے کی آمدنی  </th>
@@ -54,7 +53,6 @@
                                             </td>
                                             <td>{{$tailor->name}}</td>
                                             <td>{{$tailor->phone_number1}}</td>
-                                            <td>{{$tailor->password}}</td>
                                             <td>{{$tailor->advance ?? 0}}</td>
                                             <td>
                                                 <a href="{{url('admin/tailor-report',$tailor->id)}}"><i class="fa fa-eye" aria-hidden="true"></i></a>
@@ -65,7 +63,11 @@
                                             <td>
                                                 <a href="{{url('admin/tailor-orders',$tailor->id)}}"><i class="fa fa-eye" aria-hidden="true"></i></a>
                                                 <a href="{{ url('admin/Tailor/'.$tailor->id.'/edit')}}"><i class="fa fa-edit" aria-hidden="true"></i></a>
-                                                <a href="{{ url('admin/Tailor/delete',$tailor->id)}}" class="delete-tr"><i class="fa fa-trash-alt" aria-hidden="true"></i></a>
+                                                <form action="{{ route('admin.Tailor.destroy', $tailor->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this tailor?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-link p-0 delete-tr" aria-label="Delete tailor"><i class="fa fa-trash-alt" aria-hidden="true"></i></button>
+                                                </form>
                                             </td>
                                         </tr>
                                         <div class="modal" tabindex="-1" id="addRecordModal_{{$tailor->id}}" tabindex="-1" role="dialog" aria-labelledby="addRecordModalLabel" aria-hidden="true">

@@ -3,7 +3,6 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ReactNativeController\ReactNativeController;
 
 /*
@@ -21,16 +20,18 @@ use App\Http\Controllers\ReactNativeController\ReactNativeController;
 //     return $request->user();
 // });
 
-Route::get('/user',[CustomerController::class,'test']);
 Route::post('/login',[ReactNativeController::class,'login']);
 
-// api route to show orders and transactions
-Route::get('/orders',[ReactNativeController::class,'AllOrders']);
-Route::get('/transactions',[ReactNativeController::class,'AllTransactions']);
 Route::get('/shops',[ReactNativeController::class,'AllShops']);
 
-Route::get('/notifications/{id}',[ReactNativeController::class,'notifications']);
-Route::get('/mark-read/{id}',[ReactNativeController::class,'markasRead']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', fn (Request $request) => $request->user());
+    Route::get('/orders',[ReactNativeController::class,'AllOrders']);
+    Route::get('/transactions',[ReactNativeController::class,'AllTransactions']);
+    Route::get('/notifications',[ReactNativeController::class,'notifications']);
+    Route::post('/mark-read',[ReactNativeController::class,'markasRead']);
+    Route::post('/logout',[ReactNativeController::class,'logout']);
+});
 
 // for server stream (SSE) route
 // Route::get('/notifications/sse', function () {
@@ -66,5 +67,3 @@ Route::get('/mark-read/{id}',[ReactNativeController::class,'markasRead']);
 //         'Access-Control-Allow-Origin' => 'http://localhost:5173',
 //     ]);
 // });
-Route::get('/notification-stream', [ReactNativeController::class, 'testingSSE'])
-    ->withoutMiddleware('throttle:api');

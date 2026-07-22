@@ -19,12 +19,17 @@ class ReactNativeController extends Controller
     public function login(Request $request)
     {
         $validatedData = $request->validate([
-            'name' => 'required|string',
-            'phone' => 'required|string'
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:50'],
+            'shop_id' => ['required', 'integer', 'exists:users,id'],
+            'device_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         try {
-            $customer = Customers::where('name', $validatedData['name'])->where('phone_number1', $validatedData['phone'])->first();
+            $customer = Customers::where('user_id', $validatedData['shop_id'])
+                ->where('name', $validatedData['name'])
+                ->where('phone_number1', $validatedData['phone'])
+                ->first();
 
             if (!$customer) {
                 return response()->json([
@@ -36,19 +41,17 @@ class ReactNativeController extends Controller
             $unreadCount = $customer->notifications()->whereNull('read_at')->count();
             return response()->json([
                 'customer' => $customer,
+                'token' => $customer->createToken($validatedData['device_name'] ?? 'mobile')->plainTextToken,
             ], 200);
         } catch (Exception $e) {
             return response()->json($e->getMessage());
         }
     }
 
-    public function notifications($id)
+    public function notifications(Request $request)
     {
         try {
-            $user = Customers::find($id);
-            if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
-            }
+            $user = $request->user();
 
             // Fetch notifications and unread count
             $notifications = $user->notifications; // Or $user->unreadNotifications for unread ones
@@ -63,13 +66,10 @@ class ReactNativeController extends Controller
         }
     }
 
-    public function markasRead($id)
+    public function markasRead(Request $request)
     {
         try {
-            $user = Customers::find($id);
-            if (!$user) {
-                return response()->json(['error' => 'User not found'], 404);
-            }
+            $user = $request->user();
 
             $notifications = $user->notifications()->whereNull('read_at')->get();
 
@@ -86,9 +86,16 @@ class ReactNativeController extends Controller
         }
     }
 
-    public function AllOrders()
+    public function AllOrders(Request $request)
     {
-        $orders = Order::with(['customers', 'transactions'])->latest()->get();
+        $customer = $request->user();
+        $orders = Order::with(['customers', 'transactions'])
+            ->where(function ($query) use ($customer) {
+                $query->where('customerId', $customer->id)
+                    ->orWhere('sub_customer', $customer->id);
+            })
+            ->latest()
+            ->get();
         return response()->json(['orders' => $orders], 200);
     }
     
@@ -103,10 +110,17 @@ class ReactNativeController extends Controller
         
     }
 
-    public function AllTransactions()
+    public function AllTransactions(Request $request)
     {
-        $transactions = Transaction::latest()->get();
+        $transactions = Transaction::where('customerId', $request->user()->id)->latest()->get();
         return response()->json(['transactions' => $transactions], 200);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()?->delete();
+
+        return response()->json(['message' => 'Logged out.']);
     }
     // public function testingSSE()
     // {

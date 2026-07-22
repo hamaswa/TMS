@@ -14,6 +14,7 @@ class TailorRecord extends Model
         'order_id',
         'amount',
         'comment',
+        'Note',
     ];
 
     // Define the relationship with the Tailor model

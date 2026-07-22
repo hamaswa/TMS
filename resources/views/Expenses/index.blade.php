@@ -62,9 +62,11 @@
                                                             <a href="{{route('admin.expense.edit',['id'=>$expense->id])}}">
                                                                 <i class="fas fa-edit"></i>
                                                             </a>
-                                                            <a href="{{route('admin.expense.delete',['id'=>$expense->id])}}">
-                                                                <i class="fas fa-trash-alt" style="font-size: 16px;"></i>
-                                                            </a>
+                                                            <form action="{{ route('admin.expense.delete', ['id' => $expense->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this expense?')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-link p-0"><i class="fas fa-trash-alt" style="font-size: 16px;"></i></button>
+                                                            </form>
                                                         </td>
                                                     </tr>
                                                 @endforeach
@@ -103,9 +105,11 @@
                                                             <a href="{{route('admin.worker.edit',['id'=>$worker->id])}}">
                                                                 <i class="fas fa-edit"></i>
                                                             </a>
-                                                            <a href="{{route('admin.worker.delete',['id'=>$worker->id])}}">
-                                                                <i class="fas fa-trash-alt" style="font-size: 16px;"></i>
-                                                            </a>
+                                                            <form action="{{ route('admin.worker.delete', ['id' => $worker->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this worker?')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-link p-0"><i class="fas fa-trash-alt" style="font-size: 16px;"></i></button>
+                                                            </form>
                                                         </td>
                                                     </tr>
                                                 @endforeach
@@ -267,5 +271,4 @@
     });
 </script>
 @endsection
-
 

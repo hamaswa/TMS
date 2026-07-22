@@ -48,9 +48,11 @@
                                                         <td>
 
 
-                                                            <a href="{{ url('admin/dlt', $customer->id) }}"
-                                                                class="delete-tr"><i class="fa fa-trash-alt"
-                                                                    aria-hidden="true"></i></a>
+                                                            <form action="{{ route('admin.dlt', $customer->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this record?')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-link p-0 delete-tr" aria-label="Delete record"><i class="fa fa-trash-alt" aria-hidden="true"></i></button>
+                                                            </form>
                                                         </td>
                                                     </tr>
                                                 @endforeach

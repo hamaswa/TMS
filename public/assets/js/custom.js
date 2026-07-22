@@ -1,8 +1,26 @@
 jQuery(document).ready(function ($) {
 
+    if (document.documentElement.lang === 'ur' && $.fn.dataTable) {
+        $.extend(true, $.fn.dataTable.defaults, {
+            language: {
+                search: 'تلاش:',
+                emptyTable: 'کوئی ریکارڈ موجود نہیں۔',
+                zeroRecords: 'کوئی ملتا جلتا ریکارڈ نہیں ملا۔',
+                info: 'کل _TOTAL_ ریکارڈز میں سے _START_ تا _END_ دکھائے جا رہے ہیں',
+                infoEmpty: 'کوئی ریکارڈ موجود نہیں۔',
+                infoFiltered: '(_MAX_ ریکارڈز میں سے فلٹر شدہ)',
+                lengthMenu: '_MENU_ ریکارڈز دکھائیں',
+                loadingRecords: 'لوڈ ہو رہا ہے۔۔۔',
+                processing: 'کارروائی جاری ہے۔۔۔',
+                paginate: { first: 'پہلا', last: 'آخری', next: 'اگلا', previous: 'پچھلا' },
+                aria: { sortAscending: ': صعودی ترتیب', sortDescending: ': نزولی ترتیب' }
+            }
+        });
+    }
+
     $(".delete-tr").on("click", function (e) {
 
-        if (confirm("Are you to delete this record!")) { }
+        if (confirm("کیا آپ یہ ریکارڈ حذف کرنا چاہتے ہیں؟")) { }
         else
             e.preventDefault();
 
@@ -306,5 +324,4 @@ jQuery(document).ready(function ($) {
 
     });
 });
-
 

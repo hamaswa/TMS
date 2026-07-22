@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClothType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ClothTypeController extends Controller
 {
@@ -16,7 +17,7 @@ class ClothTypeController extends Controller
     {
         try {
 
-            $cloth_types = ClothType::where('user_id',auth()->user()->id)->orderBy('id', 'DESC')->get();
+            $cloth_types = ClothType::where('user_id',auth()->user()->businessOwnerId())->orderBy('id', 'DESC')->get();
 
             return view('clothtype.index', compact('cloth_types'));
         } catch (\Throwable $th) {
@@ -48,8 +49,9 @@ class ClothTypeController extends Controller
     {
         try {
 
-                $name = $request->input('name');
-                $user_id = auth()->user()->id;
+            $validated = $request->validate(['name' => ['required', 'string', 'max:255']]);
+            $name = $validated['name'];
+            $user_id = Auth::user()->businessOwnerId();
             ClothType::create([
                 'name' => $name,
                 'user_id' => $user_id
@@ -84,7 +86,7 @@ class ClothTypeController extends Controller
     public function edit($id)
     {
         try {
-            $cloth_type = ClothType::find($id);
+            $cloth_type = ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
             return view('clothtype.edit', compact('cloth_type'));
         } catch (\Throwable $th) {
             throw $th;
@@ -102,7 +104,8 @@ class ClothTypeController extends Controller
     {
         try {
 
-            ClothType::find($id)->update($request->all());
+            $validated = $request->validate(['name' => ['required', 'string', 'max:255']]);
+            ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id)->update($validated);
             return redirect()->route('admin.clothtype.index')->with('insert', 'کپڑے کی قسم کامیابی کے ساتھ اپ ڈیٹ ہو گئی۔');
         } catch (\Throwable $th) {
             throw $th;
@@ -118,7 +121,7 @@ class ClothTypeController extends Controller
     public function destroy($id)
     {
         try {
-            $cloth_type=ClothType::find($id);
+            $cloth_type=ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
             $cloth_type->delete();
             return back()->with('delete','ریکارڈ کامیابی سے حذف ہو گیا۔');
         } catch (\Throwable $th) {

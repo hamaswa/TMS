@@ -9,6 +9,9 @@ use App\Models\ClothColor;
 use App\Models\ClothImage;
 use App\Models\ClothVideo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Services\InventoryService;
 
 class ClothController extends Controller
 {
@@ -20,7 +23,7 @@ class ClothController extends Controller
     public function index()
     {
         try {
-            $cloths = Cloth::where('user_id', auth()->user()->id)->with(['colors', 'images', 'videos'])->latest()->get();
+            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with(['colors', 'images', 'videos'])->latest()->get();
             return view('cloths.index', compact('cloths'));
         } catch (\Throwable $th) {
             throw $th;
@@ -35,8 +38,8 @@ class ClothController extends Controller
     public function create()
     {
         try {
-            $cloth_types = ClothType::where('user_id', auth()->user()->id)->latest()->get();
-            $cloth_brands = ClothBrand::where('user_id', auth()->user()->id)->latest()->get();
+            $cloth_types = ClothType::where('user_id', auth()->user()->businessOwnerId())->latest()->get();
+            $cloth_brands = ClothBrand::where('user_id', auth()->user()->businessOwnerId())->latest()->get();
             return view('cloths.create', compact('cloth_types', 'cloth_brands'));
         } catch (\Throwable $th) {
             throw $th;
@@ -53,19 +56,27 @@ class ClothController extends Controller
     {
         try {
 
-            $request->validate([
-                'cloth_type_id' => 'required',
-                'cloth_brand_id' => 'required',
-                'length' => 'required|array',
-                'price' => 'required|numeric',
-                'sale_price' => 'required|numeric',
-                'colors' => 'required|string',
-                'images' => 'nullable|array', // Ensure this is an array if multiple images are uploaded
-                'image_colors' => 'nullable|array',
-                'video_colors' => 'nullable|array',
-                'videos' => 'nullable|array', // Make the videos array nullable
-                'videos.*' => 'nullable|mimes:mp4,mov,ogg,qt|max:20000', // Allow each video to be nullable
+            $validated = $request->validate([
+                'cloth_type_id' => ['required', 'integer'],
+                'cloth_brand_id' => ['required', 'integer'],
+                'length' => ['required', 'array', 'min:1'],
+                'length.*' => ['required', 'numeric', 'min:0'],
+                'price' => ['required', 'numeric', 'min:0'],
+                'sale_price' => ['required', 'numeric', 'min:0'],
+                'colors' => ['required', 'string'],
+                'images' => ['nullable', 'array'],
+                'images.*' => ['image', 'max:4096'],
+                'image_colors' => ['nullable', 'array'],
+                'image_colors.*' => ['nullable', 'string', 'max:100'],
+                'video_colors' => ['nullable', 'array'],
+                'video_colors.*' => ['nullable', 'string', 'max:100'],
+                'videos' => ['nullable', 'array'],
+                'videos.*' => ['nullable', 'mimes:mp4,mov,ogg,qt', 'max:20000'],
             ]);
+            ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
+            ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
+            $colors = array_values(array_filter(array_map('trim', explode(',', $validated['colors'])), fn ($color) => $color !== ''));
+            abort_unless(count($colors) === count($validated['length']), 422, 'Every color must have one length.');
             // $formData = $request->validate([
             //     'cloth_type_id' => 'required|string',
             //     'cloth_brand_id' => 'required',
@@ -90,56 +101,55 @@ class ClothController extends Controller
             //     'length' => $request->length,
             //     'price' => $request->price,
             //     'sale_price' => $request->sale_price,
-            //     'user_id' => auth()->user()->id,
+            //     'user_id' => auth()->user()->businessOwnerId(),
             // ]);
 
             // Save the cloth
-            $cloth = new Cloth;
-            $cloth->cloth_type_id = $request->cloth_type_id;
-            $cloth->cloth_brand_id = $request->cloth_brand_id;
-            $cloth->price = $request->price;
-            $cloth->sale_price = $request->sale_price;
-            $cloth->user_id = auth()->user()->id;
-            $cloth->save();
-
-            // Save colors and lengths
-            $colors = explode(',', $request->colors);
-            foreach ($colors as $index => $color) {
-                ClothColor::create([
-                    'cloth_id' => $cloth->id,
-                    'color' => $color,
-                    'length' => $request->length[$index],
-                    'user_id' => auth()->user()->id,
+            DB::transaction(function () use ($request, $validated, $colors) {
+                $cloth = Cloth::create([
+                    'cloth_type_id' => $validated['cloth_type_id'],
+                    'cloth_brand_id' => $validated['cloth_brand_id'],
+                    'price' => $validated['price'],
+                    'sale_price' => $validated['sale_price'],
+                    'user_id' => Auth::user()->businessOwnerId(),
                 ]);
-            }
 
-            // Save images and their corresponding colors
-            if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $index => $image) {
-                    $imageName = $image->getClientOriginalName();
-                    $path = $image->move('public/images/setting/', $imageName);
-                    ClothImage::create([
+                foreach ($colors as $index => $color) {
+                    ClothColor::create([
                         'cloth_id' => $cloth->id,
-                        'images' => $path,
-                        'image_color' => $request->image_colors[$index],
-                        'user_id' => auth()->user()->id,
+                        'color' => $color,
+                        'length' => $validated['length'][$index],
+                        'average_unit_cost' => $validated['price'],
+                        'user_id' => Auth::user()->businessOwnerId(),
                     ]);
                 }
-            }
 
-            // Save videos
-            if ($request->hasFile('videos')) {
-                foreach ($request->file('videos') as $index => $video) {
-                    $videoName = time() . '.' . $video->getClientOriginalExtension();
-                    $path = $video->storeAs('ClothVideos', $videoName, 'public');
-                    ClothVideo::create([
-                        'cloth_id' => $cloth->id,
-                        'video' => $path,
-                        'video_color' => $request->video_colors[$index],
-                        'user_id' => auth()->user()->id,
-                    ]);
+                if ($request->hasFile('images')) {
+                    abort_unless(count($request->file('images')) === count($validated['image_colors'] ?? []), 422, 'Every image must have a color.');
+                    foreach ($request->file('images') as $index => $image) {
+                        $path = $image->store('ClothImages', 'public');
+                        ClothImage::create([
+                            'cloth_id' => $cloth->id,
+                            'images' => $path,
+                            'image_color' => $validated['image_colors'][$index],
+                            'user_id' => Auth::user()->businessOwnerId(),
+                        ]);
+                    }
                 }
-            }
+
+                if ($request->hasFile('videos')) {
+                    abort_unless(count($request->file('videos')) === count($validated['video_colors'] ?? []), 422, 'Every video must have a color.');
+                    foreach ($request->file('videos') as $index => $video) {
+                        $path = $video->store('ClothVideos', 'public');
+                        ClothVideo::create([
+                            'cloth_id' => $cloth->id,
+                            'video' => $path,
+                            'video_color' => $validated['video_colors'][$index],
+                            'user_id' => Auth::user()->businessOwnerId(),
+                        ]);
+                    }
+                }
+            });
 
             return redirect()->route('admin.cloth.index')->with('insert', 'کپڑا کامیابی کے ساتھ شامل کیا گیا۔');
         } catch (\Throwable $th) {
@@ -167,8 +177,9 @@ class ClothController extends Controller
     public function edit(Cloth $cloth)
     {
         try {
-            $cloth_types = ClothType::latest()->get();
-            $cloth_brands = ClothBrand::latest()->get();
+            abort_unless((int) $cloth->user_id === (int) Auth::user()->businessOwnerId(), 404);
+            $cloth_types = ClothType::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
+            $cloth_brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
             // Fetch related colors, images, and videos
             $cloth->load('colors', 'images', 'videos');
             return view('cloths.edit', compact('cloth', 'cloth_types', 'cloth_brands'));
@@ -179,10 +190,10 @@ class ClothController extends Controller
 
     public function editCloth($id, $color)
     {
-        $cloth_types = ClothType::latest()->get();
-        $cloth_brands = ClothBrand::latest()->get();
+        $cloth_types = ClothType::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
+        $cloth_brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
         // Fetch the cloth details based on $id and $color
-        $cloth = Cloth::findOrFail($id);
+        $cloth = Cloth::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
 
         // Assuming you want to find the specific color details
         $specificColor = $cloth->colors->firstWhere('color', $color);
@@ -210,62 +221,70 @@ class ClothController extends Controller
     public function update(Request $request, Cloth $cloth)
     {
         try {
-            $request->validate([
-                'cloth_type_id' => 'required|exists:cloth_types,id',
-                'cloth_brand_id' => 'required|exists:cloth_brands,id',
-                'length' => 'required|string',
-                'price' => 'required|numeric',
-                'sale_price' => 'required|numeric',
-                'colors' => 'required|string',
-                'images.*' => 'nullable|image',
-                'image_colors.*' => 'nullable|string',
-                'video_colors' => 'nullable|array',
-                'videos.*' => 'nullable|mimetypes:video/avi,video/mpeg,video/quicktime,video/mp4',
+            abort_unless((int) $cloth->user_id === (int) Auth::user()->businessOwnerId(), 404);
+            $validated = $request->validate([
+                'cloth_type_id' => ['required', 'integer'],
+                'cloth_brand_id' => ['required', 'integer'],
+                'length' => ['required', 'numeric', 'min:0'],
+                'price' => ['required', 'numeric', 'min:0'],
+                'sale_price' => ['required', 'numeric', 'min:0'],
+                'colors' => ['required', 'string', 'max:100'],
+                'images' => ['nullable', 'array'],
+                'images.*' => ['image', 'max:4096'],
+                'image_colors' => ['nullable', 'array'],
+                'image_colors.*' => ['nullable', 'string', 'max:100'],
+                'video_colors' => ['nullable', 'array'],
+                'video_colors.*' => ['nullable', 'string', 'max:100'],
+                'videos' => ['nullable', 'array'],
+                'videos.*' => ['nullable', 'mimetypes:video/avi,video/mpeg,video/quicktime,video/mp4', 'max:20000'],
             ]);
+            ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
+            ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
 
-            // Update cloth details
-            $cloth->update($request->only(['cloth_type_id', 'cloth_brand_id', 'price', 'sale_price']));
+            DB::transaction(function () use ($request, $validated, $cloth) {
+                $inventory = app(InventoryService::class);
+                $cloth->update([
+                    'cloth_type_id' => $validated['cloth_type_id'],
+                    'cloth_brand_id' => $validated['cloth_brand_id'],
+                    'price' => $validated['price'],
+                    'sale_price' => $validated['sale_price'],
+                ]);
 
-
-            // Save colors and lengths
-            $colors = $request->colors;
-            $clothColor = ClothColor::where('cloth_id', $cloth->id)->where('color', $colors)->first();
-
-            if ($clothColor) {
-                // Update existing color length
-                $clothColor->update(['length' => $request->length]);
-            }
-
-            // Update images
-            if ($request->hasFile('images')) {
-                $cloth->images()->where('image_color', $colors)->delete();
-                foreach ($request->file('images') as $key => $image) {
-                    $imageName = $image->getClientOriginalName();
-                    $path = $image->move('public/images/setting/', $imageName);
-                    ClothImage::create([
-                        'cloth_id' => $cloth->id,
-                        'images' => $path,
-                        'image_color' => $request->image_colors[$key],
-                        'user_id' => auth()->user()->id,
-                    ]);
+                $colors = $validated['colors'];
+                $clothColor = $cloth->colors()->where('color', $colors)->lockForUpdate()->firstOrFail();
+                $difference = round((float) $validated['length'] - (float) $clothColor->length, 2);
+                if ($difference > 0) {
+                    $inventory->receive($clothColor, $difference, (float) $validated['price'], 'manual_adjustment_in', $cloth, 'Stock changed from cloth editor');
+                } elseif ($difference < 0) {
+                    $inventory->issue($clothColor, abs($difference), 'manual_adjustment_out', $cloth, 'Stock changed from cloth editor');
                 }
-            }
 
-            // Update videos
-            if ($request->hasFile('videos')) {
-                $cloth->videos()->where('video_color', $colors)->delete();
-                foreach ($request->file('videos') as $index => $video) {
-                    $videoName = $video->getClientOriginalExtension();
-                    $path = $video->move('public/images/setting/', $videoName);
-                    // $path = $video->storeAs('ClothVideos', $videoName, 'public');
-                    ClothVideo::create([
-                        'cloth_id' => $cloth->id,
-                        'video' => $path,
-                        'video_color' => $request->video_colors[$index],
-                        'user_id' => auth()->user()->id,
-                    ]);
+                if ($request->hasFile('images')) {
+                    abort_unless(count($request->file('images')) === count($validated['image_colors'] ?? []), 422, 'Every image must have a color.');
+                    $cloth->images()->where('image_color', $colors)->delete();
+                    foreach ($request->file('images') as $key => $image) {
+                        ClothImage::create([
+                            'cloth_id' => $cloth->id,
+                            'images' => $image->store('ClothImages', 'public'),
+                            'image_color' => $validated['image_colors'][$key],
+                            'user_id' => Auth::user()->businessOwnerId(),
+                        ]);
+                    }
                 }
-            }
+
+                if ($request->hasFile('videos')) {
+                    abort_unless(count($request->file('videos')) === count($validated['video_colors'] ?? []), 422, 'Every video must have a color.');
+                    $cloth->videos()->where('video_color', $colors)->delete();
+                    foreach ($request->file('videos') as $index => $video) {
+                        ClothVideo::create([
+                            'cloth_id' => $cloth->id,
+                            'video' => $video->store('ClothVideos', 'public'),
+                            'video_color' => $validated['video_colors'][$index],
+                            'user_id' => Auth::user()->businessOwnerId(),
+                        ]);
+                    }
+                }
+            });
 
 
 
@@ -290,6 +309,7 @@ class ClothController extends Controller
     public function destroy(Cloth $cloth)
     {
         try {
+            abort_unless((int) $cloth->user_id === (int) Auth::user()->businessOwnerId(), 404);
             $cloth->delete();
             return back()->with('insert', 'کپڑا کامیابی کے ساتھ حذف کر دیا گیا ہے۔');
         } catch (\Throwable $th) {
@@ -299,22 +319,23 @@ class ClothController extends Controller
 
     public function deleteCloth(Request $request)
     {
-        $clothId = $request->input('id');
-        $clothColor = $request->input('color');
+        $validated = $request->validate([
+            'id' => ['required', 'integer'],
+            'color' => ['required', 'string', 'max:100'],
+        ]);
+        $clothId = $validated['id'];
+        $clothColor = $validated['color'];
         try {
-            // Delete related models
-            ClothImage::where('cloth_id', $clothId)->where('image_color', $clothColor)->delete();
-            ClothColor::where('cloth_id', $clothId)->where('color', $clothColor)->delete();
-            ClothVideo::where('cloth_id', $clothId)->where('video_color', $clothColor)->delete();
+            $cloth = Cloth::where('user_id', Auth::user()->businessOwnerId())->findOrFail($clothId);
+            DB::transaction(function () use ($cloth, $clothColor) {
+                $cloth->images()->where('image_color', $clothColor)->delete();
+                $cloth->colors()->where('color', $clothColor)->delete();
+                $cloth->videos()->where('video_color', $clothColor)->delete();
 
-            // Check if there are any remaining records for the given cloth_id and cloth_color
-            $remainingClothColor = ClothColor::where('cloth_id', $clothId)
-                ->where('color', $clothColor)
-                ->exists();
-
-            if (!$remainingClothColor) {
-                Cloth::where('id', $clothId)->delete();
-            }
+                if (!$cloth->colors()->exists()) {
+                    $cloth->delete();
+                }
+            });
 
             // Cloth::where('id', $clothId)->delete();
 

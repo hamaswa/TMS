@@ -9,5 +9,5 @@ class Design extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['design_name','design_price'];
+    protected $fillable = ['user_id', 'design_name','design_price'];
 }

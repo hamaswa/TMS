@@ -79,7 +79,10 @@
                 'Are you sure you want to delete your account? You will lose all your data.')) {
                 $.ajax({
                     url: "{{ route('user.customers.delete', ['slug' => $slug, 'id' => $user->id]) }}",
-                    type: 'GET',
+                    type: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                    },
                     success: function(response) {
                         alert(response);
                         window.location.href = "{{route('login')}}";

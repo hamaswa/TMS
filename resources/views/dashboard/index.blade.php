@@ -1,140 +1,30 @@
-@include('inc/header')
-<div class="container mt-5">
-    <!-- Notification Button -->
-    <div class="row mb-3">
-        <div class="col-md-12">
-            <button id="enableNotification" onclick="askPermission()" class="btn btn-primary">اطلاعات حاصل کریں۔</button>
-        </div>
-    </div>
+@extends('main')
+@section('content')
+<style>
+    .workspace-hero{border-radius:20px;background:linear-gradient(135deg,#102a43,#1769a8);color:#fff!important;padding:2rem;box-shadow:0 18px 45px rgba(16,42,67,.16)}.workspace-hero h2{color:#fff!important}.workspace-hero p{color:rgba(255,255,255,.74)!important}
+    .module-panel{border:0;border-radius:18px;box-shadow:0 10px 30px rgba(31,45,61,.08);overflow:hidden}.module-panel .card-header{border:0;padding:1.25rem 1.5rem}.module-icon{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:1.1rem}.metric-card{height:100%;padding:1rem;border:1px solid #e8edf3;border-radius:14px;background:#fff}.metric-card strong{display:block;font-size:1.45rem;color:#19324d}.quick-action{display:flex;align-items:center;gap:.65rem;padding:.8rem 1rem;border:1px solid #e4eaf1;border-radius:11px;color:#29445f;background:#fff;font-weight:600}.quick-action:hover{text-decoration:none;border-color:#72a8e8;background:#f5f9ff}
+</style>
+<section class="main-content"><div class="container-fluid px-3 px-md-4 py-4">
+    <div class="workspace-hero mb-4 d-flex flex-wrap align-items-center justify-content-between"><div><span class="badge badge-light text-primary mb-2">{{ count(Auth::user()->enabledModules()) === 2 ? 'مشترکہ کاروباری نظام' : 'مخصوص کاروباری نظام' }}</span><h2 class="mb-2">خوش آمدید، {{ Auth::user()->name }}</h2><p class="mb-0 text-white-50">اس ڈیش بورڈ میں صرف آپ کے کاروبار کے لیے فعال سہولیات دکھائی گئی ہیں۔</p></div><a href="{{ route('admin.financial-reports.index') }}" class="btn btn-light mt-3 mt-md-0"><i class="fas fa-chart-line ml-1"></i> مالیاتی جائزہ</a></div>
+
     <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-dark">
-                    <h5 class="text-white">موجودہ ہفتہ</h5>
-                </div>
-                <div class="card-body">
-                    موجودہ ہفتہ سوٹ<h2 class="d-inline"><span
-                            class="badge badge-pill badge-success">{{ $current_week }}</span></h2>
-                </div>
+        @if($tailoring)
+        <div class="col-xl-{{ $clothing ? '6' : '12' }} mb-4"><div class="card module-panel h-100">
+            <div class="card-header bg-white d-flex align-items-center"><span class="module-icon bg-primary text-white ml-3"><i class="fas fa-cut"></i></span><div><h4 class="mb-0">ٹیلرنگ سسٹم</h4><small class="text-muted">آرڈرز، ورکشاپ کی پیش رفت، پیمائش اور حوالگی</small></div></div>
+            <div class="card-body"><div class="row mb-3">@foreach([['جاری کام',$tailoring['active']],['آج واجب',$tailoring['due_today']],['تیار',$tailoring['ready']],['اس ماہ کے سوٹ',$tailoring['month_suits']]] as [$label,$value])<div class="col-6 mb-3"><div class="metric-card"><small class="text-muted">{{ $label }}</small><strong>{{ number_format($value) }}</strong></div></div>@endforeach</div>
+                <div class="row"><div class="col-md-4 mb-2"><a class="quick-action" href="{{ route('admin.tailor-jobs.index') }}"><i class="fas fa-tasks text-primary"></i> کام کی فہرست</a></div><div class="col-md-4 mb-2"><a class="quick-action" href="{{ route('admin.Customers.index') }}"><i class="fas fa-user-friends text-primary"></i> گاہک</a></div><div class="col-md-4 mb-2"><a class="quick-action" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-user-cog text-primary"></i> درزی</a></div></div>
             </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-dark">
-                    <h5 class="text-white">پچھلہ ہفتہ </h5>
-                </div>
-                <div class="card-body">
-                    پچھلہ ہفتہ سوٹ <h2 class="d-inline"><span
-                            class="badge badge-pill badge-success">{{ $pre_week }}</span></h2>
-                </div>
+        </div></div>
+        @endif
+
+        @if($clothing)
+        <div class="col-xl-{{ $tailoring ? '6' : '12' }} mb-4"><div class="card module-panel h-100">
+            <div class="card-header bg-white d-flex align-items-center"><span class="module-icon bg-info text-white ml-3"><i class="fas fa-boxes"></i></span><div><h4 class="mb-0">کپڑے کی خرید و فروخت</h4><small class="text-muted">اسٹاک، فروخت، سپلائرز اور خریداری</small></div></div>
+            <div class="card-body"><div class="row mb-3">@foreach([['اسٹاک میں میٹر',number_format($clothing['meters'],2)],['اسٹاک کی مالیت','روپے '.number_format($clothing['inventory_value'],0)],['کم اسٹاک اشیاء',$clothing['low_stock']],['زیرِ تیاری خریداریاں',$clothing['draft_purchases']],['اس ماہ کی فروخت','روپے '.number_format($clothing['month_sales'],0)]] as [$label,$value])<div class="col-6 mb-3"><div class="metric-card"><small class="text-muted">{{ $label }}</small><strong>{{ $value }}</strong></div></div>@endforeach</div>
+                <div class="row"><div class="col-md-4 mb-2"><a class="quick-action" href="{{ route('admin.stock.index') }}"><i class="fas fa-layer-group text-info"></i> اسٹاک</a></div><div class="col-md-4 mb-2"><a class="quick-action" href="{{ route('admin.sellCloth') }}"><i class="fas fa-cash-register text-info"></i> نئی فروخت</a></div><div class="col-md-4 mb-2"><a class="quick-action" href="{{ route('admin.purchases.index') }}"><i class="fas fa-truck-loading text-info"></i> خریداری</a></div></div>
             </div>
-        </div>
+        </div></div>
+        @endif
     </div>
-    <br>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="text-white">موجودہ مہینہ</h5>
-                </div>
-                <div class="card-body">
-                    موجودہ مہینہ سوٹ <h2 class="d-inline"><span
-                            class="badge badge-pill badge-success">{{ $current_month }}</span></h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="text-white">پچھلہ مہینہ</h5>
-                </div>
-                <div class="card-body">
-                    پچھلہ مہینہ سوٹ <h2 class="d-inline"><span
-                            class="badge badge-pill badge-success">{{ $pre_month }}</span></h2>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-@include('inc/footer')
-<script>
-    navigator.serviceWorker.register("{{ URL::asset('public/service-woker.js') }}");
-
-    function askPermission() {
-        Notification.requestPermission().then((permission) => {
-            if (permission === 'granted') {
-                navigator.serviceWorker.ready.then((sw) => {
-                    sw.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: "BDqkizQ-A5R8gHmQ9DlCmECneXJkXrwDRsb91AiwA9OVX8oXHAcVxxiBbL7eMlwHzxgmswN6AeuKleP3hP5zleA",
-                    }).then((subscription) => {
-                        console.log(subscription);
-                        saveSub(JSON.stringify(subscription));
-                    })
-                })
-            } else if (permission === 'denied') {
-                alert('Notifications are blocked. Please enable them in your browser settings.');
-            } else {
-                console.log('Notifications permission was dismissed.');
-            }
-        })
-    }
-
-    function saveSub(sub){
-        $.ajax({
-            type: "post",
-            url: "{{route('admin.save-push')}}",
-            data: {
-                '_token' : "{{ csrf_token() }}",
-                'sub' : sub,
-            },
-            success: function(data){
-                console.log(data);
-            }
-        })
-    }
-</script>
-
-{{-- <script>
-    // Define the eventSourceUrl dynamically based on the user role
-    @if (Auth::check() && Auth::user()->hasRole('shop_owner'))
-        const eventSourceUrl = "{{ route('admin.notifications-stream') }}";
-    @endif
-
-    let eventSource;
-
-    // Ensure EventSource is supported in the browser
-    if (eventSourceUrl && typeof(EventSource) !== "undefined") {
-        eventSource = new EventSource(eventSourceUrl);
-
-        // Handler when a message is received from the SSE stream
-        eventSource.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            if (data.message === 'Waiting for new notifications...') {
-                console.log(data.message);  // Log to console when waiting for new notifications
-            } else {
-                displayNotification(data.message);  // Display new notifications
-            }
-        };
-
-        // Error handling and reconnection
-        eventSource.onerror = function(event) {
-            console.error("SSE error:", event);
-            eventSource.close();  // Close the current connection
-
-            // Attempt to reconnect after 3 seconds
-            setTimeout(() => {
-                console.log("Reconnecting to SSE...");
-                eventSource = new EventSource(eventSourceUrl);
-            }, 3000);
-        };
-    } else {
-        console.log("Your browser does not support Server-Sent Events.");
-    }
-
-    // Function to display notifications (customize as needed)
-    function displayNotification(message) {
-        // Show a toast notification, modal, or alert
-        alert("New Notification: " + message);
-    }
-</script> --}}
+</div></section>
+@endsection
