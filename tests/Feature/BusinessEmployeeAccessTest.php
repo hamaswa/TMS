@@ -31,8 +31,20 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($employee)->get(route('admin.purchases.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.financial-reports.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.team.index'))->assertForbidden();
+        $this->actingAs($employee)->get(route('admin.team.employees.index'))->assertForbidden();
+        $this->actingAs($employee)->get(route('admin.team.roles.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.setting.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.expense.index'))->assertForbidden();
+    }
+
+    public function test_client_team_management_is_split_into_focused_pages(): void
+    {
+        [$owner] = $this->business(true, true);
+
+        $this->actingAs($owner)->get(route('admin.team.index'))->assertOk()->assertViewIs('team.index');
+        $this->actingAs($owner)->get(route('admin.team.employees.index'))->assertOk()->assertViewIs('team.employees');
+        $this->actingAs($owner)->get(route('admin.team.roles.index'))->assertOk()->assertViewIs('team.roles');
+        $this->actingAs($owner)->get(route('admin.team.security'))->assertOk()->assertViewIs('team.security');
     }
 
     public function test_customer_only_tailoring_employee_cannot_open_orders_workshop_or_tailors(): void

@@ -135,6 +135,9 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
 
     Route::middleware('business.permission:team.manage')->group(function () {
         Route::get('/team', [BusinessTeamController::class, 'index'])->name('team.index');
+        Route::get('/team/employees', [BusinessTeamController::class, 'employees'])->name('team.employees.index');
+        Route::get('/team/roles', [BusinessTeamController::class, 'roles'])->name('team.roles.index');
+        Route::get('/team/security', [BusinessTeamController::class, 'security'])->name('team.security');
         Route::post('/team/roles', [BusinessTeamController::class, 'storeRole'])->name('team.roles.store');
         Route::get('/team/roles/{role}/edit', [BusinessTeamController::class, 'editRole'])->name('team.roles.edit');
         Route::put('/team/roles/{role}', [BusinessTeamController::class, 'updateRole'])->name('team.roles.update');

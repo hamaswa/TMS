@@ -157,7 +157,7 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertOk()
             ->assertSeeText('Rs 600.00')
             ->assertSeeText('Shared counter payment');
-        $this->actingAs($owner)->get(route('admin.team.index'))
+        $this->actingAs($owner)->get(route('admin.team.roles.index'))
             ->assertOk()
             ->assertSeeText('گاہک کا مشترکہ بقایا اور ادائیگیاں دیکھیں');
     }

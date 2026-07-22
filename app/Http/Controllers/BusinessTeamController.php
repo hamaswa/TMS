@@ -16,15 +16,35 @@ class BusinessTeamController extends Controller
 {
     public function index(Request $request)
     {
-        $business = $request->user()->business()->with([
-            'roles' => fn ($query) => $query->withCount('users')->orderBy('name'),
-            'members' => fn ($query) => $query->where('is_business_owner', false)->with(['businessRole', 'business'])->orderBy('name'),
-        ])->firstOrFail();
+        return view('team.index', ['business' => $this->businessFor($request)]);
+    }
 
-        return view('team.index', [
+    public function employees(Request $request)
+    {
+        return view('team.employees', ['business' => $this->businessFor($request)]);
+    }
+
+    public function roles(Request $request)
+    {
+        $business = $this->businessFor($request);
+
+        return view('team.roles', [
             'business' => $business,
             'permissions' => $this->availablePermissions($business),
         ]);
+    }
+
+    public function security(Request $request)
+    {
+        return view('team.security', ['business' => $this->businessFor($request)]);
+    }
+
+    private function businessFor(Request $request)
+    {
+        return $request->user()->business()->with([
+            'roles' => fn ($query) => $query->withCount('users')->orderBy('name'),
+            'members' => fn ($query) => $query->where('is_business_owner', false)->with(['businessRole', 'business'])->orderBy('name'),
+        ])->firstOrFail();
     }
 
     public function storeRole(Request $request)
@@ -51,7 +71,7 @@ class BusinessTeamController extends Controller
         $role = $this->ownedRole($request, $role);
         $role->update($this->validateRole($request, $role->business_id, $role->id));
 
-        return redirect()->route('admin.team.index')->with('success', 'رول کی اجازتیں تبدیل کر دی گئی ہیں۔');
+        return redirect()->route('admin.team.roles.index')->with('success', 'رول کی اجازتیں تبدیل کر دی گئی ہیں۔');
     }
 
     public function destroyRole(Request $request, int $role)
@@ -121,7 +141,7 @@ class BusinessTeamController extends Controller
         ]);
         $employee->save();
 
-        return redirect()->route('admin.team.index')->with('success', 'ملازم کی معلومات تبدیل کر دی گئی ہیں۔');
+        return redirect()->route('admin.team.employees.index')->with('success', 'ملازم کی معلومات تبدیل کر دی گئی ہیں۔');
     }
 
     public function resetPassword(Request $request, int $employee)
