@@ -50,6 +50,9 @@ class TailorRateController extends Controller
                 'options_id' => ['required', 'integer'],
                 'price' => ['required', 'numeric', 'min:0']
             ]);
+            Options::where('user_id', Auth::user()->businessOwnerId())
+                ->where('option_id', 1)
+                ->findOrFail($formData['options_id']);
             
             Tailorsalary::create($formData);
 
