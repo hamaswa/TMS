@@ -21,6 +21,7 @@ class BusinessRole extends Model
     public const CLOTHING_PURCHASES = 'clothing.purchases';
     public const CLOTHING_SUPPLIERS = 'clothing.suppliers';
     public const FINANCE_VIEW = 'finance.view';
+    public const CUSTOMER_BALANCES = 'customers.balances';
     public const EXPENSES_MANAGE = 'expenses.manage';
     public const SETTINGS_MANAGE = 'settings.manage';
     public const TEAM_MANAGE = 'team.manage';
@@ -39,6 +40,7 @@ class BusinessRole extends Model
         self::CLOTHING_PURCHASES => 'خریداری، وصولی اور واپسی',
         self::CLOTHING_SUPPLIERS => 'سپلائرز اور ادائیگیاں',
         self::FINANCE_VIEW => 'مالی رپورٹس دیکھیں',
+        self::CUSTOMER_BALANCES => 'گاہک کا مشترکہ بقایا اور ادائیگیاں دیکھیں',
         self::EXPENSES_MANAGE => 'کاروباری اخراجات کا انتظام کریں',
         self::SETTINGS_MANAGE => 'دکان کی ترتیبات تبدیل کریں',
         self::TEAM_MANAGE => 'ملازمین اور رولز کا انتظام کریں',

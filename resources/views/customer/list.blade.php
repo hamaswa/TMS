@@ -63,11 +63,16 @@
                                                 class="getCustomer customer-link" data-id="{{ $customer->id }}"
                                                 data-name="{{ $customer->name }}">{{ $customer->name }}</td>
                                             <td>{{ $customer->phone_number1 }}</td>
-                                            <td>Rs: {{ number_format($customer->transactions()->sum('remainingBalance')) }}
+                                            <td>
+                                                @if($canViewBalances)
+                                                    Rs: {{ number_format((float) $customer->transactions_sum_remaining_balance) }}
+                                                @else
+                                                    <span class="text-muted">اجازت درکار ہے</span>
+                                                @endif
                                             </td>
-                                            <td><button type="button" class="btn btn-blue customer_payment_paid"
+                                            <td>@if($canViewBalances)<button type="button" class="btn btn-blue customer_payment_paid"
                                                     data-customerid="{{ $customer->id }}" data-toggle="modal"
-                                                    data-target="#myModalpayment"><i class="fa fa-wallet"></i></button></td>
+                                                    data-target="#myModalpayment"><i class="fa fa-wallet"></i></button>@else — @endif</td>
                                             <td>
                                                 <a href="{{ url('admin/Customers/' . $customer->id . '/edit') }}"
                                                     class="btn btn-blue">تبدیل</a>

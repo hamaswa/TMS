@@ -36,10 +36,15 @@ class CustomerController extends Controller
 
     public function index()
     {
+        $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
-                      ->where('parent_id', null)
-                      ->get();
-        return view('customer.list', compact('customers'));
+            ->where('parent_id', null)
+            ->when($canViewBalances, fn ($query) => $query->withSum([
+                'transactions' => fn ($transactions) => $transactions->where('userId', Auth::user()->businessOwnerId()),
+            ], 'remainingBalance'))
+            ->get();
+
+        return view('customer.list', compact('customers', 'canViewBalances'));
     }
 
     /**
@@ -79,17 +84,30 @@ class CustomerController extends Controller
     public function statement($id)
     {
         $customer = $this->ownedCustomer($id);
-        $baseTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())
-            ->where('customerId', $customer->id);
-        $balances = (clone $baseTransactions)
-            ->selectRaw("COALESCE(Order_type, 'Other') as type, SUM(remainingBalance) as balance")
-            ->groupBy('Order_type')
-            ->pluck('balance', 'type');
-        $transactions = (clone $baseTransactions)->latest()->paginate(30);
-        $orders = $customer->orders()->where('userId', Auth::user()->businessOwnerId())->latest()->limit(20)->get();
-        $sales = $customer->sales()->where('user_id', Auth::user()->businessOwnerId())->latest()->limit(20)->get();
+        $user = Auth::user();
+        $canViewBalances = $user->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
+        $canViewTailoring = $user->hasBusinessPermission(\App\Models\BusinessRole::TAILORING_ORDERS);
+        $canViewShop = $user->hasBusinessPermission(\App\Models\BusinessRole::CLOTHING_SALES);
+        $baseTransactions = Transaction::where('userId', $user->businessOwnerId())->where('customerId', $customer->id);
+        $totalBalance = $canViewBalances ? (float) (clone $baseTransactions)->sum('remainingBalance') : null;
+        $visibleTypes = array_values(array_filter([
+            $canViewTailoring ? 'Tailor' : null,
+            $canViewShop ? 'Sale' : null,
+        ]));
+        $transactions = $canViewBalances && $visibleTypes
+            ? (clone $baseTransactions)->whereIn('Order_type', $visibleTypes)->latest()->paginate(30)
+            : null;
+        $orders = $canViewTailoring
+            ? $customer->orders()->where('userId', $user->businessOwnerId())->latest()->limit(20)->get()
+            : collect();
+        $sales = $canViewShop
+            ? $customer->sales()->where('user_id', $user->businessOwnerId())->latest()->limit(20)->get()
+            : collect();
 
-        return view('customer.statement', compact('customer', 'balances', 'transactions', 'orders', 'sales'));
+        return view('customer.statement', compact(
+            'customer', 'totalBalance', 'transactions', 'orders', 'sales',
+            'canViewBalances', 'canViewTailoring', 'canViewShop'
+        ));
     }
 
     /**

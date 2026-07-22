@@ -63,8 +63,12 @@
                         <div class="form-group form-row">
                             <label class="col-sm-3 col-form-label">بقیہ</label>
                             <div class="col-sm-9">
-                                <input type="number" class="form-control" name="totalBalance" readonly
-                                    value="{{$data['remainingBalance']}}">
+                                @if($data['remainingBalance'] !== null)
+                                    <input type="number" class="form-control" name="totalBalance" readonly
+                                        value="{{$data['remainingBalance']}}">
+                                @else
+                                    <span class="form-control text-muted">بقایا دیکھنے کی اجازت نہیں</span>
+                                @endif
                             </div>
                         </div>
                         <div class="form-group form-row">

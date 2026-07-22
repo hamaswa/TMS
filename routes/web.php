@@ -178,7 +178,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
 
     Route::middleware('business.permission:tailoring.customers')->group(function () {
     Route::resource('/Customers', CustomerController::class);
-    Route::post('DirectPayment', [CustomerController::class, 'DirectPayment'])->name('DirectPayment');
+    Route::post('DirectPayment', [CustomerController::class, 'DirectPayment'])->middleware('business.permission:customers.balances')->name('DirectPayment');
     Route::post('RackNo', [CustomerController::class, 'RackNo'])->name('RackNo');
     Route::get('/export-csv-customers',[CsvController::class,'exportCsv'])->name('customercsv');
     Route::post('/import-csv-customers',[CsvController::class,'importCsv'])->name('customerscsv');
@@ -324,7 +324,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
     Route::get('/customers-record', [ClothStockController::class, 'showList'])->name('record');
     Route::get('/customers-detail/{id}', [ClothStockController::class, 'customersDetail'])->name('customers.details');
     Route::delete('/dlt/{id}', [ClothStockController::class, 'dlt'])->name('dlt');
-    Route::post('SaleDirectPayment', [CustomerController::class, 'SaleDirectPayment'])->name('sale-direct-payment');
+    Route::post('SaleDirectPayment', [CustomerController::class, 'SaleDirectPayment'])->middleware('business.permission:customers.balances')->name('sale-direct-payment');
 
 
     Route::get('/total_sale', [ClothStockController::class, 'totalSales'])->name('sales.total');

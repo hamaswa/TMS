@@ -41,7 +41,9 @@ class OrderController extends Controller
         $tailorRate = Tailorsalary::with('options')->where('id', $data->rateId)->first();
         $currentTailorRate = $tailorRate ? $tailorRate->price : null;
         $optionName = $tailorRate && $tailorRate->options ? $tailorRate->options->Name : '';
-        $remainingBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->sum('remainingBalance');
+        $remainingBalance = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
+            ? Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->sum('remainingBalance')
+            : null;
         $recivedPayment = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->where("orderId", $data->id)->value('recivedPayment') ?? 0;
         $data['design'] = Options::where('option_id', 1)->get();
         // $currentTailorRate = 1220;
@@ -113,7 +115,9 @@ class OrderController extends Controller
         $customer = $customers->where('id', $id)->firstOrFail();
         $data = [];
         $data['customer'] = $customer;
-        $data['remainingBalance'] = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $id)->where('Order_type', 'Tailor')->sum('remainingBalance');
+        $data['remainingBalance'] = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
+            ? Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $id)->sum('remainingBalance')
+            : null;
         $data['tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
         $data['childData'] = Customers::where('parent_id', $id)->get();
         $data['design'] = Options::where('option_id', 1)->where('user_id', auth()->user()->businessOwnerId())->get();

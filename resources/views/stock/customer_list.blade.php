@@ -37,11 +37,11 @@
                                                             class="GetCustomer customer-link sale"
                                                             data-id="{{ $customer->id }}" data-name="{{ $customer->name }}">
                                                             {{ $customer->name }}</td>
-                                                        <td style="font-size: 18px;"><b>Rs: {{ $customerTransactions[$customer->id] }}</b></td>
-                                                        <td><button type="button" class="btn btn-blue customer_payment"
+                                                        <td style="font-size: 18px;">@if($canViewBalances)<b>Rs: {{ $customerTransactions[$customer->id] }}</b>@else<span class="text-muted">اجازت درکار ہے</span>@endif</td>
+                                                        <td>@if($canViewBalances)<button type="button" class="btn btn-blue customer_payment"
                                                                 data-customerid="{{ $customer->id }}" data-toggle="modal"
                                                                 data-target="#myModalpayment"><i
-                                                                    class="fa fa-wallet"></i></button></td>
+                                                                    class="fa fa-wallet"></i></button>@else — @endif</td>
                                                         <td><a href="{{ route('admin.customers.statement', $customer) }}"
                                                                 class="btn btn-sm btn-outline-primary">مشترکہ کھاتہ</a></td>
                                                         <td>

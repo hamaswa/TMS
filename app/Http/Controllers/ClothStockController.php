@@ -570,14 +570,13 @@ class ClothStockController extends Controller
 
     public function showList()
     {
-        $customerIdsWithTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())->distinct('customerId')->pluck('customerId')->toArray();
-
+        $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
         $customers = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->get();
 
         $customerTransactions = [];
 
-        foreach ($customers as $customer) {
+        foreach ($canViewBalances ? $customers : [] as $customer) {
             $transactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->get();
             $totalTransactions = $transactions->sum(function ($transaction) {
                 return $transaction->remainingBalance;
@@ -585,7 +584,7 @@ class ClothStockController extends Controller
             $customerTransactions[$customer->id] = $totalTransactions;
         }
 
-        return view('stock.customer_list', ['customers' => $customers, 'customerTransactions' => $customerTransactions]);
+        return view('stock.customer_list', compact('customers', 'customerTransactions', 'canViewBalances'));
     }
 
 

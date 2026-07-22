@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Customers;
+use App\Models\Business;
+use App\Models\BusinessRole;
 use App\Models\Sale;
 use App\Models\Transaction;
 use App\Models\User;
@@ -52,8 +54,9 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertOk()
             ->assertSeeText('Unified Customer')
             ->assertSeeText('Rs 700.00')
-            ->assertSeeText('ٹیلرنگ بقایا')
-            ->assertSeeText('دکان بقایا')
+            ->assertSeeText('کل مشترکہ بقایا')
+            ->assertDontSeeText('ٹیلرنگ بقایا')
+            ->assertDontSeeText('دکان بقایا')
             ->assertSeeText('فروخت #'.$sale->id);
     }
 
@@ -93,6 +96,54 @@ class UnifiedCustomerAccountTest extends TestCase
         $this->assertDatabaseCount('sales', 0);
     }
 
+    public function test_employee_balance_visibility_is_explicitly_controlled_by_client_role(): void
+    {
+        [$owner, $business] = $this->business();
+        $customer = Customers::create([
+            'name' => 'Permission Customer',
+            'phone_number1' => '03007770000',
+            'user_id' => $owner->id,
+        ]);
+        Transaction::create([
+            'customerId' => $customer->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'remainingBalance' => 700,
+        ]);
+        $hiddenRole = BusinessRole::create([
+            'business_id' => $business->id,
+            'name' => 'Customer records only',
+            'permissions' => [BusinessRole::TAILORING_ACCESS, BusinessRole::TAILORING_CUSTOMERS],
+        ]);
+        $visibleRole = BusinessRole::create([
+            'business_id' => $business->id,
+            'name' => 'Customer balance viewer',
+            'permissions' => [
+                BusinessRole::TAILORING_ACCESS,
+                BusinessRole::TAILORING_CUSTOMERS,
+                BusinessRole::CUSTOMER_BALANCES,
+            ],
+        ]);
+        $hiddenEmployee = $this->employee($business, $hiddenRole);
+        $visibleEmployee = $this->employee($business, $visibleRole);
+
+        $this->actingAs($hiddenEmployee)->get(route('admin.customers.statement', $customer))
+            ->assertOk()
+            ->assertSeeText('بقایا اور ادائیگیاں دیکھنے کی اجازت نہیں')
+            ->assertDontSeeText('Rs 700.00');
+        $this->actingAs($hiddenEmployee)->post(route('admin.DirectPayment'), [
+            'customer_id' => $customer->id,
+            'DirectPayment' => 100,
+        ])->assertForbidden();
+
+        $this->actingAs($visibleEmployee)->get(route('admin.customers.statement', $customer))
+            ->assertOk()
+            ->assertSeeText('Rs 700.00');
+        $this->actingAs($owner)->get(route('admin.team.index'))
+            ->assertOk()
+            ->assertSeeText('گاہک کا مشترکہ بقایا اور ادائیگیاں دیکھیں');
+    }
+
     private function owner(): User
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
@@ -100,5 +151,32 @@ class UnifiedCustomerAccountTest extends TestCase
         $owner->assignRole($role);
 
         return $owner;
+    }
+
+    private function business(): array
+    {
+        $owner = $this->owner();
+        $owner->forceFill(['is_business_owner' => true])->save();
+        $business = Business::create([
+            'name' => 'Unified Balance Business',
+            'owner_user_id' => $owner->id,
+            'tailoring_enabled' => true,
+            'clothing_enabled' => true,
+        ]);
+        $owner->forceFill(['business_id' => $business->id])->save();
+
+        return [$owner, $business];
+    }
+
+    private function employee(Business $business, BusinessRole $role): User
+    {
+        return User::factory()->create([
+            'business_id' => $business->id,
+            'business_role_id' => $role->id,
+            'is_business_owner' => false,
+            'employee_active' => true,
+            'tailoring_access' => false,
+            'clothing_access' => false,
+        ]);
     }
 }
