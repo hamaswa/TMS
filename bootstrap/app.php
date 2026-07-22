@@ -59,6 +59,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'module' => \App\Http\Middleware\EnsureModuleAccess::class,
             'business.permission' => \App\Http\Middleware\EnsureBusinessPermission::class,
             'business.activity' => \App\Http\Middleware\RecordBusinessActivity::class,
+            'business.status' => \App\Http\Middleware\EnsureBusinessActive::class,
             'password.changed' => \App\Http\Middleware\EnsureEmployeePasswordChanged::class,
         ]);
     })

@@ -14,12 +14,34 @@ use App\Notifications\AdminNotification;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
+use App\Models\BusinessStatusHistory;
+use Illuminate\Support\Facades\DB;
 
 class AdministratorController extends Controller
 {
-    public function showData()
+    public function showData(Request $request)
     {
-        $users = User::role('shop_owner')->with(['roles', 'ownedBusiness'])->orderBy('name')->get();
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::in(Business::STATUSES)],
+            'module' => ['nullable', Rule::in(['tailoring', 'clothing', 'both'])],
+        ]);
+        $users = User::role('shop_owner')->with(['roles', 'ownedBusiness'])
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(fn ($inner) => $inner->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%"));
+            })
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereHas('ownedBusiness', fn ($business) => $business->where('status', $status)))
+            ->when($filters['module'] ?? null, function ($query, $module) {
+                $query->whereHas('ownedBusiness', function ($business) use ($module) {
+                    if ($module === 'both') {
+                        $business->where('tailoring_enabled', true)->where('clothing_enabled', true);
+                    } else {
+                        $business->where($module.'_enabled', true);
+                    }
+                });
+            })
+            ->orderBy('name')->paginate(20)->withQueryString();
         return view('Administrator.index', compact('users'));
     }
     public function index()
@@ -52,11 +74,21 @@ class AdministratorController extends Controller
                 'owner_user_id' => $user->id,
                 'tailoring_enabled' => $user->tailoring_access,
                 'clothing_enabled' => $user->clothing_access,
+                'status' => Business::STATUS_PENDING,
+                'status_changed_at' => now(),
+                'status_changed_by_user_id' => Auth::id(),
+            ]);
+            $business->statusHistory()->create([
+                'from_status' => null,
+                'to_status' => Business::STATUS_PENDING,
+                'changed_by_user_id' => Auth::id(),
+                'reason' => 'Client account created and awaiting approval.',
+                'created_at' => now(),
             ]);
             $user->forceFill(['business_id' => $business->id, 'is_business_owner' => true])->save();
         }
 
-        return redirect()->route('administrator.index')->with('success', 'Client account created.');
+        return redirect()->route('administrator.clients.show', $user)->with('success', 'Client account created and is awaiting approval.');
     }
 
     public function edit($id)
@@ -113,9 +145,68 @@ class AdministratorController extends Controller
 
     public function delete($id)
     {
-        $this->client($id)->delete();
+        $this->client($id);
 
-        return redirect()->route('administrator.index')->with('success', 'Client account deleted.');
+        return redirect()->route('administrator.index')->with('warning', 'Permanent deletion is disabled to protect client data. Suspend the account instead.');
+    }
+
+    public function clientDetails($id)
+    {
+        $user = $this->client($id)->load(['ownedBusiness.statusHistory.changedBy']);
+        $business = $user->ownedBusiness;
+        abort_unless($business, 404);
+        $ownerId = $user->id;
+        $metrics = [
+            'employees' => User::where('business_id', $business->id)->where('id', '!=', $ownerId)->count(),
+            'customers' => DB::table('customers')->where('user_id', $ownerId)->whereNull('deleted_at')->count(),
+            'tailors' => DB::table('tailors')->where('user_id', $ownerId)->count(),
+            'orders' => DB::table('orders')->where('user_id', $ownerId)->count(),
+            'production_workers' => DB::table('production_workers')->where('user_id', $ownerId)->count(),
+            'sales' => DB::table('sales')->where('user_id', $ownerId)->count(),
+            'purchases' => DB::table('purchases')->where('user_id', $ownerId)->count(),
+        ];
+
+        return view('Administrator.show', compact('user', 'business', 'metrics'));
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $user = $this->client($id);
+        $business = $user->ownedBusiness()->firstOrFail();
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(Business::STATUSES)],
+            'reason' => [Rule::requiredIf(fn () => in_array($request->input('status'), [Business::STATUS_SUSPENDED, Business::STATUS_REJECTED], true)), 'nullable', 'string', 'max:1000'],
+        ]);
+        $target = $validated['status'];
+        $allowed = [
+            Business::STATUS_PENDING => [Business::STATUS_ACTIVE, Business::STATUS_REJECTED],
+            Business::STATUS_ACTIVE => [Business::STATUS_SUSPENDED],
+            Business::STATUS_SUSPENDED => [Business::STATUS_ACTIVE],
+            Business::STATUS_REJECTED => [Business::STATUS_ACTIVE],
+        ];
+        abort_unless(in_array($target, $allowed[$business->status] ?? [], true), 422, 'This status change is not allowed.');
+
+        DB::transaction(function () use ($business, $target, $validated) {
+            $from = $business->status;
+            $business->forceFill([
+                'status' => $target,
+                'approved_at' => $target === Business::STATUS_ACTIVE ? ($business->approved_at ?? now()) : $business->approved_at,
+                'approved_by_user_id' => $target === Business::STATUS_ACTIVE ? ($business->approved_by_user_id ?? Auth::id()) : $business->approved_by_user_id,
+                'status_changed_at' => now(),
+                'status_changed_by_user_id' => Auth::id(),
+                'status_reason' => $validated['reason'] ?? null,
+            ])->save();
+            BusinessStatusHistory::create([
+                'business_id' => $business->id,
+                'from_status' => $from,
+                'to_status' => $target,
+                'changed_by_user_id' => Auth::id(),
+                'reason' => $validated['reason'] ?? null,
+                'created_at' => now(),
+            ]);
+        });
+
+        return redirect()->route('administrator.clients.show', $user)->with('success', 'Client status updated to '.ucfirst($target).'.');
     }
 
     private function client(int|string $id): User

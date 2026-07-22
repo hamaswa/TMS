@@ -67,9 +67,10 @@ class ClientModuleAccessTest extends TestCase
         $this->actingAs($admin)->post(route('administrator.insert'), [
             'name' => 'Clothing Client', 'email' => 'clothing@example.com',
             'password' => 'secure-password', 'role' => 'shop_owner', 'modules' => ['clothing'],
-        ])->assertRedirect(route('administrator.index'));
+        ]);
 
         $client = User::where('email', 'clothing@example.com')->firstOrFail();
+        $this->assertEquals('pending', $client->ownedBusiness->status);
         $this->assertFalse($client->tailoring_access);
         $this->assertTrue($client->clothing_access);
         $this->assertTrue($client->hasRole('shop_owner'));

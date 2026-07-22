@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
+use App\Models\Business;
 
 class LoginController extends Controller
 {
@@ -51,6 +52,21 @@ class LoginController extends Controller
 
     protected function authenticated(Request $request, $user)
     {
+        if ($user->business && ! $user->business->isActive()) {
+            $status = $user->business->status;
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            $message = match ($status) {
+                Business::STATUS_PENDING => 'آپ کا اکاؤنٹ سپر ایڈمن کی منظوری کا منتظر ہے۔',
+                Business::STATUS_REJECTED => 'آپ کے اکاؤنٹ کی درخواست منظور نہیں ہوئی۔ سپر ایڈمن سے رابطہ کریں۔',
+                default => 'آپ کا اکاؤنٹ غیر فعال ہے۔ سپر ایڈمن سے رابطہ کریں۔',
+            };
+
+            return redirect()->route('login')->withErrors(['email' => $message]);
+        }
+
         if ($user->business_id && ! $user->isBusinessOwner() && ! $user->employee_active) {
             auth()->logout();
             $request->session()->invalidate();

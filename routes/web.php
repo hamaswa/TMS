@@ -53,7 +53,7 @@ use App\Http\Controllers\OrderWorkAssignmentController;
 
 Auth::routes();
 
-Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'business.activity'], 'as' => 'employee.password.'], function () {
+Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'business.status', 'business.activity'], 'as' => 'employee.password.'], function () {
     Route::get('/password', [EmployeePasswordController::class, 'edit'])->name('edit');
     Route::put('/password', [EmployeePasswordController::class, 'update'])->middleware('throttle:6,1')->name('update');
 });
@@ -86,6 +86,8 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
     Route::get('/', [AdministratorController::class, 'showData'])->name('index');
     Route::get('/create', [AdministratorController::class, 'index'])->name('create');
     Route::post('/create', [AdministratorController::class, 'insert'])->name('insert');
+    Route::get('/clients/{id}', [AdministratorController::class, 'clientDetails'])->name('clients.show');
+    Route::patch('/clients/{id}/status', [AdministratorController::class, 'updateStatus'])->name('clients.status');
     Route::get('/edit/{id}', [AdministratorController::class, 'edit'])->name('edit');
     Route::post('/update/{id}', [AdministratorController::class, 'update'])->name('update');
     Route::delete('/delete/{id}', [AdministratorController::class, 'delete'])->name('delete');
@@ -110,7 +112,7 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
     // Route::get('/sse-update', [AdministratorController::class, 'SSEupdates']);
 });
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 'role:shop_owner', 'business.activity'], 'as' => 'admin.'], function () {
+Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'business.activity'], 'as' => 'admin.'], function () {
     Route::get('/customers/{id}/statement', [CustomerController::class, 'statement'])
         ->middleware('business.permission:tailoring.customers|clothing.sales')
         ->name('customers.statement');
@@ -173,7 +175,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
     });
 });
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 'role:shop_owner', 'module:tailoring', 'business.activity'], 'as' => 'admin.'], function () {
+Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'module:tailoring', 'business.activity'], 'as' => 'admin.'], function () {
     Route::get('/tailoring-dashboard', [HomeController::class, 'tailoring'])->name('dashboard.tailoring');
     // Route::get('/test', function(){
     //     event(new NotificationEvent("Testing Web Socket"));
@@ -279,7 +281,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
 });
 
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 'role:stock_seller|shop_owner', 'module:clothing', 'business.activity'], 'as' => 'admin.'], function () {
+Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:stock_seller|shop_owner', 'module:clothing', 'business.activity'], 'as' => 'admin.'], function () {
     Route::get('/shop-dashboard', [HomeController::class, 'clothing'])->name('dashboard.clothing');
     Route::middleware('business.permission:clothing.suppliers')->group(function () {
     Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');

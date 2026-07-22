@@ -9,11 +9,23 @@ class Business extends Model
 {
     use HasFactory;
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_SUSPENDED = 'suspended';
+    public const STATUS_REJECTED = 'rejected';
+    public const STATUSES = [self::STATUS_PENDING, self::STATUS_ACTIVE, self::STATUS_SUSPENDED, self::STATUS_REJECTED];
+
     protected $fillable = [
         'name',
         'owner_user_id',
         'tailoring_enabled',
         'clothing_enabled',
+        'status',
+        'approved_at',
+        'approved_by_user_id',
+        'status_changed_at',
+        'status_changed_by_user_id',
+        'status_reason',
         'password_expiry_days',
         'password_policy_updated_at',
     ];
@@ -23,6 +35,8 @@ class Business extends Model
         return [
             'tailoring_enabled' => 'boolean',
             'clothing_enabled' => 'boolean',
+            'approved_at' => 'datetime',
+            'status_changed_at' => 'datetime',
             'password_expiry_days' => 'integer',
             'password_policy_updated_at' => 'datetime',
         ];
@@ -50,5 +64,15 @@ class Business extends Model
             User::MODULE_CLOTHING => $this->clothing_enabled,
             default => false,
         };
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function statusHistory()
+    {
+        return $this->hasMany(BusinessStatusHistory::class)->latest('created_at')->latest('id');
     }
 }
