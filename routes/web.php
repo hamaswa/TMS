@@ -37,6 +37,7 @@ use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\BusinessActivityController;
 use App\Http\Controllers\EmployeePasswordController;
+use App\Http\Controllers\ProductionWorkerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -224,6 +225,15 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
     Route::post('order-status', [TailorJobController::class, 'updateLegacyStatus'])->name('order.status');
     });
     Route::middleware('business.permission:tailoring.tailors')->group(function () {
+    Route::get('production-workers', [ProductionWorkerController::class, 'index'])->name('production-workers.index');
+    Route::get('production-workers/create', [ProductionWorkerController::class, 'create'])->name('production-workers.create');
+    Route::post('production-workers', [ProductionWorkerController::class, 'store'])->name('production-workers.store');
+    Route::get('production-workers/{worker}', [ProductionWorkerController::class, 'show'])->name('production-workers.show');
+    Route::get('production-workers/{worker}/edit', [ProductionWorkerController::class, 'edit'])->name('production-workers.edit');
+    Route::put('production-workers/{worker}', [ProductionWorkerController::class, 'update'])->name('production-workers.update');
+    Route::post('production-work-types', [ProductionWorkerController::class, 'storeWorkType'])->name('production-work-types.store');
+    Route::post('production-workers/{worker}/compensation', [ProductionWorkerController::class, 'storeCompensation'])->name('production-workers.compensation.store');
+    Route::post('production-workers/{worker}/payments', [ProductionWorkerController::class, 'payment'])->name('production-workers.payments.store');
     Route::get('tailor-orders/{id}', [TailorController::class, 'tailorRecord'])->name('tailor-orders');
     Route::match(['get', 'post'], 'tailor-report/{id}', [TailorController::class, 'tailorReport'])->name('tailor-report');
     Route::get('tailor-weekly-report-print/{id}', [TailorController::class, 'tailorReportPrint'])->name('report-print');
