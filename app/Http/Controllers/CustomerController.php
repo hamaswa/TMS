@@ -164,6 +164,13 @@ class CustomerController extends Controller
             'length' => ['nullable', 'numeric', 'min:0'],
             'arms' => ['nullable', 'numeric', 'min:0'],
             'teraa' => ['nullable', 'numeric', 'min:0'],
+            'senaChorai' => ['nullable', 'numeric', 'min:0'],
+            'damanchorai' => ['nullable', 'numeric', 'min:0'],
+            'shalwar' => ['nullable', 'numeric', 'min:0'],
+            'pancha' => ['nullable', 'numeric', 'min:0'],
+            'shalwarGheer' => ['nullable', 'numeric', 'min:0'],
+            'monda' => ['nullable', 'numeric', 'min:0'],
+            'chuta' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:2000'],
         ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
 

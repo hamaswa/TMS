@@ -19,6 +19,13 @@ class CustomerCreationTest extends TestCase
         $owner = User::factory()->create(['tailoring_access' => true, 'clothing_access' => false]);
         $owner->assignRole($role);
 
+        $this->actingAs($owner)->get(route('admin.Customers.create'))
+            ->assertOk()
+            ->assertSeeText('بنیادی معلومات')
+            ->assertSeeText('پیمائش')
+            ->assertSeeText('سلائی کی پسند')
+            ->assertSeeText('مشترکہ گاہک اکاؤنٹ');
+
         $this->actingAs($owner)->post(route('admin.Customers.store'), [
             'name' => 'QA Urdu Customer',
             'contact' => '03001234567',
