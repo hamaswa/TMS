@@ -5,6 +5,16 @@
         <div class="container" id="formContainer">
             <div class="card col-sm-10 mx-auto">
                 @include('inc.message')
+                @if ($errors->any())
+                    <div class="alert alert-danger text-right" role="alert">
+                        <strong>فروخت محفوظ نہیں ہو سکی:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
                 <h2 class="mb-4 text-right">اسٹاک فروخت کریں۔</h2>
                 <form action="{{ route('admin.sellStock') }}" method="post" id="sellStockForm">
                     @csrf
@@ -228,7 +238,6 @@
             var sectionProducts = []; // Array to store product values for each section
 
             $('#addMoreBtn').on('click', function() {
-    console.log('Button Clicked');
     var formCount = $('.stock-data').length + 1;
     var newSection = $('.stock-data:first').clone();
 
@@ -254,7 +263,7 @@
     });
 
     // Add Remove button
-    newSection.append('<button type="button" class="btn btn-danger btn-sm remove-section">Remove</button>');
+    newSection.append('<button type="button" class="btn btn-danger btn-sm remove-section">ہٹائیں</button>');
 
     // Append the new section to the container
     $('#stockDataContainer').append(newSection);
@@ -267,7 +276,6 @@
             url: '/admin/getType/?id=' + brand_id,
             type: 'GET',
             success: function(response) {
-                console.log(response.data);
                 var clothTypeSelect = newSection.find("#cloth_type");
                 clothTypeSelect.empty(); // Clear previous options
                 // Populate select box with cloth types
@@ -278,7 +286,7 @@
                 });
             },
             error: function(xhr, status, error) {
-                console.log("Error : " + error);
+                console.error("Error: " + error);
             }
         });
     });
@@ -318,16 +326,6 @@
                     }
                 });
 
-                // Output for each section
-                for (var i = 0; i < sectionPrices.length; i++) {
-                    console.log('Section ' + (i + 1) + ':');
-                    console.log('Price: ' + sectionPrices[i]);
-                    console.log('Length: ' + sectionLengths[i]);
-                    console.log('Product: ' + sectionProducts[i]);
-                }
-
-                // Output total product
-                console.log('Total Product: ' + totalProduct);
                 $("#total").val(totalProduct);
                 calculateRemaining();
             }
@@ -352,7 +350,7 @@
                         $("#id").val(id);
                     },
                     error: function(xhr, status, error) {
-                        console.log("Error : " + error);
+                        console.error("Error: " + error);
                     }
                 });
             });
@@ -375,7 +373,6 @@
                     url: '/admin/getType/?id=' + brand_id,
                     type: 'GET',
                     success: function(response) {
-                        console.log(response.data);
                         $("#cloth_type").empty(); // Clear previous options
                         // Populate select box with cloth types
                         $.each(response.data, function(index, clothType) {
@@ -385,7 +382,7 @@
                         });
                     },
                     error: function(xhr, status, error) {
-                        console.log("Error : " + error);
+                        console.error("Error: " + error);
                     }
                 });
             });

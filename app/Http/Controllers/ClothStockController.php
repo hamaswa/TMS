@@ -811,7 +811,7 @@ class ClothStockController extends Controller
 
                 if ((float) $clothColor->length < (float) $validated['length'][$i]) {
                     throw ValidationException::withMessages([
-                        'length.' . $i => 'Not enough stock is available for the selected cloth.',
+                        'length.' . $i => 'منتخب کپڑے کا مطلوبہ اسٹاک دستیاب نہیں ہے۔',
                     ]);
                 }
 

@@ -105,6 +105,27 @@ class InventoryLedgerTest extends TestCase
         $this->assertDatabaseCount('sale_stocks', 0);
     }
 
+    public function test_counter_sale_rejects_insufficient_stock_with_an_urdu_message(): void
+    {
+        [$owner, $cloth, $color] = $this->stock(10, 100);
+        $customer = Customers::create(['name' => 'Stock Guard Customer', 'phone_number1' => '03001112222', 'user_id' => $owner->id]);
+
+        $response = $this->actingAs($owner)->from(route('admin.sellCloth'))->post(route('admin.sellStock'), [
+            'brand_name' => [$cloth->cloth_brand_id], 'cloth_type' => [$cloth->cloth_type_id],
+            'color' => [$color->color], 'per_meter' => [150], 'clothes_rack' => [null], 'length' => [11],
+            'c_name' => $customer->name . '|' . $customer->id, 'payment' => 0, 'remain' => 1650,
+        ]);
+
+        $response->assertRedirect(route('admin.sellCloth'))
+            ->assertSessionHasErrors(['length.0' => 'منتخب کپڑے کا مطلوبہ اسٹاک دستیاب نہیں ہے۔']);
+        $this->actingAs($owner)->get(route('admin.sellCloth'))
+            ->assertOk()
+            ->assertSeeText('فروخت محفوظ نہیں ہو سکی:')
+            ->assertSeeText('منتخب کپڑے کا مطلوبہ اسٹاک دستیاب نہیں ہے۔');
+        $this->assertEquals(10, (float) $color->fresh()->length);
+        $this->assertDatabaseCount('sale_stocks', 0);
+    }
+
     public function test_online_order_and_cancellation_create_reversing_movements(): void
     {
         [$owner, $cloth, $color] = $this->stock(10, 75);
