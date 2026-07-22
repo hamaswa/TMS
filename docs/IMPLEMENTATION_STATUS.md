@@ -1,6 +1,17 @@
 # TMS implementation status
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
+
+## 23 July 2026 — Super-admin client lifecycle and full QA
+
+- Inventoried all application features and route surfaces in `docs/FEATURE_INVENTORY_AND_QA_MATRIX.md`.
+- Added safe pending/active/suspended/rejected business lifecycle controls with full status audit history.
+- Added an English super-admin client list and details screen with filters, module access, business metrics, approval metadata, and activate/deactivate actions.
+- Preserved every existing business as active and disabled permanent client deletion to protect live data.
+- Enforced account status for business owners and employees at login and on subsequent requests, using Urdu blocked-account messages on client-facing screens.
+- Completed the full automated suite with 104 passing tests and 688 assertions.
+- Browser QA found and fixed a MySQL-only client order-count failure caused by the legacy camel-case `orders.userId` column.
+- Recorded current findings and the prioritized backlog in `docs/FULL_QA_REPORT_2026-07-23.md`.
 
 ## Completed
 
