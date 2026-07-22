@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Models\ServerNotifications;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Controller;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -19,23 +20,42 @@ class ReactNativeController extends Controller
     public function login(Request $request)
     {
         $validatedData = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
             'shop_id' => ['required', 'integer', 'exists:users,id'],
+            'pin' => ['required', 'digits:6'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         try {
             $customer = Customers::where('user_id', $validatedData['shop_id'])
-                ->where('name', $validatedData['name'])
                 ->where('phone_number1', $validatedData['phone'])
                 ->first();
 
-            if (!$customer) {
+            if ($customer?->pin_locked_until?->isFuture()) {
                 return response()->json([
-                    'message' => 'نام، فون نمبر یا دکان درست نہیں ہے۔'
+                    'message' => 'زیادہ غلط کوششوں کی وجہ سے لاگ اِن عارضی طور پر بند ہے۔ 15 منٹ بعد دوبارہ کوشش کریں۔',
+                ], 423);
+            }
+
+            if (! $customer || ! $customer->mobile_pin || ! Hash::check($validatedData['pin'], $customer->mobile_pin)) {
+                if ($customer) {
+                    $customer->increment('pin_failed_attempts');
+                    $customer->refresh();
+
+                    if ($customer->pin_failed_attempts >= 5) {
+                        $customer->forceFill(['pin_locked_until' => now()->addMinutes(15)])->save();
+                    }
+                }
+
+                return response()->json([
+                    'message' => 'فون نمبر، پن یا دکان درست نہیں ہے۔',
                 ], 401);
             }
+
+            $customer->forceFill([
+                'pin_failed_attempts' => 0,
+                'pin_locked_until' => null,
+            ])->save();
 
             return response()->json([
                 'customer' => $customer,
@@ -51,6 +71,29 @@ class ReactNativeController extends Controller
                 'message' => 'لاگ اِن مکمل نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔',
             ], 500);
         }
+    }
+
+    public function changePin(Request $request)
+    {
+        $validated = $request->validate([
+            'current_pin' => ['required', 'digits:6'],
+            'new_pin' => ['required', 'digits:6', 'different:current_pin'],
+        ]);
+        /** @var Customers $customer */
+        $customer = $request->user();
+
+        if (! $customer->mobile_pin || ! Hash::check($validated['current_pin'], $customer->mobile_pin)) {
+            return response()->json(['message' => 'موجودہ پن درست نہیں ہے۔'], 422);
+        }
+
+        $customer->forceFill([
+            'mobile_pin' => Hash::make($validated['new_pin']),
+            'pin_failed_attempts' => 0,
+            'pin_locked_until' => null,
+            'pin_changed_at' => now(),
+        ])->save();
+
+        return response()->json(['message' => 'پن کامیابی سے تبدیل ہو گیا ہے۔']);
     }
 
     public function notifications(Request $request)

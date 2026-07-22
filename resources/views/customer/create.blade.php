@@ -123,6 +123,16 @@
 
                 </div>
             </div>
+            <div class="form-group row" dir="rtl">
+                <div class="col-md-6 ml-auto">
+                    <label for="mobile_pin">موبائل لاگ اِن پن</label>
+                    <input id="mobile_pin" type="text" inputmode="numeric" pattern="[0-9]{6}"
+                        maxlength="6" autocomplete="new-password" class="form-control"
+                        name="mobile_pin" value="{{ old('mobile_pin') }}" placeholder="6 ہندسوں کا پن">
+                    <small class="form-text text-muted">خالی چھوڑنے پر محفوظ پن خود بن جائے گا اور صرف ایک بار دکھایا جائے گا۔</small>
+                    @error('mobile_pin')<div class="text-danger">پن لازماً 6 ہندسوں کا ہونا چاہیے۔</div>@enderror
+                </div>
+            </div>
             <div class="button-group">
                 <button type="submit" class="btn btn-blue mr-3">محفوظ کریں</button>
 

@@ -128,23 +128,87 @@ class TenantSecurityTest extends TestCase
         $this->postJson('/api/mark-read')->assertUnauthorized();
     }
 
+    public function test_customer_can_login_with_shop_phone_and_hashed_pin(): void
+    {
+        $shopOwner = $this->userWithRole('shop_owner');
+        $customer = Customers::create([
+            'name' => 'PIN Customer',
+            'phone_number1' => '03001112222',
+            'user_id' => $shopOwner->id,
+            'mobile_pin' => Hash::make('482913'),
+        ]);
+
+        $this->postJson('/api/v2/login', [
+            'phone' => $customer->phone_number1,
+            'shop_id' => $shopOwner->id,
+            'pin' => '482913',
+            'device_name' => 'security-test',
+        ])->assertOk()
+            ->assertJsonPath('customer.id', $customer->id)
+            ->assertJsonMissingPath('customer.mobile_pin')
+            ->assertJsonStructure(['customer', 'token']);
+    }
+
     public function test_customer_mobile_login_uses_generic_unauthorized_response_and_is_rate_limited(): void
     {
         $shopOwner = $this->userWithRole('shop_owner');
         $payload = [
-            'name' => 'Unknown customer',
             'phone' => '03000000000',
             'shop_id' => $shopOwner->id,
+            'pin' => '123456',
             'device_name' => 'security-test',
         ];
 
         for ($attempt = 1; $attempt <= 5; $attempt++) {
             $this->postJson('/api/login', $payload)
                 ->assertUnauthorized()
-                ->assertExactJson(['message' => 'نام، فون نمبر یا دکان درست نہیں ہے۔']);
+                ->assertExactJson(['message' => 'فون نمبر، پن یا دکان درست نہیں ہے۔']);
         }
 
         $this->postJson('/api/login', $payload)->assertTooManyRequests();
+    }
+
+    public function test_customer_pin_is_locked_after_five_wrong_attempts(): void
+    {
+        $shopOwner = $this->userWithRole('shop_owner');
+        $customer = Customers::create([
+            'name' => 'Locked Customer',
+            'phone_number1' => '03003334444',
+            'user_id' => $shopOwner->id,
+            'mobile_pin' => Hash::make('654321'),
+        ]);
+        $payload = ['phone' => $customer->phone_number1, 'shop_id' => $shopOwner->id, 'pin' => '111111'];
+
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->withServerVariables(['REMOTE_ADDR' => "10.0.0.$attempt"])
+                ->postJson('/api/v2/login', $payload)
+                ->assertUnauthorized();
+        }
+
+        $this->assertNotNull($customer->fresh()->pin_locked_until);
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.10'])
+            ->postJson('/api/v2/login', array_merge($payload, ['pin' => '654321']))
+            ->assertStatus(423);
+    }
+
+    public function test_authenticated_customer_can_change_pin(): void
+    {
+        $shopOwner = $this->userWithRole('shop_owner');
+        $customer = Customers::create([
+            'name' => 'Change PIN Customer',
+            'phone_number1' => '03005556666',
+            'user_id' => $shopOwner->id,
+            'mobile_pin' => Hash::make('123456'),
+        ]);
+        Sanctum::actingAs($customer);
+
+        $this->postJson('/api/change-pin', [
+            'current_pin' => '123456',
+            'new_pin' => '987654',
+        ])->assertOk()->assertExactJson(['message' => 'پن کامیابی سے تبدیل ہو گیا ہے۔']);
+
+        $this->assertTrue(Hash::check('987654', $customer->fresh()->mobile_pin));
+        $this->assertFalse(Hash::check('123456', $customer->fresh()->mobile_pin));
     }
 
     public function test_customer_api_only_returns_the_authenticated_customers_orders(): void

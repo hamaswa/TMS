@@ -145,6 +145,16 @@
                     </div>
                 </div>
             </div>
+            <div class="form-group row" dir="rtl">
+                <div class="col-md-6 ml-auto">
+                    <label for="mobile_pin">نیا موبائل لاگ اِن پن</label>
+                    <input id="mobile_pin" type="text" inputmode="numeric" pattern="[0-9]{6}"
+                        maxlength="6" autocomplete="new-password" class="form-control"
+                        name="mobile_pin" placeholder="ری سیٹ کرنے کے لیے 6 ہندسے درج کریں">
+                    <small class="form-text text-muted">خالی چھوڑنے سے موجودہ پن تبدیل نہیں ہوگا۔ نیا پن محفوظ کرنے پر پرانے موبائل سیشن بند ہو جائیں گے۔</small>
+                    @error('mobile_pin')<div class="text-danger">پن لازماً 6 ہندسوں کا ہونا چاہیے۔</div>@enderror
+                </div>
+            </div>
             <div class="button-group">
                 <!-- <a href="#" class="btn btn-blue mr-3">Save</a> -->
                 <button type="submit" class="btn btn-warning mr-3">محفوظ کریں</button>

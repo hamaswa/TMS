@@ -12,7 +12,9 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB as FacadesDB;
+use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
@@ -84,9 +86,15 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'contact' => ['required', 'string', 'max:50'],
+            'contact' => [
+                'required', 'string', 'max:50',
+                Rule::unique('customers', 'phone_number1')->where(
+                    fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId())
+                ),
+            ],
+            'mobile_pin' => ['nullable', 'digits:6'],
             'length' => ['nullable', 'numeric', 'min:0'],
             'arms' => ['nullable', 'numeric', 'min:0'],
             'teraa' => ['nullable', 'numeric', 'min:0'],
@@ -151,9 +159,15 @@ class CustomerController extends Controller
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
         $obj->user_id = Auth::user()->businessOwnerId();
+        $plainPin = $validated['mobile_pin'] ?? (string) random_int(100000, 999999);
+        $obj->mobile_pin = Hash::make($plainPin);
+        $obj->pin_changed_at = now();
         $obj->save();
         // dd($obj);
-        return redirect('admin/Customers')->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔');
+        return redirect('admin/Customers')
+            ->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔')
+            ->with('customer_pin', $plainPin)
+            ->with('customer_pin_name', $obj->name);
     }
 
     /**
@@ -202,9 +216,15 @@ class CustomerController extends Controller
      */
     public function update(Request $request, $id)
 {
-        $request->validate([
+        $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'contact' => ['required', 'string', 'max:50'],
+            'contact' => [
+                'required', 'string', 'max:50',
+                Rule::unique('customers', 'phone_number1')
+                    ->where(fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
+                    ->ignore($id),
+            ],
+            'mobile_pin' => ['nullable', 'digits:6'],
             'length' => ['nullable', 'numeric', 'min:0'],
             'arms' => ['nullable', 'numeric', 'min:0'],
             'teraa' => ['nullable', 'numeric', 'min:0'],
@@ -268,9 +288,23 @@ $obj->Daaman = $daaman;
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
         $obj->user_id = Auth::user()->businessOwnerId();
+        if (! empty($validated['mobile_pin'])) {
+            $obj->mobile_pin = Hash::make($validated['mobile_pin']);
+            $obj->pin_failed_attempts = 0;
+            $obj->pin_locked_until = null;
+            $obj->pin_changed_at = now();
+            $obj->tokens()->delete();
+        }
         $obj->save();
         // dd($obj);
-    return redirect('admin/Customers')->with('insert', 'Customer Update');
+    $response = redirect('admin/Customers')->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
+
+    if (! empty($validated['mobile_pin'])) {
+        $response->with('customer_pin', $validated['mobile_pin'])
+            ->with('customer_pin_name', $obj->name);
+    }
+
+    return $response;
 }
 
 

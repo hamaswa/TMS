@@ -19,6 +19,13 @@
                     @if (Session::has('insert'))
                         <div class="alert alert-success">{{ Session::get('insert') }}</div>
                     @endif
+                    @if (Session::has('customer_pin'))
+                        <div class="alert alert-warning text-right" dir="rtl" role="alert">
+                            <strong>{{ Session::get('customer_pin_name') }} کا موبائل پن:</strong>
+                            <code class="mx-2" style="font-size:1.25rem">{{ Session::get('customer_pin') }}</code>
+                            <div class="small mt-1">یہ پن صرف ایک بار دکھایا جا رہا ہے۔ اسے محفوظ طریقے سے گاہک کو دیں۔</div>
+                        </div>
+                    @endif
                     @if (Session::has('balanceError'))
                         <div class="alert alert-danger">
                             {{ Session::get('balanceError') }}

@@ -49,7 +49,15 @@ class Customers extends Authenticatable
                            'shirtlength', 'sleeve', 'sleevetop', 'shoulder', 'chest',
                            'senaChorai','necktype', 'comments', 'created_at', 'updated_at',
                            'jeab','teraa','length','button','shirtbutton','damanchorai','chuta',
-                           'swingtype','arms','user_id','pancha','shalwarGheer','shalwar','note','plate_type','Daaman'];
+                           'swingtype','arms','user_id','pancha','shalwarGheer','shalwar','note','plate_type','Daaman',
+                           'mobile_pin'];
+
+    protected $hidden = ['mobile_pin', 'pin_failed_attempts', 'pin_locked_until'];
+
+    protected $casts = [
+        'pin_locked_until' => 'datetime',
+        'pin_changed_at' => 'datetime',
+    ];
 
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasMany

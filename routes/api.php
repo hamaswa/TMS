@@ -20,9 +20,8 @@ use App\Http\Controllers\ReactNativeController\ReactNativeController;
 //     return $request->user();
 // });
 
-// Keep the legacy customer identity contract for current mobile clients while
-// limiting credential guessing until the planned PIN/OTP migration is shipped.
 Route::post('/login',[ReactNativeController::class,'login'])->middleware('throttle:5,1');
+Route::post('/v2/login',[ReactNativeController::class,'login'])->middleware('throttle:5,1');
 
 Route::get('/shops',[ReactNativeController::class,'AllShops']);
 
@@ -33,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications',[ReactNativeController::class,'notifications']);
     Route::post('/mark-read',[ReactNativeController::class,'markasRead']);
     Route::post('/logout',[ReactNativeController::class,'logout']);
+    Route::post('/change-pin',[ReactNativeController::class,'changePin'])->middleware('throttle:5,1');
 });
 
 // for server stream (SSE) route
