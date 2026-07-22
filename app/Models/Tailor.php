@@ -46,4 +46,9 @@ class Tailor extends Model
         return $this->hasMany(Transaction::class, 'tailorId', 'id');
     }
 
+    public function productionWorker()
+    {
+        return $this->hasOne(ProductionWorker::class, 'legacy_tailor_id');
+    }
+
 }

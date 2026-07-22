@@ -70,6 +70,11 @@ class Order extends Model
         return $this->hasMany(OrderMeasurementValue::class)->orderBy('sort_order');
     }
 
+    public function workAssignments()
+    {
+        return $this->hasMany(OrderWorkAssignment::class);
+    }
+
     public function measurementTemplate()
     {
         return $this->belongsTo(MeasurementTemplate::class);
