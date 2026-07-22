@@ -19,7 +19,7 @@ class OptionTypesSeeder extends Seeder
                 'type' => 'swingtype',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-                'user_id'    => 1,
+                'user_id'    => null,
             ],
             [
                 'id' => 2,
@@ -28,7 +28,7 @@ class OptionTypesSeeder extends Seeder
                 'type' => 'shirtbutton',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-                'user_id'    => 1,
+                'user_id'    => null,
             ],
             [
                 'id' => 3,
@@ -37,7 +37,7 @@ class OptionTypesSeeder extends Seeder
                 'type' => 'necktype',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-                'user_id'    => 1,
+                'user_id'    => null,
             ],
             [
                 'id' => 4,
@@ -46,7 +46,7 @@ class OptionTypesSeeder extends Seeder
                 'type' => 'sleeve',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-                'user_id'    => 1,
+                'user_id'    => null,
             ],
             [
                 'id' => 5,
@@ -55,7 +55,7 @@ class OptionTypesSeeder extends Seeder
                 'type' => 'jeab',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-                'user_id'    => 1,
+                'user_id'    => null,
             ],
             [
                 'id' => 6,
@@ -64,7 +64,7 @@ class OptionTypesSeeder extends Seeder
                 'type' => 'button',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-                'user_id'    => 1,
+                'user_id'    => null,
             ],
             [
                 'id' => 7,
@@ -73,7 +73,7 @@ class OptionTypesSeeder extends Seeder
                 'type' => 'plate_type',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-                'user_id'    => 1,
+                'user_id'    => null,
             ],
             [
                 'id' => 8,
@@ -82,7 +82,7 @@ class OptionTypesSeeder extends Seeder
                 'type' => 'daaman',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-                'user_id'    => 1,
+                'user_id'    => null,
             ],
         ], ['id'], ['slug', 'Name', 'type', 'updated_at', 'user_id']);
     }

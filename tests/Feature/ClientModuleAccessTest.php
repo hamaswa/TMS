@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use Database\Seeders\OptionTypesSeeder;
 
 class ClientModuleAccessTest extends TestCase
 {
@@ -43,6 +44,17 @@ class ClientModuleAccessTest extends TestCase
         $this->actingAs($client)->get(route('admin.dashboard.clothing'))->assertOk()->assertSessionHas('active_workspace', 'clothing');
         $this->actingAs($client)->get(route('admin.tailor-jobs.index'))->assertOk();
         $this->actingAs($client)->get(route('admin.inventory-ledger.index'))->assertOk();
+    }
+
+    public function test_new_tailoring_client_can_access_global_sewing_option_types(): void
+    {
+        $this->seed(OptionTypesSeeder::class);
+        $client = $this->client(true, false);
+
+        $this->actingAs($client)
+            ->get(route('admin.options.add', 1))
+            ->assertOk()
+            ->assertSeeText('سیلائی');
     }
 
     public function test_super_admin_can_create_and_change_client_module_access(): void
