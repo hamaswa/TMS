@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Notification;
 use App\Notifications\OrderCompleteNotification;
 use App\Services\MeasurementService;
 use Illuminate\Validation\Rule;
+use App\Services\ProductionWorkforceService;
 
 
 class OrderController extends Controller
@@ -113,6 +114,7 @@ class OrderController extends Controller
             if ($measurementChanged || ! $order->measurementValues()->exists()) {
                 $this->measurements->snapshotOrder($order, $measurementCustomer);
             }
+            app(ProductionWorkforceService::class)->syncOrder($order->fresh());
         });
 
         return redirect('admin/Customers')->with('insert', 'آرڈر کامیابی سے اپ ڈیٹ کر دیا گیا ہے۔');
@@ -214,6 +216,7 @@ class OrderController extends Controller
             ]);
 
             $this->measurements->snapshotOrder($obj, $measurementCustomer, $measurementTemplate);
+            app(ProductionWorkforceService::class)->syncOrder($obj);
 
             return [$obj, $transaction];
         });

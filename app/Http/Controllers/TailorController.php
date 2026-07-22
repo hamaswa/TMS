@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Services\ProductionWorkforceService;
 
 
 class TailorController extends Controller
@@ -135,6 +136,7 @@ class TailorController extends Controller
                     $obj->tailorsalary()->create(['price' => trim($rate)]);
                 }
             }
+            app(ProductionWorkforceService::class)->syncTailor($obj->fresh());
         });
 
         return redirect('admin/Tailor')->with('insert', 'Tailor Add');
@@ -186,6 +188,7 @@ class TailorController extends Controller
             $obj->password = Hash::make($validated['password']);
         }
         $obj->save();
+        app(ProductionWorkforceService::class)->syncTailor($obj->fresh());
         return redirect('admin/Tailor')->with('update', 'Tailor Data Update');
     }
 

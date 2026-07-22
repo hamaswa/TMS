@@ -2,13 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Models\Customers;
+use App\Models\Order;
 use App\Models\OrderWorkAssignment;
 use App\Models\ProductionWorker;
 use App\Models\Tailor;
+use App\Models\TailorRecord;
+use App\Models\Tailorsalary;
 use App\Models\User;
 use App\Models\WorkType;
 use App\Models\WorkerCompensationPlan;
 use App\Models\WorkerLedgerEntry;
+use App\Services\ProductionWorkforceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -60,5 +65,53 @@ class ProductionWorkforceTest extends TestCase
         $this->assertContains('fixed_salary', (new WorkerCompensationPlan())->getFillable());
         $this->assertContains('commission_percent', (new WorkerCompensationPlan())->getFillable());
         $this->assertContains('entry_type', (new WorkerLedgerEntry())->getFillable());
+    }
+
+    public function test_legacy_tailor_order_sync_is_idempotent_and_preserves_its_rate_snapshot(): void
+    {
+        $owner = User::factory()->create();
+        $tailor = Tailor::create([
+            'name' => 'رشید محمود', 'phone_number1' => '03001234567',
+            'password' => bcrypt('Tailor@2026'), 'user_id' => $owner->id,
+        ]);
+        $rate = Tailorsalary::create(['tailor_id' => $tailor->id, 'price' => 400]);
+        $customer = Customers::create([
+            'name' => 'فیصل محمود', 'phone_number1' => '03005551234', 'user_id' => $owner->id,
+        ]);
+        $order = Order::create([
+            'customerId' => $customer->id, 'sub_customer' => $customer->id,
+            'suitQuantity' => 2, 'totalPayment' => 4000, 'tailorId' => $tailor->id,
+            'rateId' => $rate->id, 'tailor_price' => 400, 'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id, 'status' => 'assigned',
+        ]);
+        $service = app(ProductionWorkforceService::class);
+
+        $service->syncOrder($order);
+        $service->syncOrder($order);
+        $assignment = OrderWorkAssignment::sole();
+        $this->assertEquals(400, (float) $assignment->rate);
+        $this->assertEquals(800, (float) $assignment->amount);
+
+        $rate->update(['price' => 500]);
+        $service->syncRate($rate->fresh());
+        $order->update(['status' => 'ready', 'ready_at' => now()]);
+        $service->syncOrder($order->fresh());
+
+        $this->assertEquals(400, (float) $assignment->fresh()->rate);
+        $this->assertDatabaseHas('worker_ledger_entries', [
+            'legacy_key' => 'tailor-order-earning:'.$order->id,
+            'entry_type' => 'earning',
+            'amount' => 800,
+        ]);
+
+        $payment = TailorRecord::create([
+            'tailor_id' => $tailor->id, 'order_id' => $order->id,
+            'amount' => 300, 'comment' => 'salary',
+        ]);
+        $service->recordTailorPayment($order->fresh(), $payment);
+        $service->recordTailorPayment($order->fresh(), $payment);
+
+        $this->assertDatabaseCount('worker_ledger_entries', 2);
+        $this->assertEquals(500, (float) WorkerLedgerEntry::sum('amount'));
     }
 }

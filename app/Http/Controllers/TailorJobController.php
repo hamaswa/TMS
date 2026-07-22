@@ -8,6 +8,7 @@ use App\Models\OrderStatusHistory;
 use App\Models\Tailor;
 use App\Models\TailorRecord;
 use App\Services\OrderLifecycleNotificationService;
+use App\Services\ProductionWorkforceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -125,6 +126,7 @@ class TailorJobController extends Controller
                 $updates['delivered_at'] = now();
             }
             $job->update($updates);
+            app(ProductionWorkforceService::class)->syncOrder($job);
 
             OrderStatusHistory::create([
                 'order_id' => $job->id,
@@ -187,13 +189,14 @@ class TailorJobController extends Controller
             ]);
 
             if ($newPaid > $oldPaid) {
-                TailorRecord::create([
+                $record = TailorRecord::create([
                     'tailor_id' => $job->tailorId,
                     'order_id' => $job->id,
                     'amount' => $newPaid - $oldPaid,
                     'comment' => 'salary',
                     'Note' => 'Job payment recorded from lifecycle board',
                 ]);
+                app(ProductionWorkforceService::class)->recordTailorPayment($job, $record);
             }
         });
 

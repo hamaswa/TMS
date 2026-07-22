@@ -8,6 +8,7 @@ use App\Models\OptionType;
 use App\Models\Tailorsalary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\ProductionWorkforceService;
 
 class TailorRateController extends Controller
 {
@@ -54,7 +55,8 @@ class TailorRateController extends Controller
                 ->where('option_id', 1)
                 ->findOrFail($formData['options_id']);
             
-            Tailorsalary::create($formData);
+            $rate = Tailorsalary::create($formData);
+            app(ProductionWorkforceService::class)->syncRate($rate);
 
             return back()->with('insert','درزی کی رقم کامیابی کے ساتھ شامل کی گئی۔');
 
@@ -106,6 +108,7 @@ class TailorRateController extends Controller
                 $query->where('user_id', Auth::user()->businessOwnerId());
             })->findOrFail($id);
 
+            app(ProductionWorkforceService::class)->retireRate($rate);
             $rate->delete();
 
             return back()->with('delete','درجی کی رقم کامیابی کے ساتھ حذف کر دی گئی۔');
