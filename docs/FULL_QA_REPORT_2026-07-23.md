@@ -16,7 +16,7 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Laravel migration SQL was inspected with `migrate --pretend` before execution.
 - The additive lifecycle migration ran successfully on MySQL.
 - Existing data remained present: 3 businesses, 8 users, 6 customers, 5 orders, 2 sales, 3 purchases, and all existing businesses remained active.
-- The complete automated suite passed: **105 tests, 704 assertions**.
+- The complete automated suite passed: **106 tests, 720 assertions**.
 - Live in-app browser QA covered super-admin login, client list, search/status/module controls, client details, business metrics, status history, and account actions.
 - The live client-details screen finished with no browser console errors or warnings.
 
@@ -39,9 +39,8 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 
 ## Confirmed remaining backlog
 
-1. Independent tailor login safely rejects duplicate phone numbers across businesses, but the login screen should accept a shop identifier to make valid duplicate phone use possible.
-2. Fixed-salary and commission compensation plans are stored, but automated payroll accrual is not yet implemented.
-3. Dedicated cutter/other production-worker portals remain planned; only independent tailors currently have a worker portal.
+1. Fixed-salary and commission compensation plans are stored, but automated payroll accrual is not yet implemented.
+2. Dedicated cutter/other production-worker portals remain planned; only independent tailors currently have a worker portal.
 
 ## Financial reporting follow-up
 
@@ -64,6 +63,14 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - All 6 live assignments were preserved and backfilled, with zero missing active keys and zero duplicates after migration.
 - A cancelled assignment releases its key, so the work may be legitimately reassigned while its history remains intact.
 - A database collision is returned to the Urdu interface as the existing friendly duplicate-assignment message.
+
+## Tailor shop-code login follow-up
+
+- Added a permanent unique shop code to every business and displayed it in Urdu client settings and English super-admin details.
+- Tailor login now requires shop code, phone, and password, allowing identical phone numbers under different clients without opening the wrong tenant.
+- Login errors remain generic and Urdu so shop, phone, and password existence are not disclosed separately.
+- Suspended businesses or businesses without tailoring access cannot start or continue a tailor-portal session.
+- The additive migration preserved all live records: 3 businesses received 3 unique codes, no code is missing, and both tailor accounts remain present.
 
 ## Git checkpoints
 

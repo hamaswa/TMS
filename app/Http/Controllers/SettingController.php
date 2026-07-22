@@ -12,7 +12,8 @@ class SettingController extends Controller
     public function list()
     {
         $settings = Setting::where('user_id',Auth::user()->businessOwnerId())->get();
-        return view('setting.list',compact('settings'));
+        $business = Auth::user()->business;
+        return view('setting.list', compact('settings', 'business'));
     }
     public function add()
     {

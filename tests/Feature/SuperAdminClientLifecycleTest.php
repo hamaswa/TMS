@@ -107,6 +107,7 @@ class SuperAdminClientLifecycleTest extends TestCase
         $details
             ->assertOk()
             ->assertSeeText($owner->name)
+            ->assertSeeText($business->shop_code)
             ->assertSeeText('Business data summary')
             ->assertSeeText('Active');
         $this->assertSame(1, $details->viewData('metrics')['orders']);

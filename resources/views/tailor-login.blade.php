@@ -36,8 +36,13 @@
             <form action="{{ url('tailor-login') }}" method="POST">
                 @csrf
                 <div class="form-group">
+                    <label for="shop_code">دکان کا کوڈ</label>
+                    <input id="shop_code" type="text" class="form-control text-uppercase" name="shop_code" value="{{ old('shop_code') }}" maxlength="30" autocomplete="organization" placeholder="مثلاً TMS-000001" dir="ltr" required autofocus>
+                    <small class="form-text text-muted">یہ کوڈ دکان کے مالک سے حاصل کریں۔</small>
+                </div>
+                <div class="form-group">
                     <label for="contact">فون نمبر</label>
-                    <input id="contact" type="tel" inputmode="tel" class="form-control" name="contact" value="{{ old('contact') }}" maxlength="50" autocomplete="username" placeholder="مثلاً 03001234567" required autofocus>
+                    <input id="contact" type="tel" inputmode="tel" class="form-control" name="contact" value="{{ old('contact') }}" maxlength="50" autocomplete="username" placeholder="مثلاً 03001234567" required>
                 </div>
                 <div class="form-group">
                     <label for="password">پاس ورڈ</label>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Business;
 use App\Models\Customers;
 use App\Models\Order;
 use App\Models\OrderNotificationDelivery;
@@ -195,8 +196,16 @@ class TailorJobLifecycleTest extends TestCase
     private function job(array $overrides = []): array
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['tailoring_access' => true, 'is_business_owner' => true]);
         $owner->assignRole($role);
+        $business = Business::create([
+            'name' => $owner->name,
+            'owner_user_id' => $owner->id,
+            'tailoring_enabled' => true,
+            'clothing_enabled' => false,
+            'status' => Business::STATUS_ACTIVE,
+        ]);
+        $owner->forceFill(['business_id' => $business->id])->save();
         $tailor = Tailor::create([
             'name' => fake()->name(),
             'phone_number1' => fake()->unique()->numerify('03#########'),

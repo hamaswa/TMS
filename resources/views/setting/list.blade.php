@@ -11,6 +11,14 @@
                 <div class="alert alert-success">{{Session::get('success')}}</div>
                 @endif
 
+                @if($business?->shop_code)
+                <div class="alert alert-info text-right mb-4">
+                    <strong>درزی پورٹل کا دکان کوڈ:</strong>
+                    <span dir="ltr" class="d-inline-block font-weight-bold mx-2">{{ $business->shop_code }}</span>
+                    <div class="small mt-1">یہ کوڈ اپنے درزیوں کو فون نمبر اور پاس ورڈ کے ساتھ دیں۔</div>
+                </div>
+                @endif
+
                 <div class="bg-white px-3 py-4">
                     <div class="tab-content" id="v-pills-tabContent">
                         <div class="tab-pane fade show active" id="v-pills-sewing" role="tabpanel"

@@ -9,7 +9,7 @@ Last updated: 2026-07-23
 - Added an English super-admin client list and details screen with filters, module access, business metrics, approval metadata, and activate/deactivate actions.
 - Preserved every existing business as active and disabled permanent client deletion to protect live data.
 - Enforced account status for business owners and employees at login and on subsequent requests, using Urdu blocked-account messages on client-facing screens.
-- Completed the full automated suite with 105 passing tests and 704 assertions.
+- Completed the full automated suite with 106 passing tests and 720 assertions.
 - Browser QA found and fixed a MySQL-only client order-count failure caused by the legacy camel-case `orders.userId` column.
 - Recorded current findings and the prioritized backlog in `docs/FULL_QA_REPORT_2026-07-23.md`.
 
@@ -129,9 +129,8 @@ Last updated: 2026-07-23
 
 ## Next when the user says "go next" or "proceed"
 
-1. Add a shop identifier to independent-tailor login for duplicate phone numbers across clients.
-2. Implement fixed-salary and commission payroll accrual.
-3. Add dedicated portals for cutters and other production workers.
+1. Implement fixed-salary and commission payroll accrual.
+2. Add dedicated portals for cutters and other production workers.
 
 ## Latest accounting checkpoint — 23 July 2026
 
@@ -141,7 +140,9 @@ Last updated: 2026-07-23
 - Made worker payments atomic with a tenant-scoped row lock, balance recheck, and ledger insert in one transaction.
 - Added database-enforced active work-assignment uniqueness while preserving cancelled history and reassignment.
 - Applied the additive migration with all 6 live assignments preserved and verified.
-- Full regression suite: 105 tests and 704 assertions passing.
+- Added unique business shop codes and tenant-scoped tailor login using shop code, phone, and password.
+- Applied the additive migration with all 3 businesses and both tailor accounts preserved.
+- Full regression suite: 106 tests and 720 assertions passing.
 
 ## Current continuation point
 

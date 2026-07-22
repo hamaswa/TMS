@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Business extends Model
 {
@@ -17,6 +18,7 @@ class Business extends Model
 
     protected $fillable = [
         'name',
+        'shop_code',
         'owner_user_id',
         'tailoring_enabled',
         'clothing_enabled',
@@ -29,6 +31,20 @@ class Business extends Model
         'password_expiry_days',
         'password_policy_updated_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Business $business) {
+            if (! $business->shop_code && Schema::hasColumn('businesses', 'shop_code')) {
+                $business->forceFill(['shop_code' => self::makeShopCode($business->id)])->saveQuietly();
+            }
+        });
+    }
+
+    public static function makeShopCode(int $businessId): string
+    {
+        return sprintf('TMS-%06d', $businessId);
+    }
 
     protected function casts(): array
     {

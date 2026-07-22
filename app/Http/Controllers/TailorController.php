@@ -6,6 +6,7 @@ use session;
 use Carbon\Carbon;
 use App\Models\Order;
 use App\Models\Tailor;
+use App\Models\Business;
 use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\TailorRecord;
@@ -26,18 +27,28 @@ class TailorController extends Controller
 
     public function login(Request $req)
     {
+        $req->session()->forget(['tailor-login-success', 'tailor', 'tailor_id']);
         $credentials = $req->validate([
+            'shop_code' => ['required', 'string', 'max:30'],
             'contact' => ['required', 'string', 'max:50'],
             'password' => ['required', 'string'],
+        ], [
+            'shop_code.required' => 'دکان کا کوڈ درج کریں۔',
+            'contact.required' => 'فون نمبر درج کریں۔',
+            'password.required' => 'پاس ورڈ درج کریں۔',
         ]);
 
-        $matches = Tailor::where('phone_number1', $credentials['contact'])->limit(2)->get();
+        $business = Business::where('shop_code', strtoupper(trim($credentials['shop_code'])))
+            ->where('status', Business::STATUS_ACTIVE)
+            ->where('tailoring_enabled', true)
+            ->first();
+        $matches = $business
+            ? Tailor::where('user_id', $business->owner_user_id)->where('phone_number1', $credentials['contact'])->limit(2)->get()
+            : collect();
         if ($matches->count() !== 1) {
             return redirect('tailor-login')
-                ->withInput($req->only('contact'))
-                ->with('failed', $matches->isEmpty()
-                    ? 'فون نمبر یا پاس ورڈ درست نہیں ہے۔'
-                    : 'یہ فون نمبر ایک سے زیادہ کاروبار میں موجود ہے۔ دکان کے مالک سے رابطہ کریں۔');
+                ->withInput($req->only('shop_code', 'contact'))
+                ->with('failed', 'دکان کا کوڈ، فون نمبر یا پاس ورڈ درست نہیں ہے۔');
         }
 
         $data = $matches->first();
@@ -49,8 +60,8 @@ class TailorController extends Controller
 
         if (!$passwordMatches) {
             return redirect('tailor-login')
-                ->withInput($req->only('contact'))
-                ->with('failed', 'فون نمبر یا پاس ورڈ درست نہیں ہے۔');
+                ->withInput($req->only('shop_code', 'contact'))
+                ->with('failed', 'دکان کا کوڈ، فون نمبر یا پاس ورڈ درست نہیں ہے۔');
         }
 
         if (!$isHashed || Hash::needsRehash($storedPassword)) {
