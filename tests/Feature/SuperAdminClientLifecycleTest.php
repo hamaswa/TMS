@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -99,12 +100,17 @@ class SuperAdminClientLifecycleTest extends TestCase
     public function test_super_admin_can_view_client_details_and_filter_by_status(): void
     {
         [$admin, $owner, $business] = $this->actors(true);
+        DB::table('orders')->insert(['userId' => $owner->id, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('sales')->insert(['user_id' => $owner->id, 'customer_name' => 'Walk-in customer', 'created_at' => now(), 'updated_at' => now()]);
 
-        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))
+        $details = $this->actingAs($admin)->get(route('administrator.clients.show', $owner));
+        $details
             ->assertOk()
             ->assertSeeText($owner->name)
             ->assertSeeText('Business data summary')
             ->assertSeeText('Active');
+        $this->assertSame(1, $details->viewData('metrics')['orders']);
+        $this->assertSame(1, $details->viewData('metrics')['sales']);
 
         $this->actingAs($admin)->get(route('administrator.index', ['status' => 'active']))
             ->assertOk()->assertSeeText($owner->name);

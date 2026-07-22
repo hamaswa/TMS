@@ -160,7 +160,7 @@ class AdministratorController extends Controller
             'employees' => User::where('business_id', $business->id)->where('id', '!=', $ownerId)->count(),
             'customers' => DB::table('customers')->where('user_id', $ownerId)->whereNull('deleted_at')->count(),
             'tailors' => DB::table('tailors')->where('user_id', $ownerId)->count(),
-            'orders' => DB::table('orders')->where('user_id', $ownerId)->count(),
+            'orders' => DB::table('orders')->where('userId', $ownerId)->count(),
             'production_workers' => DB::table('production_workers')->where('user_id', $ownerId)->count(),
             'sales' => DB::table('sales')->where('user_id', $ownerId)->count(),
             'purchases' => DB::table('purchases')->where('user_id', $ownerId)->count(),
