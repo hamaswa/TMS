@@ -3,7 +3,7 @@
 <section class="main-content team-page" dir="rtl"><div class="container-fluid py-4 px-lg-5">
     @include('team.partials.workspace')
 
-    <div class="card team-card mb-4"><div class="card-body p-4"><div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h5 font-weight-bold mb-1">نیا ملازم شامل کریں</h2><p class="text-muted mb-0">ملازم کی لاگ اِن معلومات اور کام کا رول مقرر کریں۔</p></div><span class="badge badge-primary px-3 py-2">مرحلہ 1: پہلے رول بنائیں</span></div>
+    <div class="card team-card mb-4"><div class="card-body p-4"><div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h5 font-weight-bold mb-1">نیا ملازم شامل کریں</h2><p class="text-muted mb-0">ملازم کی لاگ اِن معلومات اور کام کا رول مقرر کریں۔</p></div>@if($business->roles->isNotEmpty())<span class="badge badge-primary px-3 py-2">{{ $business->roles->count() }} رولز دستیاب</span>@endif</div>
         @if($business->roles->isEmpty())
             <div class="alert alert-info mb-0">ملازم شامل کرنے سے پہلے کم از کم ایک رول بنائیں۔ <a href="{{ route('admin.team.roles.index') }}">رول بنائیں</a></div>
         @else

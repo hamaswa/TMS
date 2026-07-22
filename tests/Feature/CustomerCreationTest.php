@@ -50,6 +50,10 @@ class CustomerCreationTest extends TestCase
             'Daaman' => '0',
         ]);
         $this->assertTrue(Hash::check('482913', \App\Models\Customers::firstOrFail()->mobile_pin));
+        $customer = \App\Models\Customers::firstOrFail();
+        $this->actingAs($owner)->get(route('admin.Customers.edit', $customer))
+            ->assertOk()
+            ->assertSeeInOrder(['name="chuta"', 'value="15"'], false);
     }
 
     public function test_client_can_reset_customer_pin_and_existing_mobile_sessions_are_revoked(): void

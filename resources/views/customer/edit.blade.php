@@ -101,7 +101,7 @@
                         <label class="col-sm-3 col-form-label">چوتا:</label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" required name="chuta"
-                                value="{{$customer->Chuta}}">
+                                value="{{$customer->chuta}}">
                         </div>
                     </div>
                 </div>

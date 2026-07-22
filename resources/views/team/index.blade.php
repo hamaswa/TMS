@@ -10,7 +10,7 @@
     </div>
 
     <div class="card team-card"><div class="card-body p-4"><div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h5 font-weight-bold mb-1">حالیہ ٹیم</h2><p class="text-muted mb-0">فوری جائزہ؛ مکمل انتظام ملازمین کے صفحے پر دستیاب ہے۔</p></div><a class="btn btn-outline-primary" href="{{ route('admin.team.employees.index') }}">تمام ملازمین</a></div><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>ملازم</th><th>عہدہ</th><th>رول</th><th>حالت</th></tr></thead><tbody>
-        @forelse($business->members->take(5) as $employee)<tr><td><strong>{{ $employee->name }}</strong><br><small class="text-muted" dir="ltr">{{ '@'.$employee->username }}</small></td><td>{{ $employee->job_title ?: '—' }}</td><td>{{ $employee->businessRole?->name ?: 'رول مقرر نہیں' }}</td><td><span class="status-dot {{ $employee->employee_active ? 'status-on' : 'status-off' }}"></span>{{ $employee->employee_active ? 'فعال' : 'غیر فعال' }}</td></tr>
+        @forelse($business->members->take(5) as $employee)<tr><td><strong>{{ $employee->name }}</strong><br><small class="text-muted" dir="ltr">{{ '@'.$employee->username }}</small></td><td>{{ $employee->job_title ?: '—' }}</td><td>{{ $employee->businessRole?->name ?: 'رول مقرر نہیں' }}</td><td><span class="status-dot {{ $employee->employee_active ? 'status-on' : 'status-off' }}"></span>{{ $employee->employee_active ? ($employee->must_change_password ? 'عارضی پاس ورڈ' : ($employee->employeePasswordExpired() ? 'پاس ورڈ کی میعاد ختم' : 'فعال')) : 'غیر فعال' }}</td></tr>
         @empty<tr><td colspan="4" class="text-center text-muted py-4">ابھی کوئی ملازم شامل نہیں کیا گیا۔</td></tr>@endforelse
     </tbody></table></div></div></div>
 </div></section>
