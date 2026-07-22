@@ -35,7 +35,7 @@
                                         <label>پاس ورڈ</label>
                                         <input type="password" class="form-control" name="password"
                                             autocomplete="new-password" minlength="6"
-                                            placeholder="Leave blank to keep the current password">
+                                            placeholder="موجودہ پاس ورڈ برقرار رکھنے کے لیے خالی چھوڑ دیں">
                                     </div>
 
 

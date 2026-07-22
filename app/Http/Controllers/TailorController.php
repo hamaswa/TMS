@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use App\Services\ProductionWorkforceService;
 
 
@@ -127,17 +128,20 @@ class TailorController extends Controller
      */
     public function store(Request $request)
     {
+        $ownerId = Auth::user()->businessOwnerId();
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'contact' => ['required', 'string', 'max:50'],
+            'contact' => ['required', 'string', 'max:50', Rule::unique('tailors', 'phone_number1')->where('user_id', $ownerId)],
             'password' => ['required', 'string', 'min:6', 'max:255'],
             'tailor_rates' => ['nullable', 'string'],
+        ], [
+            'contact.unique' => 'اس دکان میں یہ فون نمبر پہلے سے کسی درزی کے نام پر موجود ہے۔',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $ownerId) {
             $obj = Tailor::create([
                 'name' => $validated['name'],
-                'user_id' => Auth::user()->businessOwnerId(),
+                'user_id' => $ownerId,
                 'phone_number1' => $validated['contact'],
                 'password' => Hash::make($validated['password']),
             ]);
@@ -150,7 +154,7 @@ class TailorController extends Controller
             app(ProductionWorkforceService::class)->syncTailor($obj->fresh());
         });
 
-        return redirect('admin/Tailor')->with('insert', 'Tailor Add');
+        return redirect('admin/Tailor')->with('insert', 'نیا درزی کامیابی سے شامل کر دیا گیا ہے۔');
     }
 
     /**
@@ -186,13 +190,16 @@ class TailorController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $obj = $this->ownedTailor($id);
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'contact' => ['required', 'string', 'max:50'],
+            'contact' => ['required', 'string', 'max:50', Rule::unique('tailors', 'phone_number1')
+                ->where('user_id', Auth::user()->businessOwnerId())->ignore($obj->id)],
             'password' => ['nullable', 'string', 'min:6', 'max:255'],
+        ], [
+            'contact.unique' => 'اس دکان میں یہ فون نمبر پہلے سے کسی درزی کے نام پر موجود ہے۔',
         ]);
 
-        $obj = $this->ownedTailor($id);
         $obj->name = $validated['name'];
         $obj->phone_number1 = $validated['contact'];
         if (!empty($validated['password'])) {
@@ -200,7 +207,7 @@ class TailorController extends Controller
         }
         $obj->save();
         app(ProductionWorkforceService::class)->syncTailor($obj->fresh());
-        return redirect('admin/Tailor')->with('update', 'Tailor Data Update');
+        return redirect('admin/Tailor')->with('update', 'درزی کی معلومات محفوظ کر دی گئی ہیں۔');
     }
 
     /**
@@ -212,7 +219,7 @@ class TailorController extends Controller
     public function destroy($id)
     {
         $this->ownedTailor($id)->delete();
-        return back()->with('delete', 'Tailor Data Delete');
+        return back()->with('delete', 'درزی کا ریکارڈ حذف کر دیا گیا ہے۔');
     }
 
     public function tailorRecord($id)
@@ -313,28 +320,43 @@ class TailorController extends Controller
 
     public function addRecord(Request $request, $id)
     {
-        $this->ownedTailor($id);
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0'],
-            'comment' => ['nullable', 'string', 'max:500'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'comment' => ['required', Rule::in(['advance', 'salary', 'chai'])],
         ]);
-        $tailorRecord = new TailorRecord();
-        $tailorRecord->tailor_id = $id;
-        $tailorRecord->amount = $validated['amount'];
-        $tailorRecord->comment = $validated['comment'] ?? null;
-        $tailorRecord->save();
 
-        return redirect(url('admin/tailor-report', $id))->with('success', 'Record added successfully!');
+        DB::transaction(function () use ($validated, $id) {
+            $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($id);
+            if ($validated['comment'] === 'advance') {
+                $tailor->increment('advance', (float) $validated['amount']);
+            }
+            TailorRecord::create([
+                'tailor_id' => $tailor->id,
+                'amount' => $validated['amount'],
+                'comment' => $validated['comment'],
+            ]);
+        });
+
+        return redirect(url('admin/tailor-report', $id))->with('success', 'درزی کا لین دین محفوظ کر دیا گیا ہے۔');
     }
 
     public function addAdnvanceRecord(Request $request, $id)
     {
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
         ]);
-        $this->ownedTailor($id)->update(['advance' => $validated['amount']]);
 
-        return redirect()->back();
+        DB::transaction(function () use ($validated, $id) {
+            $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($id);
+            $tailor->increment('advance', (float) $validated['amount']);
+            TailorRecord::create([
+                'tailor_id' => $tailor->id,
+                'amount' => $validated['amount'],
+                'comment' => 'advance',
+            ]);
+        });
+
+        return redirect()->back()->with('insert', 'درزی کا ایڈوانس محفوظ کر دیا گیا ہے۔');
     }
 
     public function cutAdvanceRecord(Request $request, $id)

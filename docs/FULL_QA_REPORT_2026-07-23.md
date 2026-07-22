@@ -16,7 +16,7 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Laravel migration SQL was inspected with `migrate --pretend` before execution.
 - The additive lifecycle migration ran successfully on MySQL.
 - Existing data remained present: 3 businesses, 8 users, 6 customers, 5 orders, 2 sales, 3 purchases, and all existing businesses remained active.
-- The complete automated suite passed: **106 tests, 720 assertions**.
+- The complete automated suite passed: **109 tests, 753 assertions**.
 - Live in-app browser QA covered super-admin login, client list, search/status/module controls, client details, business metrics, status history, and account actions.
 - The live client-details screen finished with no browser console errors or warnings.
 
@@ -71,6 +71,16 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Login errors remain generic and Urdu so shop, phone, and password existence are not disclosed separately.
 - Suspended businesses or businesses without tailoring access cannot start or continue a tailor-portal session.
 - The additive migration preserved all live records: 3 businesses received 3 unique codes, no code is missing, and both tailor accounts remain present.
+
+## Client tailor-management browser QA follow-up
+
+- Browser QA created tailor محمد وقاص, recorded a Rs. 500 advance, added the sewing type سادہ شلوار قمیض, and set a Rs. 400 per-suit rate.
+- Found and fixed a live MySQL HTTP 500 caused by the missing `tailors.advance` column; the additive migration preserved all tailor records and initialized historical balances to zero.
+- Advances are now additive, transactionally locked, tenant scoped, and recorded in `tailor_records` instead of silently overwriting the previous balance.
+- Duplicate tailor phone numbers are rejected within one client while remaining valid across different businesses through shop-code login.
+- Reworked the Urdu tailor list with visible labels for advances, accounts, rates, orders, editing, and deletion; invalid table/modal nesting was removed.
+- Localized report filters, weekdays, transaction types, currency, success messages, and rate controls; removed the broken `weekFilter=undefined` redirect and external jQuery dependency from the report filter.
+- Live verification: the client has 2 tailors; محمد وقاص has Rs. 500 advance, 1 transaction, and 1 rate. Browser console errors/warnings: zero.
 
 ## Git checkpoints
 

@@ -49,7 +49,7 @@ class TailorRateController extends Controller
             $formData=$request->validate([
                 'tailor_id' => ['required', 'integer'],
                 'options_id' => ['required', 'integer'],
-                'price' => ['required', 'numeric', 'min:0']
+                'price' => ['required', 'numeric', 'min:0.01']
             ]);
             Options::where('user_id', Auth::user()->businessOwnerId())
                 ->where('option_id', 1)
@@ -111,7 +111,7 @@ class TailorRateController extends Controller
             app(ProductionWorkforceService::class)->retireRate($rate);
             $rate->delete();
 
-            return back()->with('delete','درجی کی رقم کامیابی کے ساتھ حذف کر دی گئی۔');
+            return back()->with('delete','درزی کی اجرت حذف کر دی گئی ہے۔');
 
         } catch (\Throwable $th) {
             throw $th;

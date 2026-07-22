@@ -6,8 +6,14 @@
         <div class="row">
             <div class="col-md-12">
                 @include('inc.message')
-                <h5 class="text-right">درزی کی ریٹ</h5>
+                <h5 class="text-right">{{ $tailor->name }} کی اجرت مقرر کریں</h5>
                 <div class="bg-white px-3 py-4">
+                    @if($types->isEmpty())
+                        <div class="alert alert-warning text-right">
+                            پہلے سلائی کی کم از کم ایک قسم شامل کریں۔
+                            <a class="font-weight-bold" href="{{ url('admin/Options/add/1') }}">سلائی کی قسم شامل کریں</a>
+                        </div>
+                    @else
                     <div class="tab-content" id="v-pills-tabContent">
                         <div class="tab-pane fade show active" id="v-pills-sewing" role="tabpanel"
                             aria-labelledby="v-pills-sewing-tab">
@@ -16,8 +22,8 @@
                                 @csrf
                                 <div class="row">
                                     <div class="col-sm-6">
-                                        <label>سلائی کی قسم</label>
-                                        <select class="form-control" name="options_id" id="options_id">
+                                        <label for="options_id">سلائی کی قسم</label>
+                                        <select class="form-control" name="options_id" id="options_id" required>
                                         <option value="">سلائی کی قسم منتخب کریں۔</option> 
                                         @foreach ($types as $type)
                                             <option value="{{ $type->id }}">{{ $type->Name }}</option>
@@ -25,8 +31,8 @@
                                         </select>                                        
                                     </div>
                                     <div class="col-sm-6">
-                                        <label>رقم</label>
-                                        <input type="number" class="form-control" name="price" required>
+                                        <label for="tailor_rate_price">فی سوٹ اجرت</label>
+                                        <input id="tailor_rate_price" type="number" min="0.01" step="0.01" class="form-control" name="price" required>
                                     </div>
                                     <div class="col-sm-6 mt-3">
                                         <button class="btn btn-primary mt-md-0 mt-3">محفوظ کریں</button>
@@ -34,6 +40,7 @@
 
                                 </div>
                             </form>
+                    @endif
                         </div>
 
                     </div>
