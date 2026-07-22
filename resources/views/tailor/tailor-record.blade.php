@@ -51,19 +51,35 @@
                                             </thead>
                                             <tbody>
                                                 @foreach ($Tailor_records->orders as $record)
+                                                    @php
+                                                        $serialNumbers = json_decode($record->suitNum, true);
+                                                        $serialDisplay = is_array($serialNumbers)
+                                                            ? implode('، ', $serialNumbers)
+                                                            : $record->suitNum;
+                                                        $urduDays = [
+                                                            'Sat' => 'ہفتہ',
+                                                            'Sun' => 'اتوار',
+                                                            'Mon' => 'پیر',
+                                                            'Tue' => 'منگل',
+                                                            'Wed' => 'بدھ',
+                                                            'Thu' => 'جمعرات',
+                                                            'Fri' => 'جمعہ',
+                                                        ];
+                                                        $day = date('D', strtotime($record->created_at));
+                                                    @endphp
                                                     <tr class="f">
                                                         <td>{{ $data['tailor-name'] }}</td>
                                                         <td>{{ date('d-m-Y', strtotime($record->created_at)) }}</td>
                                                         <!-- Date only -->
-                                                        <td>{{ date('D', strtotime($record->created_at)) }}</td>
+                                                        <td>{{ $urduDays[$day] ?? $day }}</td>
                                                         <!-- Day only -->
-                                                        <td>{{ $record->suitNum }}</td>
+                                                        <td>{{ $serialDisplay }}</td>
                                                         <td>{{ $record->suitQuantity }}</td>
                                                         <td>{{ $record->design }}</td>
                                                         <td>{{ $record->tailor_price }}</td>
-                                                        <td>{{ date('M d, Y', strtotime($record->created_at)) }}</td>
+                                                        <td>{{ date('d-m-Y', strtotime($record->created_at)) }}</td>
                                                         <!-- Date (Month day, Year) -->
-                                                        <td>{{ date('M d, Y', strtotime($record->returnDate)) }}</td>
+                                                        <td>{{ date('d-m-Y', strtotime($record->returnDate)) }}</td>
                                                         <!-- Return Date -->
                                                     </tr>
                                                 @endforeach
@@ -89,7 +105,8 @@
                 opens: 'left',
                 autoUpdateInput: false,
                 locale: {
-                    cancelLabel: 'Clear',
+                    applyLabel: 'منتخب کریں',
+                    cancelLabel: 'صاف کریں',
                 },
                 // ranges: {
                 //     'پچھلا ہفتہ': [moment().subtract(7, 'days').startOf('day'), moment().subtract(1, 'days').endOf('day')],
@@ -105,7 +122,7 @@
             });
 
             $('input[name="date_range"]').on('apply.daterangepicker', function(ev, picker) {
-                $(this).val(picker.startDate.format('YYYY-MM-DD') + " to " + picker.endDate.format(
+                $(this).val(picker.startDate.format('YYYY-MM-DD') + " تا " + picker.endDate.format(
                     'YYYY-MM-DD'));
             });
 
@@ -209,6 +226,20 @@
                 "searching": true, // Enables search box
                 "pageLength": 10, // Set default page length (number of records per page)
                 "lengthMenu": [5, 10, 25, 50, 100],
+                "language": {
+                    "emptyTable": "کوئی ریکارڈ دستیاب نہیں۔",
+                    "info": "_TOTAL_ میں سے _START_ تا _END_ ریکارڈ",
+                    "infoEmpty": "کوئی ریکارڈ دستیاب نہیں۔",
+                    "lengthMenu": "_MENU_ ریکارڈ دکھائیں",
+                    "search": "تلاش:",
+                    "zeroRecords": "کوئی مماثل ریکارڈ نہیں ملا۔",
+                    "paginate": {
+                        "first": "پہلا",
+                        "last": "آخری",
+                        "next": "اگلا",
+                        "previous": "پچھلا"
+                    }
+                },
                 "columnDefs": [{
                         "orderable": false,
                         "targets": "no-sort"

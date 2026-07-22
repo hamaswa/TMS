@@ -205,4 +205,36 @@ class TailorRateWorkflowTest extends TestCase
 
         $this->assertEquals(1700, (float) $order->transactions()->value('remainingBalance'));
     }
+
+    public function test_tailor_history_formats_serials_dates_and_table_controls_for_urdu_users(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'فیصل محمود', 'phone_number1' => '03005551234', 'user_id' => $owner->id,
+        ]);
+        $tailor = Tailor::create([
+            'name' => 'رشید محمود', 'phone_number1' => '03001230005',
+            'password' => bcrypt('QaTailor@2026'), 'user_id' => $owner->id,
+        ]);
+        $order = Order::create([
+            'customerId' => $customer->id, 'sub_customer' => $customer->id,
+            'suitNum' => json_encode(['سوٹ نمبر 1'], JSON_UNESCAPED_UNICODE),
+            'suitQuantity' => 1, 'totalPayment' => 3200, 'tailorId' => $tailor->id,
+            'tailor_price' => 900, 'returnDate' => '2026-08-02',
+            'userId' => $owner->id, 'status' => 'assigned',
+        ]);
+        $order->forceFill(['created_at' => '2026-07-22 10:00:00'])->save();
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-orders', $tailor))
+            ->assertOk()
+            ->assertSeeText('سوٹ نمبر 1')
+            ->assertDontSee('[&quot;سوٹ نمبر 1&quot;]', false)
+            ->assertSeeText('بدھ')
+            ->assertSeeText('22-07-2026')
+            ->assertSee('"search": "تلاش:"', false)
+            ->assertSee('"next": "اگلا"', false);
+    }
 }
