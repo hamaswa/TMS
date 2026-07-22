@@ -72,6 +72,24 @@ class CustomMeasurementFieldTest extends TestCase
         ]);
     }
 
+    public function test_urdu_commas_create_individual_select_options(): void
+    {
+        $owner = $this->owner();
+
+        $this->actingAs($owner)->post(route('admin.measurement-fields.store'), [
+            'label' => 'فٹنگ انداز',
+            'field_type' => 'select',
+            'unit' => 'none',
+            'options_text' => 'تنگ، درمیانہ، کھلا',
+            'is_active' => '1',
+        ])->assertRedirect();
+
+        $this->assertSame(
+            ['تنگ', 'درمیانہ', 'کھلا'],
+            MeasurementField::where('user_id', $owner->id)->firstOrFail()->options,
+        );
+    }
+
     public function test_order_snapshot_remains_unchanged_after_customer_and_field_are_edited(): void
     {
         $owner = $this->owner();

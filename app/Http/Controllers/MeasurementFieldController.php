@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class MeasurementFieldController extends Controller
 {
@@ -50,7 +51,7 @@ class MeasurementFieldController extends Controller
 
     private function validateField(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'label' => ['required', 'string', 'max:100'],
             'field_type' => ['required', Rule::in(MeasurementField::TYPES)],
             'unit' => ['nullable', Rule::in(MeasurementField::UNITS)],
@@ -59,12 +60,19 @@ class MeasurementFieldController extends Controller
             'is_required' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        if ($validated['field_type'] === 'select' && $this->parseOptions($validated['options_text'] ?? '') === []) {
+            throw ValidationException::withMessages([
+                'options_text' => 'فہرست کے لیے کم از کم ایک درست اختیار لکھیں۔',
+            ]);
+        }
+
+        return $validated;
     }
 
     private function attributes(array $validated): array
     {
-        $options = collect(preg_split('/[\r\n,]+/', $validated['options_text'] ?? ''))
-            ->map(fn ($option) => trim($option))->filter()->unique()->values()->all();
+        $options = $this->parseOptions($validated['options_text'] ?? '');
 
         return [
             'label' => $validated['label'],
@@ -75,6 +83,12 @@ class MeasurementFieldController extends Controller
             'is_required' => (bool) ($validated['is_required'] ?? false),
             'is_active' => (bool) ($validated['is_active'] ?? false),
         ];
+    }
+
+    private function parseOptions(string $options): array
+    {
+        return collect(preg_split('/[\r\n,،]+/u', $options))
+            ->map(fn ($option) => trim($option))->filter()->unique()->values()->all();
     }
 
     private function ownedField($id): MeasurementField
