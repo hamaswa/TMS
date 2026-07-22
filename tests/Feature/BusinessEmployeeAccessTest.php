@@ -43,8 +43,30 @@ class BusinessEmployeeAccessTest extends TestCase
 
         $this->actingAs($owner)->get(route('admin.team.index'))->assertOk()->assertViewIs('team.index');
         $this->actingAs($owner)->get(route('admin.team.employees.index'))->assertOk()->assertViewIs('team.employees');
-        $this->actingAs($owner)->get(route('admin.team.roles.index'))->assertOk()->assertViewIs('team.roles');
+        $this->actingAs($owner)->get(route('admin.team.roles.index'))
+            ->assertOk()
+            ->assertViewIs('team.roles')
+            ->assertSeeText('تیار رول منتخب کریں')
+            ->assertSeeText('سیلز پرسن')
+            ->assertSeeText('ٹیلرنگ')
+            ->assertSeeText('کپڑے کی دکان')
+            ->assertSee('data-permissions', false);
         $this->actingAs($owner)->get(route('admin.team.security'))->assertOk()->assertViewIs('team.security');
+    }
+
+    public function test_role_permissions_only_show_and_accept_enabled_business_modules(): void
+    {
+        [$owner] = $this->business(false, true);
+
+        $this->actingAs($owner)->get(route('admin.team.roles.index'))
+            ->assertOk()
+            ->assertDontSee('value="tailoring.orders"', false)
+            ->assertSee('value="clothing.sales"', false);
+
+        $this->actingAs($owner)->post(route('admin.team.roles.store'), [
+            'name' => 'Invalid tailoring role',
+            'permissions' => [BusinessRole::TAILORING_ORDERS],
+        ])->assertSessionHasErrors('permissions.0');
     }
 
     public function test_customer_only_tailoring_employee_cannot_open_orders_workshop_or_tailors(): void

@@ -47,6 +47,87 @@ class BusinessRole extends Model
         self::ACTIVITY_VIEW => 'ملازمین کی سرگرمی دیکھیں',
     ];
 
+    public const PERMISSION_GROUPS = [
+        'tailoring' => [
+            'label' => 'ٹیلرنگ',
+            'description' => 'گاہک، آرڈرز، ورکشاپ اور درزیوں کا کام',
+            'icon' => 'fa-cut',
+            'permissions' => [
+                self::TAILORING_ACCESS,
+                self::TAILORING_CUSTOMERS,
+                self::TAILORING_ORDERS,
+                self::TAILORING_WORKSHOP,
+                self::TAILORING_TAILORS,
+                self::TAILORING_CONFIGURATION,
+            ],
+        ],
+        'clothing' => [
+            'label' => 'کپڑے کی دکان',
+            'description' => 'فروخت، اسٹاک، خریداری اور سپلائرز',
+            'icon' => 'fa-store',
+            'permissions' => [
+                self::CLOTHING_ACCESS,
+                self::CLOTHING_SALES,
+                self::CLOTHING_INVENTORY,
+                self::CLOTHING_PURCHASES,
+                self::CLOTHING_SUPPLIERS,
+            ],
+        ],
+        'finance' => [
+            'label' => 'مالی امور',
+            'description' => 'بقایا، ادائیگیاں، اخراجات اور رپورٹس',
+            'icon' => 'fa-coins',
+            'permissions' => [
+                self::FINANCE_VIEW,
+                self::CUSTOMER_BALANCES,
+                self::EXPENSES_MANAGE,
+            ],
+        ],
+        'management' => [
+            'label' => 'انتظامیہ',
+            'description' => 'ترتیبات، ملازمین اور سرگرمی کی نگرانی',
+            'icon' => 'fa-user-cog',
+            'permissions' => [
+                self::SETTINGS_MANAGE,
+                self::TEAM_MANAGE,
+                self::ACTIVITY_VIEW,
+            ],
+        ],
+    ];
+
+    public const ROLE_PRESETS = [
+        'salesperson' => [
+            'label' => 'سیلز پرسن',
+            'description' => 'فروخت اور گاہک کا بقایا',
+            'permissions' => [self::CLOTHING_ACCESS, self::CLOTHING_SALES, self::CUSTOMER_BALANCES],
+        ],
+        'tailor' => [
+            'label' => 'درزی',
+            'description' => 'ورکشاپ میں تفویض شدہ کام',
+            'permissions' => [self::TAILORING_ACCESS, self::TAILORING_WORKSHOP],
+        ],
+        'order_manager' => [
+            'label' => 'آرڈر منیجر',
+            'description' => 'گاہک، ٹیلرنگ آرڈر اور ورکشاپ',
+            'permissions' => [self::TAILORING_ACCESS, self::TAILORING_CUSTOMERS, self::TAILORING_ORDERS, self::TAILORING_WORKSHOP],
+        ],
+        'stock_keeper' => [
+            'label' => 'اسٹاک منیجر',
+            'description' => 'اسٹاک، خریداری اور سپلائرز',
+            'permissions' => [self::CLOTHING_ACCESS, self::CLOTHING_INVENTORY, self::CLOTHING_PURCHASES, self::CLOTHING_SUPPLIERS],
+        ],
+        'accountant' => [
+            'label' => 'اکاؤنٹنٹ',
+            'description' => 'مالی رپورٹس، بقایا اور اخراجات',
+            'permissions' => [self::FINANCE_VIEW, self::CUSTOMER_BALANCES, self::EXPENSES_MANAGE],
+        ],
+        'manager' => [
+            'label' => 'منیجر',
+            'description' => 'تمام دستیاب کاروباری اختیارات',
+            'permissions' => ['*'],
+        ],
+    ];
+
     protected $fillable = ['business_id', 'name', 'permissions'];
 
     protected function casts(): array

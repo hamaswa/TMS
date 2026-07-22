@@ -27,10 +27,13 @@ class BusinessTeamController extends Controller
     public function roles(Request $request)
     {
         $business = $this->businessFor($request);
+        $permissions = $this->availablePermissions($business);
 
         return view('team.roles', [
             'business' => $business,
-            'permissions' => $this->availablePermissions($business),
+            'permissions' => $permissions,
+            'permissionGroups' => $this->permissionGroups($permissions),
+            'rolePresets' => $this->rolePresets($permissions),
         ]);
     }
 
@@ -59,10 +62,15 @@ class BusinessTeamController extends Controller
     public function editRole(Request $request, int $role)
     {
         $role = $this->ownedRole($request, $role);
+        $business = $this->businessFor($request);
+        $permissions = $this->availablePermissions($business);
 
         return view('team.role-edit', [
             'role' => $role,
-            'permissions' => $this->availablePermissions($request->user()->business),
+            'business' => $business,
+            'permissions' => $permissions,
+            'permissionGroups' => $this->permissionGroups($permissions),
+            'rolePresets' => $this->rolePresets($permissions),
         ]);
     }
 
@@ -235,12 +243,49 @@ class BusinessTeamController extends Controller
     private function availablePermissions($business): array
     {
         return array_filter(BusinessRole::PERMISSIONS, function ($label, $permission) use ($business) {
-            return match ($permission) {
-                BusinessRole::TAILORING_ACCESS => $business->tailoring_enabled,
-                BusinessRole::CLOTHING_ACCESS => $business->clothing_enabled,
-                default => true,
-            };
+            if (str_starts_with($permission, 'tailoring.')) {
+                return $business->tailoring_enabled;
+            }
+
+            if (str_starts_with($permission, 'clothing.')) {
+                return $business->clothing_enabled;
+            }
+
+            return true;
         }, ARRAY_FILTER_USE_BOTH);
+    }
+
+    private function permissionGroups(array $permissions): array
+    {
+        $allowed = array_keys($permissions);
+
+        return collect(BusinessRole::PERMISSION_GROUPS)
+            ->map(function (array $group) use ($allowed, $permissions) {
+                $group['permissions'] = collect($group['permissions'])
+                    ->filter(fn (string $permission) => in_array($permission, $allowed, true))
+                    ->mapWithKeys(fn (string $permission) => [$permission => $permissions[$permission]])
+                    ->all();
+
+                return $group;
+            })
+            ->filter(fn (array $group) => $group['permissions'] !== [])
+            ->all();
+    }
+
+    private function rolePresets(array $permissions): array
+    {
+        $allowed = array_keys($permissions);
+
+        return collect(BusinessRole::ROLE_PRESETS)
+            ->map(function (array $preset) use ($allowed) {
+                $preset['permissions'] = $preset['permissions'] === ['*']
+                    ? $allowed
+                    : array_values(array_intersect($preset['permissions'], $allowed));
+
+                return $preset;
+            })
+            ->filter(fn (array $preset) => $preset['permissions'] !== [])
+            ->all();
     }
 
     private function ownedRole(Request $request, int $id): BusinessRole
