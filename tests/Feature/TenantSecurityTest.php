@@ -128,6 +128,25 @@ class TenantSecurityTest extends TestCase
         $this->postJson('/api/mark-read')->assertUnauthorized();
     }
 
+    public function test_customer_mobile_login_uses_generic_unauthorized_response_and_is_rate_limited(): void
+    {
+        $shopOwner = $this->userWithRole('shop_owner');
+        $payload = [
+            'name' => 'Unknown customer',
+            'phone' => '03000000000',
+            'shop_id' => $shopOwner->id,
+            'device_name' => 'security-test',
+        ];
+
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->postJson('/api/login', $payload)
+                ->assertUnauthorized()
+                ->assertExactJson(['message' => 'نام، فون نمبر یا دکان درست نہیں ہے۔']);
+        }
+
+        $this->postJson('/api/login', $payload)->assertTooManyRequests();
+    }
+
     public function test_customer_api_only_returns_the_authenticated_customers_orders(): void
     {
         $shopOwner = $this->userWithRole('shop_owner');

@@ -20,7 +20,9 @@ use App\Http\Controllers\ReactNativeController\ReactNativeController;
 //     return $request->user();
 // });
 
-Route::post('/login',[ReactNativeController::class,'login']);
+// Keep the legacy customer identity contract for current mobile clients while
+// limiting credential guessing until the planned PIN/OTP migration is shipped.
+Route::post('/login',[ReactNativeController::class,'login'])->middleware('throttle:5,1');
 
 Route::get('/shops',[ReactNativeController::class,'AllShops']);
 

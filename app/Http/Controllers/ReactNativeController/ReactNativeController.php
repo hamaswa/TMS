@@ -33,18 +33,23 @@ class ReactNativeController extends Controller
 
             if (!$customer) {
                 return response()->json([
-                    'message' => 'Customer not found or invalid credentials.'
-                ], 404); // Return a 404 status code for not found
+                    'message' => 'نام، فون نمبر یا دکان درست نہیں ہے۔'
+                ], 401);
             }
-            $notifications = $customer->notifications;
-            // Count unread notifications (where read_at is null)
-            $unreadCount = $customer->notifications()->whereNull('read_at')->count();
+
             return response()->json([
                 'customer' => $customer,
                 'token' => $customer->createToken($validatedData['device_name'] ?? 'mobile')->plainTextToken,
             ], 200);
         } catch (Exception $e) {
-            return response()->json($e->getMessage());
+            Log::error('Mobile customer login failed unexpectedly.', [
+                'shop_id' => $validatedData['shop_id'],
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'message' => 'لاگ اِن مکمل نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔',
+            ], 500);
         }
     }
 
