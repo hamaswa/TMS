@@ -188,10 +188,11 @@
 
             <div id="orderSection" style="max-width: 380px; margin-top: -25px;" class="ticket order-section">
                 <div class="pl-3 pr-3" style="margin-top: 10px">
-                    <p align="center"><img src="{{ asset('public/images/setting/' . $setting->logo) }}" width="100">
-                    </p>
+                    @if($setting?->logo)
+                        <p align="center"><img src="{{ asset('public/images/setting/' . $setting->logo) }}" width="100" alt="کاروباری لوگو"></p>
+                    @endif
                     <h1 class="text-center" style="font-size: 16px;font-weight: 600;text-align: center">
-                        {{ $setting->name }}</h1>
+                        {{ $setting?->name ?: (auth()->user()->business?->name ?: auth()->user()->name) }}</h1>
                         <h5 style="font-size: 16px;font-weight: 600;text-align: center">
                             Invoice No:{{ $id }}</h5>
                     <table class="table" style="width: 100%; table-layout: fixed;">
@@ -375,8 +376,8 @@
 
         <div style="width: 100%;">
             <div style="width: 100%;font-weight:900;" align="center">
-                <p><b style="font-size: 16px;">{{ $setting->address }}</b></p>
-                <p><b style="font-size: 16px;">{{ $setting->contact_no }}</b></p>
+                @if($setting?->address)<p><b style="font-size: 16px;">{{ $setting->address }}</b></p>@endif
+                @if($setting?->contact_no)<p><b style="font-size: 16px;">{{ $setting->contact_no }}</b></p>@endif
             </div>
         </div>
         {{-- <p style="text-align:center">{{$setting->note}}</p> --}}

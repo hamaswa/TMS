@@ -773,7 +773,7 @@ class ClothStockController extends Controller
             'length.*' => ['required', 'numeric', 'gt:0'],
             'c_name' => ['required', 'string', 'regex:/^.+\|\d+$/'],
             'payment' => ['required', 'numeric', 'min:0'],
-            'remain' => ['required', 'numeric', 'min:0'],
+            'remain' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $itemCount = count($validated['brand_name']);
@@ -781,10 +781,20 @@ class ClothStockController extends Controller
             abort_unless(count($validated[$field]) === $itemCount, 422, 'Sale item fields are incomplete.');
         }
 
+        $saleTotal = round(collect($validated['length'])
+            ->map(fn ($length, $index) => (float) $length * (float) $validated['per_meter'][$index])
+            ->sum(), 2);
+        if ((float) $validated['payment'] > $saleTotal) {
+            throw ValidationException::withMessages([
+                'payment' => 'موصول شدہ رقم کل فروخت سے زیادہ نہیں ہو سکتی۔',
+            ]);
+        }
+        $remainingBalance = round($saleTotal - (float) $validated['payment'], 2);
+
         [, $customerId] = explode('|', $validated['c_name'], 2);
         $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($customerId);
 
-        $firstSale = DB::transaction(function () use ($validated, $customer, $itemCount) {
+        $firstSale = DB::transaction(function () use ($validated, $customer, $itemCount, $remainingBalance) {
             $inventory = app(InventoryService::class);
             $firstSale = null;
             $soldAt = now();
@@ -833,7 +843,7 @@ class ClothStockController extends Controller
             }
 
             Transaction::create([
-                'remainingBalance' => $validated['remain'],
+                'remainingBalance' => $remainingBalance,
                 'recivedPayment' => $validated['payment'],
                 'customerId' => $customer->id,
                 'Order_type' => 'Sale',

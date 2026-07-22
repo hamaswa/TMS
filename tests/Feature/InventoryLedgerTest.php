@@ -12,6 +12,7 @@ use App\Models\Purchase;
 use App\Models\SaleStock;
 use App\Models\Setting;
 use App\Models\Supplier;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -60,6 +61,39 @@ class InventoryLedgerTest extends TestCase
             'movement_type' => 'counter_sale', 'quantity' => -2, 'balance_after' => 8,
             'reference_id' => $sale->id,
         ]);
+    }
+
+    public function test_counter_sale_derives_balance_server_side_and_receipt_works_without_settings(): void
+    {
+        [$owner, $cloth, $color] = $this->stock(10, 100);
+        $owner->update(['name' => 'Fallback Shop']);
+        $customer = Customers::create(['name' => 'Balance Customer', 'phone_number1' => '03001112222', 'user_id' => $owner->id]);
+
+        $response = $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$cloth->cloth_brand_id], 'cloth_type' => [$cloth->cloth_type_id],
+            'color' => [$color->color], 'per_meter' => [150], 'clothes_rack' => [null], 'length' => [2],
+            'c_name' => $customer->name . '|' . $customer->id, 'payment' => 100, 'remain' => 9999,
+        ]);
+
+        $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
+        $response->assertRedirect(route('admin.printStock', ['id' => $sale->id, 'customerId' => $customer->id]));
+        $this->actingAs($owner)->get($response->headers->get('Location'))->assertOk()->assertSee('Fallback Shop');
+        $this->assertEquals(200, (float) Transaction::where('sale_id', $sale->id)->value('remainingBalance'));
+    }
+
+    public function test_counter_sale_rejects_payment_above_calculated_total(): void
+    {
+        [$owner, $cloth, $color] = $this->stock(10, 100);
+        $customer = Customers::create(['name' => 'Overpay Customer', 'phone_number1' => '03001112222', 'user_id' => $owner->id]);
+
+        $this->actingAs($owner)->from(route('admin.sellCloth'))->post(route('admin.sellStock'), [
+            'brand_name' => [$cloth->cloth_brand_id], 'cloth_type' => [$cloth->cloth_type_id],
+            'color' => [$color->color], 'per_meter' => [150], 'clothes_rack' => [null], 'length' => [2],
+            'c_name' => $customer->name . '|' . $customer->id, 'payment' => 301, 'remain' => 0,
+        ])->assertRedirect(route('admin.sellCloth'))->assertSessionHasErrors('payment');
+
+        $this->assertEquals(10, (float) $color->fresh()->length);
+        $this->assertDatabaseCount('sale_stocks', 0);
     }
 
     public function test_online_order_and_cancellation_create_reversing_movements(): void
