@@ -106,8 +106,19 @@ class FinancialReportTest extends TestCase
 
     public function test_dashboard_and_csv_export_are_shop_owner_only_and_tenant_scoped(): void
     {
-        [$owner] = $this->baseData();
+        [$owner, $customer] = $this->baseData();
         $stockSeller = $this->userWithRole('stock_seller');
+        Transaction::create([
+            'customerId' => $customer->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Payment',
+            'remainingBalance' => 50,
+            'recivedPayment' => 0,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.financial-reports.index'))
+            ->assertOk()
+            ->assertSeeText('03009990000');
 
         $this->actingAs($owner)->get(route('admin.financial-reports.index'))
             ->assertOk()->assertSee('مالیاتی ڈیش بورڈ')->assertSee('نفع و نقصان');
