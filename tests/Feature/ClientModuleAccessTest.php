@@ -115,7 +115,8 @@ class ClientModuleAccessTest extends TestCase
         $this->actingAs($admin)->get(route('administrator.index'))
             ->assertOk()
             ->assertSeeText('Business Owner')
-            ->assertDontSeeText('Counter Employee');
+            ->assertDontSeeText('Counter Employee')
+            ->assertSeeText('Change password');
 
         $this->actingAs($admin)->get(route('administrator.edit', $employee))->assertNotFound();
         $this->actingAs($admin)->post(route('administrator.update', $employee), [
