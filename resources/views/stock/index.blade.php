@@ -114,11 +114,11 @@
                                                                 میٹر</td>
 
                                                             <td style="font-size: 18px;font-weight:600;">
-                                                                Rs:{{ number_format($cloth->price) }}
+                                                                Rs:{{ number_format((float) ($color->average_unit_cost ?: $cloth->price), 2) }}
                                                             </td>
 
                                                             <td style="font-size: 18px;font-weight:600;">
-                                                                Rs:{{ number_format($cloth->price * $color->length) }}</td>
+                                                                Rs:{{ number_format((float) ($color->average_unit_cost ?: $cloth->price) * (float) $color->length, 2) }}</td>
 
                                                             <td>
                                                                 @php

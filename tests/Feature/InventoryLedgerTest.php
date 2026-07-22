@@ -40,6 +40,10 @@ class InventoryLedgerTest extends TestCase
         $this->assertDatabaseHas('inventory_movements', [
             'movement_type' => 'purchase_receipt', 'quantity' => 10, 'balance_after' => 20,
         ]);
+        $this->actingAs($owner)->get(route('admin.stock.index'))
+            ->assertOk()
+            ->assertSeeText('Rs:100.00')
+            ->assertSeeText('Rs:2,000.00');
     }
 
     public function test_counter_sale_records_stock_cost_and_inventory_movement(): void
