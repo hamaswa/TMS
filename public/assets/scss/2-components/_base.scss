@@ -1,0 +1,124 @@
+body{
+  font-family: $font-family-main;
+  font-size: $main-font-size;
+  height: 100%;
+  color: $text-color;
+}
+
+
+.social-icon{
+  list-style: none;
+  li{
+    display: inline-block;
+    &:not(:last-child){
+      margin-right: 20px;
+    }
+    a{
+      font-size: 22px;
+      text-align: center;
+      i{
+        color: rgba(255,255,255,0.5);
+      }
+      &:hover{
+        i{
+          &.fa-twitter{
+            color: $twitter;
+          }
+          &.fa-facebook,
+          &.fa-facebook-f{
+            color: $facebook;
+          }
+          &.fa-linkedin{
+            color: $linkedin;
+          }
+          &.fa-youtube-play{
+            color: $youtube;
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+
+.hover-sink-away{
+  -webkit-animation-duration: 0.8s;
+  animation-duration: 0.8s;
+  -webkit-animation-fill-mode: forwards;
+  animation-fill-mode: forwards;
+}
+.hover-sink-away:hover,
+.hover-sink-away:focus,
+.hover-sink-away:active {
+  -webkit-animation-name: anim-sink-away;
+  animation-name: anim-sink-away;
+  -webkit-animation-timing-function: ease-out;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+}
+
+.main-content{
+  padding: 60px 0;
+  background-color: $light-grey;
+}
+h1, h2, h3, h4, h5, h6 {
+  color: #444444;
+  font-weight: 600;
+}
+h2 {
+  font-size: 1.9rem;
+  color: #444444;
+}
+
+.language{
+  position: fixed;
+  bottom: 50px;
+  right: 50px;
+}
+.urdu{
+  display: none;
+}
+
+.cc-table-data-options-history{
+  .btn{
+    color: $white;
+  }
+}
+#cc-table-data-options-history_info,
+#cc-table-data-options-history_length,
+#cc-table-data-options-history_paginate,
+#cc-table-data-options-history_filter {
+    display: none !important;
+}
+.options-nav {
+  .nav-link {
+    border-radius: .25rem;
+    color: #444444;
+  }
+  .nav-link.active,
+  .show>.nav-link {
+    background-color: $primary-blue;
+  }
+}
+.options-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  li{
+    margin-bottom: 10px;
+    .option-link {
+      border-radius: .25rem;
+      color: #444444;
+      display: block;
+      padding: 0.5rem 1rem;
+      text-decoration: none;
+    }
+    .option-link.active,
+    .show>.option-link {
+      background-color: $primary-blue;
+      color: #fff;
+    }
+  }
+}

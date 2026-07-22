@@ -1,0 +1,99 @@
+//------------------------------- Variables
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+// TYPOGRAPHY
+/////////////////////////////////////////////////////////////////////////////
+
+$font-family-main: 'Noto Nastaliq Urdu', serif;
+$font-family-header: 'Noto Nastaliq Urdu', serif;
+$font-family-digits: 'Noto Nastaliq Urdu', serif;
+
+// We use these to define default font weights
+$font-weight-normal: normal !default;
+$font-weight-bold: bold !default;
+
+/////////////////////////////////////////////////////////////////////////////
+// FONT SIZE
+/////////////////////////////////////////////////////////////////////////////
+
+$main-font-size: 16px;
+
+$nudista-medium: 400;
+$nudista-semibold: 600;
+$nudista-bold: 700;
+
+$images-path: '../images';
+$icons-path: $images-path+'/icons';
+
+//------------------------------- Colors
+
+
+$facebook: #3b5998;
+$twitter: #1da1f2;
+$linkedin: #0077b5;
+$youtube: #cd201f;
+
+$grey-light : #fafafa;
+
+
+
+// ------------------------ Responsive Quries
+
+$sm-em: "only screen and (min-width: 36em)"; // ≥ 576px
+$md-em: "only screen and (min-width: 48em)"; // ≥ 768px
+$lg-em: "only screen and (min-width: 62em) "; // ≥ 992px
+$xl-em: "only screen and (min-width: 75em)"; // ≥ 1200px
+
+$xs-only: "(max-width: 575.98px)";
+$sm-only: "(min-width: 576px) and (max-width: 767.98px)";
+$md-only: "(min-width: 768px) and (max-width: 991.98px)";
+$lg-only: "(min-width: 992px) and (max-width: 1199.98px)";
+$xl-only: "(min-width: 1200px)";
+
+$sm-down: "only screen and (max-width: 767.98px)";
+$md-down: "only screen and (max-width: 991.98px)";
+$lg-down: "only screen and (max-width: 1199.98px)";
+
+/////////////////////////////////////////////////////////////////////////////
+// COLORS
+/////////////////////////////////////////////////////////////////////////////
+
+$white:				#ffffff;
+$text-color: 		#444444;
+$highlight-color:	#FEF5EF;
+$footer-text:		#ABB7CA;
+
+$primary-blue: 		#00529c;
+$broker-blue:		#0098D6;
+$hover-blue:		#E9F4FF;
+$employers:			#f47421;
+$employees:			#62bc74;
+
+$grey: 				#cccccc;
+$dark-grey: 		#535353;
+$light-grey: 		#eff2f3;
+$very-light-grey: 	#f6f6f6;
+$light-grey-bg:		#fffdfd;
+$outline-grey:		#dee2e6;
+
+$dark-green: 		#09600d;
+$dark-orange: 		#d86010;
+
+//STATUS COLORS
+
+$color-success-bg: 		#007000;  		//success green backgound
+$color-success-text:	#E6E7E8;		//success text on green background
+
+$color-error-bg: 		#B90909;  		//error red backgound
+$color-error-text:		#E6E7E8;		//error text on red background
+
+$color-warning-bg: 		#F5DB1F;  		//warning yellow backgound
+$color-warning-text:	#2E343D;		//warning text on yellow background
+
+$color-info-bg: 		$primary-blue;  //info blue backgound
+$color-info-text:		#E6E7E8;		//info text on blue background
+
+

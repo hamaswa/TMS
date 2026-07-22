@@ -1,0 +1,157 @@
+@font-face {
+    font-family: 'Noto Nastaliq Urdu';
+    src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+body {
+    font-family: 'Noto Nastaliq Urdu', serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Noto Nastaliq Urdu', serif;
+    font-size: 120%;
+}
+.form-group select.form-control {
+    height: 51px !important;
+    margin: 0 !important;
+    backface-visibility: hidden;
+    font-size: 14px;
+}
+input.form-control{
+    height: 51px !important;
+}
+.card{
+    padding: 40px;
+}
+.card .card-body h2.d-inline .badge{
+    display: inline-flex;
+    font-size: 20px;
+    line-height: 1;
+    margin-right: 10px;
+    padding: 3px 12px;
+    width: 35px;
+    height: 35px;
+}
+.nav-item .dropdown-menu.show .dropdown-item{
+    padding: 1rem 1.5rem ;
+}
+.nav-item .dropdown-menu.show .dropdown-item:focus,
+.nav-item .dropdown-menu.show .dropdown-item:hover {
+    color: #f8f9fa;
+    text-decoration: none;
+    background-color: #343a40;
+}
+
+td.getCustomer.customer-link {
+     box-shadow: unset;
+    border-radius: 0;
+    text-align: center !important;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 0;
+    position: relative;
+     background-color: transparent;
+    z-index: 1;
+    color: #fff;
+}
+
+td.getCustomer.customer-link:after {
+    width: 80%;
+    height: 46px;
+    content: '';
+    background: #00529c;
+    position: absolute;
+    left: 50%;
+    top: 55%;
+    transform: translate(-50%,-50%);
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: -1;
+}
+
+td.GetCustomer.customer-link {
+    box-shadow: unset;
+   border-radius: 0;
+   text-align: center !important;
+   font-weight: bold;
+   text-transform: uppercase;
+   margin: 0;
+   position: relative;
+    background-color: transparent;
+   z-index: 1;
+   color: #fff;
+}
+
+td.GetCustomer.customer-link:after {
+   width: 80%;
+   height: 46px;
+   content: '';
+   background: #00529c;
+   position: absolute;
+   left: 50%;
+   top: 55%;
+   transform: translate(-50%,-50%);
+   border-radius: 10px;
+   border: 1px solid #ccc;
+   display: flex;
+   justify-content: center;
+   align-items: center;
+   z-index: -1;
+}
+
+.dataTables_wrapper .dataTables_filter label{
+    text-indent: unset !important;
+    display: flex;
+}
+.dataTables_wrapper .dataTables_length:before{
+    display: none !important;
+}
+.dataTables_wrapper .dataTables_length select {
+    font-size: 13px;
+    padding: 4px;
+    border-color: #cccccc;
+    border-radius: 10px;
+    margin: 0 5px;
+}
+a.btn.btn-primary.btn-sm.admin-order-status.text-white {
+    font-size: 12px;
+    line-height: 20px;
+}
+form select.form-control{
+    min-height: 50px !important;
+    -webkit-backface-visibility: hidden;
+    -moz-backface-visibility: hidden;
+    -ms-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+table[id^=cc-table-data] tbody tr td > a + a {
+    margin-right: 5px;
+}
+.cc-table-data-options-history .btn.delete-tr {
+    color: #ffffff;
+    padding-top: 0;
+}
+
+.btn-green {
+    background-color: #28a745;
+    /* Green color */
+    color: white;
+    /* Text color */
+    border: 1px solid #28a745;
+    /* Optional: Green border */
+    padding: 10px 20px;
+    /* Optional: Padding for the button */
+    border-radius: 5px;
+    /* Optional: Rounded corners */
+    cursor: pointer;
+    /* Change cursor to pointer on hover */
+}
+
+.btn-green:hover {
+    background-color: #218838;
+}

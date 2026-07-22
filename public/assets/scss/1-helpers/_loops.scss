@@ -1,0 +1,10 @@
+@for $size from 1 through 15 {
+  .fs-#{$size}x {
+    font-size: #{ ($size * 2) + 10}px;
+  }
+}
+@for $opacity from 1 through 10 {
+  .opacity-#{$opacity} {
+    opacity: #{$opacity / 10};
+  }
+}

@@ -1,0 +1,14 @@
+
+.dot{
+  &:before{
+    content: '\2022';
+  }
+}
+
+i{
+  &[class*="h-icon-"]{
+    display: inline-block;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+  }
+}

@@ -1,0 +1,310 @@
+
+
+/* Small devices (mobile phones, 576px and down) */
+@media (max-width: 576px) {
+    footer p {
+        font-size: 1rem; /* 14px */
+    }
+    .nav-item{
+        font-size: 12px;
+    }
+    .navbar-brand{
+        font-size: 12px;
+    }
+    .intro .text-content h1{
+        font-size: 1.2rem;
+    }
+
+    .intro .text-content p{
+        font-size: 0.8rem;
+    }
+    .intro .text-content .btn{
+        font-size: 10px;
+    }
+    .header .scroll-to-top{
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        line-height: 22px;
+    }
+    .header .scroll-to-top i{
+        font-size: 14px;
+    }
+    .navbar-nav .dropdown-menu{
+        width: 20px;
+        margin-bottom: 17px;
+    }
+    .navbar-nav .dropdown-item{
+        font-size: 12px;
+    }
+    .brands h1{
+        margin-top: 10px;
+    }
+    .brands .fancy-font {
+        font-family: 'Great Vibes', cursive;
+        font-size: 30px;
+    }
+    .brands .card{
+        width: 100%;
+    }
+    .brands .card img{
+        width:100px;
+        height: 100px;
+        object-fit: cover;
+    }
+    .brands .card .card-title{
+        font-size: 14px;
+    }
+    .brands .card-body .btn{
+        font-size: 8px;
+    }
+    .contact-us{
+        position: relative;
+        top: 0px;
+        margin-top: 200px;
+    }
+    .contact-form {
+        width: 80%;
+        padding: 10px;
+    }
+
+    .contact-form label {
+        font-size: 16px;
+    }
+    .contact-form h2{
+        font-size: 22px;
+    }
+
+    .contact-form input,
+    .contact-form textarea {
+        font-size: 14px;
+    }
+    .about-us{
+        padding: 0px !important;
+    }
+    .about-us .about-us-image img{
+        width: 200px;
+        height: 150px;
+        margin-bottom: 10px;
+    }
+    .about-us .container h2{
+        text-transform: capitalize;
+        margin-bottom: 0px !important;
+    }
+    .about-us .about-us-title{
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+    .about-us .about-us-text{
+        font-size: 1rem;
+        margin-top: 20px;
+    }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+    footer p {
+        font-size: 1.25rem; /* 20px */
+    }
+    .nav-item{
+        font-size: 14px;
+    }
+    .navbar-brand{
+        font-size: 14px;
+    }
+    .intro .text-content h1{
+        font-size: 2rem;
+    }
+
+    .intro .text-content p{
+        font-size: 1rem;
+    }
+    .intro .text-content .btn{
+        font-size: 12px;
+    }
+    .header .scroll-to-top{
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        line-height: 30px;
+    }
+    .header .scroll-to-top i{
+        font-size: 16px;
+    }
+    .brands{
+        margin-bottom: 0px;
+    }
+    .brands .fancy-font {
+        font-family: 'Great Vibes', cursive;
+        font-size: 40px;
+    }
+
+    .brands .card img{
+        width:100px;
+        height: 100px;
+        object-fit: cover;
+    }
+    .brands .card .card-title{
+        font-size: 14px;
+    }
+    .brands .card-body .btn{
+        font-size: 10px;
+    }
+    .contact-us{
+        position: relative;
+        top: 0px;
+        margin-top: 250px;
+    }
+    .contact-form {
+        width: 80%;
+        padding: 10px;
+    }
+
+    .contact-form label {
+        font-size: 16px;
+    }
+    .contact-form h2{
+        font-size: 22px;
+    }
+
+    .contact-form input,
+    .contact-form textarea {
+        font-size: 14px;
+    }
+    .about-us{
+        padding: 0px !important;
+    }
+    .about-us .about-us-image img{
+        width: 250px;
+        height: 200px;
+        margin-bottom: 10px;
+    }
+    .about-us .container h2{
+        text-transform: capitalize;
+    }
+    .about-us .about-us-title{
+        font-size: 2rem;
+    }
+    .about-us .about-us-text{
+        font-size: 1rem;
+    }
+}
+
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+    footer p {
+        font-size: 1.5rem; /* 24px */
+    }
+    .nav-item{
+        font-size: 16px;
+    }
+    .navbar-brand{
+        font-size: 16px;
+    }
+    .header .scroll-to-top{
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        line-height: 40px;
+    }
+    .header .scroll-to-top i{
+        font-size: 20px;
+    }
+    .brands .fancy-font {
+        font-family: 'Great Vibes', cursive;
+        font-size: 60px;
+    }
+
+    .brands .card img{
+        width:200px;
+        height: 200px;
+        object-fit: cover;
+    }
+    .brands .card .card-title{
+        font-size: 24px;
+    }
+    .brands .card-body .btn{
+        font-size: 12px;
+    }
+    .contact-us{
+        position: relative;
+        top: 0px;
+        margin-top: 0px;
+    }
+    .contact-form {
+        width: 80%;
+        padding: 10px;
+    }
+
+    .contact-form label {
+        font-size: 20px;
+    }
+    .contact-us .contact-form h2{
+        font-size: 2.5rem;
+    }
+
+    .contact-form input,
+    .contact-form textarea {
+        font-size: 18px;
+    }
+    .about-us .about-us-image img{
+        width: 500px;
+        height: 400px;
+    }
+    .about-us .container h2{
+        text-transform: capitalize;
+    }
+    .about-us .about-us-title{
+        font-size: 2.5rem;
+    }
+    .about-us .about-us-text{
+        font-size: 1.4rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+    }
+
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+    footer p {
+        font-size: 1.75rem; /* 28px */
+    }
+    .nav-item{
+        font-size: 20px;
+    }
+    .navbar-brand{
+        font-size: 24px;
+    }
+    .intro .text-content h1{
+        font-size: 3rem;
+    }
+    .intro .text-content p{
+        font-size: 1.2rem;
+    }
+    .intro .text-content .btn{
+        font-size: 16px;
+    }
+    .contact-us{
+        position: relative;
+        top: 0px;
+        margin-top: 0px;
+    }
+    .contact-form {
+        width: 80%;
+        padding: 10px;
+    }
+
+    .contact-form label {
+        font-size: 20px;
+    }
+    .contact-form h2{
+        font-size: 24px;
+    }
+
+    .contact-form input,
+    .contact-form textarea {
+        font-size: 18px;
+    }
+}

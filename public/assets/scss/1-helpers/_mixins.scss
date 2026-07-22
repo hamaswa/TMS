@@ -1,0 +1,180 @@
+//------------------------------- Mixins
+@mixin transition($prop1, $prop2:false, $prop3:false, $prop4:false) {
+  -webkit-transition: $prop1, $prop2, $prop3, $prop4;
+  -moz-transition: $prop1, $prop2, $prop3, $prop4;
+  -ms-transition: $prop1, $prop2, $prop3, $prop4;
+  -o-transition: $prop1, $prop2, $prop3, $prop4;
+  transition: $prop1, $prop2, $prop3, $prop4;
+}
+
+@mixin linear-gradient($color-1, $color-2) {
+  background: -webkit-linear-gradient($color-1, $color-2);
+  background: -moz-linear-gradient($color-1, $color-2);
+  background: -ms-linear-gradient($color-1, $color-2);
+  background: -o-linear-gradient($color-1, $color-2);
+  background: linear-gradient($color-1, $color-2);
+}
+
+@mixin box-sizing($mode) {
+  -webkit-box-sizing: $mode;
+  -moz-box-sizing: $mode;
+  box-sizing: $mode;
+}
+
+@mixin box-shadow($prop) {
+  -webkit-box-shadow: $prop;
+  -moz-box-shadow: $prop;
+  box-shadow: $prop;
+}
+
+@mixin absolute-center($left:auto, $top:auto) {
+  position: absolute;
+  left: $left;
+  top: $top;
+  -webkit-transform: translate(-50%, -50%);
+  -moz-transform: translate(-50%, -50%);
+  -ms-transform: translate(-50%, -50%);
+  -o-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+
+@mixin border-radius($radius) {
+  -webkit-border-radius: $radius;
+  -moz-border-radius: $radius;
+  border-radius: $radius;
+}
+
+@mixin placeholder {
+  &::-webkit-input-placeholder {
+    @content
+  }
+
+  &:-moz-placeholder {
+    @content
+  }
+
+  &::-moz-placeholder {
+    @content
+  }
+
+  &:-ms-input-placeholder {
+    @content
+  }
+}
+
+////////////////////////////////////////////////////
+/*
+     @include grid-md {
+        min-height: 40vh;        
+    }
+*/
+////////////////////////////////////////////////////
+
+
+@mixin grid-sm {
+  @media #{$sm-em} {
+    @content;
+  }
+}
+
+@mixin grid-md {
+  @media #{$md-em} {
+    @content;
+  }
+}
+
+@mixin grid-lg {
+  @media #{$lg-em} {
+    @content;
+  }
+}
+
+@mixin grid-xl {
+  @media #{$xl-em} {
+    @content;
+  }
+}
+
+@mixin grid-xs-only {
+  @media #{$xs-only} {
+    @content;
+  }
+}
+
+@mixin grid-sm-only {
+  @media #{$sm-only} {
+    @content;
+  }
+}
+
+@mixin grid-md-only {
+  @media #{$md-only} {
+    @content;
+  }
+}
+
+@mixin grid-lg-only {
+  @media #{$lg-only} {
+    @content;
+  }
+}
+
+@mixin grid-xl-only {
+  @media #{$xl-only} {
+    @content;
+  }
+}
+
+@mixin grid-sm-down {
+  @media #{$sm-down} {
+    @content;
+  }
+}
+
+@mixin grid-md-down {
+  @media #{$md-down} {
+    @content;
+  }
+}
+
+@mixin grid-lg-down {
+  @media #{$lg-down} {
+    @content;
+  }
+}
+
+@mixin kreeShadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .2), 0 1px 1px 0 rgba(0, 0, 0, .14), 0 2px 1px -1px rgba(0, 0, 0, .12);
+}
+
+@mixin kreeTransition {
+  -webkit-transition: all 0.2s ease-out;
+  -moz-transition: all 0.2s ease-out;
+  -ms-transition: all 0.2s ease-out;
+  -o-transition: all 0.2s ease-out;
+  transition: all 0.2s ease-out;
+}
+
+@mixin optional-at-root($sel) {
+  @at-root #{if(not &, $sel, selector-append(&, $sel))} {
+    @content;
+  }
+}
+
+@mixin placeholder {
+  @include optional-at-root('::-webkit-input-placeholder') {
+    @content;
+  }
+
+  @include optional-at-root(':-moz-placeholder') {
+    @content;
+  }
+
+  @include optional-at-root('::-moz-placeholder') {
+    @content;
+  }
+
+  @include optional-at-root(':-ms-input-placeholder') {
+    @content;
+  }
+}

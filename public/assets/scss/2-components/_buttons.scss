@@ -1,0 +1,16 @@
+.btn{
+
+  &:hover,
+  &:focus{
+    outline: none;
+  }
+}
+
+.btn-blue {
+  background-color: $primary-blue;
+  color: $white !important;
+  &:hover {
+    color: $white;
+    background-color: darken($primary-blue, 7%);
+  }
+}
