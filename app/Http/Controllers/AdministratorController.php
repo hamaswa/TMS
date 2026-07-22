@@ -19,12 +19,12 @@ class AdministratorController extends Controller
 {
     public function showData()
     {
-        $users = User::with('roles')->orderBy('name')->get();
+        $users = User::role('shop_owner')->with(['roles', 'ownedBusiness'])->orderBy('name')->get();
         return view('Administrator.index', compact('users'));
     }
     public function index()
     {
-        $allRoles = Role::all();
+        $allRoles = Role::where('name', 'shop_owner')->get();
         return view('Administrator.create', compact('allRoles'));
     }
     public function show()
@@ -61,14 +61,14 @@ class AdministratorController extends Controller
 
     public function edit($id)
     {
-        $user = User::findOrFail($id);
-        $allRoles = Role::all();
+        $user = $this->client($id);
+        $allRoles = Role::where('name', 'shop_owner')->get();
         return view('Administrator.edit', compact('user', 'allRoles'));
     }
 
     public function update(Request $req, $id)
 {
-    $user = User::findOrFail($id);
+    $user = $this->client($id);
     $validated = $this->validateAccount($req, $user);
     $modules = $validated['modules'] ?? [];
     $user->fill([
@@ -105,7 +105,7 @@ class AdministratorController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
             'password' => [$user ? 'nullable' : 'required', 'string', 'min:8'],
-            'role' => ['required', Rule::exists('roles', 'name')],
+            'role' => ['required', Rule::in(['shop_owner'])],
             'modules' => [Rule::requiredIf(fn () => $request->input('role') === 'shop_owner'), 'array', 'min:1'],
             'modules.*' => [Rule::in(['tailoring', 'clothing'])],
         ]);
@@ -113,12 +113,14 @@ class AdministratorController extends Controller
 
     public function delete($id)
     {
-        $user = User::find($id);
-        if ($user) {
-            $user->delete();
-        }
-        $users = User::all();
-        return view('Administrator.index', compact('users'));
+        $this->client($id)->delete();
+
+        return redirect()->route('administrator.index')->with('success', 'Client account deleted.');
+    }
+
+    private function client(int|string $id): User
+    {
+        return User::role('shop_owner')->findOrFail($id);
     }
 
     public function editRole(Request $req, $id)

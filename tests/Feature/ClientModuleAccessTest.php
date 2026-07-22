@@ -87,6 +87,51 @@ class ClientModuleAccessTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'none@example.com']);
     }
 
+    public function test_super_admin_client_management_excludes_business_employees(): void
+    {
+        $adminRole = Role::firstOrCreate(['name' => 'administrative', 'guard_name' => 'web']);
+        $ownerRole = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $employeeRole = Role::firstOrCreate(['name' => 'sales_staff', 'guard_name' => 'web']);
+
+        $admin = User::factory()->create();
+        $admin->assignRole($adminRole);
+        $owner = User::factory()->create(['name' => 'Business Owner']);
+        $owner->assignRole($ownerRole);
+        $employee = User::factory()->create(['name' => 'Counter Employee']);
+        $employee->assignRole($employeeRole);
+
+        $this->actingAs($admin)->get(route('administrator.index'))
+            ->assertOk()
+            ->assertSeeText('Business Owner')
+            ->assertDontSeeText('Counter Employee');
+
+        $this->actingAs($admin)->get(route('administrator.edit', $employee))->assertNotFound();
+        $this->actingAs($admin)->post(route('administrator.update', $employee), [
+            'name' => $employee->name,
+            'email' => $employee->email,
+            'role' => 'shop_owner',
+            'modules' => ['clothing'],
+        ])->assertNotFound();
+    }
+
+    public function test_super_admin_cannot_create_a_staff_account_from_client_management(): void
+    {
+        $adminRole = Role::firstOrCreate(['name' => 'administrative', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'sales_staff', 'guard_name' => 'web']);
+        $admin = User::factory()->create();
+        $admin->assignRole($adminRole);
+
+        $this->actingAs($admin)->from(route('administrator.create'))->post(route('administrator.insert'), [
+            'name' => 'Unexpected Employee',
+            'email' => 'employee@example.com',
+            'password' => 'secure-password',
+            'role' => 'sales_staff',
+        ])->assertRedirect(route('administrator.create'))->assertSessionHasErrors('role');
+
+        $this->assertDatabaseMissing('users', ['email' => 'employee@example.com']);
+    }
+
     private function client(bool $tailoring, bool $clothing): User
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
