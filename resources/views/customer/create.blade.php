@@ -123,6 +123,7 @@
 
                 </div>
             </div>
+            @include('customer.partials.custom-measurements')
             <div class="form-group row" dir="rtl">
                 <div class="col-md-6 ml-auto">
                     <label for="mobile_pin">موبائل لاگ اِن پن</label>

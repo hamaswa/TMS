@@ -9,6 +9,7 @@ use App\Models\Customers;
 use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\Notification;
+use App\Services\MeasurementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,10 @@ use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
+    public function __construct(private MeasurementService $measurements)
+    {
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -78,7 +83,9 @@ class CustomerController extends Controller
         // $data['optionTypes'] = OptionType::with('options')->where('user_id',Auth::user()->businessOwnerId())->get();
         // dd($data);
         $data['Tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
-        return view('customer.create', compact('data'));
+        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $measurementValues = collect();
+        return view('customer.create', compact('data', 'measurementFields', 'measurementValues'));
     }
 
     public function statement($id)
@@ -118,7 +125,8 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'contact' => [
                 'required', 'string', 'max:50',
@@ -131,7 +139,7 @@ class CustomerController extends Controller
             'arms' => ['nullable', 'numeric', 'min:0'],
             'teraa' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:2000'],
-        ]);
+        ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
 
         $obj = new Customers;
         $obj->name = $request->name;
@@ -195,6 +203,7 @@ class CustomerController extends Controller
         $obj->mobile_pin = Hash::make($plainPin);
         $obj->pin_changed_at = now();
         $obj->save();
+        $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
         // dd($obj);
         return redirect('admin/Customers')
             ->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔')
@@ -236,7 +245,9 @@ class CustomerController extends Controller
             ->groupBy('options.option_id')
             ->get();
         // dd($optionTypes);
-        return view('customer.edit', compact('customer', 'optionTypes'));
+        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $measurementValues = $customer->measurementValues()->pluck('value', 'measurement_field_id');
+        return view('customer.edit', compact('customer', 'optionTypes', 'measurementFields', 'measurementValues'));
     }
 
     /**
@@ -248,7 +259,8 @@ class CustomerController extends Controller
      */
     public function update(Request $request, $id)
 {
-        $validated = $request->validate([
+        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'contact' => [
                 'required', 'string', 'max:50',
@@ -261,7 +273,7 @@ class CustomerController extends Controller
             'arms' => ['nullable', 'numeric', 'min:0'],
             'teraa' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:2000'],
-        ]);
+        ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
         $obj = $this->ownedCustomer($id);
         $obj->name = $request->name;
         $obj->phone_number1 = $request->contact;
@@ -328,6 +340,7 @@ $obj->Daaman = $daaman;
             $obj->tokens()->delete();
         }
         $obj->save();
+        $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
         // dd($obj);
     $response = redirect('admin/Customers')->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
 
