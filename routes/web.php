@@ -38,6 +38,7 @@ use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\BusinessActivityController;
 use App\Http\Controllers\EmployeePasswordController;
 use App\Http\Controllers\ProductionWorkerController;
+use App\Http\Controllers\OrderWorkAssignmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -219,6 +220,9 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
     Route::resource('/Tailor', TailorController::class)->middleware('business.permission:tailoring.tailors');
     Route::middleware('business.permission:tailoring.workshop')->group(function () {
     Route::get('tailor-jobs', [TailorJobController::class, 'adminIndex'])->name('tailor-jobs.index');
+    Route::get('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'index'])->name('orders.workforce.index');
+    Route::post('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'store'])->name('orders.workforce.store');
+    Route::patch('orders/{order}/workforce/{assignment}/status', [OrderWorkAssignmentController::class, 'updateStatus'])->name('orders.workforce.status');
     Route::patch('tailor-jobs/{order}/status', [TailorJobController::class, 'updateStatus'])->name('tailor-jobs.status');
     Route::patch('tailor-jobs/{order}/payment', [TailorJobController::class, 'updatePayment'])->name('tailor-jobs.payment');
     Route::post('tailor-jobs/{order}/notifications/{delivery}/retry', [TailorJobController::class, 'retryNotification'])->name('tailor-jobs.notifications.retry');

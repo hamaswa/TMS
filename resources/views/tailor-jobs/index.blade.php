@@ -156,6 +156,9 @@
                                     @endif
                                 </td>
                                 <td>
+                                    @if (! $isTailor)
+                                        <a class="btn btn-outline-info btn-sm btn-block mb-1" href="{{ route('admin.orders.workforce.index', $order) }}">کاریگر اور کام</a>
+                                    @endif
                                     @if ($nextStatuses->isNotEmpty())
                                         <form method="POST" action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}">
                                             @csrf
