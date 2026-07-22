@@ -94,7 +94,7 @@ class QaDemoSeeder extends Seeder
             'note' => 'معیاری کپڑا، نفیس سلائی اور قابلِ اعتماد خدمت',
             'address' => $address,
             'logo' => 'images/logo.png',
-            'status' => 'active',
+            'status' => 1,
             'contact_no' => $phone,
             'contact' => $phone,
             'shop_slug' => Str::slug($businessName).'-'.$owner->id,

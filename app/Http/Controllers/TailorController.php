@@ -499,8 +499,10 @@ class TailorController extends Controller
             $html .= '<select class="form-control" name="tailor_price" required dir="rtl">
             <option value="">درزی کی رقم منتخب کریں۔</option>';
 
-            foreach ($rates as $rate)
-                $html .= '<option value="' . $rate->id . '-' . $rate->price . '">' . $rate->price . ' -- ' . $rate->options->Name . '</option>';
+            foreach ($rates as $rate) {
+                $label = $rate->options?->Name ?: $rate->type ?: 'سلائی';
+                $html .= '<option value="' . $rate->id . '-' . $rate->price . '">' . $rate->price . ' -- ' . e($label) . '</option>';
+            }
 
             $html .= '</select>';
 

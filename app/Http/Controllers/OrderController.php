@@ -154,8 +154,8 @@ class OrderController extends Controller
             'sub_id' => ['nullable', 'integer'],
             'suitQuantity' => ['required', 'integer', 'min:1'],
             'totalPayment' => ['required', 'numeric', 'min:0'],
-            'recivedPayment' => ['required', 'numeric', 'min:0'],
-            'balance' => ['required', 'numeric', 'min:0'],
+            'recivedPayment' => ['required', 'numeric', 'min:0', 'lte:totalPayment'],
+            'balance' => ['nullable', 'numeric', 'min:0'],
             'returnDate' => ['required', 'date'],
             'design' => ['nullable', 'string', 'max:255'],
             'designPrice' => ['nullable', 'numeric', 'min:0'],
@@ -175,6 +175,7 @@ class OrderController extends Controller
 
         [$rateId, $tailorPrice] = explode('-', $validated['tailor_price'], 2);
         Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+        $remainingBalance = round((float) $validated['totalPayment'] - (float) $validated['recivedPayment'], 2);
         $designParts = explode('-', $validated['design'] ?? '', 2);
         $subCustomerId = $validated['sub_id'] ?? $validated['customerId'];
 
@@ -182,7 +183,7 @@ class OrderController extends Controller
         $measurementTemplate = ! empty($validated['measurement_template_id'])
             ? MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['measurement_template_id'])
             : null;
-        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
+        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $remainingBalance, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
             $obj = Order::create([
                 'customerId' => $validated['customerId'],
                 'sub_customer' => $subCustomerId,
@@ -206,7 +207,7 @@ class OrderController extends Controller
 
             $transaction = Transaction::create([
                 'recivedPayment' => $validated['recivedPayment'],
-                'remainingBalance' => $validated['balance'],
+                'remainingBalance' => $remainingBalance,
                 'orderId' => $obj->id,
                 'customerId' => $validated['customerId'],
                 'userId' => Auth::user()->businessOwnerId(),

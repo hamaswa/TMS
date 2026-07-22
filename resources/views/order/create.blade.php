@@ -155,9 +155,22 @@
     </div>
 
 </section>
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var total = document.getElementById('totalPayment');
+        var received = document.getElementById('recivedPayment');
+        var balance = document.getElementById('balance');
+        function updateBalance() {
+            if (!total || !received || !balance) return;
+            var totalValue = parseFloat(total.value || '0');
+            var receivedValue = parseFloat(received.value || '0');
+            balance.value = Math.max(0, totalValue - receivedValue).toFixed(2);
+        }
+        total?.addEventListener('input', updateBalance);
+        received?.addEventListener('input', updateBalance);
+        updateBalance();
+    });
+
     // $(document).ready(function () {
     //     $('#suitQuantity').on('input', function () {
     //         var suitQuantity = $(this).val();

@@ -329,6 +329,7 @@
                 // Output total product
                 console.log('Total Product: ' + totalProduct);
                 $("#total").val(totalProduct);
+                calculateRemaining();
             }
 
 
@@ -356,14 +357,13 @@
                 });
             });
 
-            $("#payment").on('input', function() {
-                var payment = $(this).val();
-                // console.log(payment);
-                var total = $('#total').val();
+            function calculateRemaining() {
+                var payment = parseFloat($("#payment").val()) || 0;
+                var total = parseFloat($('#total').val()) || 0;
+                $('#remain').val(Math.max(0, total - payment));
+            }
 
-                var remain = total - payment;
-                $('#remain').val(remain);
-            });
+            $("#payment").on('input', calculateRemaining);
 
 
             //to automatically get the cloth type for brand
