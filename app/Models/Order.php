@@ -56,6 +56,11 @@ class Order extends Model
         return $this->hasMany(OrderNotificationDelivery::class);
     }
 
+    public function measurementValues()
+    {
+        return $this->hasMany(OrderMeasurementValue::class)->orderBy('sort_order');
+    }
+
     public function nextStatuses(): array
     {
         return match ($this->status) {

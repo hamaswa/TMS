@@ -82,6 +82,11 @@ class Customers extends Authenticatable
         return $this->hasMany(Sale::class, 'customer_id');
     }
 
+    public function measurementValues()
+    {
+        return $this->hasMany(CustomerMeasurementValue::class, 'customer_id');
+    }
+
     public function servernotifi()
     {
         return $this->hasMany(ServerNotifications::class,'customer_id');
