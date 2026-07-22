@@ -6,6 +6,7 @@ use App\Models\rack;
 use App\Models\Tailor;
 use App\Models\Options;
 use App\Models\Customers;
+use App\Models\BusinessRole;
 use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\SaleStock;
@@ -93,53 +94,113 @@ class CustomerController extends Controller
     {
         $customer = $this->ownedCustomer($id);
         $user = Auth::user();
-        $canViewBalances = $user->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
-        $canViewTailoring = $user->hasBusinessPermission(\App\Models\BusinessRole::TAILORING_ORDERS);
-        $canViewShop = $user->hasBusinessPermission(\App\Models\BusinessRole::CLOTHING_SALES);
+        $ownerId = $user->businessOwnerId();
+        $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $canViewTailoring = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
+        $canViewShop = $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
+        $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
         $baseTransactions = Transaction::where('userId', $user->businessOwnerId())->where('customerId', $customer->id);
         $totalBalance = $canViewBalances ? (float) (clone $baseTransactions)->sum('remainingBalance') : null;
+        $totalReceived = $canViewBalances ? (float) (clone $baseTransactions)->sum('recivedPayment') : null;
         $visibleTypes = array_values(array_filter([
             $canViewTailoring ? 'Tailor' : null,
             $canViewShop ? 'Sale' : null,
             $canViewBalances ? 'Payment' : null,
         ]));
         $transactions = $canViewBalances && $visibleTypes
-            ? (clone $baseTransactions)->whereIn('Order_type', $visibleTypes)->latest()->paginate(30)
+            ? (clone $baseTransactions)->whereIn('Order_type', $visibleTypes)->latest()->paginate(20, ['*'], 'ledger_page')->withQueryString()
             : null;
         $orders = $canViewTailoring
-            ? $customer->orders()->where('userId', $user->businessOwnerId())->latest()->limit(20)->get()
+            ? $customer->orders()->where('userId', $ownerId)
+                ->with('tailor:id,name')
+                ->withSum(['transactions as outstanding_amount' => fn ($query) => $query->where('userId', $ownerId)], 'remainingBalance')
+                ->latest()->limit(50)->get()
             : collect();
         $sales = collect();
         if ($canViewShop) {
             $legacySales = $customer->sales()
-                ->where('user_id', $user->businessOwnerId())
-                ->withCount('detail')
+                ->where('user_id', $ownerId)
+                ->with(['detail:id,sale_id,product_name,quantity,price', 'transaction:id,sale_id,recivedPayment,remainingBalance'])
                 ->latest()
-                ->limit(20)
+                ->limit(50)
                 ->get()
                 ->map(fn ($sale) => (object) [
                     'id' => $sale->id,
+                    'source' => 'legacy',
                     'created_at' => $sale->created_at,
-                    'items_count' => $sale->detail_count,
+                    'items_count' => $sale->detail->sum('quantity'),
+                    'summary' => $sale->detail->pluck('product_name')->filter()->take(3)->implode('، '),
+                    'amount' => $sale->detail->sum(fn ($detail) => (float) $detail->price * (int) $detail->quantity),
+                    'received' => (float) ($sale->transaction?->recivedPayment ?? 0),
+                    'balance' => (float) ($sale->transaction?->remainingBalance ?? 0),
                 ]);
-            $stockSales = SaleStock::where('user_id', $user->businessOwnerId())
+            $stockGroups = SaleStock::where('user_id', $ownerId)
                 ->where('c_id', $customer->id)
+                ->with(['type:id,name', 'brand:id,name'])
                 ->latest()
-                ->limit(100)
+                ->limit(200)
                 ->get()
-                ->groupBy(fn ($sale) => $sale->created_at?->format('Y-m-d H:i:s'))
-                ->map(fn ($items) => (object) [
-                    'id' => $items->first()->id,
-                    'created_at' => $items->first()->created_at,
-                    'items_count' => $items->count(),
-                ])
+                ->groupBy(fn ($sale) => $sale->created_at?->format('Y-m-d H:i:s'));
+            $stockTransactions = Transaction::where('userId', $ownerId)
+                ->where('Order_type', 'Sale')
+                ->whereIn('sale_id', $stockGroups->map(fn ($items) => $items->first()->id))
+                ->get()->keyBy('sale_id');
+            $stockSales = $stockGroups
+                ->map(function ($items) use ($stockTransactions) {
+                    $first = $items->first();
+                    $transaction = $stockTransactions->get($first->id);
+
+                    return (object) [
+                        'id' => $first->id,
+                        'source' => 'stock',
+                        'created_at' => $first->created_at,
+                        'items_count' => $items->count(),
+                        'summary' => $items->map(fn ($item) => collect([$item->brand?->name, $item->type?->name, $item->color])->filter()->implode(' '))->filter()->take(3)->implode('، '),
+                        'amount' => $items->sum(fn ($item) => (float) $item->selling_price * (float) $item->length),
+                        'received' => (float) ($transaction?->recivedPayment ?? 0),
+                        'balance' => (float) ($transaction?->remainingBalance ?? 0),
+                    ];
+                })
                 ->values();
-            $sales = $legacySales->concat($stockSales)->sortByDesc('created_at')->take(20)->values();
+            $sales = $legacySales->concat($stockSales)->sortByDesc('created_at')->take(50)->values();
+        }
+
+        $systemMeasurements = collect();
+        $customMeasurements = collect();
+        if ($canManageMeasurements) {
+            $systemMeasurements = collect(MeasurementService::SYSTEM_FIELDS)
+                ->map(fn (array $meta, string $key) => [
+                    'label' => $meta['label'],
+                    'value' => $customer->{$key},
+                    'unit' => $meta['unit'],
+                ])->filter(fn (array $measurement) => $measurement['value'] !== null && $measurement['value'] !== '');
+            $customMeasurements = $customer->measurementValues()
+                ->with('field')
+                ->whereHas('field', fn ($query) => $query->where('user_id', $ownerId)->where('is_active', true))
+                ->get()->sortBy(fn ($value) => [$value->field->sort_order, $value->field->label]);
+        }
+
+        $tabs = collect([
+            'overview' => ['label' => 'خلاصہ', 'icon' => 'fa-th-large'],
+            'transactions' => $canViewBalances ? ['label' => 'کھاتہ اور ادائیگیاں', 'icon' => 'fa-receipt'] : null,
+            'tailoring' => $canViewTailoring ? ['label' => 'ٹیلرنگ آرڈرز', 'icon' => 'fa-cut'] : null,
+            'shop' => $canViewShop ? ['label' => 'کپڑے کی خریداری', 'icon' => 'fa-shopping-bag'] : null,
+            'measurements' => $canManageMeasurements ? ['label' => 'پیمائش', 'icon' => 'fa-ruler-combined'] : null,
+            'profile' => ['label' => 'ذاتی معلومات', 'icon' => 'fa-user'],
+        ])->filter();
+        $activeTab = request()->string('tab')->toString();
+        $activeTab = $tabs->has($activeTab) ? $activeTab : 'overview';
+        $paymentRoute = null;
+        if ($canViewBalances) {
+            $paymentRoute = $canManageMeasurements
+                ? route('admin.DirectPayment')
+                : ($canViewShop ? route('admin.sale-direct-payment') : null);
         }
 
         return view('customer.statement', compact(
             'customer', 'totalBalance', 'transactions', 'orders', 'sales',
-            'canViewBalances', 'canViewTailoring', 'canViewShop'
+            'canViewBalances', 'canViewTailoring', 'canViewShop', 'canManageMeasurements',
+            'totalReceived', 'systemMeasurements', 'customMeasurements', 'tabs', 'activeTab', 'paymentRoute'
         ));
     }
 
@@ -403,6 +464,7 @@ $obj->Daaman = $daaman;
             'customer_id' => ['required', 'integer'],
             'DirectPayment' => ['required', 'numeric', 'gt:0'],
             'comment' => ['nullable', 'string', 'max:1000'],
+            'return_to_statement' => ['nullable', 'boolean'],
         ]);
         $customer = $this->ownedCustomer($validated['customer_id']);
         // Retrieve the current remaining balance for the customer
@@ -429,7 +491,11 @@ $obj->Daaman = $daaman;
         $transaction->userId = Auth::user()->businessOwnerId();
         $transaction->save();
 
-        return redirect('admin/Customers')->with('insert', " {$customerName} کے لئے آپ نے Rs{$req->DirectPayment} کی رقم درج کی ہے");
+        $response = $req->boolean('return_to_statement')
+            ? redirect()->route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions'])
+            : redirect('admin/Customers');
+
+        return $response->with('insert', " {$customerName} کے لئے آپ نے Rs{$req->DirectPayment} کی رقم درج کی ہے");
     }
 
     public function RackNo(Request $req)
@@ -449,6 +515,7 @@ $obj->Daaman = $daaman;
             'customer_id' => ['required', 'integer'],
             'DirectPayment' => ['required', 'numeric', 'gt:0'],
             'comment' => ['nullable', 'string', 'max:100'],
+            'return_to_statement' => ['nullable', 'boolean'],
         ]);
         $customer = $this->ownedCustomer($validated['customer_id']);
         // Retrieve the current remaining balance for the customer
@@ -473,7 +540,11 @@ $obj->Daaman = $daaman;
         $obj->userId = Auth::user()->businessOwnerId();
         $obj->save();
 
-        return redirect('admin/customers-record')->with('insert', " {$customerName} کے لئے آپ نے {$req->DirectPayment} کی رقم درج کی ہے");
+        $response = $req->boolean('return_to_statement')
+            ? redirect()->route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions'])
+            : redirect('admin/customers-record');
+
+        return $response->with('insert', " {$customerName} کے لئے آپ نے {$req->DirectPayment} کی رقم درج کی ہے");
     }
 
     public function saleCustomer()

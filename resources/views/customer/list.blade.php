@@ -81,7 +81,7 @@
                                                 <a href="{{ url('admin/order', ['id' => $customer->id]) }}"
                                                     class="btn btn-blue">آرڈر</a>
                                             </td>
-                                            <td><a href="{{ route('admin.customers.statement', $customer) }}" class="btn btn-outline-primary">کھاتہ</a></td>
+                                            <td><a href="{{ route('admin.customers.statement', $customer) }}" class="btn btn-outline-primary">پروفائل / کھاتہ</a></td>
                                         </tr>
                                     @endforeach
                                 </tbody>

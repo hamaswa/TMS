@@ -22,6 +22,8 @@ class UnifiedCustomerAccountTest extends TestCase
         $customer = Customers::create([
             'name' => 'Unified Customer',
             'phone_number1' => '03001239876',
+            'length' => 42,
+            'note' => 'Prefers evening collection',
             'user_id' => $owner->id,
         ]);
         Transaction::create([
@@ -57,7 +59,20 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertSeeText('کل مشترکہ بقایا')
             ->assertDontSeeText('ٹیلرنگ بقایا')
             ->assertDontSeeText('دکان بقایا')
+            ->assertSeeText('کھاتہ اور ادائیگیاں')
+            ->assertSeeText('ٹیلرنگ آرڈرز')
+            ->assertSeeText('کپڑے کی خریداری')
+            ->assertSeeText('پیمائش');
+        $this->actingAs($owner)->get(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']))
+            ->assertOk()
             ->assertSeeText('فروخت #'.$sale->id);
+        $this->actingAs($owner)->get(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'measurements']))
+            ->assertOk()
+            ->assertSeeText('42')
+            ->assertSeeText('بنیادی پیمائش');
+        $this->actingAs($owner)->get(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'profile']))
+            ->assertOk()
+            ->assertSeeText('Prefers evening collection');
         $this->actingAs($owner)->get(route('admin.Customers.index'))
             ->assertOk()
             ->assertSeeText('Rs: 700');
@@ -146,20 +161,58 @@ class UnifiedCustomerAccountTest extends TestCase
             'customer_id' => $customer->id,
             'DirectPayment' => 100,
             'comment' => 'Shared counter payment',
-        ])->assertRedirect('admin/Customers');
+            'return_to_statement' => 1,
+        ])->assertRedirect(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']));
         $this->assertDatabaseHas('transactions', [
             'customerId' => $customer->id,
             'Order_type' => 'Payment',
             'remainingBalance' => -100,
             'recivedPayment' => 100,
         ]);
-        $this->actingAs($visibleEmployee)->get(route('admin.customers.statement', $customer))
+        $this->actingAs($visibleEmployee)->get(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']))
             ->assertOk()
             ->assertSeeText('Rs 600.00')
             ->assertSeeText('Shared counter payment');
         $this->actingAs($owner)->get(route('admin.team.roles.index'))
             ->assertOk()
             ->assertSeeText('گاہک کا مشترکہ بقایا اور ادائیگیاں دیکھیں');
+    }
+
+    public function test_unified_profile_tabs_and_payment_action_follow_employee_permissions(): void
+    {
+        [$owner, $business] = $this->business();
+        $customer = Customers::create([
+            'name' => 'Shop Profile Customer',
+            'phone_number1' => '03005550000',
+            'user_id' => $owner->id,
+        ]);
+        Transaction::create([
+            'customerId' => $customer->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Sale',
+            'remainingBalance' => 250,
+        ]);
+        $shopRole = BusinessRole::create([
+            'business_id' => $business->id,
+            'name' => 'Shop profile staff',
+            'permissions' => [
+                BusinessRole::CLOTHING_ACCESS,
+                BusinessRole::CLOTHING_SALES,
+                BusinessRole::CUSTOMER_BALANCES,
+            ],
+        ]);
+        $employee = $this->employee($business, $shopRole);
+
+        $this->actingAs($employee)->get(route('admin.customers.statement', $customer))
+            ->assertOk()
+            ->assertSee(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'shop']), false)
+            ->assertSee(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']), false)
+            ->assertDontSee(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'tailoring']), false)
+            ->assertDontSee(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'measurements']), false);
+        $this->actingAs($employee)->get(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']))
+            ->assertOk()
+            ->assertSee('action="'.route('admin.sale-direct-payment').'"', false)
+            ->assertDontSee('action="'.route('admin.DirectPayment').'"', false);
     }
 
     private function owner(): User
