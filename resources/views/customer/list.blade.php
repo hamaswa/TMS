@@ -140,7 +140,7 @@
                         <p class="text-right"><label>درجہ منتخب کریں</label></p>
                         <select class="form-control order-status" name="order_status">
                             @foreach (\App\Models\Order::STATUSES as $status)
-                                <option value="{{ $status }}">{{ ucfirst($status) }}</option>
+                                <option value="{{ $status }}">{{ \App\Models\Order::STATUS_LABELS[$status] ?? ucfirst($status) }}</option>
                             @endforeach
                         </select>
                     </div>

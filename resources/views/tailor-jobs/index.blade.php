@@ -3,8 +3,8 @@
 @section('content')
 @php
     $statusLabels = [
-        'pending' => 'زیرِ انتظار', 'assigned' => 'درزی مقرر', 'cutting' => 'کٹائی',
-        'stitching' => 'سلائی', 'ready' => 'تیار', 'delivered' => 'حوالہ شدہ',
+        ...\App\Models\Order::STATUS_LABELS,
+        'pending' => 'زیرِ انتظار',
         'paid' => 'ادا شدہ', 'partial' => 'جزوی ادائیگی', 'unpaid' => 'غیر ادا شدہ',
         'sent' => 'بھیجا گیا', 'failed' => 'ناکام', 'skipped' => 'چھوڑا گیا',
     ];

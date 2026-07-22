@@ -11,6 +11,15 @@ class Order extends Model
 
     public const STATUSES = ['assigned', 'cutting', 'stitching', 'trial', 'ready', 'delivered'];
 
+    public const STATUS_LABELS = [
+        'assigned' => 'درزی مقرر',
+        'cutting' => 'کٹائی',
+        'stitching' => 'سلائی',
+        'trial' => 'ٹرائل',
+        'ready' => 'تیار',
+        'delivered' => 'حوالہ شدہ',
+    ];
+
     protected $fillable = ['name', 'sub_customer', 'measurement_template_id', 'suitNum', 'designPrice', 'design','customerId', 'suitQuantity', 'totalPayment', 'userId', 'returnDate', 'tailorId', 'rateId', 'remarks', 'tailor_price', 'rack_no', 'status', 'status_changed_at', 'started_at', 'ready_at', 'delivered_at', 'tailor_paid_amount', 'tailor_payment_status'];
 
     protected $casts = [

@@ -3,6 +3,12 @@
 <section class="main-content">
     <div class="container">
         <div class="card">
+            @if($errors->any())
+                <div class="alert alert-danger m-3" dir="rtl">
+                    <strong>آرڈر محفوظ نہیں ہو سکا:</strong>
+                    <ul class="mb-0 mt-2">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                </div>
+            @endif
             <form id="cc-form__addCustomerForm" action="{{ url('admin/order/insert')}}" class="add-customer-form mt-4"
                         method="post">
                 <div class="row justify-content-center">

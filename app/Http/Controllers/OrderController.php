@@ -41,19 +41,17 @@ class OrderController extends Controller
         $sub_customer = Customers::where('user_id', Auth::user()->businessOwnerId())->find($data->sub_customer);
         $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($data->customerId);
         $tailors = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
-        $tailor = Tailorsalary::where('id', $data->rateId)->first();
-        // dd($tailor);
-        // Fetch the tailor rate and options
-        $tailorRate = Tailorsalary::with('options')->where('id', $data->rateId)->first();
-        $currentTailorRate = $tailorRate ? $tailorRate->price : null;
-        $optionName = $tailorRate && $tailorRate->options ? $tailorRate->options->Name : '';
-        $remainingBalance = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
+        $customerBalance = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
             ? Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->sum('remainingBalance')
             : null;
-        $recivedPayment = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->where("orderId", $data->id)->value('recivedPayment') ?? 0;
+        $orderTransaction = Transaction::where('userId', Auth::user()->businessOwnerId())
+            ->where('customerId', $data->customerId)->where('orderId', $data->id)->first();
+        $recivedPayment = $orderTransaction?->recivedPayment ?? 0;
+        $orderBalance = $orderTransaction?->remainingBalance ?? max(0, (float) $data->totalPayment - (float) $recivedPayment);
+        $tailorRates = Tailorsalary::with('options')->where('tailor_id', $data->tailorId)->get();
         $data['design'] = Options::where('option_id', 1)->get();
         // $currentTailorRate = 1220;
-        return view('order.edit', compact('data', 'tailors', 'remainingBalance', 'recivedPayment', 'sub_customer', 'customer', 'currentTailorRate', 'optionName'));
+        return view('order.edit', compact('data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance', 'recivedPayment', 'sub_customer', 'customer'));
     }
 
     public function update(Request $request, $id)
@@ -63,11 +61,13 @@ class OrderController extends Controller
             'customerId' => ['required', 'integer'],
             'suitQuantity' => ['required', 'integer', 'min:1'],
             'totalPayment' => ['required', 'numeric', 'min:0'],
-            'recivedPayment' => ['required', 'numeric', 'min:0'],
+            'recivedPayment' => ['required', 'numeric', 'min:0', 'lte:totalPayment'],
             'tailorId' => ['required', 'integer'],
-            'tailor_price' => ['nullable', 'string', 'max:255'],
+            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
             'returnDate' => ['required', 'date'],
             'remarks' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'recivedPayment.lte' => 'وصول رقم کل قیمت سے زیادہ نہیں ہو سکتی۔',
         ]);
 
         $order = $this->ownedOrder($id);
@@ -78,10 +78,7 @@ class OrderController extends Controller
         }
 
         //new change
-        $parts = explode("-", $validated['tailor_price'] ?? '', 2);
-        // Use old values if parts don't have new values
-        $rateId = isset($parts[0]) && $parts[0] !== '' ? $parts[0] : $order->rateId;
-        $tailorPrice = isset($parts[1]) && $parts[1] !== '' ? $parts[1] : $order->tailor_price;
+        [$rateId, $tailorPrice] = explode('-', $validated['tailor_price'], 2);
         Tailorsalary::where('tailor_id', $validated['tailorId'])->findOrFail($rateId);
         $remainingBalance = max(0, $validated['totalPayment'] - $validated['recivedPayment']);
 
@@ -118,7 +115,7 @@ class OrderController extends Controller
             }
         });
 
-        return redirect('admin/Customers')->with('insert', 'Order Updated');
+        return redirect('admin/Customers')->with('insert', 'آرڈر کامیابی سے اپ ڈیٹ کر دیا گیا ہے۔');
     }
 
     public function createOrder($id)
@@ -165,6 +162,8 @@ class OrderController extends Controller
             'serail' => ['nullable', 'string', 'max:255'],
             'measurement_template_id' => ['nullable', 'integer', Rule::exists('measurement_templates', 'id')
                 ->where('user_id', Auth::user()->businessOwnerId())->where('is_active', true)],
+        ], [
+            'recivedPayment.lte' => 'وصول رقم کل قیمت سے زیادہ نہیں ہو سکتی۔',
         ]);
 
         $this->ownedCustomer($validated['customerId']);

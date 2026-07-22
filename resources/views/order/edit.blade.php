@@ -3,6 +3,12 @@
     <section class="main-content">
         <div class="container">
             <div class="card">
+                @if($errors->any())
+                    <div class="alert alert-danger m-3" dir="rtl">
+                        <strong>آرڈر محفوظ نہیں ہو سکا:</strong>
+                        <ul class="mb-0 mt-2">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                    </div>
+                @endif
                 <form id="cc-form__addCustomerForm" method="POST" action="{{ url('admin/order/update/' . $data->id) }}"
                     class="add-customer-form mt-4">
                     @csrf
@@ -70,20 +76,20 @@
                                 </div>
                             </div>
                             <div class="form-group form-row">
-                                <label class="col-sm-3 col-form-label">بقیہ</label>
+                                <label class="col-sm-3 col-form-label">اس آرڈر کا بقایا</label>
                                 <div class="col-sm-9">
-                                    @if($remainingBalance !== null)
-                                        <input type="number" class="form-control" name="totalBalance" readonly
-                                            value="{{ $remainingBalance }}">
-                                    @else
-                                        <span class="form-control text-muted">بقایا دیکھنے کی اجازت نہیں</span>
-                                    @endif
+                                    <input type="number" class="form-control" id="orderBalance" readonly
+                                        value="{{ $orderBalance }}">
                                 </div>
                             </div>
                             <div class="form-group form-row">
-                                <label class="col-sm-3 col-form-label">بیلنس</label>
+                                <label class="col-sm-3 col-form-label">گاہک کا مشترکہ بقایا</label>
                                 <div class="col-sm-9">
-                                    <input type="number" class="form-control" name="balance"  id="balance">
+                                    @if($customerBalance !== null)
+                                        <input type="number" class="form-control" readonly value="{{ $customerBalance }}">
+                                    @else
+                                        <span class="form-control text-muted">بقایا دیکھنے کی اجازت نہیں</span>
+                                    @endif
                                 </div>
                             </div>
 
@@ -104,11 +110,15 @@
 
                             <div class="form-group form-row">
                                 <label class="col-sm-3 col-form-label">درزی رقم</label>
-                                {{-- new change --}}
                                 <div class="col-sm-9" id="tailor-rates">
-                                    {{-- @if (isset($currentTailorRate))
-                                        {{ $currentTailorRate }}-{{ $optionName }}
-                                    @endif --}}
+                                    <select class="form-control" name="tailor_price" required dir="rtl">
+                                        <option value="">درزی کی رقم منتخب کریں</option>
+                                        @foreach($tailorRates as $rate)
+                                            <option value="{{ $rate->id }}-{{ $rate->price }}" @selected((int) $rate->id === (int) $data->rateId)>
+                                                {{ $rate->price }} -- {{ $rate->options?->Name ?: ($rate->type ?: 'سلائی') }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
 
@@ -132,26 +142,6 @@
                                 <div class="col-sm-9">
                                     <input type="date" value="{{ $data->returnDate }}" class="form-control"
                                         name="returnDate" required>
-                                </div>
-                            </div>
-                            <div class="form-group form-row">
-                                <label class="col-sm-3 col-form-label">درزی</label>
-                                <div class="col-sm-9">
-                                    <select class="form-control" name="tailorId" required dir="rtl">
-                                        <option value="0">درزی کو منتخب کریں</option>
-                                        @foreach ($tailors as $tailor)
-                                            <option value="{{ $tailor->id }}"
-                                                {{ $tailor->id == $data->tailorId ? 'selected' : '' }}>{{ $tailor->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group form-row">
-                                <label class="col-sm-3 col-form-label">درزی رقم</label>
-                                <div class="col-sm-9">
-                                    <input type="number" value="{{ $data->tailor_price }}" class="form-control"
-                                        name="tailor_price">
                                 </div>
                             </div>
                             <div class="form-group form-row">
@@ -182,4 +172,38 @@
         </div>
 
     </section>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const total = document.getElementById('totalPayment');
+            const received = document.getElementById('recivedPayment');
+            const orderBalance = document.getElementById('orderBalance');
+            const tailor = document.getElementById('tailor-selected');
+            const rates = document.getElementById('tailor-rates');
+
+            function updateOrderBalance() {
+                const totalValue = parseFloat(total?.value || '0');
+                const receivedValue = parseFloat(received?.value || '0');
+                if (orderBalance) orderBalance.value = Math.max(0, totalValue - receivedValue).toFixed(2);
+            }
+
+            total?.addEventListener('input', updateOrderBalance);
+            received?.addEventListener('input', updateOrderBalance);
+
+            tailor?.addEventListener('change', async function () {
+                if (!this.value || this.value === '0') {
+                    rates.innerHTML = '<span class="form-control text-muted">پہلے درزی منتخب کریں</span>';
+                    return;
+                }
+
+                const url = @json(route('admin.tailor.salary', ['user_id' => '__TAILOR__'])).replace('__TAILOR__', this.value);
+                try {
+                    const response = await fetch(url, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+                    if (!response.ok) throw new Error('rate-request-failed');
+                    rates.innerHTML = await response.text();
+                } catch (error) {
+                    rates.innerHTML = '<span class="form-control text-danger">درزی کی رقم لوڈ نہیں ہو سکی۔</span>';
+                }
+            });
+        });
+    </script>
 @endsection

@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Options;
 use App\Models\Customers;
+use App\Models\Order;
 use App\Models\Tailor;
+use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\OptionTypesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -146,5 +148,61 @@ class TailorRateWorkflowTest extends TestCase
             ->assertSessionHasErrors('recivedPayment');
 
         $this->assertDatabaseCount('orders', 1);
+    }
+
+    public function test_order_edit_has_one_tailor_selector_and_separates_order_and_customer_balances(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Faisal Mahmood', 'phone_number1' => '03005551234', 'user_id' => $owner->id,
+        ]);
+        $tailor = Tailor::create([
+            'name' => 'Rashid Mahmood', 'phone_number1' => '03001230004',
+            'password' => bcrypt('QaTailor@2026'), 'user_id' => $owner->id,
+        ]);
+        $rateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $tailor->id, 'options_id' => null, 'type' => 'Mens suit', 'price' => 900,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $order = Order::create([
+            'customerId' => $customer->id, 'sub_customer' => $customer->id,
+            'suitQuantity' => 1, 'totalPayment' => 3200, 'tailorId' => $tailor->id,
+            'rateId' => $rateId, 'tailor_price' => 900, 'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id, 'status' => 'assigned',
+        ]);
+        Transaction::create([
+            'customerId' => $customer->id, 'orderId' => $order->id, 'userId' => $owner->id,
+            'Order_type' => 'Tailor', 'recivedPayment' => 1500, 'remainingBalance' => 1700,
+        ]);
+        Transaction::create([
+            'customerId' => $customer->id, 'userId' => $owner->id,
+            'Order_type' => 'Payment', 'recivedPayment' => 1000, 'remainingBalance' => -1000,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('admin.order.edit', $order));
+        $response->assertOk()
+            ->assertSeeText('اس آرڈر کا بقایا')
+            ->assertSeeText('گاہک کا مشترکہ بقایا')
+            ->assertSee('value="1700"', false)
+            ->assertSee('value="700"', false)
+            ->assertSee('900 -- Mens suit');
+        $this->assertSame(1, substr_count($response->getContent(), 'name="tailorId"'));
+        $this->assertSame(1, substr_count($response->getContent(), 'name="tailor_price"'));
+
+        $payload = [
+            'sub_id' => $customer->id, 'customerId' => $customer->id, 'suitQuantity' => 1,
+            'totalPayment' => 3200, 'recivedPayment' => 3300, 'tailorId' => $tailor->id,
+            'tailor_price' => $rateId.'-900', 'returnDate' => now()->addWeek()->toDateString(),
+            'remarks' => 'Slim fit kurta',
+        ];
+        $this->actingAs($owner)
+            ->from(route('admin.order.edit', $order))
+            ->put(route('admin.order.update', $order), $payload)
+            ->assertRedirect(route('admin.order.edit', $order))
+            ->assertSessionHasErrors('recivedPayment');
+
+        $this->assertEquals(1700, (float) $order->transactions()->value('remainingBalance'));
     }
 }
