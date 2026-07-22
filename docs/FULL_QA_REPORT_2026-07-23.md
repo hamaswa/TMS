@@ -16,7 +16,7 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Laravel migration SQL was inspected with `migrate --pretend` before execution.
 - The additive lifecycle migration ran successfully on MySQL.
 - Existing data remained present: 3 businesses, 8 users, 6 customers, 5 orders, 2 sales, 3 purchases, and all existing businesses remained active.
-- The complete automated suite passed: **104 tests, 695 assertions**.
+- The complete automated suite passed: **105 tests, 704 assertions**.
 - Live in-app browser QA covered super-admin login, client list, search/status/module controls, client details, business metrics, status history, and account actions.
 - The live client-details screen finished with no browser console errors or warnings.
 
@@ -39,10 +39,9 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 
 ## Confirmed remaining backlog
 
-1. Duplicate order-work assignments should have a database-backed uniqueness/concurrency rule in addition to application validation.
-2. Independent tailor login safely rejects duplicate phone numbers across businesses, but the login screen should accept a shop identifier to make valid duplicate phone use possible.
-3. Fixed-salary and commission compensation plans are stored, but automated payroll accrual is not yet implemented.
-4. Dedicated cutter/other production-worker portals remain planned; only independent tailors currently have a worker portal.
+1. Independent tailor login safely rejects duplicate phone numbers across businesses, but the login screen should accept a shop identifier to make valid duplicate phone use possible.
+2. Fixed-salary and commission compensation plans are stored, but automated payroll accrual is not yet implemented.
+3. Dedicated cutter/other production-worker portals remain planned; only independent tailors currently have a worker portal.
 
 ## Financial reporting follow-up
 
@@ -57,6 +56,14 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - The current ledger balance is recalculated only after the lock is acquired, and the payment is inserted before releasing it.
 - Simultaneous payment requests are therefore serialized; a waiting request sees the balance left by the first request and is rejected in Urdu if it is now too high.
 - Regression coverage verifies that a second payment cannot use the worker's earlier balance.
+
+## Work-assignment concurrency follow-up
+
+- Added a nullable unique active-assignment key for each tenant/order/worker/work-type combination.
+- The migration aborts before changing schema if pre-existing active duplicates are found; the live preflight found none.
+- All 6 live assignments were preserved and backfilled, with zero missing active keys and zero duplicates after migration.
+- A cancelled assignment releases its key, so the work may be legitimately reassigned while its history remains intact.
+- A database collision is returned to the Urdu interface as the existing friendly duplicate-assignment message.
 
 ## Git checkpoints
 

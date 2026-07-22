@@ -8,6 +8,7 @@ use App\Models\ProductionWorker;
 use App\Models\WorkerCompensationPlan;
 use App\Models\WorkerLedgerEntry;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -58,19 +59,33 @@ class OrderWorkAssignmentController extends Controller
         }
 
         $quantity = (float) $validated['quantity'];
-        OrderWorkAssignment::create([
-            'user_id' => $ownerId,
-            'order_id' => $order->id,
-            'production_worker_id' => $worker->id,
-            'work_type_id' => $validated['work_type_id'],
-            'compensation_plan_id' => $plan->id,
-            'quantity' => $quantity,
-            'rate' => (float) $plan->rate,
-            'amount' => round($quantity * (float) $plan->rate, 2),
-            'status' => 'assigned',
-            'assigned_at' => now(),
-            'notes' => $validated['notes'] ?? null,
-        ]);
+        try {
+            OrderWorkAssignment::create([
+                'user_id' => $ownerId,
+                'order_id' => $order->id,
+                'production_worker_id' => $worker->id,
+                'work_type_id' => $validated['work_type_id'],
+                'compensation_plan_id' => $plan->id,
+                'active_assignment_key' => OrderWorkAssignment::activeKey(
+                    $ownerId,
+                    $order->id,
+                    $worker->id,
+                    (int) $validated['work_type_id'],
+                ),
+                'quantity' => $quantity,
+                'rate' => (float) $plan->rate,
+                'amount' => round($quantity * (float) $plan->rate, 2),
+                'status' => 'assigned',
+                'assigned_at' => now(),
+                'notes' => $validated['notes'] ?? null,
+            ]);
+        } catch (QueryException $exception) {
+            if (str_contains(strtolower($exception->getMessage()), 'active_assignment_key')) {
+                throw ValidationException::withMessages(['production_worker_id' => 'یہ کام پہلے ہی اس ورکر کو دیا جا چکا ہے۔']);
+            }
+
+            throw $exception;
+        }
 
         return back()->with('success', 'کام ورکر کو تفویض کر دیا گیا ہے۔');
     }
@@ -92,6 +107,7 @@ class OrderWorkAssignmentController extends Controller
         DB::transaction(function () use ($assignment, $validated) {
             $assignment->update([
                 'status' => $validated['status'],
+                'active_assignment_key' => $validated['status'] === 'cancelled' ? null : $assignment->active_assignment_key,
                 'completed_at' => $validated['status'] === 'completed' ? now() : null,
             ]);
             if ($validated['status'] === 'completed' && (float) $assignment->amount > 0) {

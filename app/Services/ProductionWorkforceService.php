@@ -95,6 +95,12 @@ class ProductionWorkforceService
                 'production_worker_id' => $worker->id,
                 'work_type_id' => $workType->id,
                 'compensation_plan_id' => $plan?->id,
+                'active_assignment_key' => OrderWorkAssignment::activeKey(
+                    (int) $order->userId,
+                    $order->id,
+                    $worker->id,
+                    $workType->id,
+                ),
                 'quantity' => $quantity,
                 'rate' => (float) $order->tailor_price,
                 'amount' => $amount,

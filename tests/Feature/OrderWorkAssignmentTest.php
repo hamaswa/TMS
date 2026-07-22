@@ -9,6 +9,7 @@ use App\Models\ProductionWorker;
 use App\Models\User;
 use App\Models\WorkType;
 use App\Models\WorkerCompensationPlan;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -85,6 +86,39 @@ class OrderWorkAssignmentTest extends TestCase
             'quantity' => 1,
         ])->assertSessionHasErrors('production_worker_id');
         $this->assertDatabaseCount('order_work_assignments', 0);
+    }
+
+    public function test_database_prevents_duplicate_active_assignment_but_cancelled_work_can_be_reassigned(): void
+    {
+        [$owner, $order, $worker, $cutting] = $this->scenario();
+        $payload = [
+            'production_worker_id' => $worker->id,
+            'work_type_id' => $cutting->id,
+            'quantity' => 1,
+        ];
+
+        $this->actingAs($owner)->post(route('admin.orders.workforce.store', $order), $payload)
+            ->assertRedirect()->assertSessionHas('success');
+        $assignment = OrderWorkAssignment::sole();
+
+        try {
+            OrderWorkAssignment::create($assignment->only([
+                'user_id', 'order_id', 'production_worker_id', 'work_type_id', 'compensation_plan_id',
+                'active_assignment_key', 'quantity', 'rate', 'amount', 'status',
+            ]));
+            $this->fail('The database accepted a duplicate active assignment key.');
+        } catch (QueryException) {
+            $this->assertDatabaseCount('order_work_assignments', 1);
+        }
+
+        $this->actingAs($owner)->patch(route('admin.orders.workforce.status', [$order, $assignment]), [
+            'status' => 'cancelled',
+        ])->assertRedirect()->assertSessionHas('success');
+        $this->assertNull($assignment->fresh()->active_assignment_key);
+
+        $this->actingAs($owner)->post(route('admin.orders.workforce.store', $order), $payload)
+            ->assertRedirect()->assertSessionHas('success');
+        $this->assertDatabaseCount('order_work_assignments', 2);
     }
 
     private function scenario(): array

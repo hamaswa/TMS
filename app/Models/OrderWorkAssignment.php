@@ -8,9 +8,14 @@ class OrderWorkAssignment extends Model
 {
     protected $fillable = [
         'user_id', 'order_id', 'production_worker_id', 'work_type_id',
-        'compensation_plan_id', 'legacy_key', 'quantity', 'rate', 'amount',
+        'compensation_plan_id', 'legacy_key', 'active_assignment_key', 'quantity', 'rate', 'amount',
         'status', 'assigned_at', 'completed_at', 'notes',
     ];
+
+    public static function activeKey(int $userId, int $orderId, int $workerId, int $workTypeId): string
+    {
+        return implode(':', [$userId, $orderId, $workerId, $workTypeId]);
+    }
 
     protected function casts(): array
     {
