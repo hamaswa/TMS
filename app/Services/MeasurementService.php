@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Customers;
+use App\Models\CustomerMeasurementHistory;
 use App\Models\MeasurementField;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
@@ -84,6 +85,14 @@ class MeasurementService
     public function snapshotOrder(Order $order, Customers $customer, ?MeasurementTemplate $template = null): void
     {
         $template ??= $order->measurementTemplate;
+        $rows = $this->measurementRows($customer, (int) $order->userId, $template);
+
+        $order->measurementValues()->delete();
+        $order->measurementValues()->createMany($rows->all());
+    }
+
+    public function measurementRows(Customers $customer, int $ownerId, ?MeasurementTemplate $template = null): Collection
+    {
         $rows = collect();
         $sortOrder = 0;
         foreach (self::SYSTEM_FIELDS as $key => $meta) {
@@ -105,7 +114,7 @@ class MeasurementService
 
         $customValues = $customer->measurementValues()->with('field')
             ->whereHas('field', fn ($query) => $query
-                ->where('user_id', $order->userId)->where('is_active', true))
+                ->where('user_id', $ownerId)->where('is_active', true))
             ->when($template, fn ($query) => $query->whereIn('measurement_field_id', $template->custom_field_ids ?? []))
             ->get()->sortBy(fn ($value) => [$value->field->sort_order, $value->field->label]);
 
@@ -120,7 +129,56 @@ class MeasurementService
             ]);
         }
 
-        $order->measurementValues()->delete();
-        $order->measurementValues()->createMany($rows->all());
+        return $rows;
+    }
+
+    public function measurementFingerprint(Collection $rows, ?MeasurementTemplate $template = null): string
+    {
+        return hash('sha256', json_encode([
+            'template_id' => $template?->id,
+            'values' => $rows->map(fn (array $row) => [
+                'source_key' => $row['source_key'],
+                'value' => (string) $row['value'],
+                'unit' => $row['unit'],
+            ])->values()->all(),
+        ], JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION));
+    }
+
+    public function recordHistory(
+        Customers $customer,
+        int $ownerId,
+        ?MeasurementTemplate $template,
+        ?int $recordedByUserId,
+        string $source = 'customer_update',
+    ): ?CustomerMeasurementHistory {
+        return $this->recordHistoryRows(
+            $customer,
+            $this->measurementRows($customer, $ownerId, $template),
+            $template,
+            $recordedByUserId,
+            $source,
+        );
+    }
+
+    public function recordHistoryRows(
+        Customers $customer,
+        Collection $rows,
+        ?MeasurementTemplate $template,
+        ?int $recordedByUserId,
+        string $source,
+    ): ?CustomerMeasurementHistory {
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        $history = $customer->measurementHistories()->create([
+            'user_id' => $customer->user_id,
+            'measurement_template_id' => $template?->id,
+            'recorded_by_user_id' => $recordedByUserId,
+            'source' => $source,
+        ]);
+        $history->values()->createMany($rows->all());
+
+        return $history;
     }
 }

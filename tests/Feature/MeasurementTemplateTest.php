@@ -81,11 +81,73 @@ class MeasurementTemplateTest extends TestCase
             'customer_id' => $customer->id,
             'measurement_field_id' => $excluded->id,
         ]);
+        $this->assertDatabaseHas('customer_measurement_histories', [
+            'customer_id' => $customer->id,
+            'measurement_template_id' => $template->id,
+            'source' => 'customer_created',
+        ]);
+        $history = $customer->measurementHistories()->firstOrFail();
+        $this->assertDatabaseHas('customer_measurement_history_values', [
+            'customer_measurement_history_id' => $history->id,
+            'source_key' => 'system.length',
+            'value' => '42',
+        ]);
 
         $this->actingAs($owner)->get(route('admin.Customers.create'))
             ->assertOk()
             ->assertSee('name="measurement_template_id"', false)
             ->assertSeeText('قمیض');
+    }
+
+    public function test_history_is_added_only_when_measurements_change(): void
+    {
+        $owner = $this->owner();
+        $field = $this->field($owner, 'کالر اونچائی');
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'تاریخ ٹیمپلیٹ',
+            'system_fields' => ['length'],
+            'custom_field_ids' => [$field->id],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.Customers.store'), [
+            'name' => 'History Customer',
+            'contact' => '03008880000',
+            'measurement_template_id' => $template->id,
+            'length' => 42,
+            'custom_measurements' => [$field->id => '3.5'],
+        ])->assertRedirect();
+        $customer = Customers::where('user_id', $owner->id)->firstOrFail();
+        $this->assertCount(1, $customer->measurementHistories);
+
+        $this->actingAs($owner)->put(route('admin.Customers.update', $customer), [
+            'name' => 'History Customer',
+            'contact' => '03008880001',
+            'measurement_template_id' => $template->id,
+            'length' => 42,
+            'custom_measurements' => [$field->id => '3.5'],
+        ])->assertRedirect();
+        $this->assertSame(1, $customer->measurementHistories()->count());
+
+        $this->actingAs($owner)->put(route('admin.Customers.update', $customer), [
+            'name' => 'History Customer',
+            'contact' => '03008880001',
+            'measurement_template_id' => $template->id,
+            'length' => 43,
+            'custom_measurements' => [$field->id => '3.5'],
+        ])->assertRedirect();
+        $this->assertSame(2, $customer->measurementHistories()->count());
+        $latest = $customer->measurementHistories()->with('values')->firstOrFail();
+        $this->assertSame('customer_update', $latest->source);
+        $this->assertSame('43', $latest->values->firstWhere('source_key', 'system.length')->value);
+
+        $this->actingAs($owner)->get(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'measurements']))
+            ->assertOk()
+            ->assertSeeText('پیمائش کی تاریخ')
+            ->assertSeeText('تبدیل شدہ پیمائش')
+            ->assertSeeText('43');
     }
 
     public function test_order_snapshot_contains_only_the_selected_template_fields(): void

@@ -169,6 +169,7 @@ class CustomerController extends Controller
 
         $systemMeasurements = collect();
         $customMeasurements = collect();
+        $measurementHistories = collect();
         if ($canManageMeasurements) {
             $systemMeasurements = collect(MeasurementService::SYSTEM_FIELDS)
                 ->map(fn (array $meta, string $key) => [
@@ -180,6 +181,9 @@ class CustomerController extends Controller
                 ->with('field')
                 ->whereHas('field', fn ($query) => $query->where('user_id', $ownerId)->where('is_active', true))
                 ->get()->sortBy(fn ($value) => [$value->field->sort_order, $value->field->label]);
+            $measurementHistories = $customer->measurementHistories()
+                ->with(['template:id,name', 'recorder:id,name', 'values'])
+                ->limit(12)->get();
         }
 
         $tabs = collect([
@@ -202,7 +206,8 @@ class CustomerController extends Controller
         return view('customer.statement', compact(
             'customer', 'totalBalance', 'transactions', 'orders', 'sales',
             'canViewBalances', 'canViewTailoring', 'canViewShop', 'canManageMeasurements',
-            'totalReceived', 'systemMeasurements', 'customMeasurements', 'tabs', 'activeTab', 'paymentRoute'
+            'totalReceived', 'systemMeasurements', 'customMeasurements', 'measurementHistories',
+            'tabs', 'activeTab', 'paymentRoute'
         ));
     }
 
@@ -305,8 +310,17 @@ class CustomerController extends Controller
         $plainPin = $validated['mobile_pin'] ?? (string) random_int(100000, 999999);
         $obj->mobile_pin = Hash::make($plainPin);
         $obj->pin_changed_at = now();
-        $obj->save();
-        $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
+        DB::transaction(function () use ($obj, $measurementFields, $validated, $measurementTemplate) {
+            $obj->save();
+            $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
+            $this->measurements->recordHistory(
+                $obj,
+                Auth::user()->businessOwnerId(),
+                $measurementTemplate,
+                Auth::id(),
+                'customer_created',
+            );
+        });
         // dd($obj);
         return redirect('admin/Customers')
             ->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔')
@@ -385,6 +399,9 @@ class CustomerController extends Controller
             'note' => ['nullable', 'string', 'max:2000'],
         ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
         $obj = $this->ownedCustomer($id);
+        $previousTemplate = $obj->measurementTemplate;
+        $previousRows = $this->measurements->measurementRows($obj, Auth::user()->businessOwnerId(), $previousTemplate);
+        $previousFingerprint = $this->measurements->measurementFingerprint($previousRows, $previousTemplate);
         $obj->name = $request->name;
         $obj->phone_number1 = $request->contact;
         $obj->length = $request->length;
@@ -443,15 +460,26 @@ $obj->Daaman = $daaman;
         $obj->sleeve = $sleeve_opening_type;
         $obj->user_id = Auth::user()->businessOwnerId();
         $obj->measurement_template_id = $measurementTemplate?->id;
-        if (! empty($validated['mobile_pin'])) {
-            $obj->mobile_pin = Hash::make($validated['mobile_pin']);
-            $obj->pin_failed_attempts = 0;
-            $obj->pin_locked_until = null;
-            $obj->pin_changed_at = now();
-            $obj->tokens()->delete();
-        }
-        $obj->save();
-        $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
+        DB::transaction(function () use ($obj, $validated, $measurementFields, $measurementTemplate, $previousTemplate, $previousRows, $previousFingerprint) {
+            if (! empty($validated['mobile_pin'])) {
+                $obj->mobile_pin = Hash::make($validated['mobile_pin']);
+                $obj->pin_failed_attempts = 0;
+                $obj->pin_locked_until = null;
+                $obj->pin_changed_at = now();
+                $obj->tokens()->delete();
+            }
+            $obj->save();
+            $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
+
+            $currentRows = $this->measurements->measurementRows($obj, Auth::user()->businessOwnerId(), $measurementTemplate);
+            $currentFingerprint = $this->measurements->measurementFingerprint($currentRows, $measurementTemplate);
+            if (! hash_equals($previousFingerprint, $currentFingerprint)) {
+                if (! $obj->measurementHistories()->exists()) {
+                    $this->measurements->recordHistoryRows($obj, $previousRows, $previousTemplate, Auth::id(), 'baseline');
+                }
+                $this->measurements->recordHistoryRows($obj, $currentRows, $measurementTemplate, Auth::id(), 'customer_update');
+            }
+        });
         // dd($obj);
     $response = redirect('admin/Customers')->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
 

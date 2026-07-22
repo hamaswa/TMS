@@ -92,6 +92,11 @@ class Customers extends Authenticatable
         return $this->belongsTo(MeasurementTemplate::class);
     }
 
+    public function measurementHistories()
+    {
+        return $this->hasMany(CustomerMeasurementHistory::class, 'customer_id')->orderByDesc('id');
+    }
+
     public function servernotifi()
     {
         return $this->hasMany(ServerNotifications::class,'customer_id');
