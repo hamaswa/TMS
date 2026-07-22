@@ -16,7 +16,7 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Laravel migration SQL was inspected with `migrate --pretend` before execution.
 - The additive lifecycle migration ran successfully on MySQL.
 - Existing data remained present: 3 businesses, 8 users, 6 customers, 5 orders, 2 sales, 3 purchases, and all existing businesses remained active.
-- The complete automated suite passed: **104 tests, 690 assertions**.
+- The complete automated suite passed: **104 tests, 695 assertions**.
 - Live in-app browser QA covered super-admin login, client list, search/status/module controls, client details, business metrics, status history, and account actions.
 - The live client-details screen finished with no browser console errors or warnings.
 
@@ -39,11 +39,10 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 
 ## Confirmed remaining backlog
 
-1. Worker payment balance validation should use a database row lock to prevent simultaneous payments exceeding the balance.
-2. Duplicate order-work assignments should have a database-backed uniqueness/concurrency rule in addition to application validation.
-3. Independent tailor login safely rejects duplicate phone numbers across businesses, but the login screen should accept a shop identifier to make valid duplicate phone use possible.
-4. Fixed-salary and commission compensation plans are stored, but automated payroll accrual is not yet implemented.
-5. Dedicated cutter/other production-worker portals remain planned; only independent tailors currently have a worker portal.
+1. Duplicate order-work assignments should have a database-backed uniqueness/concurrency rule in addition to application validation.
+2. Independent tailor login safely rejects duplicate phone numbers across businesses, but the login screen should accept a shop identifier to make valid duplicate phone use possible.
+3. Fixed-salary and commission compensation plans are stored, but automated payroll accrual is not yet implemented.
+4. Dedicated cutter/other production-worker portals remain planned; only independent tailors currently have a worker portal.
 
 ## Financial reporting follow-up
 
@@ -51,6 +50,13 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Payments to cutters and other new production workers now appear in the cash-out breakdown and net cash flow.
 - Legacy tailor earnings and payments remain sourced from the established order and tailor-payment tables, preventing mirrored worker-ledger entries from being counted twice.
 - Tenant, date-range, and module boundaries are applied to the new calculations.
+
+## Worker payment concurrency follow-up
+
+- Worker payments now lock the tenant-scoped production-worker row inside a database transaction.
+- The current ledger balance is recalculated only after the lock is acquired, and the payment is inserted before releasing it.
+- Simultaneous payment requests are therefore serialized; a waiting request sees the balance left by the first request and is rejected in Urdu if it is now too high.
+- Regression coverage verifies that a second payment cannot use the worker's earlier balance.
 
 ## Git checkpoints
 

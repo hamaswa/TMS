@@ -8,6 +8,7 @@ use App\Models\WorkerCompensationPlan;
 use App\Models\WorkerLedgerEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -169,24 +170,33 @@ class ProductionWorkerController extends Controller
 
     public function payment(Request $request, int $worker)
     {
-        $worker = $this->ownedWorker($worker);
+        $this->ownedWorker($worker);
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'entry_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
-        $balance = max(0, (float) $worker->ledgerEntries()->sum('amount'));
-        if ((float) $validated['amount'] > $balance) {
-            throw ValidationException::withMessages(['amount' => 'ادائیگی واجب الادا رقم سے زیادہ نہیں ہو سکتی۔']);
-        }
-        WorkerLedgerEntry::create([
-            'user_id' => Auth::user()->businessOwnerId(),
-            'production_worker_id' => $worker->id,
-            'entry_type' => 'payment',
-            'amount' => -abs((float) $validated['amount']),
-            'entry_date' => $validated['entry_date'],
-            'notes' => $validated['notes'] ?? 'ورکر کو ادائیگی',
-        ]);
+        $ownerId = Auth::user()->businessOwnerId();
+
+        DB::transaction(function () use ($worker, $validated, $ownerId) {
+            $lockedWorker = ProductionWorker::where('user_id', $ownerId)
+                ->lockForUpdate()
+                ->findOrFail($worker);
+            $balance = max(0, (float) $lockedWorker->ledgerEntries()->sum('amount'));
+
+            if ((float) $validated['amount'] > $balance) {
+                throw ValidationException::withMessages(['amount' => 'ادائیگی واجب الادا رقم سے زیادہ نہیں ہو سکتی۔']);
+            }
+
+            WorkerLedgerEntry::create([
+                'user_id' => $ownerId,
+                'production_worker_id' => $lockedWorker->id,
+                'entry_type' => 'payment',
+                'amount' => -abs((float) $validated['amount']),
+                'entry_date' => $validated['entry_date'],
+                'notes' => $validated['notes'] ?? 'ورکر کو ادائیگی',
+            ]);
+        });
 
         return back()->with('success', 'ورکر کی ادائیگی درج کر دی گئی ہے۔');
     }

@@ -80,7 +80,12 @@ class ProductionWorkerManagementTest extends TestCase
         $this->actingAs($owner)->post(route('admin.production-workers.payments.store', $worker), [
             'amount' => 60, 'entry_date' => now()->toDateString(), 'notes' => 'نقد ادائیگی',
         ])->assertRedirect();
+        $this->actingAs($owner)->from(route('admin.production-workers.show', $worker))
+            ->post(route('admin.production-workers.payments.store', $worker), [
+                'amount' => 50, 'entry_date' => now()->toDateString(),
+            ])->assertRedirect(route('admin.production-workers.show', $worker))->assertSessionHasErrors('amount');
         $this->assertEquals(40, (float) $worker->ledgerEntries()->sum('amount'));
+        $this->assertDatabaseCount('worker_ledger_entries', 2);
     }
 
     public function test_production_workers_are_tenant_scoped(): void
