@@ -142,6 +142,21 @@ class UnifiedCustomerAccountTest extends TestCase
         $this->actingAs($visibleEmployee)->get(route('admin.customers.statement', $customer))
             ->assertOk()
             ->assertSeeText('Rs 700.00');
+        $this->actingAs($visibleEmployee)->post(route('admin.DirectPayment'), [
+            'customer_id' => $customer->id,
+            'DirectPayment' => 100,
+            'comment' => 'Shared counter payment',
+        ])->assertRedirect('admin/Customers');
+        $this->assertDatabaseHas('transactions', [
+            'customerId' => $customer->id,
+            'Order_type' => 'Payment',
+            'remainingBalance' => -100,
+            'recivedPayment' => 100,
+        ]);
+        $this->actingAs($visibleEmployee)->get(route('admin.customers.statement', $customer))
+            ->assertOk()
+            ->assertSeeText('Rs 600.00')
+            ->assertSeeText('Shared counter payment');
         $this->actingAs($owner)->get(route('admin.team.index'))
             ->assertOk()
             ->assertSeeText('گاہک کا مشترکہ بقایا اور ادائیگیاں دیکھیں');

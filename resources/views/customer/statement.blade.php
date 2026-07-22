@@ -33,7 +33,7 @@
                             @forelse($transactions as $transaction)
                                 <tr>
                                     <td>{{ $transaction->created_at?->format('d-m-Y') }}</td>
-                                    <td>{{ $transaction->Order_type === 'Tailor' ? 'ٹیلرنگ' : ($transaction->Order_type === 'Sale' ? 'دکان' : 'دیگر') }}</td>
+                                    <td>{{ $transaction->Order_type === 'Tailor' ? 'ٹیلرنگ' : ($transaction->Order_type === 'Sale' ? 'دکان' : ($transaction->Order_type === 'Payment' ? 'مشترکہ' : 'دیگر')) }}</td>
                                     <td>{{ $transaction->orderId ? 'آرڈر #'.$transaction->orderId : ($transaction->sale_id ? 'فروخت #'.$transaction->sale_id : 'ادائیگی') }}</td>
                                     <td>Rs {{ number_format((float) $transaction->recivedPayment, 2) }}</td>
                                     <td>Rs {{ number_format((float) $transaction->remainingBalance, 2) }}</td>

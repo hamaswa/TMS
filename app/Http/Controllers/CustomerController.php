@@ -101,6 +101,7 @@ class CustomerController extends Controller
         $visibleTypes = array_values(array_filter([
             $canViewTailoring ? 'Tailor' : null,
             $canViewShop ? 'Sale' : null,
+            $canViewBalances ? 'Payment' : null,
         ]));
         $transactions = $canViewBalances && $visibleTypes
             ? (clone $baseTransactions)->whereIn('Order_type', $visibleTypes)->latest()->paginate(30)
@@ -416,7 +417,7 @@ $obj->Daaman = $daaman;
         $transaction->customerId = $customer->id;
         $transaction->remainingBalance = (-$validated['DirectPayment']);
         $transaction->recivedPayment = $validated['DirectPayment'];
-        $transaction->Order_type = 'Tailor';
+        $transaction->Order_type = 'Payment';
         $transaction->comment = $validated['comment'] ?? null;
         $transaction->userId = Auth::user()->businessOwnerId();
         $transaction->save();
@@ -460,7 +461,7 @@ $obj->Daaman = $daaman;
         $obj->customerId = $customer->id;
         $obj->remainingBalance = (-$validated['DirectPayment']);
         $obj->recivedPayment = $validated['DirectPayment'];
-        $obj->Order_type = 'Sale';
+        $obj->Order_type = 'Payment';
         $obj->comment = $validated['comment'] ?? null;
         $obj->userId = Auth::user()->businessOwnerId();
         $obj->save();
