@@ -15,7 +15,7 @@ class OptionTypesSeeder extends Seeder
             [
                 'id' => 1,
                 'slug' => 'add_sewing_type',
-                'Name' => 'سیلائی',
+                'Name' => 'سلائی',
                 'type' => 'swingtype',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),

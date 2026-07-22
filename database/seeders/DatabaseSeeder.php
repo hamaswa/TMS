@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             OptionTypesSeeder::class,
+            QaDemoSeeder::class,
         ]);
     }
 }

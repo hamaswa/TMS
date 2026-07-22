@@ -54,7 +54,7 @@ class ClientModuleAccessTest extends TestCase
         $this->actingAs($client)
             ->get(route('admin.options.add', 1))
             ->assertOk()
-            ->assertSeeText('سیلائی');
+            ->assertSeeText('سلائی');
     }
 
     public function test_super_admin_can_create_and_change_client_module_access(): void
