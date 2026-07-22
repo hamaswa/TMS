@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClothColor;
+use App\Models\BusinessRole;
 use App\Models\Order;
 use App\Models\Purchase;
 use App\Models\SaleStock;
@@ -26,7 +27,12 @@ class HomeController extends Controller
             return redirect()->route('admin.dashboard.clothing');
         }
 
-        abort_if($modules === [], 403, 'آپ کے اکاؤنٹ کے لیے کوئی کاروباری سہولت فعال نہیں ہے۔');
+        if ($modules === []) {
+            $landingRoute = $this->managementLandingRoute($user);
+            abort_unless($landingRoute, 403, 'آپ کے اکاؤنٹ کے لیے کوئی کاروباری سہولت فعال نہیں ہے۔');
+
+            return redirect()->route($landingRoute);
+        }
 
         session()->forget('active_workspace');
 
@@ -94,5 +100,17 @@ class HomeController extends Controller
         ];
 
         return view('dashboard.clothing', compact('clothing', 'canInventory', 'canPurchases', 'canSales'));
+    }
+
+    private function managementLandingRoute(User $user): ?string
+    {
+        return match (true) {
+            $user->hasBusinessPermission(BusinessRole::FINANCE_VIEW) => 'admin.financial-reports.index',
+            $user->hasBusinessPermission(BusinessRole::EXPENSES_MANAGE) => 'admin.expense.index',
+            $user->hasBusinessPermission(BusinessRole::TEAM_MANAGE) => 'admin.team.index',
+            $user->hasBusinessPermission(BusinessRole::ACTIVITY_VIEW) => 'admin.activity.index',
+            $user->hasBusinessPermission(BusinessRole::SETTINGS_MANAGE) => 'admin.setting.index',
+            default => null,
+        };
     }
 }

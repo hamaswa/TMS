@@ -37,6 +37,27 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($employee)->get(route('admin.expense.index'))->assertForbidden();
     }
 
+    public function test_finance_only_employee_is_routed_to_financial_reports(): void
+    {
+        [, $business] = $this->business(true, true);
+        $role = BusinessRole::create([
+            'business_id' => $business->id,
+            'name' => 'Accountant',
+            'permissions' => [
+                BusinessRole::FINANCE_VIEW,
+                BusinessRole::CUSTOMER_BALANCES,
+                BusinessRole::EXPENSES_MANAGE,
+            ],
+        ]);
+        $employee = $this->employee($business, $role);
+
+        $this->actingAs($employee)->get(route('admin.home'))
+            ->assertRedirect(route('admin.financial-reports.index'));
+        $this->actingAs($employee)->get(route('admin.financial-reports.index'))->assertOk();
+        $this->actingAs($employee)->get(route('admin.dashboard.tailoring'))->assertForbidden();
+        $this->actingAs($employee)->get(route('admin.dashboard.clothing'))->assertForbidden();
+    }
+
     public function test_client_team_management_is_split_into_focused_pages(): void
     {
         [$owner] = $this->business(true, true);
