@@ -1,3 +1,4 @@
+@php($measurementSnapshot = $orderDetail->measurementValues->keyBy('source_key'))
 <!DOCTYPE html>
 <html lang="en">
 
@@ -359,7 +360,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600; ">
                                 <div>
-                                    <p style="direction: rtl; text-align: right;word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->length }}</p>
+                                    <p style="direction: rtl; text-align: right;word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.length'))->value ?? $orderDetail->customers->length }}</p>
                                 </div>
                                 <div>
                                     <p style="font-weight:900; font-size:20px;">
@@ -385,7 +386,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                   <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;"> {{ $orderDetail->customers->arms }}</p>
+                                   <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;"> {{ optional($measurementSnapshot->get('system.arms'))->value ?? $orderDetail->customers->arms }}</p>
                                 </div>
                                 <div><P style="font-weight:900; font-size:20px;">بازو</P></div>
                             </div>
@@ -405,7 +406,7 @@
                         </div>
                         <div class="col-6" style="width: 45%">
                         <div class="d-flex justify-content-between">
-                                <div><p style="display: flex;justify-content: space-between;font-weight:900;  font-size:18px;">{{ $orderDetail->customers->teraa }}</p></div>
+                                <div><p style="display: flex;justify-content: space-between;font-weight:900;  font-size:18px;">{{ optional($measurementSnapshot->get('system.teraa'))->value ?? $orderDetail->customers->teraa }}</p></div>
                                 <div>
                                 <P style="font-weight:600; font-size:20px;">تیرا</P></div>
                             </div>
@@ -426,7 +427,7 @@
                         <div class="col-6" style="width: 45%">
                             <div class="d-flex justify-content-between" style="display: flex; justify-content: space-between;font-weight:600;">
                                 <div>
-                                   <p style="word-break: break-word; white-space: normal; min-width: 0;font-weight:900; font-size:18px;">{{$orderDetail->customers->senaChorai}}</p>
+                                   <p style="word-break: break-word; white-space: normal; min-width: 0;font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.senaChorai'))->value ?? $orderDetail->customers->senaChorai }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">سینہ چوڑائی</p></div>
                             </div>
@@ -446,7 +447,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0;font-weight:900; font-size:18px;">{{ $orderDetail->customers->damanchorai }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0;font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.damanchorai'))->value ?? $orderDetail->customers->damanchorai }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">دامن چوڑائی</p></div>
                             </div>
@@ -468,7 +469,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->shalwar }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.shalwar'))->value ?? $orderDetail->customers->shalwar }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">شلوار</p></div>
                             </div>
@@ -489,7 +490,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->pancha }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.pancha'))->value ?? $orderDetail->customers->pancha }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">پانچہ</p></div>
                             </div>
@@ -504,7 +505,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->shalwarGheer }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.shalwarGheer'))->value ?? $orderDetail->customers->shalwarGheer }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">شلوار گھیر</p></div>
                             </div>
@@ -522,7 +523,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->shoulder }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.shoulder'))->value ?? $orderDetail->customers->shoulder }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">مونڈا</p></div>
                             </div>
@@ -539,7 +540,7 @@
                         <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->Chuta }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.chuta'))->value ?? $orderDetail->customers->Chuta }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">چوتا</p></div>
                             </div>
@@ -547,6 +548,19 @@
 
                     </div>
 
+                    @php($customMeasurements = $orderDetail->measurementValues->filter(fn ($measurement) => str_starts_with($measurement->source_key, 'custom.')))
+                    @if($customMeasurements->isNotEmpty())
+                        <div style="border-top:1px solid #333;padding:8px 10px;direction:rtl">
+                            <p style="font-weight:900;font-size:18px;text-align:right;margin-bottom:6px">اضافی پیمائش</p>
+                            <div style="display:flex;flex-wrap:wrap;justify-content:space-between">
+                                @foreach($customMeasurements as $measurement)
+                                    <div style="width:45%;display:flex;justify-content:space-between;margin-bottom:5px">
+                                        <strong>{{ $measurement->label }}</strong><span>{{ $measurement->value }} @if($measurement->unit){{ $measurement->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }}@endif</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     <hr>
                     <div>
                         <div align="center">

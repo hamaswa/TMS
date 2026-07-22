@@ -23,15 +23,19 @@ use Illuminate\Support\Facades\Auth;
 use App\Notifications\NewOrderNotification;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\OrderCompleteNotification;
+use App\Services\MeasurementService;
 
 
 class OrderController extends Controller
 {
+    public function __construct(private MeasurementService $measurements)
+    {
+    }
 
     public function edit($id)
     {
 
-        $data = $this->ownedOrder($id);
+        $data = $this->ownedOrder($id)->load('measurementValues');
         $sub_customer = Customers::where('user_id', Auth::user()->businessOwnerId())->find($data->sub_customer);
         $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($data->customerId);
         $tailors = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
@@ -79,7 +83,11 @@ class OrderController extends Controller
         Tailorsalary::where('tailor_id', $validated['tailorId'])->findOrFail($rateId);
         $remainingBalance = max(0, $validated['totalPayment'] - $validated['recivedPayment']);
 
-        DB::transaction(function () use ($validated, $order, $rateId, $tailorPrice, $remainingBalance) {
+        $measurementCustomerId = $validated['sub_id'] ?? $validated['customerId'];
+        $measurementChanged = (int) $order->sub_customer !== (int) $measurementCustomerId;
+        $measurementCustomer = $this->ownedCustomer($measurementCustomerId);
+
+        DB::transaction(function () use ($validated, $order, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer) {
             $order->update([
                 "sub_customer" => $validated['sub_id'] ?? $validated['customerId'],
                 "customerId" => $validated['customerId'],
@@ -102,6 +110,10 @@ class OrderController extends Controller
                     "customerId" => $validated['customerId'],
                 ]
             );
+
+            if ($measurementChanged || ! $order->measurementValues()->exists()) {
+                $this->measurements->snapshotOrder($order, $measurementCustomer);
+            }
         });
 
         return redirect('admin/Customers')->with('insert', 'Order Updated');
@@ -158,7 +170,8 @@ class OrderController extends Controller
         $designParts = explode('-', $validated['design'] ?? '', 2);
         $subCustomerId = $validated['sub_id'] ?? $validated['customerId'];
 
-        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $designParts, $subCustomerId) {
+        $measurementCustomer = $this->ownedCustomer($subCustomerId);
+        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $designParts, $subCustomerId, $measurementCustomer) {
             $obj = Order::create([
                 'customerId' => $validated['customerId'],
                 'sub_customer' => $subCustomerId,
@@ -187,6 +200,8 @@ class OrderController extends Controller
                 'userId' => Auth::user()->businessOwnerId(),
                 'Order_type' => 'Tailor',
             ]);
+
+            $this->measurements->snapshotOrder($obj, $measurementCustomer);
 
             return [$obj, $transaction];
         });
@@ -272,7 +287,7 @@ class OrderController extends Controller
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = Order::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customerId)->latest()->first();
+        $orderDetail = $order->load(['customers', 'measurementValues']);
         
         // dd($orderDetail);
 
@@ -334,7 +349,7 @@ class OrderController extends Controller
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = Order::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customerId)->latest()->first();
+        $orderDetail = $order->load(['customers', 'measurementValues']);
         
         // Filter transactions for the current customer
         $customerTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $customerId)->where('Order_type', 'Tailor')->get();

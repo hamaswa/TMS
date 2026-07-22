@@ -162,6 +162,15 @@
                                     <textarea rows="4" cols="" class="form-control" name="remarks" dir="rtl">{{ $data->remarks }}</textarea>
                                 </div>
                             </div>
+                            @if($data->measurementValues->isNotEmpty())
+                                <div class="card bg-light mb-3" dir="rtl"><div class="card-body">
+                                    <h5>آرڈر کے وقت محفوظ پیمائش</h5>
+                                    <div class="row">@foreach($data->measurementValues as $measurement)
+                                        <div class="col-md-4 mb-2"><span class="text-muted">{{ $measurement->label }}:</span> <strong>{{ $measurement->value }}</strong> @if($measurement->unit)<small>{{ $measurement->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }}</small>@endif</div>
+                                    @endforeach</div>
+                                    <small class="text-muted">یہ پیمائش اس آرڈر کی تاریخ کے لیے محفوظ ہے؛ گاہک کی نئی پیمائش اسے تبدیل نہیں کرے گی۔</small>
+                                </div></div>
+                            @endif
                             <div class="button-group mt-2">
                                 <button type="submit" class="btn btn-blue mr-3">محفوظ کریں</button>
                             </div>

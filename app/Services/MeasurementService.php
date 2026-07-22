@@ -4,11 +4,25 @@ namespace App\Services;
 
 use App\Models\Customers;
 use App\Models\MeasurementField;
+use App\Models\Order;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class MeasurementService
 {
+    public const SYSTEM_FIELDS = [
+        'length' => ['label' => 'لمبائی', 'unit' => 'inch'],
+        'arms' => ['label' => 'بازو', 'unit' => 'inch'],
+        'teraa' => ['label' => 'تیرا', 'unit' => 'inch'],
+        'senaChorai' => ['label' => 'سینہ چوڑائی', 'unit' => 'inch'],
+        'damanchorai' => ['label' => 'دامن چوڑائی', 'unit' => 'inch'],
+        'shalwar' => ['label' => 'شلوار', 'unit' => 'inch'],
+        'pancha' => ['label' => 'پائنچہ', 'unit' => 'inch'],
+        'shalwarGheer' => ['label' => 'شلوار گھیر', 'unit' => 'inch'],
+        'shoulder' => ['label' => 'مونڈھا', 'unit' => 'inch'],
+        'chuta' => ['label' => 'چوٹا', 'unit' => 'inch'],
+    ];
+
     public function activeFields(int $ownerId): Collection
     {
         return MeasurementField::where('user_id', $ownerId)->where('is_active', true)
@@ -53,5 +67,43 @@ class MeasurementService
                 ['value' => (string) $value]
             );
         }
+    }
+
+    public function snapshotOrder(Order $order, Customers $customer): void
+    {
+        $rows = collect();
+        $sortOrder = 0;
+        foreach (self::SYSTEM_FIELDS as $key => $meta) {
+            $value = $customer->{$key};
+            if ($value !== null && $value !== '') {
+                $rows->push([
+                    'measurement_field_id' => null,
+                    'source_key' => 'system.'.$key,
+                    'label' => $meta['label'],
+                    'value' => (string) $value,
+                    'unit' => $meta['unit'],
+                    'sort_order' => $sortOrder++,
+                ]);
+            }
+        }
+
+        $customValues = $customer->measurementValues()->with('field')
+            ->whereHas('field', fn ($query) => $query
+                ->where('user_id', $order->userId)->where('is_active', true))
+            ->get()->sortBy(fn ($value) => [$value->field->sort_order, $value->field->label]);
+
+        foreach ($customValues as $customValue) {
+            $rows->push([
+                'measurement_field_id' => $customValue->measurement_field_id,
+                'source_key' => 'custom.'.$customValue->measurement_field_id,
+                'label' => $customValue->field->label,
+                'value' => $customValue->value,
+                'unit' => $customValue->field->unit,
+                'sort_order' => 1000 + $customValue->field->sort_order,
+            ]);
+        }
+
+        $order->measurementValues()->delete();
+        $order->measurementValues()->createMany($rows->all());
     }
 }
