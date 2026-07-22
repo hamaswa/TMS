@@ -50,11 +50,11 @@ class ClothBrandController extends Controller
         try {
             $validated = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
-                'file' => ['required', 'image', 'max:2048'],
+                'file' => ['nullable', 'image', 'max:2048'],
             ]);
             $name = $validated['name'];
             $file = $request->file('file');
-            $fileName = $file->store('BrandImages', 'public');
+            $fileName = $file?->store('BrandImages', 'public');
             $user_id = Auth::user()->businessOwnerId();
 
             // Check if the brand name already exists

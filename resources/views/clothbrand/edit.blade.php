@@ -24,7 +24,8 @@
                     <div class="form-row m-0">
                         <label class="col-sm-3 col-form-label f"><span class="english">برانڈ کی تصویر</span> </label>
                         <div class="col-sm-9">
-                            <input type="file" class="form-control" name="file" required>
+                            <input type="file" class="form-control" name="file" accept="image/*">
+                            <small class="form-text text-muted">نئی تصویر صرف تبدیل کرنے کے لیے منتخب کریں۔</small>
                         </div>
                     </div>
                 </div>

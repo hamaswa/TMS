@@ -44,7 +44,7 @@
 
                                                         <td style="font-size: 18px;font-weight:600;">{{ $cloth_brand->name }}</td>
 
-                                                        <td><img src="{{asset('public/images/setting/'.$cloth_brand->brand_logo)}}" alt="" style="width: 70px;height:70px;"></td>
+                                                        <td><img src="{{ $cloth_brand->brand_logo ? asset('storage/'.$cloth_brand->brand_logo) : asset('assets/images/logo.jpg') }}" alt="{{ $cloth_brand->name }}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;"></td>
 
                                                         <td class="d-flex justify-content-end">
                                                             <a href="{{ route('admin.clothbrand.edit', $cloth_brand->id) }}"
