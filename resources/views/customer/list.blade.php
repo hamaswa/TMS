@@ -65,7 +65,7 @@
                                             <td>{{ $customer->phone_number1 }}</td>
                                             <td>
                                                 @if($canViewBalances)
-                                                    Rs: {{ number_format((float) $customer->transactions_sum_remaining_balance) }}
+                                                    Rs: {{ number_format((float) $customer->current_balance) }}
                                                 @else
                                                     <span class="text-muted">اجازت درکار ہے</span>
                                                 @endif

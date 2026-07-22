@@ -58,6 +58,9 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertDontSeeText('ٹیلرنگ بقایا')
             ->assertDontSeeText('دکان بقایا')
             ->assertSeeText('فروخت #'.$sale->id);
+        $this->actingAs($owner)->get(route('admin.Customers.index'))
+            ->assertOk()
+            ->assertSeeText('Rs: 700');
     }
 
     public function test_minimal_shop_customer_is_visible_in_shared_tailoring_customer_list(): void

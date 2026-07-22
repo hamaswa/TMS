@@ -46,7 +46,7 @@ class CustomerController extends Controller
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
             ->where('parent_id', null)
             ->when($canViewBalances, fn ($query) => $query->withSum([
-                'transactions' => fn ($transactions) => $transactions->where('userId', Auth::user()->businessOwnerId()),
+                'transactions as current_balance' => fn ($transactions) => $transactions->where('userId', Auth::user()->businessOwnerId()),
             ], 'remainingBalance'))
             ->get();
 
