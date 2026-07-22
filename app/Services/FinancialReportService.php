@@ -56,7 +56,11 @@ class FinancialReportService
         $totalDirectCosts = array_sum($directCosts);
         $totalOperatingExpenses = array_sum($operatingExpenses);
 
-        $transactionTypes = array_values(array_filter([$tailoringEnabled ? 'Tailor' : null, $clothingEnabled ? 'Sale' : null]));
+        $transactionTypes = array_values(array_filter([
+            $tailoringEnabled ? 'Tailor' : null,
+            $clothingEnabled ? 'Sale' : null,
+            ($tailoringEnabled || $clothingEnabled) ? 'Payment' : null,
+        ]));
         $customerReceipts = (float) Transaction::where('userId', $userId)->whereIn('Order_type', $transactionTypes)
             ->whereBetween('created_at', [$from, $to])->sum('recivedPayment');
         $supplierPayments = $clothingEnabled ? (float) SupplierPayment::where('user_id', $userId)->whereBetween('payment_date', [$start->toDateString(), $end->toDateString()])->sum('amount') : 0;
@@ -123,6 +127,7 @@ class FinancialReportService
             $balance->whereIn('Order_type', array_values(array_filter([
                 in_array('tailoring', $modules, true) ? 'Tailor' : null,
                 in_array('clothing', $modules, true) ? 'Sale' : null,
+                count(array_intersect(['tailoring', 'clothing'], $modules)) > 0 ? 'Payment' : null,
             ])));
         }
 

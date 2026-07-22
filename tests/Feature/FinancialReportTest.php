@@ -45,6 +45,10 @@ class FinancialReportTest extends TestCase
             'customerId' => $customer->id, 'orderId' => $order->id, 'userId' => $owner->id,
             'Order_type' => 'Tailor', 'recivedPayment' => 600, 'remainingBalance' => 400, 'created_at' => $date,
         ]);
+        Transaction::create([
+            'customerId' => $customer->id, 'userId' => $owner->id,
+            'Order_type' => 'Payment', 'recivedPayment' => 100, 'remainingBalance' => -100, 'created_at' => $date,
+        ]);
         SaleStock::create([
             'user_id' => $owner->id, 'cloth_id' => $cloth->id, 'cloth_color_id' => $color->id,
             'cloth_type_id' => $cloth->cloth_type_id, 'cloth_brand_id' => $cloth->cloth_brand_id,
@@ -91,10 +95,10 @@ class FinancialReportTest extends TestCase
         $this->assertEquals(1600, $report['summary']['total_revenue']);
         $this->assertEquals(940, $report['summary']['gross_profit']);
         $this->assertEquals(740, $report['summary']['net_profit']);
-        $this->assertEquals(600, $report['summary']['cash_in']);
+        $this->assertEquals(700, $report['summary']['cash_in']);
         $this->assertEquals(400, $report['summary']['cash_out']);
-        $this->assertEquals(200, $report['summary']['net_cash_flow']);
-        $this->assertEquals(400, $report['summary']['receivables']);
+        $this->assertEquals(300, $report['summary']['net_cash_flow']);
+        $this->assertEquals(300, $report['summary']['receivables']);
         $this->assertEquals(400, $report['summary']['payables']);
         $this->assertEquals(500, $report['summary']['purchases']);
         $this->assertEquals(50, $report['summary']['purchase_returns']);
