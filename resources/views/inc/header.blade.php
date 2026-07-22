@@ -49,7 +49,7 @@
                     @if($canTailorCustomers)<a class="dropdown-item" href="{{ route('admin.Customers.index') }}"><i class="fas fa-user-friends fa-fw ml-2 text-primary"></i>گاہک اور پیمائش</a>@endif
                     @if($canTailorTailors)<a class="dropdown-item" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-user-cog fa-fw ml-2 text-primary"></i>درزی</a>@endif
                     @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.OptionType.index') }}"><i class="fas fa-ruler-combined fa-fw ml-2 text-primary"></i>پیمائش کے اختیارات</a>@endif
-                    @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.measurement-fields.index') }}"><i class="fas fa-sliders-h fa-fw ml-2 text-primary"></i>اضافی پیمائش خانے</a>@endif
+                    @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-ruler-combined fa-fw ml-2 text-primary"></i>پیمائش ٹیمپلیٹس</a><a class="dropdown-item" href="{{ route('admin.measurement-fields.index') }}"><i class="fas fa-sliders-h fa-fw ml-2 text-primary"></i>اضافی پیمائش خانے</a>@endif
                 </div></li>
             @endif
             @if(Auth::user()->hasModule('clothing') && (! $hasMultipleWorkspaces || $activeWorkspace === 'clothing'))

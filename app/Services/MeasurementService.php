@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Customers;
 use App\Models\MeasurementField;
+use App\Models\MeasurementTemplate;
 use App\Models\Order;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -27,6 +28,17 @@ class MeasurementService
     {
         return MeasurementField::where('user_id', $ownerId)->where('is_active', true)
             ->orderBy('sort_order')->orderBy('label')->get();
+    }
+
+    public function fieldsForTemplate(Collection $fields, ?MeasurementTemplate $template): Collection
+    {
+        if (! $template) {
+            return $fields;
+        }
+
+        $selected = array_map('intval', $template->custom_field_ids ?? []);
+
+        return $fields->filter(fn ($field) => in_array((int) $field->id, $selected, true))->values();
     }
 
     public function rules(Collection $fields): array
@@ -69,11 +81,15 @@ class MeasurementService
         }
     }
 
-    public function snapshotOrder(Order $order, Customers $customer): void
+    public function snapshotOrder(Order $order, Customers $customer, ?MeasurementTemplate $template = null): void
     {
+        $template ??= $order->measurementTemplate;
         $rows = collect();
         $sortOrder = 0;
         foreach (self::SYSTEM_FIELDS as $key => $meta) {
+            if ($template && ! in_array($key, $template->system_fields ?? [], true)) {
+                continue;
+            }
             $value = $customer->{$key};
             if ($value !== null && $value !== '') {
                 $rows->push([
@@ -90,6 +106,7 @@ class MeasurementService
         $customValues = $customer->measurementValues()->with('field')
             ->whereHas('field', fn ($query) => $query
                 ->where('user_id', $order->userId)->where('is_active', true))
+            ->when($template, fn ($query) => $query->whereIn('measurement_field_id', $template->custom_field_ids ?? []))
             ->get()->sortBy(fn ($value) => [$value->field->sort_order, $value->field->label]);
 
         foreach ($customValues as $customValue) {

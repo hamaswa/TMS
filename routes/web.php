@@ -24,6 +24,7 @@ use App\Http\Controllers\ClothBrandController;
 use App\Http\Controllers\ClothStockController;
 use App\Http\Controllers\OptionTypeController;
 use App\Http\Controllers\MeasurementFieldController;
+use App\Http\Controllers\MeasurementTemplateController;
 use App\Http\Controllers\TailorRateController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PushNotificationController;
@@ -199,6 +200,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'password.changed', 
     Route::resource('/OptionType', OptionTypeController::class);
     Route::resource('/Options', OptionsController::class);
     Route::resource('/measurement-fields', MeasurementFieldController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('/measurement-templates', MeasurementTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('Options/add/{id}', [OptionsController::class, 'add'])->name('options.add');
 
     //design

@@ -11,7 +11,7 @@ class Order extends Model
 
     public const STATUSES = ['assigned', 'cutting', 'stitching', 'trial', 'ready', 'delivered'];
 
-    protected $fillable = ['name', 'sub_customer', 'suitNum', 'designPrice', 'design','customerId', 'suitQuantity', 'totalPayment', 'userId', 'returnDate', 'tailorId', 'rateId', 'remarks', 'tailor_price', 'rack_no', 'status', 'status_changed_at', 'started_at', 'ready_at', 'delivered_at', 'tailor_paid_amount', 'tailor_payment_status'];
+    protected $fillable = ['name', 'sub_customer', 'measurement_template_id', 'suitNum', 'designPrice', 'design','customerId', 'suitQuantity', 'totalPayment', 'userId', 'returnDate', 'tailorId', 'rateId', 'remarks', 'tailor_price', 'rack_no', 'status', 'status_changed_at', 'started_at', 'ready_at', 'delivered_at', 'tailor_paid_amount', 'tailor_payment_status'];
 
     protected $casts = [
         'status_changed_at' => 'datetime',
@@ -59,6 +59,11 @@ class Order extends Model
     public function measurementValues()
     {
         return $this->hasMany(OrderMeasurementValue::class)->orderBy('sort_order');
+    }
+
+    public function measurementTemplate()
+    {
+        return $this->belongsTo(MeasurementTemplate::class);
     }
 
     public function nextStatuses(): array

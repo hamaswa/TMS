@@ -4,7 +4,7 @@
 <div class="container">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
         <div><h2 class="mb-1">اضافی پیمائش خانے</h2><p class="text-muted mb-0">اپنے کام کے مطابق نئے خانے بنائیں۔ یہ ہر گاہک کی پیمائش میں دکھائی دیں گے۔</p></div>
-        <a href="{{ route('admin.Customers.index') }}" class="btn btn-outline-primary">گاہک اور پیمائش</a>
+        <div><a href="{{ route('admin.measurement-templates.index') }}" class="btn btn-primary ml-2">لباس ٹیمپلیٹس</a><a href="{{ route('admin.Customers.index') }}" class="btn btn-outline-primary">گاہک اور پیمائش</a></div>
     </div>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger"><strong>درستگی درکار ہے:</strong><ul class="mb-0 mt-2">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif

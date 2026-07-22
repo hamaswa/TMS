@@ -29,6 +29,7 @@
                 </div>
 
             </div>
+            @include('customer.partials.measurement-template-selector', ['selectedTemplateId' => $customer->measurement_template_id])
             <h5 class=" mb-4 text-right">کپڑوں کی سائز</h5>
             <div class="form-group row">
                 <div class="col-md-6">
@@ -76,7 +77,7 @@
                     </div>
 
                     <div class="form-group form-row">
-                        <label class="col-sm-3 col-form-label">پنچا:</label>
+                        <label class="col-sm-3 col-form-label">پائنچہ:</label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" name="pancha" value="{{$customer->pancha}}"
                                 required>
@@ -91,14 +92,14 @@
                         </div>
                     </div>
                     <div class="form-group form-row">
-                        <label class="col-sm-3 col-form-label">مونڈا:</label>
+                        <label class="col-sm-3 col-form-label">مونڈھا:</label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" required name="monda"
                                 value="{{$customer->shoulder}}">
                         </div>
                     </div>
                     <div class="form-group form-row">
-                        <label class="col-sm-3 col-form-label">چوتا:</label>
+                        <label class="col-sm-3 col-form-label">چوٹا:</label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" required name="chuta"
                                 value="{{$customer->chuta}}">

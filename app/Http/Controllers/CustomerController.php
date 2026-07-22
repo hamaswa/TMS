@@ -7,6 +7,7 @@ use App\Models\Tailor;
 use App\Models\Options;
 use App\Models\Customers;
 use App\Models\BusinessRole;
+use App\Models\MeasurementTemplate;
 use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\SaleStock;
@@ -87,7 +88,8 @@ class CustomerController extends Controller
         $data['Tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = collect();
-        return view('customer.create', compact('data', 'measurementFields', 'measurementValues'));
+        $measurementTemplates = $this->measurementTemplates();
+        return view('customer.create', compact('data', 'measurementFields', 'measurementValues', 'measurementTemplates'));
     }
 
     public function statement($id)
@@ -212,7 +214,12 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
-        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $measurementTemplates = $this->measurementTemplates();
+        $measurementTemplate = $measurementTemplates->firstWhere('id', (int) $request->input('measurement_template_id'));
+        $measurementFields = $this->measurements->fieldsForTemplate(
+            $this->measurements->activeFields(Auth::user()->businessOwnerId()),
+            $measurementTemplate,
+        );
         $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'contact' => [
@@ -222,6 +229,7 @@ class CustomerController extends Controller
                 ),
             ],
             'mobile_pin' => ['nullable', 'digits:6'],
+            'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
             'length' => ['nullable', 'numeric', 'min:0'],
             'arms' => ['nullable', 'numeric', 'min:0'],
             'teraa' => ['nullable', 'numeric', 'min:0'],
@@ -293,6 +301,7 @@ class CustomerController extends Controller
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
         $obj->user_id = Auth::user()->businessOwnerId();
+        $obj->measurement_template_id = $measurementTemplate?->id;
         $plainPin = $validated['mobile_pin'] ?? (string) random_int(100000, 999999);
         $obj->mobile_pin = Hash::make($plainPin);
         $obj->pin_changed_at = now();
@@ -341,7 +350,8 @@ class CustomerController extends Controller
         // dd($optionTypes);
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = $customer->measurementValues()->pluck('value', 'measurement_field_id');
-        return view('customer.edit', compact('customer', 'optionTypes', 'measurementFields', 'measurementValues'));
+        $measurementTemplates = $this->measurementTemplates();
+        return view('customer.edit', compact('customer', 'optionTypes', 'measurementFields', 'measurementValues', 'measurementTemplates'));
     }
 
     /**
@@ -353,7 +363,12 @@ class CustomerController extends Controller
      */
     public function update(Request $request, $id)
 {
-        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $measurementTemplates = $this->measurementTemplates();
+        $measurementTemplate = $measurementTemplates->firstWhere('id', (int) $request->input('measurement_template_id'));
+        $measurementFields = $this->measurements->fieldsForTemplate(
+            $this->measurements->activeFields(Auth::user()->businessOwnerId()),
+            $measurementTemplate,
+        );
         $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'contact' => [
@@ -363,6 +378,7 @@ class CustomerController extends Controller
                     ->ignore($id),
             ],
             'mobile_pin' => ['nullable', 'digits:6'],
+            'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
             'length' => ['nullable', 'numeric', 'min:0'],
             'arms' => ['nullable', 'numeric', 'min:0'],
             'teraa' => ['nullable', 'numeric', 'min:0'],
@@ -426,6 +442,7 @@ $obj->Daaman = $daaman;
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
         $obj->user_id = Auth::user()->businessOwnerId();
+        $obj->measurement_template_id = $measurementTemplate?->id;
         if (! empty($validated['mobile_pin'])) {
             $obj->mobile_pin = Hash::make($validated['mobile_pin']);
             $obj->pin_failed_attempts = 0;
@@ -575,6 +592,12 @@ $obj->Daaman = $daaman;
     private function ownedCustomer($id): Customers
     {
         return Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
+
+    private function measurementTemplates()
+    {
+        return MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())
+            ->where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
     }
 
 }

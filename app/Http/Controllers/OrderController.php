@@ -14,6 +14,7 @@ use App\Models\Customers;
 use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\Tailorsalary;
+use App\Models\MeasurementTemplate;
 use Illuminate\Http\Request;
 use App\Events\NotificationEvent;
 use App\Events\CompleteOrderEvent;
@@ -24,6 +25,7 @@ use App\Notifications\NewOrderNotification;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\OrderCompleteNotification;
 use App\Services\MeasurementService;
+use Illuminate\Validation\Rule;
 
 
 class OrderController extends Controller
@@ -133,6 +135,10 @@ class OrderController extends Controller
         $data['tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
         $data['childData'] = Customers::where('parent_id', $id)->get();
         $data['design'] = Options::where('option_id', 1)->where('user_id', auth()->user()->businessOwnerId())->get();
+        $data['measurementTemplates'] = MeasurementTemplate::where('user_id', auth()->user()->businessOwnerId())
+            ->where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
+        $data['measurementTemplateId'] = $customer->measurement_template_id
+            ?: $data['measurementTemplates']->firstWhere('is_default', true)?->id;
 
         // Get the serial number by searching through the collection
         $data['serialNumber'] = $customers->search(function ($item) use ($customer) {
@@ -157,6 +163,8 @@ class OrderController extends Controller
             'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:1000'],
             'serail' => ['nullable', 'string', 'max:255'],
+            'measurement_template_id' => ['nullable', 'integer', Rule::exists('measurement_templates', 'id')
+                ->where('user_id', Auth::user()->businessOwnerId())->where('is_active', true)],
         ]);
 
         $this->ownedCustomer($validated['customerId']);
@@ -171,10 +179,14 @@ class OrderController extends Controller
         $subCustomerId = $validated['sub_id'] ?? $validated['customerId'];
 
         $measurementCustomer = $this->ownedCustomer($subCustomerId);
-        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $designParts, $subCustomerId, $measurementCustomer) {
+        $measurementTemplate = ! empty($validated['measurement_template_id'])
+            ? MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['measurement_template_id'])
+            : null;
+        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
             $obj = Order::create([
                 'customerId' => $validated['customerId'],
                 'sub_customer' => $subCustomerId,
+                'measurement_template_id' => $measurementTemplate?->id,
                 'suitQuantity' => $validated['suitQuantity'],
                 'totalPayment' => $validated['totalPayment'],
                 'returnDate' => $validated['returnDate'],
@@ -201,7 +213,7 @@ class OrderController extends Controller
                 'Order_type' => 'Tailor',
             ]);
 
-            $this->measurements->snapshotOrder($obj, $measurementCustomer);
+            $this->measurements->snapshotOrder($obj, $measurementCustomer, $measurementTemplate);
 
             return [$obj, $transaction];
         });

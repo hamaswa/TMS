@@ -50,7 +50,7 @@ class Customers extends Authenticatable
                            'senaChorai','necktype', 'comments', 'created_at', 'updated_at',
                            'jeab','teraa','length','button','shirtbutton','damanchorai','chuta',
                            'swingtype','arms','user_id','pancha','shalwarGheer','shalwar','note','plate_type','Daaman',
-                           'mobile_pin'];
+                           'mobile_pin','measurement_template_id'];
 
     protected $hidden = ['mobile_pin', 'pin_failed_attempts', 'pin_locked_until'];
 
@@ -85,6 +85,11 @@ class Customers extends Authenticatable
     public function measurementValues()
     {
         return $this->hasMany(CustomerMeasurementValue::class, 'customer_id');
+    }
+
+    public function measurementTemplate()
+    {
+        return $this->belongsTo(MeasurementTemplate::class);
     }
 
     public function servernotifi()

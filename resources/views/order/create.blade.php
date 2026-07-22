@@ -33,6 +33,9 @@
                 @csrf
                 <div class="row justify-content-center">
                     <div class="col-md-8">
+                        @if($data['measurementTemplates']->isNotEmpty())
+                        <div class="alert alert-info text-right" dir="rtl"><div class="form-group mb-2"><label class="font-weight-bold" for="order-measurement-template">لباس کا پیمائش ٹیمپلیٹ</label><select id="order-measurement-template" class="form-control" name="measurement_template_id"><option value="">تمام محفوظ پیمائش</option>@foreach($data['measurementTemplates'] as $template)<option value="{{ $template->id }}" @selected((string) old('measurement_template_id', $data['measurementTemplateId']) === (string) $template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>@endforeach</select><small class="form-text text-muted">آرڈر کے ساتھ صرف منتخب ٹیمپلیٹ کی پیمائش محفوظ ہوگی۔ گاہک کی اصل پیمائش تبدیل نہیں ہوگی۔</small></div></div>
+                        @endif
                         <div class="form-group form-row">
                             <label class="col-sm-3 col-form-label">کپڑوں کی تعداد</label>
                             <div class="col-sm-9">
