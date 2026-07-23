@@ -87,3 +87,12 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - `9f0e117` — feature inventory and QA coverage.
 - `56073ce` — super-admin approval and activation lifecycle.
 - `0c49beb` — MySQL client metric regression fix.
+
+## Chrome client tailor-management QA
+
+- Signed in as the live client owner and verified the tailor list, tailor creation form, advance-payment modal, account report, rate list, and tailor-order list in Google Chrome.
+- Verified the real QA records for محمد وقاص: Rs. 500 current advance, the recorded advance transaction, and the Rs. 400 سادہ شلوار قمیض rate.
+- Confirmed that the account report no longer produces `weekFilter=undefined`, weekdays and transaction types are localized, and the empty orders state is shown in Urdu.
+- Found a visual contrast defect that made outline action labels appear blank against the table background. Replaced the affected outline styles with high-contrast action buttons and visually retested the page.
+- Chrome console errors and warnings: zero.
+- Focused regression result after the visual fix: 3 tests passed, 33 assertions.

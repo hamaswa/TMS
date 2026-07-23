@@ -49,18 +49,18 @@
                                             <td>روپے {{ number_format((float) ($tailor->advance ?? 0), 2) }}</td>
                                             <td>
                                                 <a type="button" class="btn btn-success btn-sm mb-1" data-toggle="modal" data-target="#addRecordModal_{{$tailor->id}}">ایڈوانس دیں</a>
-                                                <a class="btn btn-outline-primary btn-sm mb-1" href="{{url('admin/tailor-report',$tailor->id)}}">حساب دیکھیں</a>
+                                                <a class="btn btn-primary btn-sm mb-1" href="{{url('admin/tailor-report',$tailor->id)}}">حساب دیکھیں</a>
                                             </td>
                                             <td>
-                                                <a class="btn btn-outline-info btn-sm" href="{{url('admin/tailor-rates',$tailor->id)}}">نرخ دیکھیں</a>
+                                                <a class="btn btn-info btn-sm" href="{{url('admin/tailor-rates',$tailor->id)}}">نرخ دیکھیں</a>
                                             </td>
                                             <td>
-                                                <a class="btn btn-outline-secondary btn-sm mb-1" href="{{url('admin/tailor-orders',$tailor->id)}}">آرڈرز</a>
-                                                <a class="btn btn-outline-warning btn-sm mb-1" href="{{ url('admin/Tailor/'.$tailor->id.'/edit')}}">ترمیم</a>
+                                                <a class="btn btn-secondary btn-sm mb-1" href="{{url('admin/tailor-orders',$tailor->id)}}">آرڈرز</a>
+                                                <a class="btn btn-warning btn-sm mb-1 text-dark" href="{{ url('admin/Tailor/'.$tailor->id.'/edit')}}">ترمیم</a>
                                                 <form action="{{ route('admin.Tailor.destroy', $tailor->id) }}" method="POST" class="d-inline" onsubmit="return confirm('کیا آپ واقعی یہ درزی حذف کرنا چاہتے ہیں؟')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm mb-1" aria-label="درزی حذف کریں">حذف کریں</button>
+                                                    <button type="submit" class="btn btn-danger btn-sm mb-1" aria-label="درزی حذف کریں">حذف کریں</button>
                                                 </form>
                                             </td>
                                         </tr>

@@ -172,3 +172,11 @@ Last updated: 2026-07-23
 - Browserslist's local `caniuse-lite` data is outdated.
 - Historical stock mutations created before the inventory ledger was introduced are not retroactively reconstructed.
 - Historical counter sales have no captured weighted-average cost; new counter sales record cost correctly.
+
+## Latest Chrome QA checkpoint — 23 July 2026
+
+- Completed live Google Chrome QA of the client tailor list, create form, advance modal, account report, rate list, and orders list.
+- Verified محمد وقاص with a Rs. 500 advance transaction and a Rs. 400 سادہ شلوار قمیض rate.
+- Fixed invisible outline-button labels on the tailor list by applying high-contrast action styles.
+- Verified localized report content, clean filter URLs, and zero Chrome console errors or warnings.
+- Focused tailor workflow regression: 3 tests, 33 assertions passing.
