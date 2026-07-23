@@ -143,3 +143,19 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Cleaned the alternate print controls so they no longer overlap receipt content.
 - Chrome verification found no broken images or console errors/warnings on either order print route.
 - Final regression result: 111 tests passed, 765 assertions.
+
+## Fresh shop workspace and complete employee-role QA
+
+- Created and approved a new combined tailoring and clothing client for Kamran Siddiqui without modifying existing client records.
+- Completed the Urdu shop profile as `صدیقی ٹیلرز اینڈ فیبرکس`, including phone, address, service note, and logo.
+- Created all 6 supported role presets and one realistic employee for each: salesperson, workshop tailor, order manager, stock manager, accountant, and business manager.
+- Verified the mandatory temporary-password replacement flow for every employee; all 6 accounts now show as active.
+- Salesperson: shop dashboard and counter sales allowed; stock, purchasing, tailoring, finance, and team routes denied.
+- Workshop tailor: tailoring dashboard and assigned-job board allowed; order administration, stock, and team routes denied.
+- Order manager: customers, tailoring orders, and workshop allowed; tailor administration, stock, and team routes denied.
+- Stock manager: stock, purchasing, and suppliers allowed; counter sales, tailoring, finance, and team routes denied.
+- Accountant: financial reports and expenses allowed; both operational dashboards, stock, and team routes denied.
+- Manager: workspace chooser plus tailoring, shop, finance, settings, team, and activity screens allowed.
+- Chrome verification found no horizontal overflow, broken images, or console errors/warnings on the final roster and shop dashboard.
+- UI improvements identified: the shop setup page still contains English messages/actions (`Setting Added`, `Choose File`, `Deactive`, `Delete setting`), its heading says `نائی ترتیب` instead of `نئی ترتیب`, and a logo is mandatory.
+- Terminology improvement identified: the employee preset named `درزی` is workshop access, while independent production tailors remain separate; renaming the preset would reduce confusion.
