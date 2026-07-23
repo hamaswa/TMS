@@ -16,13 +16,19 @@
     <style>
     @font-face {
     font-family: 'Noto Nastaliq Urdu';
-    src: url('/public/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
+    src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
 }
         body {
+            margin: 0;
+            background: #f3f5f7;
             font-family: 'Noto Nastaliq Urdu';
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         /* #invoice-POS {
@@ -34,13 +40,22 @@
 
         } */
         #invoice-POS {
+            position: relative;
             box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
-            padding-left: 5mm; /* Remove all padding */
-            padding-right: 0mm;
-            margin: 0; /* Ensure no margin at the top */
-            width: 100mm; /* Increase the width */
+            padding: 4mm;
+            margin: 20px auto;
+            width: 88mm;
+            overflow: hidden;
             background: #FFF;
-}
+        }
+
+        #fullSection,
+        #orderSection,
+        #sizeSection {
+            position: relative;
+            width: 100%;
+            max-width: 100% !important;
+        }
 
         ::selection {
             background: #f31544;
@@ -88,7 +103,7 @@
         }
 
         #top {
-            min-height: 100px;
+            min-height: 10px;
         }
 
         #mid {
@@ -161,9 +176,61 @@
             margin-bottom: 10px;
         }
 
+        .printbtn {
+            position: static !important;
+            display: flex !important;
+            justify-content: center;
+            gap: 4px;
+            padding: 0 !important;
+            margin: 6px 0 18px;
+        }
+
+        .printbtn .btn {
+            position: static !important;
+            padding: 5px 8px !important;
+        }
+
+        .printbtn span {
+            font-size: 13px !important;
+            line-height: 1.8 !important;
+        }
+
+        .receipt-line {
+            display: flex !important;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            width: 100% !important;
+            font-size: 0 !important;
+        }
+
+        .receipt-line span,
+        .receipt-line b {
+            font-size: 18px !important;
+        }
+
+        #orderSection > h1 {
+            margin-top: 0 !important;
+        }
+
         @media print {
+            body {
+                background: #fff;
+            }
+
+            #invoice-POS {
+                width: 88mm;
+                margin: 0;
+                box-shadow: none;
+            }
+
             .btn {
                 display: none;
+            }
+
+            @page {
+                size: 88mm auto;
+                margin: 0;
             }
         }
 
@@ -256,7 +323,7 @@
 
                     <!--//order payment-->
                     <div class="mb-3 mt-2" style="text-align: right;padding:0px 0px;">
-                        <div style="width: 100%; display: inline-block; font-size:18px;">
+                        <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
                             <span style="font-weight:600; ">آرڈر کی رقم
                                 :</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                             <b style="font-size:18px;">{{ $orderDetail->totalPayment }}</b>
@@ -265,7 +332,7 @@
 
                     <!--//recieved payment-->
                     <div class="mb-3 mt-2" style="text-align: right;padding:0px 0px;">
-                        <div style="width: 100%; display: inline-block; font-size:18px;">
+                        <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
                             <span style="font-weight:600;">موجودہ رقم کی
                                 ادائیگی:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                             <b style="font-size:18px;">{{ $orderDetail->transactions[0]->recivedPayment }}</b>
@@ -274,7 +341,7 @@
                     <!-- Current due payments -->
                     @if ($latestBalance - $previousBalance > 0)
                         <div class="mb-3 mt-2" style="text-align: right; padding: 5px 0px;">
-                            <div style="width: 100%; display: inline-block; font-size:18px;">
+                            <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
                                 <span style="font-weight:600;">موجودہ ادائیگی واجب
                                     الادا:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                                 <b style="font-size:18px;">{{ $latestBalance - $previousBalance }}</b>
@@ -285,7 +352,7 @@
                     <!-- Previous payments due -->
                     @if ($previousBalance > 0)
                         <div class="mb-3 mt-2" style="text-align: right; padding: 5px 0px;">
-                            <div style="width: 100%; display: inline-block; font-size:18px;">
+                            <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
                                 <span style="font-weight:600;">گزشتہ ادائیگی کے
                                     واجبات:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                                 <b style="font-size:18px;">{{ $previousBalance }}</b>
@@ -296,7 +363,7 @@
                     <!-- Latest balance or total balance -->
                     @if ($latestBalance > 0)
                         <div class="mb-3 mt-2" style="text-align: right;">
-                            <div style="width: 100%; display: inline-block; font-size:18px;">
+                            <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
                                 <span style="font-weight:600;">کل ادائیگی واجب
                                     الادا:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                                 <b style="font-size:18px;">{{ $latestBalance }}</b>
@@ -305,7 +372,7 @@
                     @endif
 
                     <!--//return date-->
-                    <div style="text-align: right; font-size:18px;">
+                    <div class="receipt-line" style="text-align: right; font-size:18px;">
                         <span style="font-weight:600; ">واپسی کی
                             تاریخ:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                         <b style="font-size:18px;">{{ $orderDetail->returnDate }}</b>

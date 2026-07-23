@@ -17,13 +17,19 @@
     <style>
      @font-face {
     font-family: 'Noto Nastaliq Urdu';
-    src: url('/public/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
+    src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
 }
         body {
+             margin: 0;
+             background: #f3f5f7;
              font-family: 'Noto Nastaliq Urdu';
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         /* #invoice-POS {
@@ -35,13 +41,22 @@
 
         } */
         #invoice-POS {
-    box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
-    padding-left: 5mm; /* Remove all padding */
-    padding-right: 0mm;
-    margin-top: 25px;/* Ensure no margin at the top */
-    width: 100mm; /* Increase the width */
-    background: #FFF;
-}
+            position: relative;
+            width: 88mm;
+            margin: 20px auto;
+            padding: 4mm;
+            overflow: hidden;
+            background: #FFF;
+            box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
+        }
+
+        #fullSection,
+        #orderSection,
+        #sizeSection {
+            position: relative;
+            width: 100%;
+            max-width: 100% !important;
+        }
 
         ::selection {
             background: #f31544;
@@ -168,8 +183,23 @@
         }
 
         @media print {
+            body {
+                background: #fff;
+            }
+
+            #invoice-POS {
+                width: 88mm;
+                margin: 0;
+                box-shadow: none;
+            }
+
             .btn {
                 display: none !important;
+            }
+
+            @page {
+                size: 88mm auto;
+                margin: 0;
             }
         }
 

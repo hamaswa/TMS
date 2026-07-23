@@ -134,3 +134,12 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Found a visual contrast defect that made outline action labels appear blank against the table background. Replaced the affected outline styles with high-contrast action buttons and visually retested the page.
 - Chrome console errors and warnings: zero.
 - Focused regression result after the visual fix: 3 tests passed, 33 assertions.
+
+## Order receipt layout follow-up
+
+- Reproduced the order-print defect where customer and payment values were positioned against the browser viewport instead of the thermal receipt.
+- Constrained both order print layouts to a centered 88 mm receipt and corrected the Urdu font asset path.
+- Kept every positioned field inside the receipt, removed horizontal overflow, and aligned amount, balance, and delivery-date rows.
+- Cleaned the alternate print controls so they no longer overlap receipt content.
+- Chrome verification found no broken images or console errors/warnings on either order print route.
+- Final regression result: 111 tests passed, 765 assertions.
