@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\OnlineOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -37,5 +38,32 @@ class NotificationController extends Controller
         Auth::user()->unreadNotifications->markAsRead();
 
         return view('notifications.user', compact('notifications'));
+    }
+
+    public function showOnlineOrders()
+    {
+        $orders = OnlineOrder::where('admin_user_id', Auth::user()->businessOwnerId())
+            ->with(['user:id,name', 'cloth.brand:id,name', 'cloth.type:id,name'])
+            ->latest()
+            ->get();
+
+        return view('OnlineOrders.index', compact('orders'));
+    }
+
+    public function readNotifications(string $id)
+    {
+        $notification = Auth::user()->notifications()->findOrFail($id);
+        $notification->markAsRead();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function orderComplete(int $id)
+    {
+        $order = OnlineOrder::where('admin_user_id', Auth::user()->businessOwnerId())
+            ->findOrFail($id);
+        $order->update(['status' => 'complete']);
+
+        return response()->json(['success' => true]);
     }
 }

@@ -1,5 +1,30 @@
 # TMS Full QA Report — 23 July 2026
 
+## Final client, employee, worker, and print QA pass
+
+This follow-up pass covered every user-facing client back-office screen identified in the route/view inventory, the tailoring, sales, and finance employee experiences, independent-tailor access, production-worker management, and the active order/measurement/invoice print routes.
+
+- Chrome desktop QA covered the workspace chooser, both client dashboards, shared customers and statements, measurements and templates, tailoring orders and workshop, tailors and rates, production workers, cloth catalog and stock, counter sales, suppliers and purchases, inventory reporting, finance, expenses, team/security/activity, settings, notifications, and online orders.
+- Permission QA used a tailoring employee, sales employee, and finance/balance employee. Each account was redirected to the correct workspace and denied unrelated direct URLs.
+- The accountant now sees the business owner's real combined tailoring/shop figures instead of an empty report, and a balance-only employee can open the shared customer statement.
+- Active prints checked: one- and two-copy tailoring order/measurement sheets, manual sale invoice, one- and two-copy cloth sale receipts, and tailor weekly report.
+- Print fixes include Urdu labels, decoded suit serial numbers, valid local Urdu font/logo paths, non-overlapping action controls, a compact five-column thermal sale table, and removal of blank header space.
+- Broken resource endpoints were repaired for customer, tailor, cloth, brand, cloth type, option type, and option records. The stock-list alias and online-orders screens no longer return HTTP 500.
+- Settings now ignores missing logo files instead of rendering broken images. DataTables defaults are applied before screen-specific initialization, so tables use Urdu controls consistently.
+- No production records were deleted or reset during this pass.
+- Final automated result: **110 tests passed, 758 assertions**.
+
+### Defects fixed in this pass
+
+| Severity | Area | Defect | Resolution |
+|---|---|---|---|
+| High | Finance employee | Finance-only staff received zero totals because their role had no tailoring/shop access flag. | Reports now use the client's enabled business modules while retaining finance permission enforcement. |
+| High | Customer balance access | A balance-only employee was blocked before reaching the shared statement. | Added the balance permission to route authorization and regression coverage. |
+| High | Cloth/catalog | Cloth edit, stock alias, online orders, and several resource `show` routes returned 500, 404, or blank responses. | Repaired controller actions, tenant-scoped lookups, and safe redirects. |
+| Medium | Print layouts | English labels, JSON serial text, overlapping controls, blank space, and cramped thermal columns reduced readability. | Localized and normalized all active receipt/order layouts. |
+| Medium | Branding | Missing or legacy logo URLs produced broken images. | Added a validated `logo_url` accessor and used it on active screens/prints. |
+| Low | Urdu tables | Some DataTables controls initialized in English. | Registered Urdu defaults before page table initialization. |
+
 ## Scope
 
 The code-level feature catalogue and QA coverage map are maintained in `FEATURE_INVENTORY_AND_QA_MATRIX.md`. This pass covered all registered application surfaces:

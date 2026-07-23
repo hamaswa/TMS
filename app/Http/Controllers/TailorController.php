@@ -11,6 +11,7 @@ use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\TailorRecord;
 use App\Models\Tailorsalary;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -165,7 +166,9 @@ class TailorController extends Controller
      */
     public function show($id)
     {
-        //
+        $this->ownedTailor($id);
+
+        return redirect()->route('admin.tailor-report', $id);
     }
 
     /**
@@ -396,7 +399,7 @@ class TailorController extends Controller
 
             $user_id = $tailor->user_id;
 
-            $setting = DB::table('settings')->where('user_id', $user_id)->first();
+            $setting = Setting::where('user_id', $user_id)->firstOrFail();
 
             $details = [];
 

@@ -4,7 +4,9 @@
     <div class="container">
 
         <h2 class="mb-4 text-right">ترتیب میں تبدیلی</h2>
-        <img src="{{asset('public/images/setting/'.$setting->logo)}}" alt="" class="" width="250" height="150">
+        @if($setting->logo_url)
+            <img src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو" width="250" height="150">
+        @endif
         <form id="cc-form__addCustomerForm" action="{{ url('admin/setting/update',$setting->id)}}" class="add-customer-form"
             method="post" enctype="multipart/form-data">
             @csrf

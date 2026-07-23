@@ -211,6 +211,13 @@ class CustomerController extends Controller
         ));
     }
 
+    public function show($id)
+    {
+        $this->ownedCustomer($id);
+
+        return redirect()->route('admin.customers.statement', $id);
+    }
+
     /**
      * Store a newly created resource in storage.
      *
@@ -326,17 +333,6 @@ class CustomerController extends Controller
             ->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔')
             ->with('customer_pin', $plainPin)
             ->with('customer_pin_name', $obj->name);
-    }
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
     }
 
     /**

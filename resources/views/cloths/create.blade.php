@@ -47,8 +47,7 @@
                                 <label class="col-sm-3 col-form-label f"><span class="english">رنگ</span></label>
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control" id="colors" name="colors" required>
-                                    <small class="form-text text-muted">Enter colors separated by commas (e.g.,
-                                        red,blue,green).</small>
+                                    <small class="form-text text-muted">رنگ کوما کے ساتھ الگ لکھیں، مثلاً سفید، نیلا، کالا۔</small>
                                     @error('colors')
                                         <div class="text-danger">{{ $message }}</div>
                                     @enderror
@@ -106,7 +105,7 @@
                                     <div class="col-sm-9">
                                         <input type="file" class="form-control" name="images[]" required>
                                         <select name="image_colors[]" class="form-control" required>
-                                            <option value="">Select color</option>
+                                            <option value="">رنگ منتخب کریں</option>
                                         </select>
                                         @error('images')
                                             <div class="text-danger">{{ $message }}</div>
@@ -116,7 +115,7 @@
                             </div>
                         </div> --}}
                     </div>
-                    <button type="button" id="add-more-images" class="btn btn-secondary">Add Images</button>
+                    <button type="button" id="add-more-images" class="btn btn-secondary">تصاویر شامل کریں</button>
 
 
 
@@ -152,7 +151,7 @@
                     <div id="video-uploads">
                     </div>
 
-                    <button type="button" id="add-more-videos" class="btn btn-secondary mt-2">Add Videos</button>
+                    <button type="button" id="add-more-videos" class="btn btn-secondary mt-2">ویڈیوز شامل کریں</button>
 
                     <div class="form-group col-md-8 mx-auto row">
                         <div class="button-group">
@@ -183,10 +182,10 @@
                 <div class="col-sm-9">
                     <input type="file" class="form-control" name="images[]" style="margin-bottom: 5px;">
                     <select name="image_colors[]" class="form-control" style="margin-bottom: 5px;">
-                        <option value="">Select color</option>
+                        <option value="">رنگ منتخب کریں</option>
                         ${colorOptions}
                     </select>
-                    <button type="button" class="btn btn-danger btn-sm remove-image-upload">Remove</button>
+                    <button type="button" class="btn btn-danger btn-sm remove-image-upload">ہٹائیں</button>
                 </div>
             </div>
         </div>
@@ -219,10 +218,10 @@
                 <div class="col-sm-9">
                     <input type="file" class="form-control" name="videos[]" style="margin-bottom: 5px;">
                     <select name="video_colors[]" class="form-control" style="margin-bottom: 5px;">
-                        <option value="">Select color</option>
+                        <option value="">رنگ منتخب کریں</option>
                         ${colorOptions}
                     </select>
-                    <button type="button" class="btn btn-danger btn-sm remove-video-upload">Remove</button>
+                    <button type="button" class="btn btn-danger btn-sm remove-video-upload">ہٹائیں</button>
                 </div>
             </div>
         </div>
@@ -253,10 +252,10 @@
                 <div class="col-sm-9">
                     <input type="text" class="form-control" name="length[]" required style="margin-bottom: 5px;">
                     <select name="image_colors[]" class="form-control" required style="margin-bottom: 5px;">
-                        <option value="">Select color</option>
+                        <option value="">رنگ منتخب کریں</option>
                         ${colorOptions}
                     </select>
-                    <button type="button" class="btn btn-danger btn-sm remove-length-upload">Remove</button>
+                    <button type="button" class="btn btn-danger btn-sm remove-length-upload">ہٹائیں</button>
                 </div>
             </div>
         </div>

@@ -67,7 +67,9 @@
 
 <body>
     <div class="ticket" style="margin-top: 40px">
-        <img src="{{asset('public/images/setting/'.$setting->logo)}}">
+        @if($setting->logo_url)
+            <img src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو">
+        @endif
         <br>
         <br>
         <div style="width: 100%; margin-bottom: 6px">

@@ -174,6 +174,12 @@
 </head>
 
 <body>
+    @php
+        $decodedSuitNumbers = json_decode((string) $orderDetail->suitNum, true);
+        $serialNumbers = is_array($decodedSuitNumbers)
+            ? implode('، ', $decodedSuitNumbers)
+            : (string) $orderDetail->suitNum;
+    @endphp
 
     <div id="invoice-POS">
 
@@ -181,7 +187,7 @@
             <div class="info">
                 <div class="naap-button">
                     @if ($status != 'default')
-                        <button class="btn btn-primary btn-sm naap">پمائیش</button>
+                        <button class="btn btn-primary btn-sm naap">پیمائش</button>
                         <button class="btn btn-primary btn-sm order">ارڈر تفصیل</button>
                         <button class="btn btn-primary btn-sm full">مکمل </button>
                     @endif
@@ -209,14 +215,16 @@
 
 
         <div id="fullSection">
-            <div id="orderSection" style="max-width: 350px; margin-top:-30px;" class="ticket order-section">
-                <p align="center"><img src="{{ asset('public/images/setting/' . $setting->logo) }}" width="100"></p>
+            <div id="orderSection" style="max-width: 350px; margin-top:10px;" class="ticket order-section">
+                @if($setting->logo_url)
+                    <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
+                @endif
                 <h1 class="text-center"  style="font-size: 16px;font-weight: 600;text-align: center;margin-top:-20px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3">
                     <div class="d-flex justify-content-between ">
                         <div>
-                            <h2 style="font-size: 16px;font-weight:600;">invoice No # {{ $orderDetail->id }}
+                            <h2 style="font-size: 16px;font-weight:600;">رسید نمبر # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div>
@@ -248,7 +256,7 @@
                         <div
                             style="width: 50%; display: inline-block; font-size:20px; font-weight:600; max-width: 400px; word-wrap: break-word; word-break: break-all;">
                             <span style="font-size:18px; font-weight:600;">:سیریل نمبر</span>
-                            <b style="font-size:18px;position:absolute;left:100px;">{{ $orderDetail->suitNum }}</b>
+                            <b style="font-size:18px;position:absolute;left:100px;">{{ $serialNumbers }}</b>
                         </div>
                     </div>
 
@@ -325,8 +333,10 @@
                 <!--<p style="text-align:center; font-size: 10px">{{ $setting->note }}</p>-->
                 <!--<hr>-->
             </div>
-            <div id="sizeSection" style="max-width: 350px; margin-top:-30px;" class="ticket size-section">
-                <p align="center"> <img src="{{asset('public/images/setting/' . $setting->logo)}}" width="100"></p>
+            <div id="sizeSection" style="max-width: 350px; margin-top:10px;" class="ticket size-section">
+                @if($setting->logo_url)
+                    <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
+                @endif
                 <h1 class="text-center" style="font-weight:800;margin-top:-20px;">{{$setting->name}}</h1>
                 <div align="center"> <span style="font-weight: bold;font-size: 14px;"></span>
                 </div>
@@ -335,7 +345,7 @@
                     <hr>
                     <div class="desing-flex">
                         <div>
-                            <b>Serial num: {{$orderDetail->suitNum}}</b>
+                            <b>سیریل نمبر: {{ $serialNumbers }}</b>
                         </div>
                         <div>
                             <b>{{$orderDetail->customers->name}}</b>

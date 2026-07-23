@@ -38,7 +38,7 @@ class OptionTypeController extends Controller
      */
     public function create()
     {
-        //
+        return redirect()->route('admin.OptionType.index');
     }
 
     /**
@@ -70,7 +70,9 @@ class OptionTypeController extends Controller
      */
     public function show($id)
     {
-        //
+        $this->availableOptionTypes()->findOrFail($id);
+
+        return redirect()->route('admin.options.add', $id);
     }
 
     /**
@@ -81,7 +83,13 @@ class OptionTypeController extends Controller
      */
     public function edit($id)
     {
-       $OptionType = OptionType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+       $OptionType = OptionType::where('user_id', Auth::user()->businessOwnerId())->find($id);
+       if (! $OptionType) {
+           $this->availableOptionTypes()->findOrFail($id);
+
+           return redirect()->route('admin.OptionType.index')
+               ->with('insert', 'محفوظ سسٹم آپشن کی قسم تبدیل نہیں کی جا سکتی۔');
+       }
        $OptionTypes = $this->availableOptionTypes()->get();
        return view('OptionType.edit',compact('OptionTypes','OptionType'));
     }

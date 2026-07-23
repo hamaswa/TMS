@@ -2,6 +2,15 @@
 
 Last updated: 2026-07-23
 
+## 23 July 2026 — Final client/employee/worker/print QA
+
+- Completed a Chrome desktop sweep of all client back-office areas in the feature inventory, plus tailoring, sales, and finance employee accounts, production-worker screens, and independent-tailor access.
+- Repaired the finance-only employee report, balance-only customer statement access, cloth edit/stock alias/online-order failures, and blank or missing resource destinations.
+- Reworked the active order, measurement, invoice, cloth receipt, and tailor weekly print surfaces for Urdu thermal output and stable layout.
+- Added safe shop-logo URLs, earlier Urdu DataTables initialization, and regression tests for accountant totals, balance-only statement access, and cloth-brand resource navigation.
+- No destructive migration, database reset, or production-data deletion was used.
+- Final automated result: **110 tests passed, 758 assertions**.
+
 ## 23 July 2026 — Super-admin client lifecycle and full QA
 
 - Inventoried all application features and route surfaces in `docs/FEATURE_INVENTORY_AND_QA_MATRIX.md`.

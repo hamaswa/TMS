@@ -68,13 +68,11 @@ class ClothTypeController extends Controller
      * @param  \App\Models\ClothType  $clothType
      * @return \Illuminate\Http\Response
      */
-    public function show()
+    public function show($id)
     {
-        try {
-            abort("404");
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+
+        return redirect()->route('admin.clothtype.edit', $id);
     }
 
     /**

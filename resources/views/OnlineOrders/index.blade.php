@@ -30,27 +30,30 @@
                                 <tbody>
                                     @foreach ($orders as $order)
                                         @php
-                                            $userId = $order->user_id ?? null;
-                                            $user = $userId ? App\Models\User::find($userId) : null;
-                                            $clothId = $order->cloth_id ?? null;
-                                            $cloth = $clothId
-                                                ? App\Models\Cloth::with(['brand', 'type'])->find($clothId)
-                                                : null;
-                                            $brandName = $cloth ? $cloth->brand->name : 'No Brand';
-                                            $typeName = $cloth ? $cloth->type->name : 'No Type';
+                                            $brandName = $order->cloth?->brand?->name ?? 'برانڈ دستیاب نہیں';
+                                            $typeName = $order->cloth?->type?->name ?? 'قسم دستیاب نہیں';
+                                            $statusLabel = [
+                                                'pending' => 'زیرِ انتظار',
+                                                'complete' => 'مکمل',
+                                                'cancelled' => 'منسوخ',
+                                            ][$order->status] ?? $order->status;
                                         @endphp
                                         <tr>
                                             <td class="customer_id">{{ $order->id }}</td>
-                                            <td style="cursor: pointer;">{{ $user->name }}</td>
+                                            <td style="cursor: pointer;">{{ $order->user?->name ?? 'گاہک دستیاب نہیں' }}</td>
                                             <td>{{ $typeName }}</td>
                                             <td>{{ $brandName }}</td>
                                             <td >{{ $order->color }}</td>
                                             <td >{{ $order->length }}</td>
                                             <td >{{ $order->length * $order->price }}</td>
-                                            <td >{{ $order->status }}</td>
-                                            <td> <a href="#" class="btn btn-success btn-action text-white"
-                                                onclick="OrderComlete({{ $order->id }})">Complete</a>
-                                                </a>
+                                            <td>{{ $statusLabel }}</td>
+                                            <td>
+                                                @if($order->status !== 'complete')
+                                                    <button type="button" class="btn btn-success btn-action"
+                                                        onclick="OrderComlete({{ $order->id }})">مکمل کریں</button>
+                                                @else
+                                                    <span class="badge badge-success">مکمل</span>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
@@ -202,15 +205,15 @@
                 success: function(response) {
                     // console.log('Server response:', response);
                     if (response.success) {
-                        alert('Order Completed');
+                        alert('آرڈر مکمل کر دیا گیا ہے۔');
                         location.reload();
                     } else {
-                        alert(response.error || 'Unexpected error occurred');
+                        alert(response.error || 'آرڈر مکمل نہیں ہو سکا۔');
                     }
                 },
                 error: function(xhr, status, error) {
                     console.error('AJAX error:', status, error);
-                    alert('AJAX error: ' + error);
+                    alert('آرڈر مکمل نہیں ہو سکا۔ دوبارہ کوشش کریں۔');
                 }
             });
         }

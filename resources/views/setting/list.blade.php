@@ -61,8 +61,13 @@
                                             <tr>
                                                 <td></td>
                                                 <td>{{$setting->name}}</td>
-                                                <td><img src="{{asset('public/images/setting/'.$setting->logo)}}" alt=""
-                                                        style="width:150px; hight:100px">
+                                                <td>
+                                                    @if($setting->logo_url)
+                                                        <img src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو"
+                                                            style="width:150px; height:100px">
+                                                    @else
+                                                        <span class="text-muted">لوگو شامل نہیں</span>
+                                                    @endif
                                                 </td>
                                                 <td>{{$setting->contact_no}}</td>
                                                 <td>{{$setting->note}}</td>

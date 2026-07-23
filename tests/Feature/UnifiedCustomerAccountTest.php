@@ -215,6 +215,33 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertDontSee('action="'.route('admin.DirectPayment').'"', false);
     }
 
+    public function test_balance_only_employee_can_open_the_shared_customer_statement(): void
+    {
+        [$owner, $business] = $this->business();
+        $customer = Customers::create([
+            'name' => 'Accounts Desk Customer',
+            'phone_number1' => '03006660000',
+            'user_id' => $owner->id,
+        ]);
+        Transaction::create([
+            'customerId' => $customer->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'remainingBalance' => 875,
+        ]);
+        $role = BusinessRole::create([
+            'business_id' => $business->id,
+            'name' => 'Balance desk',
+            'permissions' => [BusinessRole::CUSTOMER_BALANCES],
+        ]);
+        $employee = $this->employee($business, $role);
+
+        $this->actingAs($employee)->get(route('admin.customers.statement', $customer))
+            ->assertOk()
+            ->assertSeeText('Accounts Desk Customer')
+            ->assertSeeText('Rs 875.00');
+    }
+
     private function owner(): User
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

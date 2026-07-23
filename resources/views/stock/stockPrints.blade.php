@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ur" dir="rtl">
 
 <head>
     <meta charset="UTF-8">
@@ -12,11 +12,11 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
-    <title>Tailor Managment Sale Recipt</title>
+    <title>کپڑے کی فروخت کی دو رسیدیں</title>
     <style>
      @font-face {
     font-family: 'Noto Nastaliq Urdu';
-    src: url('/public/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
+    src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
@@ -156,9 +156,23 @@
             }
         }
 
-        /* .printbtn{
-                position: relative;
-            } */
+        .printbtn {
+            position: static !important;
+            display: flex !important;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 0 !important;
+            margin: 0 0 10px !important;
+        }
+
+        .printbtn button {
+            position: static !important;
+            padding: 5px 8px !important;
+        }
+
+        #orderSection {
+            margin-top: 0 !important;
+        }
     </style>
 </head>
 
@@ -187,12 +201,13 @@
 
             <div id="orderSection" style="max-width: 322px; margin-top: -25px;" class="ticket order-section">
                 <div class="pl-3 pr-3" style="margin-top: 10px">
-                    <p align="center"><img src="{{ asset('public/images/setting/' . $setting->logo) }}" width="100">
-                    </p>
+                    @if($setting->logo_url)
+                        <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
+                    @endif
                     <h1 class="text-center" style="font-size: 16px;font-weight: 600;text-align: center">
                         {{ $setting->name }}</h1>
                     <h5 style="font-size: 16px;font-weight: 600;text-align: center">
-                        Invoice No : {{ $id }}</h5>
+                        رسید نمبر: {{ $id }}</h5>
                     <table class="table" style="width: 100%; table-layout: fixed;">
                         <h4
                             style="position:relative;text-align: right; margin-bottom: 20px !important;font-size:18px;font-weight:600;">
@@ -206,13 +221,11 @@
                             {{ $sellStock->sellDate }} : تاریخ</h4>
                         <thead>
                             <tr>
-                                <th style="width: 14%;">ٹوٹل</th>
-                                <th style="width: 13%;">گزانہ</th>
-                                <th style="width: 13%;">تھان</th>
-                                <th style="width: 18%;">فی میٹر</th>
-                                <th style="width: 15%;">رنگ</th>
-                                <th style="width: 15%;">قسم</th>
-                                <th style="width: 13%;">برانڈ</th>
+                                <th style="width: 34%;">کپڑے کی تفصیل</th>
+                                <th style="width: 14%;">میٹر</th>
+                                <th style="width: 20%;">فی میٹر</th>
+                                <th style="width: 20%;">ٹوٹل</th>
+                                <th style="width: 12%;">ریک</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -223,13 +236,11 @@
                                 {{-- Loop through each sale stock --}}
                                 @foreach ($saleStocks as $saleStock)
                                     <tr>
-                                        <td><b>{{ $saleStock->length * $saleStock->selling_price }}</b></td>
-                                        <td style="width: 1%"><b>{{ $saleStock->length }}</b></td>
-                                        <td style="width: 1%"><b>{{ $saleStock->clothes_rack }}</b></td>
+                                        <td><b>{{ $saleStock->brand->name }} / {{ $saleStock->type->name }} / {{ $saleStock->color }}</b></td>
+                                        <td><b>{{ $saleStock->length }}</b></td>
                                         <td><b>{{ number_format($saleStock->selling_price, 2) }}</b></td>
-                                        <td><b>{{ $saleStock->color }}</b></td>
-                                        <td><b>{{ $saleStock->type->name }}</b></td>
-                                        <td><b>{{ $saleStock->brand->name }}</b></td>
+                                        <td><b>{{ number_format($saleStock->length * $saleStock->selling_price, 2) }}</b></td>
+                                        <td><b>{{ $saleStock->clothes_rack }}</b></td>
                                     </tr>
                                     @php
                                         // Calculate total amount
@@ -238,7 +249,7 @@
                                 @endforeach
                             @else
                                 <tr>
-                                    <td colspan="7">No records found</td>
+                                    <td colspan="5">کوئی ریکارڈ موجود نہیں۔</td>
                                 </tr>
                             @endif
                         </tbody>

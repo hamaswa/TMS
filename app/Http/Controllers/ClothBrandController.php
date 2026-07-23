@@ -85,9 +85,11 @@ class ClothBrandController extends Controller
      * @param  \App\Models\ClothBrand  $clothBrand
      * @return \Illuminate\Http\Response
      */
-    public function show(ClothBrand $clothBrand)
+    public function show($id)
     {
-        //
+        $clothBrand = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+
+        return redirect()->route('admin.clothbrand.edit', $clothBrand->id);
     }
 
     /**

@@ -30,8 +30,7 @@ class OptionsController extends Controller
      */
     public function create()
     {
-        $OptionTypes = $this->availableOptionTypes()->get();
-        return view("Options.index",compact('OptionTypes'));
+        return redirect()->route('admin.Options.index');
     }
 
     public function add($id)
@@ -82,7 +81,9 @@ class OptionsController extends Controller
      */
     public function show($id)
     {
-        //
+        Options::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+
+        return redirect()->route('admin.Options.edit', $id);
     }
 
     /**

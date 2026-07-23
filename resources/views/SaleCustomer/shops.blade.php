@@ -81,7 +81,9 @@
                         <h5 class="card-title">{{$shop->name}}</h5>
                     </div>
                     <div class="card-body">
-                        <img src="{{ asset('public/images/setting/' . $shop->logo) }}" class="img-fluid mb-3" alt="Shop Logo">
+                        @if($shop->logo_url)
+                            <img src="{{ $shop->logo_url }}" class="img-fluid mb-3" alt="{{ $shop->name }} لوگو">
+                        @endif
                         <p class="card-text"><b>Address:</b> {{$shop->address}}</p>
                         <p class="card-text"><b>Contact No:</b> {{$shop->contact_no}}</p>
                         <a href="{{route('user.selling',['slug'=>$shop->shop_slug])}}" class="btn btn-primary">Go to Shop</a>

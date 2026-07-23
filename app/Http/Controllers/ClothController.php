@@ -165,7 +165,12 @@ class ClothController extends Controller
      */
     public function show(Cloth $cloth)
     {
-        //
+        abort_unless((int) $cloth->user_id === (int) Auth::user()->businessOwnerId(), 404);
+        $color = $cloth->colors()->value('color');
+
+        return $color
+            ? redirect()->route('admin.edit-cloths', ['id' => $cloth->id, 'color' => $color])
+            : redirect()->route('admin.cloth.index');
     }
 
     /**
@@ -182,7 +187,11 @@ class ClothController extends Controller
             $cloth_brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
             // Fetch related colors, images, and videos
             $cloth->load('colors', 'images', 'videos');
-            return view('cloths.edit', compact('cloth', 'cloth_types', 'cloth_brands'));
+            $specificColor = $cloth->colors->first();
+            abort_unless($specificColor, 404);
+            $data = compact('cloth', 'specificColor');
+
+            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands'));
         } catch (\Throwable $th) {
             throw $th;
         }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\ClothBrand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -30,5 +31,9 @@ class ShopCatalogOnboardingTest extends TestCase
         $this->actingAs($owner)->get(route('admin.clothbrand.index'))
             ->assertOk()
             ->assertSee('assets/images/logo.jpg');
+
+        $brand = ClothBrand::where('user_id', $owner->id)->firstOrFail();
+        $this->actingAs($owner)->get(route('admin.clothbrand.show', $brand))
+            ->assertRedirect(route('admin.clothbrand.edit', $brand));
     }
 }

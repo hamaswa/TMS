@@ -99,7 +99,17 @@
                  justify-content:space-between;
                  margin-bottom:10px;
                  }
+                .receipt-actions {
+                    display: flex;
+                    gap: 8px;
+                    width: 88mm;
+                    margin: 10px 0 14px;
+                    padding: 0 6px;
+                }
                 @media print{
+                    .receipt-actions {
+                        display: none !important;
+                    }
                     .btn{
                         display:none;
                     }
@@ -112,30 +122,28 @@
   <div id="invoice-POS">
     <!--Print Button-->
 
-    <div class="btn" style="position:relative;left:55%;top:10px;">
+    <div class="receipt-actions">
         <button class="btn btn-primary print">رسید پرنٹ کریں۔</button>
+        <button class="btn btn-primary go" type="button">فروخت پر واپس جائیں</button>
     </div>
 
-    <!--Back button-->
-    <!--<div class="back" style="position:relative;bottom:40px;right:10px;">-->
-        <button class="btn btn-primary go" href="" style="position:relative;bottom:35px;right:2px;">فروخت پر واپس جائیں</button>
-    <!--</div>-->
-
-    <center id="top">
+  @if($status != 'default')
+  <center id="top">
       <div class="info">
        <div class="naap-button my-2">
-            @if($status !='default')
-            <button class="btn btn-primary btn-sm naap">پمائیش</button>
+            <button class="btn btn-primary btn-sm naap">پیمائش</button>
             <button class="btn btn-primary btn-sm order">ارڈر تفصیل</button>
             <button class="btn btn-primary btn-sm full">مکمل </button>
-            @endif
         <hr>
         </div>
       </div><!--End Info-->
-    </center><!--End InvoiceTop-->
+  </center><!--End InvoiceTop-->
+  @endif
 
      <div class="ticket order-section mt-3">
-            <p align="center"><img src="{{asset('public/images/setting/'.$setting->logo)}}" width="100"></p>
+            @if($setting->logo_url)
+                <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
+            @endif
             <h5 class="text-center">{{$setting->name}}</h5>
             <br>
             <div class="pl-3 pr-3">

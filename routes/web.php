@@ -114,7 +114,7 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'business.activity'], 'as' => 'admin.'], function () {
     Route::get('/customers/{id}/statement', [CustomerController::class, 'statement'])
-        ->middleware('business.permission:tailoring.customers|clothing.sales')
+        ->middleware('business.permission:tailoring.customers|clothing.sales|customers.balances')
         ->name('customers.statement');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->middleware('business.permission:finance.view')->name('financial-reports.index');
     Route::get('/financial-reports/export/{section}', [FinancialReportController::class, 'export'])->middleware('business.permission:finance.view')->name('financial-reports.export');
@@ -327,7 +327,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/getType', [ClothStockController::class, 'getType'])->middleware('business.permission:clothing.sales|clothing.inventory')->name('cloth-type.lookup');
 
     Route::middleware('business.permission:clothing.sales')->group(function () {
-    Route::get('/cloths-index', [SaleCustomerController::class, 'index'])->name('cloths.index');
+    Route::get('/cloths-index', [ClothStockController::class, 'index'])->name('cloths.index');
     Route::get('sellcloth', [ClothStockController::class, 'sellCloth'])->name('sellCloth');
     Route::get('/getSale', [ClothStockController::class, 'getSale'])->name('getSale');
 

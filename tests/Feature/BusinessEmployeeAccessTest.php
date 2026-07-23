@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Business;
 use App\Models\BusinessRole;
 use App\Models\BusinessActivityLog;
+use App\Models\Order;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,7 +40,7 @@ class BusinessEmployeeAccessTest extends TestCase
 
     public function test_finance_only_employee_is_routed_to_financial_reports(): void
     {
-        [, $business] = $this->business(true, true);
+        [$owner, $business] = $this->business(true, true);
         $role = BusinessRole::create([
             'business_id' => $business->id,
             'name' => 'Accountant',
@@ -50,10 +51,18 @@ class BusinessEmployeeAccessTest extends TestCase
             ],
         ]);
         $employee = $this->employee($business, $role);
+        Order::create([
+            'suitQuantity' => 1,
+            'totalPayment' => 1234,
+            'userId' => $owner->id,
+            'created_at' => now(),
+        ]);
 
         $this->actingAs($employee)->get(route('admin.home'))
             ->assertRedirect(route('admin.financial-reports.index'));
-        $this->actingAs($employee)->get(route('admin.financial-reports.index'))->assertOk();
+        $this->actingAs($employee)->get(route('admin.financial-reports.index'))
+            ->assertOk()
+            ->assertSeeText('روپے 1,234.00');
         $this->actingAs($employee)->get(route('admin.dashboard.tailoring'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.dashboard.clothing'))->assertForbidden();
     }

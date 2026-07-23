@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\FinancialReportService;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ class FinancialReportController extends Controller
             'per_page' => ['nullable', 'in:10,25,50,100'],
         ]);
         [$start, $end] = $this->period($request);
-        $modules = Auth::user()->enabledModules();
+        $modules = $this->businessModules(Auth::user());
         $report = $reports->build(Auth::user()->businessOwnerId(), $start, $end, false, $modules);
         $perPage = (int) ($filters['per_page'] ?? 10);
         $report['receivables'] = $reports->receivablesQuery(Auth::user()->businessOwnerId(), $end, $filters['receivables_q'] ?? null, $modules)
@@ -32,7 +33,13 @@ class FinancialReportController extends Controller
     {
         abort_unless(in_array($section, ['summary', 'receivables', 'payables'], true), 404);
         [$start, $end] = $this->period($request);
-        $report = $reports->build(Auth::user()->businessOwnerId(), $start, $end, true, Auth::user()->enabledModules());
+        $report = $reports->build(
+            Auth::user()->businessOwnerId(),
+            $start,
+            $end,
+            true,
+            $this->businessModules(Auth::user())
+        );
         $filename = $section . '-' . $start->toDateString() . '-to-' . $end->toDateString() . '.csv';
 
         return response()->streamDownload(function () use ($section, $report) {
@@ -64,5 +71,19 @@ class FinancialReportController extends Controller
     {
         $value = (string) $value;
         return preg_match('/^[=+\-@]/', $value) ? "'" . $value : $value;
+    }
+
+    private function businessModules(User $user): array
+    {
+        $business = $user->business;
+
+        return array_values(array_filter([
+            ($business?->tailoring_enabled ?? $user->hasModule(User::MODULE_TAILORING))
+                ? User::MODULE_TAILORING
+                : null,
+            ($business?->clothing_enabled ?? $user->hasModule(User::MODULE_CLOTHING))
+                ? User::MODULE_CLOTHING
+                : null,
+        ]));
     }
 }
