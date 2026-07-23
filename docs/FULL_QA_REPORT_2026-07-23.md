@@ -173,3 +173,16 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Live QA storefront: `صدیقی ٹیلرز اینڈ فیبرکس`, URL `/shops/siddiqui-tailors-fabrics`.
 - Full automated regression result: **115 tests passed, 792 assertions**.
 - Deliberately not represented as complete yet: clothing products, public stock/catalog browsing, tailoring services, inquiries, cart, online checkout, and order tracking remain the next branch checkpoints.
+
+## Public clothing catalog QA
+
+- Added and ran the additive `storefront_clothing_listings` migration after SQL inspection. It references existing storefront and cloth records without copying or changing inventory.
+- Verified clients can publish only their own cloth records and that unpublished or cross-storefront listing URLs return 404.
+- Verified public quantities are read live from `cloth_colors`; changing inventory updates public availability without updating the listing.
+- Verified Urdu search, color filtering, featured-item ordering, public prices, per-color quantities, detail pages, and direct shop contact.
+- Found and fixed an existing cloth-onboarding defect where the browser required an image-color selection even without an image.
+- Cloth creation now accepts both English and Urdu commas and validates an exact one-to-one color/length mapping.
+- Live QA data: `صدیقی پریمیم فیبرکس`, type `گرمیوں کا واش اینڈ ویئر`, public item `صدیقی پریمیم سمر واش اینڈ ویئر`, 24.50 meters at Rs 1,650 per meter.
+- Desktop and 390 × 844 mobile QA found no horizontal overflow and no browser console errors or warnings.
+- Full automated regression result: **119 tests passed, 811 assertions**.
+- Still pending: public tailoring service listings, inquiries/bookings, cart, checkout, payment allocation, and order tracking.

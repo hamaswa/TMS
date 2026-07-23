@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Services\InventoryService;
+use Illuminate\Validation\ValidationException;
 
 class ClothController extends Controller
 {
@@ -61,6 +62,8 @@ class ClothController extends Controller
                 'cloth_brand_id' => ['required', 'integer'],
                 'length' => ['required', 'array', 'min:1'],
                 'length.*' => ['required', 'numeric', 'min:0'],
+                'length_colors' => ['nullable', 'array'],
+                'length_colors.*' => ['required', 'string', 'max:100'],
                 'price' => ['required', 'numeric', 'min:0'],
                 'sale_price' => ['required', 'numeric', 'min:0'],
                 'colors' => ['required', 'string'],
@@ -75,8 +78,26 @@ class ClothController extends Controller
             ]);
             ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
             ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
-            $colors = array_values(array_filter(array_map('trim', explode(',', $validated['colors'])), fn ($color) => $color !== ''));
-            abort_unless(count($colors) === count($validated['length']), 422, 'Every color must have one length.');
+            $colors = array_values(array_filter(array_map('trim', preg_split('/[,،]/u', $validated['colors'])), fn ($color) => $color !== ''));
+            $lengths = $validated['length'];
+            if (! empty($validated['length_colors'])) {
+                if (count($validated['length_colors']) !== count($lengths)) {
+                    throw ValidationException::withMessages(['length' => 'ہر رنگ کے لیے ایک لمبائی درج کریں۔']);
+                }
+                $lengthByColor = [];
+                foreach ($validated['length_colors'] as $index => $color) {
+                    if (! in_array($color, $colors, true) || array_key_exists($color, $lengthByColor)) {
+                        throw ValidationException::withMessages(['length_colors' => 'ہر منتخب رنگ صرف ایک مرتبہ استعمال کریں۔']);
+                    }
+                    $lengthByColor[$color] = $lengths[$index];
+                }
+                if (count($lengthByColor) !== count($colors)) {
+                    throw ValidationException::withMessages(['length' => 'تمام رنگوں کی لمبائی درج کریں۔']);
+                }
+                $lengths = array_map(fn ($color) => $lengthByColor[$color], $colors);
+            } elseif (count($colors) !== count($lengths)) {
+                throw ValidationException::withMessages(['length' => 'ہر رنگ کے لیے ایک لمبائی درج کریں۔']);
+            }
             // $formData = $request->validate([
             //     'cloth_type_id' => 'required|string',
             //     'cloth_brand_id' => 'required',
@@ -105,7 +126,7 @@ class ClothController extends Controller
             // ]);
 
             // Save the cloth
-            DB::transaction(function () use ($request, $validated, $colors) {
+            DB::transaction(function () use ($request, $validated, $colors, $lengths) {
                 $cloth = Cloth::create([
                     'cloth_type_id' => $validated['cloth_type_id'],
                     'cloth_brand_id' => $validated['cloth_brand_id'],
@@ -118,7 +139,7 @@ class ClothController extends Controller
                     ClothColor::create([
                         'cloth_id' => $cloth->id,
                         'color' => $color,
-                        'length' => $validated['length'][$index],
+                        'length' => $lengths[$index],
                         'average_unit_cost' => $validated['price'],
                         'user_id' => Auth::user()->businessOwnerId(),
                     ]);

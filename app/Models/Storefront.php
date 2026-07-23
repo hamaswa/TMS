@@ -49,6 +49,11 @@ class Storefront extends Model
         return $this->belongsTo(Business::class);
     }
 
+    public function clothingListings()
+    {
+        return $this->hasMany(StorefrontClothingListing::class);
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

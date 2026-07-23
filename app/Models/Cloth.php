@@ -51,4 +51,9 @@ class Cloth extends Model
     {
         return $this->hasMany(ClothVideo::class);
     }
+
+    public function storefrontListings()
+    {
+        return $this->hasMany(StorefrontClothingListing::class);
+    }
 }

@@ -40,6 +40,7 @@ use App\Http\Controllers\EmployeePasswordController;
 use App\Http\Controllers\ProductionWorkerController;
 use App\Http\Controllers\OrderWorkAssignmentController;
 use App\Http\Controllers\AdminStorefrontController;
+use App\Http\Controllers\AdminStorefrontClothingController;
 use App\Http\Controllers\PublicStorefrontController;
 
 /*
@@ -57,6 +58,8 @@ Auth::routes();
 
 Route::get('/shops', [PublicStorefrontController::class, 'index'])->name('storefront.index');
 Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->name('storefront.show');
+Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->name('storefront.clothing.index');
+Route::get('/shops/{storefront:slug}/clothes/{listing}', [PublicStorefrontController::class, 'clothingShow'])->name('storefront.clothing.show');
 
 Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'business.status', 'business.activity'], 'as' => 'employee.password.'], function () {
     Route::get('/password', [EmployeePasswordController::class, 'edit'])->name('edit');
@@ -134,6 +137,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::put('/storefront', [AdminStorefrontController::class, 'update'])->name('storefront.update');
         Route::patch('/storefront/publication', [AdminStorefrontController::class, 'publish'])->name('storefront.publish');
         Route::get('/storefront/preview', [AdminStorefrontController::class, 'preview'])->name('storefront.preview');
+        Route::get('/storefront/clothing', [AdminStorefrontClothingController::class, 'index'])->name('storefront.clothing.index');
+        Route::put('/storefront/clothing/{cloth}', [AdminStorefrontClothingController::class, 'update'])->name('storefront.clothing.update');
     });
 
     Route::middleware('business.permission:settings.manage')->group(function () {

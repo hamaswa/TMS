@@ -86,6 +86,7 @@
                         <div class="card-body">
                             <div class="preview-box mb-3" dir="ltr">{{ url('/shops/'.$storefront->slug) }}</div>
                             @if($storefront->exists)<a class="btn btn-outline-primary btn-block mb-2" target="_blank" rel="noopener" href="{{ route('admin.storefront.preview') }}"><i class="fas fa-eye ml-1"></i> پیش منظر دیکھیں</a>@endif
+                            @if($storefront->exists && $business->clothing_enabled)<a class="btn btn-outline-dark btn-block mb-2" href="{{ route('admin.storefront.clothing.index') }}"><i class="fas fa-tshirt ml-1"></i> کپڑوں کی عوامی فہرست</a>@endif
                             @if($storefront->is_published)<a class="btn btn-outline-success btn-block" target="_blank" rel="noopener" href="{{ route('storefront.show',$storefront) }}"><i class="fas fa-external-link-alt ml-1"></i> عوامی دکان کھولیں</a>@endif
                         </div>
                     </div>

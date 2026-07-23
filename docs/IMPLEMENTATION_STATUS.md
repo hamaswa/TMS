@@ -2,6 +2,19 @@
 
 Last updated: 2026-07-23
 
+## 23 July 2026 — Public clothing catalog
+
+- Added a separate storefront publication layer for existing tenant-owned cloth records; no stock quantity, cost, movement, sale, or purchase record is duplicated.
+- Clients can choose a public name and description, feature a cloth, control ordering, and publish/unpublish each item from an Urdu catalog-management screen.
+- Public catalog pages show the current sale price and live per-color inventory quantity, with Urdu search and color filtering plus a responsive product detail view.
+- Enforced storefront, business, cloth-owner, publication, module, and active-client boundaries on every public and administrative catalog route.
+- Added image URL compatibility for both current public-storage uploads and valid legacy public paths, with a clean media-free fallback.
+- Fixed cloth onboarding so images are genuinely optional, Urdu commas split colors correctly, and each selected color is safely paired with exactly one length.
+- The additive listing migration was inspected and executed without changing historical data.
+- Chrome QA created `صدیقی پریمیم فیبرکس` / `گرمیوں کا واش اینڈ ویئر`, published `صدیقی پریمیم سمر واش اینڈ ویئر`, and verified management, search, detail, desktop/mobile layout, and contact behavior with zero console errors or horizontal overflow.
+- Automated result: **119 tests passed, 811 assertions**.
+- Next checkpoint: tenant-managed tailoring service listings and public customer inquiries/bookings.
+
 ## 23 July 2026 — Public storefront foundation
 
 - Started the additional marketplace work on the isolated `feature/client-public-storefronts` branch; stable `main` remains unchanged.

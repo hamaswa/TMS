@@ -166,7 +166,7 @@
     <script>
         // Add More Images
         document.getElementById('add-more-images').addEventListener('click', function() {
-            var colors = document.getElementById('colors').value.split(',');
+            var colors = document.getElementById('colors').value.split(/[,،]/);
             var colorOptions = colors.map(function(color) {
                 return `<option value="${color.trim()}">${color.trim()}</option>`;
             }).join('');
@@ -202,7 +202,7 @@
 
         // Add More Videos
         document.getElementById('add-more-videos').addEventListener('click', function() {
-            var colors = document.getElementById('colors').value.split(',');
+            var colors = document.getElementById('colors').value.split(/[,،]/);
             var colorOptions = colors.map(function(color) {
                 return `<option value="${color.trim()}">${color.trim()}</option>`;
             }).join('');
@@ -236,7 +236,7 @@
 
         // Add More Lengths
         document.getElementById('add-more-length').addEventListener('click', function() {
-            var colors = document.getElementById('colors').value.split(',');
+            var colors = document.getElementById('colors').value.split(/[,،]/);
             var colorOptions = colors.map(function(color) {
                 return `<option value="${color.trim()}">${color.trim()}</option>`;
             }).join('');
@@ -251,7 +251,7 @@
                 <label class="col-sm-3 col-form-label f"><span class="english">لمبائی (میٹر) میں</span> </label>
                 <div class="col-sm-9">
                     <input type="text" class="form-control" name="length[]" required style="margin-bottom: 5px;">
-                    <select name="image_colors[]" class="form-control" required style="margin-bottom: 5px;">
+                    <select name="length_colors[]" class="form-control" required style="margin-bottom: 5px;">
                         <option value="">رنگ منتخب کریں</option>
                         ${colorOptions}
                     </select>
