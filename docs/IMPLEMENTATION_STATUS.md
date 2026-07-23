@@ -2,6 +2,19 @@
 
 Last updated: 2026-07-23
 
+## 23 July 2026 — Public cart and safe stock reservations
+
+- Added a storefront-scoped guest cart with opaque session tokens and 30-minute, per-color cloth reservations.
+- Public availability now subtracts only active item reservations belonging to active carts; expired carts and removed items immediately release quantity.
+- Cart updates use database transactions and row locking so two shoppers cannot reserve more cloth than the physical stock on hand.
+- Reservations do not change physical stock, inventory movements, sales, orders, payments, or customer balances. Those records remain untouched until a later confirmed checkout.
+- Existing unified customers can link a cart with their shop-specific phone number and six-digit PIN. Cross-shop customer linking is rejected and repeated PIN failures are rate limited.
+- Added a stabilization migration that uses `DATETIME` for cart deadlines. This prevents MySQL's legacy implicit `TIMESTAMP ON UPDATE` behavior from shortening an expiry when customer identity or cart activity changes.
+- Chrome QA verified restored availability of 24.50 m, a fresh 3.00 m reservation, the recalculated Rs 4,950 total, and PIN linking to `فہد اقبال` without losing the cart.
+- The full Urdu cart was checked at 390 px: all controls and the unified-customer card remain readable, with no horizontal overflow.
+- Automated result: **127 tests passed, 875 assertions**.
+- Next checkpoint: convert a confirmed cart into an online order using locked stock deduction, explicit payment allocation, and customer-facing order tracking.
+
 ## 23 July 2026 — Public tailoring services and inquiry queue
 
 - Added tenant-managed public tailoring services with Urdu names/descriptions, starting prices, price units, estimated days, featured ordering, and independent publication controls.

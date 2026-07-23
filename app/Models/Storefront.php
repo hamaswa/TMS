@@ -64,6 +64,11 @@ class Storefront extends Model
         return $this->hasMany(StorefrontInquiry::class);
     }
 
+    public function carts()
+    {
+        return $this->hasMany(StorefrontCart::class);
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

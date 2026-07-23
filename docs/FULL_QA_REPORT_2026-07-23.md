@@ -1,5 +1,18 @@
 # TMS Full QA Report — 23 July 2026
 
+## Public cart and reservation QA
+
+The storefront cart checkpoint was tested against the live MySQL database without resetting or deleting existing client data.
+
+- Verified that expired carts release their reserved quantities even when their child item deadline has not yet expired.
+- Verified that removed and expired items restore public availability, while active carts prevent over-reservation by another session.
+- Verified that reserving or changing quantity does not alter `cloth_colors.length`, create inventory movements, create an order, create a payment, or change a customer balance.
+- Found a MySQL deadline defect where updating cart activity implicitly changed the first `TIMESTAMP` column. Added an additive stabilization migration to retain all rows while converting cart deadlines to `DATETIME`.
+- Live Chrome flow: 24.50 m available → reserve 2.50 m → link existing unified customer `فہد اقبال` by phone/PIN → update to 3.00 m → total Rs 4,950.
+- Confirmed the linked-customer identity and reservation survive redirects and cart updates.
+- At 390 px the Urdu cart has no horizontal overflow (`scrollWidth` 375 within a 390 px viewport); product controls, totals, reservation notice, and customer identity remain readable.
+- Complete automated result after this checkpoint: **127 tests passed, 875 assertions**.
+
 ## Final client, employee, worker, and print QA pass
 
 This follow-up pass covered every user-facing client back-office screen identified in the route/view inventory, the tailoring, sales, and finance employee experiences, independent-tailor access, production-worker management, and the active order/measurement/invoice print routes.

@@ -43,6 +43,7 @@ use App\Http\Controllers\AdminStorefrontController;
 use App\Http\Controllers\AdminStorefrontClothingController;
 use App\Http\Controllers\AdminStorefrontTailoringController;
 use App\Http\Controllers\PublicStorefrontController;
+use App\Http\Controllers\PublicStorefrontCartController;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,6 +62,14 @@ Route::get('/shops', [PublicStorefrontController::class, 'index'])->name('storef
 Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->name('storefront.show');
 Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->name('storefront.clothing.index');
 Route::get('/shops/{storefront:slug}/clothes/{listing}', [PublicStorefrontController::class, 'clothingShow'])->name('storefront.clothing.show');
+Route::get('/shops/{storefront:slug}/cart', [PublicStorefrontCartController::class, 'show'])->name('storefront.cart.show');
+Route::post('/shops/{storefront:slug}/clothes/{listing}/cart', [PublicStorefrontCartController::class, 'store'])
+    ->middleware('throttle:30,1')->name('storefront.cart.store');
+Route::patch('/shops/{storefront:slug}/cart/items/{item}', [PublicStorefrontCartController::class, 'update'])->name('storefront.cart.update');
+Route::delete('/shops/{storefront:slug}/cart/items/{item}', [PublicStorefrontCartController::class, 'destroy'])->name('storefront.cart.destroy');
+Route::post('/shops/{storefront:slug}/cart/customer', [PublicStorefrontCartController::class, 'linkCustomer'])
+    ->middleware('throttle:5,1')->name('storefront.cart.customer.link');
+Route::delete('/shops/{storefront:slug}/cart/customer', [PublicStorefrontCartController::class, 'unlinkCustomer'])->name('storefront.cart.customer.unlink');
 Route::get('/shops/{storefront:slug}/tailoring', [PublicStorefrontController::class, 'tailoring'])->name('storefront.tailoring.index');
 Route::get('/shops/{storefront:slug}/tailoring/{service}', [PublicStorefrontController::class, 'tailoringShow'])->name('storefront.tailoring.show');
 Route::post('/shops/{storefront:slug}/inquiries', [PublicStorefrontController::class, 'submitInquiry'])

@@ -14,8 +14,8 @@
     </style>
 </head>
 <body>
-<nav class="nav"><div class="shell"><strong>{{ $storefront->display_name }}</strong><a class="back" href="{{ route('storefront.show',$storefront) }}">دکان کا تعارف</a></div></nav>
-<header class="hero"><div class="shell"><h1>کپڑوں کی فہرست</h1><p>دستیاب رنگ، قیمت اور اسٹاک دیکھیں۔ آرڈر کی سہولت اگلے مرحلے میں شامل ہوگی۔</p></div></header>
+<nav class="nav"><div class="shell"><strong>{{ $storefront->display_name }}</strong><div style="display:flex;gap:8px"><a class="back" href="{{ route('storefront.cart.show',$storefront) }}">میری ٹوکری</a><a class="back" href="{{ route('storefront.show',$storefront) }}">دکان کا تعارف</a></div></div></nav>
+<header class="hero"><div class="shell"><h1>کپڑوں کی فہرست</h1><p>دستیاب رنگ، قیمت اور محفوظ کی جا سکنے والی موجودہ مقدار دیکھیں۔</p></div></header>
 <main class="shell">
     <form class="filters" method="GET"><div class="filter-grid">
         <input class="control" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="برانڈ، قسم یا نام تلاش کریں">
@@ -25,7 +25,7 @@
     <div class="grid">
         @forelse($listings as $listing)
             @php($image=$listing->cloth->images->first(fn($item)=>$item->image_url))
-            @php($available=(float)$listing->cloth->colors->sum('length'))
+            @php($available=(float)$listing->cloth->colors->sum(fn($color)=>$color->reservableLength()))
             <article class="card">
                 <div class="photo">@if($image)<img src="{{ $image->image_url }}" alt="{{ $listing->display_name }}">@else<span>🧵</span>@endif</div>
                 <div class="body">
@@ -34,7 +34,7 @@
                     <div class="meta">{{ $listing->cloth->brand->name ?? 'بغیر برانڈ' }} · {{ $listing->cloth->type->name ?? 'کپڑا' }}</div>
                     <div class="price">Rs {{ number_format((float)($listing->cloth->sale_price ?: $listing->cloth->price),2) }} فی میٹر</div>
                     <div class="{{ $available>0?'status':'out' }}">{{ $available>0 ? number_format($available,2).' میٹر دستیاب' : 'فی الحال اسٹاک ختم' }}</div>
-                    <div class="colors mt-2">@foreach($listing->cloth->colors as $color)<span class="pill">{{ $color->color }} — {{ number_format($color->length,2) }}m</span>@endforeach</div>
+                    <div class="colors mt-2">@foreach($listing->cloth->colors as $color)<span class="pill">{{ $color->color }} — {{ number_format($color->reservableLength(),2) }}m</span>@endforeach</div>
                     <a class="view" href="{{ route('storefront.clothing.show',[$storefront,$listing]) }}">تفصیل دیکھیں</a>
                 </div>
             </article>

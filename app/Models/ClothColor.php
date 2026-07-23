@@ -17,4 +17,19 @@ class ClothColor extends Model
     {
         return $this->belongsTo(Cloth::class);
     }
+
+    public function storefrontCartItems()
+    {
+        return $this->hasMany(StorefrontCartItem::class, 'cloth_color_id');
+    }
+
+    public function reservableLength(): float
+    {
+        $reserved = $this->storefrontCartItems()
+            ->where('reserved_until', '>', now())
+            ->whereHas('cart', fn ($query) => $query->where('expires_at', '>', now()))
+            ->sum('quantity');
+
+        return max(0, round((float) $this->length - (float) $reserved, 2));
+    }
 }
