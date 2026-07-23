@@ -1,6 +1,6 @@
 @php($measurementSnapshot = $orderDetail->measurementValues->keyBy('source_key'))
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ur" dir="rtl">
 
 <head>
     <meta charset="UTF-8">
@@ -13,7 +13,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
-    <title>Tailor Managment Order Recipt</title>
+    <title>ٹیلرنگ آرڈر اور پیمائش</title>
     <style>
      @font-face {
     font-family: 'Noto Nastaliq Urdu';
@@ -180,13 +180,6 @@
 </head>
 
 <body>
-    @php
-        $decodedSuitNumbers = json_decode((string) $orderDetail->suitNum, true);
-        $serialNumbers = is_array($decodedSuitNumbers)
-            ? implode('، ', $decodedSuitNumbers)
-            : (string) $orderDetail->suitNum;
-    @endphp
-
     <div id="invoice-POS">
         <center id="top">
             <!--Print Button-->
@@ -245,7 +238,7 @@
                     <div class="mb-3" style="text-align: right;">
                         <div
                             style="width: 50%; display: inline-block; font-size:18px; font-weight:400; max-width:400px; word-wrap:break-word; word-break:break-all;">
-                            <p style="font-size:18px; font-weight:900; position:absolute; left:60px;">{{ $serialNumbers }}</p>
+                            <p style="font-size:18px; font-weight:900; position:absolute; left:60px;">{{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</p>
                             <p style="font-size:18px; font-weight:900;margin:0px">:سیریل نمبر</p>
                         </div>
                     </div>
@@ -331,7 +324,7 @@
                     <hr>
                     <div class="desing-flex">
                         <div>
-                            <p style="font-size:18px; font-weight:700;">سیریل نمبر: {{ $serialNumbers }}</p>
+                            <p style="font-size:18px; font-weight:700;">سیریل نمبر: {{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</p>
                         </div>
                         <div>
                             <p style="font-size:18px; font-weight:700;">{{$orderDetail->customers->name}}</p>

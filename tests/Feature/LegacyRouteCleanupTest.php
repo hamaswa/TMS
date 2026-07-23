@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Customers;
 use App\Models\Order;
 use App\Models\Sale;
+use App\Models\Setting;
 use App\Models\Tailor;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -42,6 +44,39 @@ class LegacyRouteCleanupTest extends TestCase
             ->get(route('admin.sale-print', $sale))
             ->assertRedirect(route('admin.sale.index'))
             ->assertSessionHas('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
+    }
+
+    public function test_active_order_print_routes_render_decoded_serials_and_their_intended_views(): void
+    {
+        [$owner, $order] = $this->orderWithoutActiveSetting();
+        $order->update(['suitNum' => json_encode(['Suit 1'])]);
+        Setting::forceCreate([
+            'user_id' => $owner->id,
+            'name' => 'QA Tailors',
+            'status' => 1,
+            'note' => '',
+            'address' => '',
+            'logo' => '',
+            'contact_no' => '',
+        ]);
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'orderId' => $order->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'recivedPayment' => 500,
+            'remainingBalance' => 500,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.order-print', $order))
+            ->assertOk()
+            ->assertViewIs('order.print')
+            ->assertSeeText('Suit 1');
+
+        $this->actingAs($owner)->get(route('admin.order-prints', $order))
+            ->assertOk()
+            ->assertViewIs('order.prints')
+            ->assertSeeText('Suit 1');
     }
 
     private function orderWithoutActiveSetting(): array

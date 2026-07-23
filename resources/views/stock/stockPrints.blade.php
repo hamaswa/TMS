@@ -308,64 +308,10 @@
 
     </div><!--End Invoice-->
     <script>
-        $(document).ready(function() {
-            function PrintElem(id) {
-                var divContents = document.getElementById(id).innerHTML;
-
-                var mywindow = window.open('', 'PRINT', 'height=500,width=322');
-
-                mywindow.document.write('</head><body >');
-                //              mywindow.document.write('<h1>' + document.title  + '</h1>');
-                mywindow.document.write(divContents);
-                mywindow.document.write('</body></html>');
-
-                mywindow.document.close(); // necessary for IE >= 10
-                mywindow.focus(); // necessary for IE >= 10*/
-
-                mywindow.print();
-                //              mywindow.close();
-
-                return true;
-            }
-
-            var status = $('#status').val();
-            //          var elemTarget = $("#myDiv");
-            //          var elemId = 'myDiv';
-            if (status == 'default') {
-                //        window.print();
-                //            $("#myDiv").printElement();
-                PrintElem("myDiv");
-            } else {
-                $('.naap').on('click', function() {
-                    $('.naap-button, .order-section').css('display', 'none');
-                    //                window.print();
-                    //                $("#myDiv").printElement();
-                    PrintElem("orderSection");
-                });
-
-                $('.order').on('click', function() {
-                    $('.naap-button, .size-section').css('display', 'none');
-                    //                window.print();
-                    //                 $("#myDiv").printElement();
-                    PrintElem("sizeSection");
-                });
-                $('.full').on('click', function() {
-                    $('.naap-button').css('display', 'none');
-                    //                window.print();
-                    //                  $("#myDiv").printElement();
-                    PrintElem("fullSection");
-                });
-            }
-
-        });
-
-        //to print reciept
-        var printpage = document.querySelector(".btn button");
-        printpage.addEventListener('click', function() {
+        document.querySelector('.printbtn button:not(.go)')?.addEventListener('click', function () {
             window.print();
         });
-        //to go back to order
-        document.querySelector('.go').addEventListener('click', function() {
+        document.querySelector('.go')?.addEventListener('click', function () {
             window.history.back();
         });
     </script>

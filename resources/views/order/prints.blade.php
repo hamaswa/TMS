@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ur" dir="rtl">
 
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
-    <title>Tailor Managment Order Recipt</title>
+    <title>ٹیلرنگ آرڈر اور پیمائش کی دو رسیدیں</title>
     <style>
     @font-face {
     font-family: 'Noto Nastaliq Urdu';
@@ -174,13 +174,6 @@
 </head>
 
 <body>
-    @php
-        $decodedSuitNumbers = json_decode((string) $orderDetail->suitNum, true);
-        $serialNumbers = is_array($decodedSuitNumbers)
-            ? implode('، ', $decodedSuitNumbers)
-            : (string) $orderDetail->suitNum;
-    @endphp
-
     <div id="invoice-POS">
 
         <center id="top">
@@ -256,7 +249,7 @@
                         <div
                             style="width: 50%; display: inline-block; font-size:20px; font-weight:600; max-width: 400px; word-wrap: break-word; word-break: break-all;">
                             <span style="font-size:18px; font-weight:600;">:سیریل نمبر</span>
-                            <b style="font-size:18px;position:absolute;left:100px;">{{ $serialNumbers }}</b>
+                            <b style="font-size:18px;position:absolute;left:100px;">{{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</b>
                         </div>
                     </div>
 
@@ -345,7 +338,7 @@
                     <hr>
                     <div class="desing-flex">
                         <div>
-                            <b>سیریل نمبر: {{ $serialNumbers }}</b>
+                            <b>سیریل نمبر: {{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</b>
                         </div>
                         <div>
                             <b>{{$orderDetail->customers->name}}</b>
@@ -581,64 +574,10 @@
 
     </div><!--End Invoice-->
     <script>
-        $(document).ready(function () {
-            function PrintElem(id) {
-                var divContents = document.getElementById(id).innerHTML;
-
-                var mywindow = window.open('', 'PRINT', 'height=500,width=322');
-
-                mywindow.document.write('</head><body >');
-                //              mywindow.document.write('<h1>' + document.title  + '</h1>');
-                mywindow.document.write(divContents);
-                mywindow.document.write('</body></html>');
-
-                mywindow.document.close(); // necessary for IE >= 10
-                mywindow.focus(); // necessary for IE >= 10*/
-
-                mywindow.print();
-                //              mywindow.close();
-
-                return true;
-            }
-
-            var status = $('#status').val();
-            //          var elemTarget = $("#myDiv");
-            //          var elemId = 'myDiv';
-            if (status == 'default') {
-                //        window.print();
-                //            $("#myDiv").printElement();
-                PrintElem("myDiv");
-            } else {
-                $('.naap').on('click', function () {
-                    $('.naap-button, .order-section').css('display', 'none');
-                    //                window.print();
-                    //                $("#myDiv").printElement();
-                    PrintElem("orderSection");
-                });
-
-                $('.order').on('click', function () {
-                    $('.naap-button, .size-section').css('display', 'none');
-                    //                window.print();
-                    //                 $("#myDiv").printElement();
-                    PrintElem("sizeSection");
-                });
-                $('.full').on('click', function () {
-                    $('.naap-button').css('display', 'none');
-                    //                window.print();
-                    //                  $("#myDiv").printElement();
-                    PrintElem("fullSection");
-                });
-            }
-
-        });
-
-        //to print reciept
-        var printpage = document.querySelector(".btn button");
-        printpage.addEventListener('click', function () {
+        document.querySelector('.printbtn button:not(.go)')?.addEventListener('click', function () {
             window.print();
         });
-        //to go back to order
-        document.querySelector('.go').addEventListener('click', function () {
+        document.querySelector('.go')?.addEventListener('click', function () {
             window.history.back();
         });
 

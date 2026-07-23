@@ -12,7 +12,20 @@ This follow-up pass covered every user-facing client back-office screen identifi
 - Broken resource endpoints were repaired for customer, tailor, cloth, brand, cloth type, option type, and option records. The stock-list alias and online-orders screens no longer return HTTP 500.
 - Settings now ignores missing logo files instead of rendering broken images. DataTables defaults are applied before screen-specific initialization, so tables use Urdu controls consistently.
 - No production records were deleted or reset during this pass.
-- Final automated result: **110 tests passed, 758 assertions**.
+- Final automated result: **111 tests passed, 765 assertions**.
+
+### Chrome print QA continuation
+
+The print pass was resumed after the earlier Chrome capture timeout and each active print route was opened separately. This exposed and resolved issues hidden by the timed-out batch:
+
+- The one-copy order/measurement print returned HTTP 500 because a Blade `@php` opening directive was emitted literally while its closing directive compiled. Serial formatting is now rendered safely without the broken temporary variable.
+- The `/admin/order/prints/{id}` route incorrectly returned the one-copy template. It now returns its intended alternate print view.
+- Manual sale invoice lines labelled “total price” displayed unit price only. They now show `quantity × unit price`.
+- Print-page titles and document direction are now Urdu/RTL.
+- Legacy automatic popup printing and missing-element JavaScript were removed from the active sale, order, and cloth receipt views. Printing starts only from the visible print button.
+- Clean Chrome console verification completed for order/measurement, alternate order, manual sale invoice, cloth receipt, alternate cloth receipt, and tailor weekly report: zero errors or warnings, zero broken images, and no horizontal page overflow.
+- Layout measurements confirmed receipt widths of approximately 88 mm and no action-button overlap.
+- Added regression coverage proving both order print routes render decoded suit serials and return distinct intended templates.
 
 ### Defects fixed in this pass
 

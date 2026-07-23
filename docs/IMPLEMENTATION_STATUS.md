@@ -9,7 +9,8 @@ Last updated: 2026-07-23
 - Reworked the active order, measurement, invoice, cloth receipt, and tailor weekly print surfaces for Urdu thermal output and stable layout.
 - Added safe shop-logo URLs, earlier Urdu DataTables initialization, and regression tests for accountant totals, balance-only statement access, and cloth-brand resource navigation.
 - No destructive migration, database reset, or production-data deletion was used.
-- Final automated result: **110 tests passed, 758 assertions**.
+- Final automated result: **111 tests passed, 765 assertions**.
+- Resumed the timed-out Chrome print QA one route at a time; fixed an order-print 500, corrected the alternate order-print template, corrected sale invoice line totals, and removed legacy automatic print-popup JavaScript.
 
 ## 23 July 2026 — Super-admin client lifecycle and full QA
 

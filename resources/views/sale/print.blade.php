@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="ur" dir="rtl">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
 
-     <title>Tailor Managment Sale Recipt</title>
+     <title>فروخت کی رسید</title>
      <style>
 
         #invoice-POS{
@@ -174,7 +174,7 @@
                         <tbody>
                             @foreach ($sale->detail as $detail)
                             <tr>
-                                <td>{{ $detail->price }}</td>
+                                <td>{{ number_format((float) $detail->price * (float) $detail->quantity, 2) }}</td>
                                 <td>{{ $detail->quantity }}</td>
                                 <td>{{ $detail->product_name }}</td>
                                 <td>{{ $loop->iteration }}</td>
@@ -228,36 +228,29 @@
 
     </body>
       <script>
-    $(document).ready(function() {
-        var status = $('#status').val();
-        if(status =='default')
-        {
+    document.querySelector('.print')?.addEventListener('click', function () {
         window.print();
-        }else{
-            $('.naap').on('click', function(){
-                $('.naap-button, .order-section').css('display','none');
-                window.print();
-            });
-
-             $('.order').on('click', function(){
-                $('.naap-button, .size-section').css('display','none');
-                window.print();
-            });
-              $('.full').on('click', function(){
-                $('.naap-button').css('display','none');
-                window.print();
-            });
-        }
-
     });
-
-    //to print reciept
-    document.querySelector('.btn .print').addEventListener('click',function(){
-       window.print();
+    document.querySelector('.go')?.addEventListener('click', function () {
+        window.history.back();
     });
-    //to go back to sale
-    document.querySelector('.go').addEventListener('click',function(){
-       window.history.back();
+    document.querySelector('.naap')?.addEventListener('click', function () {
+        document.querySelectorAll('.naap-button, .order-section').forEach(function (element) {
+            element.style.display = 'none';
+        });
+        window.print();
+    });
+    document.querySelector('.order')?.addEventListener('click', function () {
+        document.querySelectorAll('.naap-button, .size-section').forEach(function (element) {
+            element.style.display = 'none';
+        });
+        window.print();
+    });
+    document.querySelector('.full')?.addEventListener('click', function () {
+        document.querySelectorAll('.naap-button').forEach(function (element) {
+            element.style.display = 'none';
+        });
+        window.print();
     });
     </script>
 </html>
