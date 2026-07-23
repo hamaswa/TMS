@@ -2,6 +2,23 @@
 
 Last updated: 2026-07-23
 
+## 23 July 2026 — Locked storefront checkout and order tracking
+
+- Added additive storefront order headers and immutable item snapshots, separate from the legacy application-user online-order table.
+- Checkout requires a PIN-linked unified customer, an active cart, current publication/tenant ownership, and an unexpired reservation.
+- Checkout locks the cart, its items, and all involved cloth-color rows in a deterministic order before rechecking physical stock. A stale or insufficient item rolls the complete operation back.
+- A successful checkout deducts physical stock once, records cost snapshots and inventory movements, and posts one `Sale` charge to the customer's existing unified balance.
+- Public checkout does not claim that money was received. General payments entered by the client continue reducing the customer's combined shop/tailoring balance without forcing per-order allocation.
+- Added pickup/delivery selection, required delivery address validation, optional customer notes, a permanent human-readable reference, and PIN-protected Urdu order tracking.
+- Added an Urdu client order queue with tenant-scoped search/status filtering, complete action, and one-time cancellation that restores stock and reverses the customer charge.
+- Added storefront order revenue, cost, gross profit, and receivables to the existing financial report while retaining legacy online-order figures.
+- Order creation sends a database notification to the client; notification failure cannot roll back or duplicate a committed order.
+- Applied only the additive order migration; existing clients, customers, stock history, and legacy orders were not reset or rewritten.
+- Live Chrome QA created pending pickup order `TMSO-20260723-TJEFLQ` for `فہد اقبال`: 3.00 m at Rs 1,650/m, Rs 4,950 total, stock 24.50 → 21.50, and one unified Sale balance charge.
+- Public tracking and the client queue were verified on desktop and 390 px layouts with no horizontal overflow. A narrow-screen heading/button collision found during QA was corrected.
+- Automated result: **136 tests passed, 968 assertions**.
+- Next checkpoint: English super-admin marketplace oversight followed by the final end-to-end storefront regression and branch handoff.
+
 ## 23 July 2026 — Public cart and safe stock reservations
 
 - Added a storefront-scoped guest cart with opaque session tokens and 30-minute, per-color cloth reservations.

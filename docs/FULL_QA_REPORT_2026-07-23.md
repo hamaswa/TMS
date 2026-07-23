@@ -1,5 +1,19 @@
 # TMS Full QA Report — 23 July 2026
 
+## Storefront checkout and order-tracking QA
+
+- Inspected the additive MySQL migration SQL before execution; it creates only storefront order/item records and adds nullable `checked_out_at` to storefront carts.
+- Verified atomic success: immutable item snapshot, one stock issue, one inventory movement, one unified `Sale` balance charge, checked-out cart, and no legacy `online_orders` row.
+- Verified full rollback when physical stock changes after reservation, and verified a checked-out cart cannot create a duplicate order.
+- Verified pickup and delivery rules, including required delivery address and optional customer note.
+- Verified public order details are hidden outside the checkout session and become accessible with the matching shop customer phone/PIN.
+- Verified another client cannot view or update an order through direct URLs.
+- Verified client cancellation restores stock and creates a single negative Sale ledger entry; a repeated cancellation changes neither stock nor balance.
+- Verified storefront sales and cost snapshots feed revenue, gross profit, and receivables in the existing financial report.
+- Live order `TMSO-20260723-TJEFLQ` produced stock movement `-3.00`, balance after `21.50`, cost snapshot Rs 1,100/m, and unified customer charge Rs 4,950.
+- Chrome QA covered public checkout, confirmation/tracking, and the client's order queue. Both public and admin mobile views have no horizontal overflow; the admin mobile heading spacing was repaired and geometrically rechecked with no overlap.
+- Complete automated result: **136 tests passed, 968 assertions**.
+
 ## Public cart and reservation QA
 
 The storefront cart checkpoint was tested against the live MySQL database without resetting or deleting existing client data.

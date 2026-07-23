@@ -21,7 +21,37 @@
             <form method="POST" action="{{ route('storefront.cart.destroy',[$storefront,$item->id]) }}">@csrf @method('DELETE')<button class="btn danger">نکالیں</button></form>
         </div></article>
         @empty<div class="empty"><h2>ٹوکری خالی ہے</h2><p class="muted">کپڑوں کی فہرست سے رنگ اور مقدار منتخب کریں۔</p><a class="btn continue" href="{{ route('storefront.clothing.index',$storefront) }}">کپڑے دیکھیں</a></div>@endforelse
-        @if($cart && $cart->items->isNotEmpty())<div class="total"><span>کل تخمینی رقم</span><span>Rs {{ number_format($cart->items->sum(fn($item)=>$item->line_total),2) }}</span></div><div class="notice" style="margin-top:14px">یہ صرف 30 منٹ کی محفوظ ٹوکری ہے۔ حتمی آرڈر اور اسٹاک کی کٹوتی اگلے تصدیقی مرحلے میں ہوگی۔</div>@endif
+        @if($cart && $cart->items->isNotEmpty())
+            <div class="total"><span>کل تخمینی رقم</span><span>Rs {{ number_format($cart->items->sum(fn($item)=>$item->line_total),2) }}</span></div>
+            <div class="notice" style="margin-top:14px">یہ مقدار آرڈر کی تصدیق تک محفوظ ہے۔ تصدیق کے وقت اسٹاک دوبارہ جانچ کر محفوظ طریقے سے کم ہوگا۔</div>
+            @if($cart->customer)
+                <form method="POST" action="{{ route('storefront.checkout.store',$storefront) }}" style="margin-top:20px">
+                    @csrf
+                    <h2>آرڈر کی تصدیق</h2>
+                    <p class="muted">رقم ابھی وصول شدہ درج نہیں ہوگی۔ یہ آرڈر گاہک کے مشترکہ بقایا میں کپڑے کی فروخت کے طور پر شامل ہوگا، اور ادائیگی دکان اپنے معمول کے طریقے سے درج کرے گی۔</p>
+                    <div class="form-group">
+                        <label>وصولی کا طریقہ</label>
+                        @if($storefront->pickup_enabled)
+                            <label class="notice" style="display:block;margin:7px 0"><input type="radio" name="fulfillment_method" value="pickup" @checked(old('fulfillment_method','pickup')==='pickup')> دکان سے وصول کریں</label>
+                        @endif
+                        @if($storefront->delivery_enabled)
+                            <label class="notice" style="display:block;margin:7px 0"><input type="radio" name="fulfillment_method" value="delivery" @checked(old('fulfillment_method')==='delivery')> گھر تک فراہمی</label>
+                        @endif
+                    </div>
+                    @if($storefront->delivery_enabled)
+                        <div class="form-group"><label for="delivery_address">فراہمی کا مکمل پتہ</label><textarea id="delivery_address" name="delivery_address" class="control full" rows="3" maxlength="1000">{{ old('delivery_address') }}</textarea></div>
+                    @endif
+                    <div class="form-group"><label for="customer_note">آرڈر کے متعلق نوٹ (اختیاری)</label><textarea id="customer_note" name="customer_note" class="control full" rows="3" maxlength="1000">{{ old('customer_note') }}</textarea></div>
+                    @if($storefront->pickup_enabled || $storefront->delivery_enabled)
+                        <button class="btn full" type="submit">آرڈر حتمی کریں</button>
+                    @else
+                        <div class="errors">دکان نے ابھی وصولی یا فراہمی کا طریقہ فعال نہیں کیا۔ دکان سے رابطہ کریں۔</div>
+                    @endif
+                </form>
+            @else
+                <div class="notice" style="margin-top:14px">آرڈر حتمی کرنے کے لیے پہلے فون اور پن سے اپنا گاہک ریکارڈ منسلک کریں۔</div>
+            @endif
+        @endif
     </section>
     <aside class="card"><h2>گاہک شناخت</h2>
         @if($cart?->customer)<div class="linked"><strong>{{ $cart->customer->name }}</strong><div dir="ltr" style="text-align:right">{{ $cart->customer->phone_number1 }}</div><p>موجودہ متحد گاہک ریکارڈ منسلک ہے۔</p><form method="POST" action="{{ route('storefront.cart.customer.unlink',$storefront) }}">@csrf @method('DELETE')<button class="btn outline">شناخت ہٹائیں</button></form></div>

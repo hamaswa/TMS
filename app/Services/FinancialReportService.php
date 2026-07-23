@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\Purchase;
 use App\Models\PurchaseReturn;
 use App\Models\SaleStock;
+use App\Models\StorefrontOrder;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\TailorRecord;
@@ -32,15 +33,29 @@ class FinancialReportService
         $manualSalesRevenue = $clothingEnabled ? (float) DB::table('saledetails')->join('sales', 'saledetails.sale_id', '=', 'sales.id')
             ->where('sales.user_id', $userId)->whereBetween('sales.created_at', [$from, $to])->sum(DB::raw('saledetails.quantity * saledetails.price'))
             : 0;
-        $onlineRevenue = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
+        $legacyOnlineRevenue = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
             ->whereRaw('LOWER(status) != ?', ['cancelled'])->sum(DB::raw('price * length')) : 0;
+        $storefrontRevenue = $clothingEnabled ? (float) StorefrontOrder::whereHas(
+            'storefront.business',
+            fn ($query) => $query->where('owner_user_id', $userId)
+        )->whereBetween('placed_at', [$from, $to])->where('status', '!=', StorefrontOrder::STATUS_CANCELLED)->sum('subtotal') : 0;
+        $onlineRevenue = $legacyOnlineRevenue + $storefrontRevenue;
         $revenue = [];
         if ($tailoringEnabled) $revenue['ٹیلرنگ آرڈرز'] = $tailoringRevenue;
         if ($clothingEnabled) $revenue += ['کاؤنٹر کپڑا فروخت' => $counterRevenue, 'مصنوعات کی فروخت' => $manualSalesRevenue, 'آن لائن آرڈرز' => $onlineRevenue];
 
         $counterCogs = $clothingEnabled ? (float) SaleStock::where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum('cost_total') : 0;
-        $onlineCogs = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
+        $legacyOnlineCogs = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
             ->whereRaw('LOWER(status) != ?', ['cancelled'])->sum('cost_total') : 0;
+        $storefrontCogs = $clothingEnabled ? (float) DB::table('storefront_order_items')
+            ->join('storefront_orders', 'storefront_orders.id', '=', 'storefront_order_items.storefront_order_id')
+            ->join('storefronts', 'storefronts.id', '=', 'storefront_orders.storefront_id')
+            ->join('businesses', 'businesses.id', '=', 'storefronts.business_id')
+            ->where('businesses.owner_user_id', $userId)
+            ->where('storefront_orders.status', '!=', StorefrontOrder::STATUS_CANCELLED)
+            ->whereBetween('storefront_orders.placed_at', [$from, $to])
+            ->sum('storefront_order_items.cost_total') : 0;
+        $onlineCogs = $legacyOnlineCogs + $storefrontCogs;
         $tailorLabor = $tailoringEnabled ? (float) Order::where('userId', $userId)->whereBetween('created_at', [$from, $to])->sum(DB::raw('tailor_price * suitQuantity')) : 0;
         $productionWorkerEarnings = $tailoringEnabled ? (float) DB::table('worker_ledger_entries')
             ->join('production_workers', 'production_workers.id', '=', 'worker_ledger_entries.production_worker_id')

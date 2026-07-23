@@ -22,6 +22,7 @@ class StorefrontCartService
         $cart = $storefront->carts()
             ->where('token_hash', hash('sha256', $plainToken))
             ->where('expires_at', '>', now())
+            ->whereNull('checked_out_at')
             ->first();
         if ($cart) {
             $cart->items()->where('reserved_until', '<=', now())->delete();

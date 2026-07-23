@@ -15,6 +15,7 @@ class StorefrontCart extends Model
         'token_hash',
         'expires_at',
         'last_activity_at',
+        'checked_out_at',
     ];
 
     protected $hidden = ['token_hash'];
@@ -22,6 +23,7 @@ class StorefrontCart extends Model
     protected $casts = [
         'expires_at' => 'datetime',
         'last_activity_at' => 'datetime',
+        'checked_out_at' => 'datetime',
     ];
 
     public function storefront()
@@ -37,5 +39,10 @@ class StorefrontCart extends Model
     public function items()
     {
         return $this->hasMany(StorefrontCartItem::class);
+    }
+
+    public function order()
+    {
+        return $this->hasOne(StorefrontOrder::class);
     }
 }
