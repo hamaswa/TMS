@@ -2,6 +2,20 @@
 
 Last updated: 2026-07-23
 
+## 23 July 2026 — Public tailoring services and inquiry queue
+
+- Added tenant-managed public tailoring services with Urdu names/descriptions, starting prices, price units, estimated days, featured ordering, and independent publication controls.
+- Added responsive public service list/detail pages with clear wording that prices and dates remain estimates until the client confirms measurements, design, and work.
+- Added a rate-limited public inquiry form with service selection, contact details, preferred date, message, honeypot protection, and a permanent human-readable reference.
+- Added an Urdu client inquiry queue with search/status filtering, internal notes, and New/Contacted/Closed follow-up states.
+- Public inquiries are intentionally isolated from customers, tailoring orders, transactions, stock, worker assignments, and balances; no operational or financial record is created automatically.
+- Enforced active-business, enabled-module, published-storefront, published-service, storefront ownership, and inquiry-enabled boundaries.
+- The additive service/inquiry migration was inspected and executed without rewriting existing data.
+- Chrome QA published `پریمیم مردانہ شلوار قمیض سلائی`, submitted the realistic `محمد حمزہ خان` request as `TMSI-000001`, and verified the client follow-up queue/status notes.
+- Found and fixed an off-screen anti-spam layout defect during live QA; final desktop/mobile views have no horizontal overflow or browser console errors.
+- Automated result: **122 tests passed, 840 assertions**.
+- Next checkpoint: cart and safe inventory reservations connected to unified customer accounts.
+
 ## 23 July 2026 — Public clothing catalog
 
 - Added a separate storefront publication layer for existing tenant-owned cloth records; no stock quantity, cost, movement, sale, or purchase record is duplicated.

@@ -186,3 +186,17 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Desktop and 390 × 844 mobile QA found no horizontal overflow and no browser console errors or warnings.
 - Full automated regression result: **119 tests passed, 811 assertions**.
 - Still pending: public tailoring service listings, inquiries/bookings, cart, checkout, payment allocation, and order tracking.
+
+## Public tailoring services and inquiry QA
+
+- Added and ran the additive tailoring-service and storefront-inquiry tables after SQL inspection; no existing customer, order, payment, inventory, employee, tailor, or worker record was changed.
+- Verified service publication fields, featured ordering, initial prices, price units, estimated completion days, public detail pages, and disabled/private visibility.
+- Verified the public inquiry form accepts a published service and returns a permanent reference while creating zero customer, tailoring-order, transaction, or stock records.
+- Verified inquiry submission is limited to active published tailoring storefronts with inquiries enabled, includes a hidden anti-spam field, and is throttled to 10 attempts per minute.
+- Verified clients can view only their own inquiry queue, search/filter it, add internal notes, and move it through New, Contacted, and Closed states with timestamps.
+- Live QA service: `پریمیم مردانہ شلوار قمیض سلائی`, starting at Rs 1,800 per suit with an estimated seven days.
+- Live QA inquiry: `محمد حمزہ خان`, reference `TMSI-000001`, preferred date 05-08-2026; status changed to Contacted with an internal follow-up note.
+- Chrome initially detected 11,585 px horizontal overflow caused by the honeypot position. The field was repositioned without weakening validation; desktop and 390 px mobile retests have zero overflow.
+- Browser console errors/warnings: zero.
+- Full automated regression result: **122 tests passed, 840 assertions**.
+- Still pending: safe cart reservations, unified-customer checkout, payment allocation, and public order tracking.

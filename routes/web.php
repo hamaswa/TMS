@@ -41,6 +41,7 @@ use App\Http\Controllers\ProductionWorkerController;
 use App\Http\Controllers\OrderWorkAssignmentController;
 use App\Http\Controllers\AdminStorefrontController;
 use App\Http\Controllers\AdminStorefrontClothingController;
+use App\Http\Controllers\AdminStorefrontTailoringController;
 use App\Http\Controllers\PublicStorefrontController;
 
 /*
@@ -60,6 +61,11 @@ Route::get('/shops', [PublicStorefrontController::class, 'index'])->name('storef
 Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->name('storefront.show');
 Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->name('storefront.clothing.index');
 Route::get('/shops/{storefront:slug}/clothes/{listing}', [PublicStorefrontController::class, 'clothingShow'])->name('storefront.clothing.show');
+Route::get('/shops/{storefront:slug}/tailoring', [PublicStorefrontController::class, 'tailoring'])->name('storefront.tailoring.index');
+Route::get('/shops/{storefront:slug}/tailoring/{service}', [PublicStorefrontController::class, 'tailoringShow'])->name('storefront.tailoring.show');
+Route::post('/shops/{storefront:slug}/inquiries', [PublicStorefrontController::class, 'submitInquiry'])
+    ->middleware('throttle:10,1')
+    ->name('storefront.inquiries.store');
 
 Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'business.status', 'business.activity'], 'as' => 'employee.password.'], function () {
     Route::get('/password', [EmployeePasswordController::class, 'edit'])->name('edit');
@@ -139,6 +145,11 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::get('/storefront/preview', [AdminStorefrontController::class, 'preview'])->name('storefront.preview');
         Route::get('/storefront/clothing', [AdminStorefrontClothingController::class, 'index'])->name('storefront.clothing.index');
         Route::put('/storefront/clothing/{cloth}', [AdminStorefrontClothingController::class, 'update'])->name('storefront.clothing.update');
+        Route::get('/storefront/tailoring', [AdminStorefrontTailoringController::class, 'services'])->name('storefront.tailoring.services');
+        Route::post('/storefront/tailoring', [AdminStorefrontTailoringController::class, 'storeService'])->name('storefront.tailoring.store');
+        Route::put('/storefront/tailoring/{service}', [AdminStorefrontTailoringController::class, 'updateService'])->name('storefront.tailoring.update');
+        Route::get('/storefront/inquiries', [AdminStorefrontTailoringController::class, 'inquiries'])->name('storefront.inquiries.index');
+        Route::patch('/storefront/inquiries/{inquiry}', [AdminStorefrontTailoringController::class, 'updateInquiry'])->name('storefront.inquiries.update');
     });
 
     Route::middleware('business.permission:settings.manage')->group(function () {

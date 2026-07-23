@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Storefront;
 use App\Models\StorefrontClothingListing;
+use App\Models\StorefrontInquiry;
+use App\Models\StorefrontTailoringService;
 use Illuminate\Http\Request;
 
 class PublicStorefrontController extends Controller
@@ -98,6 +100,70 @@ class PublicStorefrontController extends Controller
             && $storefront->show_clothing
             && $storefront->business?->isActive()
             && $storefront->business->clothing_enabled,
+            404
+        );
+    }
+
+    public function tailoring(Storefront $storefront)
+    {
+        $this->ensureTailoringVisible($storefront);
+        $services = $storefront->tailoringServices()
+            ->where('is_published', true)
+            ->orderByDesc('is_featured')
+            ->orderBy('sort_order')
+            ->latest('id')
+            ->get();
+
+        return view('storefront.public.tailoring.index', compact('storefront', 'services'));
+    }
+
+    public function tailoringShow(Storefront $storefront, StorefrontTailoringService $service)
+    {
+        $this->ensureTailoringVisible($storefront);
+        abort_unless($service->storefront_id === $storefront->id && $service->is_published, 404);
+
+        return view('storefront.public.tailoring.show', compact('storefront', 'service'));
+    }
+
+    public function submitInquiry(Request $request, Storefront $storefront)
+    {
+        $this->ensureTailoringVisible($storefront);
+        abort_unless($storefront->inquiries_enabled, 404);
+        $validated = $request->validate([
+            'tailoring_service_id' => ['nullable', 'integer'],
+            'customer_name' => ['required', 'string', 'max:150'],
+            'phone' => ['required', 'string', 'min:7', 'max:50'],
+            'email' => ['nullable', 'email', 'max:150'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'preferred_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'message' => ['nullable', 'string', 'max:3000'],
+            'website' => ['prohibited'],
+        ], [
+            'preferred_date.after_or_equal' => 'پسندیدہ تاریخ آج یا اس کے بعد کی منتخب کریں۔',
+        ]);
+        $service = null;
+        if (! empty($validated['tailoring_service_id'])) {
+            $service = $storefront->tailoringServices()
+                ->where('is_published', true)
+                ->findOrFail($validated['tailoring_service_id']);
+        }
+        $inquiry = $storefront->inquiries()->create([
+            ...collect($validated)->except(['website', 'tailoring_service_id'])->all(),
+            'tailoring_service_id' => $service?->id,
+            'status' => StorefrontInquiry::STATUS_NEW,
+        ]);
+
+        return redirect()->route('storefront.tailoring.index', $storefront)
+            ->with('inquiry_success', 'آپ کی درخواست موصول ہو گئی ہے۔ حوالہ نمبر: '.$inquiry->reference);
+    }
+
+    private function ensureTailoringVisible(Storefront $storefront): void
+    {
+        abort_unless(
+            $storefront->is_published
+            && $storefront->show_tailoring
+            && $storefront->business?->isActive()
+            && $storefront->business->tailoring_enabled,
             404
         );
     }

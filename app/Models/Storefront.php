@@ -54,6 +54,16 @@ class Storefront extends Model
         return $this->hasMany(StorefrontClothingListing::class);
     }
 
+    public function tailoringServices()
+    {
+        return $this->hasMany(StorefrontTailoringService::class);
+    }
+
+    public function inquiries()
+    {
+        return $this->hasMany(StorefrontInquiry::class);
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

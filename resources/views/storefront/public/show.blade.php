@@ -29,7 +29,7 @@
     <section class="section"><div class="shell">
         <div class="grid">
             @if($storefront->show_clothing)<article class="service"><div class="icon">🧵</div><h2>کپڑے کی دکان</h2><p>رنگ، برانڈ، کپڑے کی قسم، قیمت اور موجودہ دستیابی دیکھیں۔</p><a class="soon" style="text-decoration:none" href="{{ route('storefront.clothing.index',$storefront) }}">کپڑوں کی فہرست دیکھیں</a></article>@endif
-            @if($storefront->show_tailoring)<article class="service"><div class="icon">✂️</div><h2>ٹیلرنگ خدمات</h2><p>سلائی کی خدمات، ڈیزائن، قیمت اور تکمیل کا وقت جلد یہاں دستیاب ہوگا۔</p><span class="soon">آن لائن بکنگ اگلے مرحلے میں</span></article>@endif
+            @if($storefront->show_tailoring)<article class="service"><div class="icon">✂️</div><h2>ٹیلرنگ خدمات</h2><p>سلائی کی خدمات، ابتدائی قیمت، متوقع وقت اور درخواست کی سہولت دیکھیں۔</p><a class="soon" style="text-decoration:none" href="{{ route('storefront.tailoring.index',$storefront) }}">ٹیلرنگ خدمات دیکھیں</a></article>@endif
         </div>
     </div></section>
     <section class="section about"><div class="shell about-grid">
