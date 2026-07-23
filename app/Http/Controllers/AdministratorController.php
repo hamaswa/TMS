@@ -152,7 +152,7 @@ class AdministratorController extends Controller
 
     public function clientDetails($id)
     {
-        $user = $this->client($id)->load(['ownedBusiness.statusHistory.changedBy']);
+        $user = $this->client($id)->load(['ownedBusiness.statusHistory.changedBy', 'ownedBusiness.storefront']);
         $business = $user->ownedBusiness;
         abort_unless($business, 404);
         $ownerId = $user->id;

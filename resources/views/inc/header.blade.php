@@ -75,6 +75,7 @@
                 <a class="dropdown-item" href="{{ route('admin.expense.index') }}"><i class="fas fa-calendar-alt fa-fw ml-2 text-warning"></i>ماہانہ اخراجات</a>@endif
                 @if(Auth::user()->hasBusinessPermission('team.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.team.index') }}"><i class="fas fa-users-cog fa-fw ml-2 text-primary"></i>ملازمین اور اجازتیں</a>@endif
                 @if(Auth::user()->hasBusinessPermission('activity.view'))<a class="dropdown-item" href="{{ route('admin.activity.index') }}"><i class="fas fa-history fa-fw ml-2 text-primary"></i>ملازمین کی سرگرمی</a>@endif
+                @if(Auth::user()->hasBusinessPermission('storefront.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.storefront.edit') }}"><i class="fas fa-globe-asia fa-fw ml-2 text-info"></i>آن لائن دکان</a>@endif
             </div></li>
         @elseif(Auth::check() && Auth::user()->hasRole('administrative'))
             <li class="nav-item"><a class="nav-link" href="{{ route('administrator.index') }}">Clients</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.create') }}">Create client</a></li>

@@ -2,6 +2,19 @@
 
 Last updated: 2026-07-23
 
+## 23 July 2026 — Public storefront foundation
+
+- Started the additional marketplace work on the isolated `feature/client-public-storefronts` branch; stable `main` remains unchanged.
+- Added an additive one-to-one public storefront profile for each client business, including a unique URL, Urdu business description, public contact details, logo/cover support, delivery/pickup options, and independent draft/published states.
+- Added an Urdu client setup screen protected by the new `storefront.manage` business permission. Owners retain implicit access and clients may explicitly grant the permission to an employee role.
+- Added a public Urdu shop directory at `/shops` and responsive storefront pages at `/shops/{slug}`.
+- Public pages expose only published storefronts belonging to active businesses. Suspending a client hides its storefront without deleting its profile or business records.
+- Added the storefront publication state and URL to the English super-admin client detail screen.
+- Inspected and executed only the additive storefront migration; no existing table or live record was reset, deleted, or rewritten.
+- Chrome QA published the realistic `صدیقی ٹیلرز اینڈ فیبرکس` storefront, verified desktop and 390 px mobile layouts, confirmed zero horizontal overflow, and found no browser console errors or warnings.
+- Automated result: **115 tests passed, 792 assertions**.
+- Next implementation checkpoint: tenant-managed public clothing listings connected to safe stock availability, followed by tailoring services/inquiries and checkout.
+
 ## 23 July 2026 — Final client/employee/worker/print QA
 
 - Completed a Chrome desktop sweep of all client back-office areas in the feature inventory, plus tailoring, sales, and finance employee accounts, production-worker screens, and independent-tailor access.

@@ -159,3 +159,17 @@ The code-level feature catalogue and QA coverage map are maintained in `FEATURE_
 - Chrome verification found no horizontal overflow, broken images, or console errors/warnings on the final roster and shop dashboard.
 - UI improvements identified: the shop setup page still contains English messages/actions (`Setting Added`, `Choose File`, `Deactive`, `Delete setting`), its heading says `نائی ترتیب` instead of `نئی ترتیب`, and a logo is mandatory.
 - Terminology improvement identified: the employee preset named `درزی` is workshop access, while independent production tailors remain separate; renaming the preset would reduce confusion.
+
+## Public storefront foundation QA
+
+- Added and ran the isolated `storefronts` migration after reviewing its SQL with `migrate --pretend`. It creates one new table and does not mutate existing customers, orders, sales, purchases, stock, payments, staff, or worker records.
+- Verified the full owner lifecycle in Chrome: open storefront settings, save an Urdu draft, preview it while private, publish it, and open the public URL.
+- Verified the public `/shops` directory lists the published active business with the correct Tailoring, Clothing, and Delivery capabilities.
+- Verified an unpublished storefront returns 404 publicly, and suspending its business hides it without deleting the storefront.
+- Verified an employee receives 403 unless the client explicitly grants the new storefront-management permission.
+- Verified the English super-admin client detail view includes publication status, selected public modules, publication time, and public URL.
+- Desktop viewport: no horizontal overflow, missing assets, console errors, or warnings.
+- Mobile viewport (390 × 844): cards collapse into one column, navigation remains usable, Urdu headings remain readable, and no horizontal overflow occurs.
+- Live QA storefront: `صدیقی ٹیلرز اینڈ فیبرکس`, URL `/shops/siddiqui-tailors-fabrics`.
+- Full automated regression result: **115 tests passed, 792 assertions**.
+- Deliberately not represented as complete yet: clothing products, public stock/catalog browsing, tailoring services, inquiries, cart, online checkout, and order tracking remain the next branch checkpoints.

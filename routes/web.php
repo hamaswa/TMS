@@ -39,6 +39,8 @@ use App\Http\Controllers\BusinessActivityController;
 use App\Http\Controllers\EmployeePasswordController;
 use App\Http\Controllers\ProductionWorkerController;
 use App\Http\Controllers\OrderWorkAssignmentController;
+use App\Http\Controllers\AdminStorefrontController;
+use App\Http\Controllers\PublicStorefrontController;
 
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +54,9 @@ use App\Http\Controllers\OrderWorkAssignmentController;
 */
 
 Auth::routes();
+
+Route::get('/shops', [PublicStorefrontController::class, 'index'])->name('storefront.index');
+Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->name('storefront.show');
 
 Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'business.status', 'business.activity'], 'as' => 'employee.password.'], function () {
     Route::get('/password', [EmployeePasswordController::class, 'edit'])->name('edit');
@@ -123,6 +128,13 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/workspace/{workspace}', [HomeController::class, 'switch'])->whereIn('workspace', ['tailoring', 'clothing'])->name('workspace.switch');
     Route::get('/activity-log', [BusinessActivityController::class, 'index'])->middleware('business.permission:activity.view')->name('activity.index');
     Route::get('/activity-log/export', [BusinessActivityController::class, 'export'])->middleware('business.permission:activity.view')->name('activity.export');
+
+    Route::middleware('business.permission:storefront.manage')->group(function () {
+        Route::get('/storefront', [AdminStorefrontController::class, 'edit'])->name('storefront.edit');
+        Route::put('/storefront', [AdminStorefrontController::class, 'update'])->name('storefront.update');
+        Route::patch('/storefront/publication', [AdminStorefrontController::class, 'publish'])->name('storefront.publish');
+        Route::get('/storefront/preview', [AdminStorefrontController::class, 'preview'])->name('storefront.preview');
+    });
 
     Route::middleware('business.permission:settings.manage')->group(function () {
     Route::get('setting', [SettingController::class, 'list'])->name('setting.index');

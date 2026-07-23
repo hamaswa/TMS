@@ -26,6 +26,7 @@ class BusinessRole extends Model
     public const SETTINGS_MANAGE = 'settings.manage';
     public const TEAM_MANAGE = 'team.manage';
     public const ACTIVITY_VIEW = 'activity.view';
+    public const STOREFRONT_MANAGE = 'storefront.manage';
 
     public const PERMISSIONS = [
         self::TAILORING_ACCESS => 'ٹیلرنگ سسٹم استعمال کریں',
@@ -45,6 +46,7 @@ class BusinessRole extends Model
         self::SETTINGS_MANAGE => 'دکان کی ترتیبات تبدیل کریں',
         self::TEAM_MANAGE => 'ملازمین اور رولز کا انتظام کریں',
         self::ACTIVITY_VIEW => 'ملازمین کی سرگرمی دیکھیں',
+        self::STOREFRONT_MANAGE => 'آن لائن دکان کی تشہیر اور معلومات سنبھالیں',
     ];
 
     public const PERMISSION_GROUPS = [
@@ -91,6 +93,7 @@ class BusinessRole extends Model
                 self::SETTINGS_MANAGE,
                 self::TEAM_MANAGE,
                 self::ACTIVITY_VIEW,
+                self::STOREFRONT_MANAGE,
             ],
         ],
     ];

@@ -73,6 +73,11 @@ class Business extends Model
         return $this->hasMany(BusinessRole::class);
     }
 
+    public function storefront()
+    {
+        return $this->hasOne(Storefront::class);
+    }
+
     public function hasModule(string $module): bool
     {
         return match ($module) {
