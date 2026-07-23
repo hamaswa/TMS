@@ -24,7 +24,9 @@ class PublicStorefrontController extends Controller
     public function show(Storefront $storefront)
     {
         abort_unless(
-            $storefront->is_published && $storefront->business?->isActive(),
+            $storefront->is_published
+            && $storefront->isModerationActive()
+            && $storefront->business?->isActive(),
             404
         );
 
@@ -97,6 +99,7 @@ class PublicStorefrontController extends Controller
     {
         abort_unless(
             $storefront->is_published
+            && $storefront->isModerationActive()
             && $storefront->show_clothing
             && $storefront->business?->isActive()
             && $storefront->business->clothing_enabled,
@@ -161,6 +164,7 @@ class PublicStorefrontController extends Controller
     {
         abort_unless(
             $storefront->is_published
+            && $storefront->isModerationActive()
             && $storefront->show_tailoring
             && $storefront->business?->isActive()
             && $storefront->business->tailoring_enabled,

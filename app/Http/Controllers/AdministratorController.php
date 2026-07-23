@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Exception;
 use App\Models\Business;
+use App\Models\Storefront;
+use App\Models\StorefrontOrder;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
@@ -152,7 +154,11 @@ class AdministratorController extends Controller
 
     public function clientDetails($id)
     {
-        $user = $this->client($id)->load(['ownedBusiness.statusHistory.changedBy', 'ownedBusiness.storefront']);
+        $user = $this->client($id)->load([
+            'ownedBusiness.statusHistory.changedBy',
+            'ownedBusiness.storefront.moderatedBy',
+            'ownedBusiness.storefront.moderationHistory.changedBy',
+        ]);
         $business = $user->ownedBusiness;
         abort_unless($business, 404);
         $ownerId = $user->id;
@@ -164,6 +170,10 @@ class AdministratorController extends Controller
             'production_workers' => DB::table('production_workers')->where('user_id', $ownerId)->count(),
             'sales' => DB::table('sales')->where('user_id', $ownerId)->count(),
             'purchases' => DB::table('purchases')->where('user_id', $ownerId)->count(),
+            'storefront_listings' => $business->storefront?->clothingListings()->where('is_published', true)->count() ?? 0,
+            'storefront_services' => $business->storefront?->tailoringServices()->where('is_published', true)->count() ?? 0,
+            'storefront_inquiries' => $business->storefront?->inquiries()->count() ?? 0,
+            'storefront_orders' => $business->storefront?->orders()->count() ?? 0,
         ];
 
         return view('Administrator.show', compact('user', 'business', 'metrics'));
@@ -207,6 +217,98 @@ class AdministratorController extends Controller
         });
 
         return redirect()->route('administrator.clients.show', $user)->with('success', 'Client status updated to '.ucfirst($target).'.');
+    }
+
+    public function marketplace(Request $request)
+    {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'publication' => ['nullable', Rule::in(['published', 'draft'])],
+            'moderation' => ['nullable', Rule::in(Storefront::MODERATION_STATUSES)],
+            'business_status' => ['nullable', Rule::in(Business::STATUSES)],
+            'module' => ['nullable', Rule::in(['clothing', 'tailoring', 'both'])],
+        ]);
+        $storefronts = Storefront::query()
+            ->with(['business.owner:id,name,email'])
+            ->withCount([
+                'clothingListings as published_clothing_count' => fn ($query) => $query->where('is_published', true),
+                'tailoringServices as published_services_count' => fn ($query) => $query->where('is_published', true),
+                'inquiries',
+                'orders',
+                'orders as pending_orders_count' => fn ($query) => $query->where('status', StorefrontOrder::STATUS_PENDING),
+            ])
+            ->withSum([
+                'orders as order_revenue' => fn ($query) => $query->where('status', '!=', StorefrontOrder::STATUS_CANCELLED),
+            ], 'subtotal')
+            ->when($filters['search'] ?? null, fn ($query, $search) => $query->where(function ($nested) use ($search) {
+                $nested->where('display_name', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhereHas('business', fn ($business) => $business
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhereHas('owner', fn ($owner) => $owner
+                            ->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")));
+            }))
+            ->when($filters['publication'] ?? null, fn ($query, $publication) => $query
+                ->where('is_published', $publication === 'published'))
+            ->when($filters['moderation'] ?? null, fn ($query, $moderation) => $query
+                ->where('moderation_status', $moderation))
+            ->when($filters['business_status'] ?? null, fn ($query, $status) => $query
+                ->whereHas('business', fn ($business) => $business->where('status', $status)))
+            ->when($filters['module'] ?? null, function ($query, $module) {
+                if ($module === 'both') {
+                    $query->where('show_clothing', true)->where('show_tailoring', true);
+                } else {
+                    $query->where('show_'.$module, true);
+                }
+            })
+            ->latest('updated_at')
+            ->paginate(20)
+            ->withQueryString();
+        $metrics = [
+            'configured' => Storefront::count(),
+            'public' => Storefront::publiclyVisible()->count(),
+            'paused' => Storefront::where('moderation_status', Storefront::MODERATION_PAUSED)->count(),
+            'pending_orders' => StorefrontOrder::where('status', StorefrontOrder::STATUS_PENDING)->count(),
+            'order_value' => (float) StorefrontOrder::where('status', '!=', StorefrontOrder::STATUS_CANCELLED)->sum('subtotal'),
+        ];
+
+        return view('Administrator.marketplace', compact('storefronts', 'metrics'));
+    }
+
+    public function updateMarketplaceModeration(Request $request, Storefront $storefront)
+    {
+        $validated = $request->validate([
+            'moderation_status' => ['required', Rule::in(Storefront::MODERATION_STATUSES)],
+            'reason' => [
+                Rule::requiredIf($request->input('moderation_status') === Storefront::MODERATION_PAUSED),
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+        ]);
+        DB::transaction(function () use ($storefront, $validated) {
+            $from = $storefront->moderation_status;
+            $storefront->forceFill([
+                'moderation_status' => $validated['moderation_status'],
+                'moderation_reason' => $validated['moderation_status'] === Storefront::MODERATION_PAUSED
+                    ? $validated['reason']
+                    : null,
+                'moderated_by_user_id' => Auth::id(),
+                'moderated_at' => now(),
+            ])->save();
+            $storefront->moderationHistory()->create([
+                'from_status' => $from,
+                'to_status' => $validated['moderation_status'],
+                'reason' => $validated['reason'] ?? null,
+                'changed_by_user_id' => Auth::id(),
+            ]);
+        });
+
+        return redirect()->route('administrator.marketplace.index')
+            ->with('success', $validated['moderation_status'] === Storefront::MODERATION_PAUSED
+                ? 'The storefront is hidden from public access. No client data was deleted.'
+                : 'The storefront is allowed to appear publicly when the client publishes it and the account is active.');
     }
 
     private function client(int|string $id): User

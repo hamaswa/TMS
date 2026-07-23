@@ -115,6 +115,9 @@ Route::get('/', function () {
 Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:administrative'], 'as' => 'administrator.'], function () {
 
     Route::get('/', [AdministratorController::class, 'showData'])->name('index');
+    Route::get('/marketplace', [AdministratorController::class, 'marketplace'])->name('marketplace.index');
+    Route::patch('/marketplace/{storefront}/moderation', [AdministratorController::class, 'updateMarketplaceModeration'])
+        ->name('marketplace.moderation');
     Route::get('/create', [AdministratorController::class, 'index'])->name('create');
     Route::post('/create', [AdministratorController::class, 'insert'])->name('insert');
     Route::get('/clients/{id}', [AdministratorController::class, 'clientDetails'])->name('clients.show');

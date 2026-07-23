@@ -10,6 +10,10 @@ class Storefront extends Model
 {
     use HasFactory;
 
+    public const MODERATION_ACTIVE = 'active';
+    public const MODERATION_PAUSED = 'paused';
+    public const MODERATION_STATUSES = [self::MODERATION_ACTIVE, self::MODERATION_PAUSED];
+
     protected $fillable = [
         'business_id',
         'slug',
@@ -41,6 +45,7 @@ class Storefront extends Model
             'delivery_enabled' => 'boolean',
             'is_published' => 'boolean',
             'published_at' => 'datetime',
+            'moderated_at' => 'datetime',
         ];
     }
 
@@ -74,6 +79,16 @@ class Storefront extends Model
         return $this->hasMany(StorefrontOrder::class);
     }
 
+    public function moderatedBy()
+    {
+        return $this->belongsTo(User::class, 'moderated_by_user_id');
+    }
+
+    public function moderationHistory()
+    {
+        return $this->hasMany(StorefrontModerationHistory::class)->latest('created_at')->latest('id');
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';
@@ -83,7 +98,13 @@ class Storefront extends Model
     {
         return $query
             ->where('is_published', true)
+            ->where('moderation_status', self::MODERATION_ACTIVE)
             ->whereHas('business', fn (Builder $business) => $business->where('status', Business::STATUS_ACTIVE));
+    }
+
+    public function isModerationActive(): bool
+    {
+        return $this->moderation_status === self::MODERATION_ACTIVE;
     }
 
     public function getLogoUrlAttribute(): ?string

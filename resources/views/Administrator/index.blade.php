@@ -3,7 +3,7 @@
 <section class="main-content"><div class="container-fluid px-3 px-md-4 py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div><h2 class="mb-1">Client accounts</h2><p class="text-muted mb-0">Review applications, control access, and inspect each client without deleting business records.</p></div>
-        <a href="{{ route('administrator.create') }}" class="btn btn-primary"><i class="fas fa-plus mr-1"></i> New client</a>
+        <div><a href="{{ route('administrator.marketplace.index') }}" class="btn btn-outline-success mr-2"><i class="fas fa-store mr-1"></i> Marketplace</a><a href="{{ route('administrator.create') }}" class="btn btn-primary"><i class="fas fa-plus mr-1"></i> New client</a></div>
     </div>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if(session('warning'))<div class="alert alert-warning">{{ session('warning') }}</div>@endif

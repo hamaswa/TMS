@@ -97,6 +97,7 @@ class PublicStorefrontCheckoutController extends Controller
     {
         abort_unless(
             $storefront->is_published
+            && $storefront->isModerationActive()
             && $storefront->show_clothing
             && $storefront->business?->isActive()
             && $storefront->business->clothing_enabled,

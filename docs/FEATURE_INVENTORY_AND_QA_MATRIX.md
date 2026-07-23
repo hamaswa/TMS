@@ -6,10 +6,10 @@ Generated from Laravel routes, controllers, middleware, views, models, migration
 
 | Surface | Route count | Primary users |
 |---|---:|---|
-| Super admin | 20 | Platform administrator |
-| Client administration | 224 | Client owners and permitted employees |
+| Super admin | 24 | Platform administrator |
+| Client administration | 237 | Client owners and permitted employees |
 | Independent tailor portal | 8 | Contract tailors |
-| Customer storefront | 18 | Online cloth customers |
+| Customer storefront | 34 | Online cloth customers across the new storefront and compatible legacy routes |
 | Mobile API | 10 | Customer mobile application |
 | Authentication and public | 20 | All account types |
 
@@ -32,8 +32,11 @@ Generated from Laravel routes, controllers, middleware, views, models, migration
 - Assign account roles and direct permissions.
 - Manage global roles and permissions.
 - Send client notifications.
-- Existing destructive client deletion route.
-- Missing before this audit: approval workflow, active/inactive lifecycle, client detail page, non-destructive suspension, and lifecycle audit metadata.
+- Approve, reject, suspend, and reactivate clients with required reasons and lifecycle history.
+- View tenant-scoped client details and business/storefront activity metrics.
+- Permanent client deletion is disabled; suspension preserves every business record.
+- English marketplace oversight with publication, module, client-status, and moderation filters.
+- Non-destructive storefront pause/resume controls with actor, reason, timestamp, and append-only moderation history.
 
 ### 3. Client dashboard and module switching
 
@@ -127,10 +130,14 @@ Generated from Laravel routes, controllers, middleware, views, models, migration
 
 ### 12. Customer storefront and mobile API
 
-- Shop discovery and shop catalog.
-- Stock search by brand, type, and color.
-- Cart add/remove/purchase.
-- Online order creation, cancellation, repeat order, history, and thank-you flow.
+- Urdu public shop discovery, client branding, public contact information, and module-aware storefront landing pages.
+- Tenant-managed public clothing listings with live reservable stock, brand/type/color search, and product details.
+- Tenant-managed tailoring services and rate-limited customer inquiries.
+- Session-token carts with 30-minute reservations that do not alter physical stock before checkout.
+- Unified-customer phone/PIN linking with tenant isolation and throttling.
+- Locked checkout, immutable order snapshots, inventory movements, unified balance charges, pickup/delivery, and PIN-protected tracking.
+- Client order queue with completion and one-time cancellation/stock/balance reversal.
+- Compatible legacy cart/order creation, cancellation, repeat order, history, and thank-you flow.
 - Customer account details and profile changes.
 - Mobile shops, orders, transactions, notifications, mark-read, login/logout, and PIN change APIs.
 
@@ -152,20 +159,18 @@ Generated from Laravel routes, controllers, middleware, views, models, migration
 | Measurements | Custom fields, templates, snapshots, history | Field/template screens | Pass |
 | Tailoring orders | Create/edit/payment/rates | Full lifecycle and receipts | Pass |
 | Tailor portal | Login, ownership, status restrictions | Urdu login and assigned work | Pass |
-| Production workforce | Workers, rates, assignment, ledger, tenant scope | Cutter creation, assignment, completion, payment | Pass with finance gap |
+| Production workforce | Workers, rates, assignment, ledger, tenant scope | Cutter creation, assignment, completion, payment | Pass |
 | Shop sales | Costing, balance, overpayment, overselling | Counter-sale rejection | Pass |
 | Purchases | Receive, return, payment, tenant scope | Purchase and return workflow | Pass |
 | Inventory | Costing, movements, adjustment, filters | Stock, ledger, valuation | Pass |
-| Finance | Reconciliation, tenant scope, exports | Dashboard reconciliation | Fails to include new workforce ledger |
-| Customer storefront | Tenant/security tests partially cover | Full browser checkout still required | Pending exhaustive browser pass |
+| Finance | Reconciliation, tenant scope, exports, workforce and storefront accounting | Dashboard reconciliation | Pass |
+| Customer storefront | Publication, tenancy, inquiry, reservation, checkout, tracking, cancellation | Full Urdu storefront, checkout, tracking, and client queue | Pass |
 | Mobile API | Authentication/security coverage | API contract sweep still required | Pending exhaustive API pass |
-| Super admin | Module access/client isolation tests | Existing client list/edit checked | Approval/status/details missing |
+| Super admin | Lifecycle, client isolation, marketplace metrics, moderation boundaries | Client details, marketplace, pause/resume, public blocking | Pass |
 
-## Confirmed risks to address
+## Remaining product decisions
 
-1. Financial reports omit non-legacy production-worker earnings and payments.
-2. Worker payment balance checks need transaction locks to prevent concurrent overpayment.
-3. Non-legacy assignment duplicate checks need database-backed concurrency protection.
-4. Duplicate tailor phones are safely blocked but need a shop/client identifier for usable login.
-5. The super-admin delete action is inappropriate as the primary lifecycle control for live client data.
-
+1. No external payment gateway is connected; public orders are charged to the unified customer balance and the client records payment through the existing ledger.
+2. New public customers still obtain their PIN from the shop; self-registration and verified PIN delivery require an email/SMS/WhatsApp provider or another approved identity flow.
+3. The compatible legacy online-order flow remains available alongside the new storefront order ledger and may be consolidated in a future migration after production usage is reviewed.
+4. The mobile API has automated authentication and tenant-security coverage, but a separate exhaustive device/API contract pass remains desirable before a mobile release.

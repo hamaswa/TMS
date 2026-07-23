@@ -1,5 +1,19 @@
 # TMS Full QA Report — 23 July 2026
 
+## Super-admin marketplace oversight and final storefront regression
+
+- Verified English-only super-admin marketplace navigation, metrics, filters, storefront/client links, content counts, inquiry/order counts, pending status, and non-cancelled order value.
+- Verified the moderation route is restricted to the `administrative` role and clients cannot view or invoke it.
+- Verified a pause requires a reason and blocks the directory entry, storefront landing page, clothing catalog, tailoring services/inquiries, cart, checkout, and order tracking.
+- Verified the paused client retains authenticated back-office access and receives an Urdu explanation; all customers, listings, services, inquiries, orders, stock, and transactions remain unchanged.
+- Verified resume restores public access without requiring the client to republish.
+- Added and verified append-only moderation history with state transition, actor, reason, and timestamp.
+- Live Chrome moderation cycle: allowed → paused → public 404 → allowed → public page restored. Final state is active.
+- Live marketplace totals: 1 configured, 1 public, 0 paused, 1 pending order, Rs 4,950 non-cancelled order value.
+- Client detail QA shows 1 listing, 1 service, 1 inquiry, 1 storefront order, and both marketplace and account lifecycle histories.
+- Updated the feature inventory and QA matrix to reflect the completed marketplace, workforce, financial, storefront, and super-admin work.
+- Complete automated result: **139 tests passed, 1,014 assertions**.
+
 ## Storefront checkout and order-tracking QA
 
 - Inspected the additive MySQL migration SQL before execution; it creates only storefront order/item records and adds nullable `checked_out_at` to storefront carts.

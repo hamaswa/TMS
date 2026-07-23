@@ -29,6 +29,9 @@
         </div>
 
         @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+        @if($storefront->exists && $storefront->moderation_status === 'paused')
+            <div class="alert alert-danger"><strong>عوامی دکان عارضی طور پر روکی گئی ہے۔</strong><br>{{ $storefront->moderation_reason }}<br><small>آپ کی دکان، آرڈرز، گاہک اور تمام ریکارڈ محفوظ ہیں۔ مسئلہ حل ہونے کے بعد سپر ایڈمن عوامی رسائی دوبارہ بحال کر سکتا ہے۔</small></div>
+        @endif
         @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
         <form method="POST" action="{{ route('admin.storefront.update') }}" enctype="multipart/form-data">

@@ -2,6 +2,20 @@
 
 Last updated: 2026-07-23
 
+## 23 July 2026 — Super-admin marketplace oversight and final storefront QA
+
+- Added an English super-admin marketplace dashboard with configured/public/paused storefront totals, pending orders, non-cancelled order value, and filters for publication, moderation, client status, module, storefront, client, slug, and email.
+- Added per-storefront published clothing/service counts, inquiry/order counts, pending-order badges, order value, client-detail links, and safe public-page links.
+- Added non-destructive marketplace moderation. Pausing requires a reason and hides the directory, storefront, catalog, tailoring, inquiry, cart, checkout, and tracking surfaces while preserving all client data and back-office access.
+- Clients see a clear Urdu moderation explanation inside their storefront settings. They cannot access or overwrite super-admin moderation controls.
+- Every pause/resume action is recorded in an append-only history with from/to state, reason, super-admin identity, and timestamp.
+- Enhanced English client details with storefront content/activity metrics, publication/moderation state, public URL safety, last moderator, and moderation history.
+- Applied two additive moderation migrations; all existing storefronts defaulted to allowed and no client, customer, content, stock, order, payment, or transaction record was rewritten.
+- Live Chrome QA verified 1 configured/public storefront, 1 clothing listing, 1 tailoring service, 1 inquiry, 1 pending Rs 4,950 order, client detail integration, and a reversible pause → public 404 → resume cycle.
+- The live storefront was left **active and publicly accessible**. The QA pause/resume actions remain visible in moderation history.
+- Automated result: **139 tests passed, 1,014 assertions**.
+- The public storefront implementation plan is complete on `feature/client-public-storefronts`; stable `main` remains unchanged.
+
 ## 23 July 2026 — Locked storefront checkout and order tracking
 
 - Added additive storefront order headers and immutable item snapshots, separate from the legacy application-user online-order table.
