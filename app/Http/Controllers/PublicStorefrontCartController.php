@@ -240,6 +240,7 @@ class PublicStorefrontCartController extends Controller
             $storefront->is_published
             && $storefront->isModerationActive()
             && $storefront->show_clothing
+            && $storefront->online_ordering_enabled
             && $storefront->business?->isActive()
             && $storefront->business->clothing_enabled,
             404

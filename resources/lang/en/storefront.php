@@ -104,6 +104,7 @@ return [
         'reserve' => 'Reserve in cart',
         'reservation_note' => 'The selected quantity is reserved for 30 minutes. No payment is taken and no final order is created yet.',
         'live_stock_note' => 'Prices and availability reflect current inventory after active cart reservations.',
+        'catalog_only' => 'This shop currently uses its public page as a catalogue. Contact the shop to ask about this fabric or place an order.',
     ],
     'cart' => [
         'title' => 'My cart',

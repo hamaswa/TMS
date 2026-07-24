@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Setting;
 use App\Models\Storefront;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -42,6 +42,11 @@ class AdminStorefrontController extends Controller
             'show_clothing' => ['nullable', 'boolean'],
             'show_tailoring' => ['nullable', 'boolean'],
             'inquiries_enabled' => ['nullable', 'boolean'],
+            'commerce_settings_present' => ['nullable', 'boolean'],
+            'online_ordering_enabled' => ['nullable', 'boolean'],
+            'unpaid_orders_enabled' => ['nullable', 'boolean'],
+            'cod_enabled' => ['nullable', 'boolean'],
+            'easypaisa_enabled' => ['nullable', 'boolean'],
             'pickup_enabled' => ['nullable', 'boolean'],
             'delivery_enabled' => ['nullable', 'boolean'],
             'logo' => ['nullable', 'image', 'max:2048'],
@@ -62,14 +67,62 @@ class AdminStorefrontController extends Controller
         if (! $showClothing && ! $showTailoring) {
             throw ValidationException::withMessages(['show_clothing' => 'عوامی دکان کے لیے کم از کم ایک شعبہ منتخب کریں۔']);
         }
+        $commerceSettingsPresent = $request->boolean('commerce_settings_present');
+        $onlineOrderingEnabled = $commerceSettingsPresent
+            ? $request->boolean('online_ordering_enabled')
+            : (bool) $storefront->online_ordering_enabled;
+        $unpaidOrdersEnabled = $commerceSettingsPresent
+            ? $request->boolean('unpaid_orders_enabled')
+            : (bool) $storefront->unpaid_orders_enabled;
+        $codEnabled = $commerceSettingsPresent
+            ? $request->boolean('cod_enabled')
+            : (bool) $storefront->cod_enabled;
+        $easypaisaEnabled = $commerceSettingsPresent
+            ? $request->boolean('easypaisa_enabled')
+            : (bool) $storefront->easypaisa_enabled;
+        if ($commerceSettingsPresent && $onlineOrderingEnabled && ! $showClothing) {
+            throw ValidationException::withMessages([
+                'online_ordering_enabled' => 'آن لائن آرڈر کے لیے کپڑے کی عوامی دکان فعال کریں۔',
+            ]);
+        }
+        if ($commerceSettingsPresent && $onlineOrderingEnabled
+            && ! $unpaidOrdersEnabled && ! $codEnabled && ! $easypaisaEnabled) {
+            throw ValidationException::withMessages([
+                'online_ordering_enabled' => 'آن لائن آرڈر کے لیے کم از کم ایک ادائیگی کا طریقہ منتخب کریں۔',
+            ]);
+        }
+        if ($commerceSettingsPresent && $onlineOrderingEnabled
+            && ! $request->boolean('pickup_enabled') && ! $request->boolean('delivery_enabled')) {
+            throw ValidationException::withMessages([
+                'online_ordering_enabled' => 'آن لائن آرڈر کے لیے دکان سے وصولی یا گھر تک فراہمی منتخب کریں۔',
+            ]);
+        }
+        if ($commerceSettingsPresent && $onlineOrderingEnabled && $codEnabled
+            && ! $request->boolean('delivery_enabled')) {
+            throw ValidationException::withMessages([
+                'cod_enabled' => 'کیش آن ڈیلیوری کے لیے گھر تک فراہمی فعال کریں۔',
+            ]);
+        }
 
         $storefront->fill([
-            ...collect($validated)->except(['logo', 'cover'])->all(),
+            ...collect($validated)->except([
+                'logo',
+                'cover',
+                'commerce_settings_present',
+                'online_ordering_enabled',
+                'unpaid_orders_enabled',
+                'cod_enabled',
+                'easypaisa_enabled',
+            ])->all(),
             'business_id' => $business->id,
             'slug' => Str::lower($validated['slug']),
             'show_clothing' => $showClothing,
             'show_tailoring' => $showTailoring,
             'inquiries_enabled' => $request->boolean('inquiries_enabled'),
+            'online_ordering_enabled' => $onlineOrderingEnabled,
+            'unpaid_orders_enabled' => $unpaidOrdersEnabled,
+            'cod_enabled' => $codEnabled,
+            'easypaisa_enabled' => $easypaisaEnabled,
             'pickup_enabled' => $request->boolean('pickup_enabled'),
             'delivery_enabled' => $request->boolean('delivery_enabled'),
         ]);
@@ -139,6 +192,10 @@ class AdminStorefrontController extends Controller
             'show_clothing' => $business->clothing_enabled,
             'show_tailoring' => $business->tailoring_enabled,
             'inquiries_enabled' => true,
+            'online_ordering_enabled' => true,
+            'unpaid_orders_enabled' => true,
+            'cod_enabled' => false,
+            'easypaisa_enabled' => false,
             'pickup_enabled' => true,
             'delivery_enabled' => false,
             'default_locale' => 'ur',

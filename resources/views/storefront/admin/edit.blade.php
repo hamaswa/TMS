@@ -55,6 +55,36 @@
                         </div>
                     </div>
 
+                    @if($business->clothing_enabled)
+                    <div class="card storefront-card mb-4">
+                        <div class="card-header">
+                            <h2 class="h5 mb-1">آن لائن فروخت</h2>
+                            <p class="small text-muted mb-0">عوامی فہرست، آن لائن آرڈر اور ادائیگی کے طریقے الگ الگ کنٹرول کریں۔</p>
+                        </div>
+                        <div class="card-body">
+                            <input type="hidden" name="commerce_settings_present" value="1">
+                            <label class="module-choice d-block mb-3">
+                                <div class="d-flex">
+                                    <input type="checkbox" name="online_ordering_enabled" value="1" @checked(old('online_ordering_enabled',$storefront->online_ordering_enabled))>
+                                    <div>
+                                        <strong><i class="fas fa-shopping-cart text-success ml-1"></i> آن لائن آرڈر قبول کریں</strong>
+                                        <div class="small text-muted mt-1">اسے بند رکھنے پر کپڑے، قیمت اور دستیابی نظر آئے گی مگر ٹوکری اور چیک آؤٹ نہیں ہوں گے۔</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <h3 class="h6">قبول شدہ طریقے</h3>
+                            <div class="row">
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="unpaid_orders_enabled" value="1" @checked(old('unpaid_orders_enabled',$storefront->unpaid_orders_enabled))> ابھی ادائیگی نہیں</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="cod_enabled" value="1" @checked(old('cod_enabled',$storefront->cod_enabled))> کیش آن ڈیلیوری</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="easypaisa_enabled" value="1" @checked(old('easypaisa_enabled',$storefront->easypaisa_enabled))> ایزی پیسہ — دستی تصدیق</label></div>
+                            </div>
+                            <div class="alert alert-info mb-0 mt-2">
+                                <strong>اہم:</strong> ایزی پیسہ ابھی لائیو گیٹ وے نہیں ہے۔ گاہک حوالہ درج کرتا ہے اور دکان اسے دستی طور پر تصدیق کرتی ہے۔
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="card storefront-card mb-4">
                         <div class="card-header"><h2 class="h5 mb-1">عوام کو دکھائے جانے والے شعبے</h2><p class="small text-muted mb-0">صرف کاروبار کے فعال شعبے منتخب کیے جا سکتے ہیں۔</p></div>
                         <div class="card-body"><div class="row">

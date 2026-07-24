@@ -353,6 +353,58 @@ class StorefrontCheckoutTest extends TestCase
         $this->assertSame(StorefrontOrder::PAYMENT_COD, StorefrontOrder::firstOrFail()->payment_method);
     }
 
+    public function test_client_can_keep_public_catalogue_without_accepting_online_orders(): void
+    {
+        [, $storefront, $listing, $color] = $this->catalog();
+        $storefront->update(['online_ordering_enabled' => false]);
+
+        $this->get(route('storefront.clothing.show', [$storefront, $listing]))
+            ->assertOk()
+            ->assertSeeText('یہ دکان فی الحال اپنی عوامی ویب سائٹ کو صرف فہرست کے طور پر استعمال کر رہی ہے۔')
+            ->assertDontSee(route('storefront.cart.store', [$storefront, $listing]), false);
+        $this->get(route('storefront.cart.show', $storefront))->assertNotFound();
+        $this->post(route('storefront.cart.store', [$storefront, $listing]), [
+            'cloth_color_id' => $color->id,
+            'quantity' => 1,
+        ])->assertNotFound();
+
+        $this->assertDatabaseCount('storefront_carts', 0);
+        $this->assertDatabaseCount('storefront_orders', 0);
+    }
+
+    public function test_client_selected_payment_methods_are_shown_and_enforced_server_side(): void
+    {
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $storefront->update([
+            'unpaid_orders_enabled' => false,
+            'cod_enabled' => false,
+            'easypaisa_enabled' => true,
+        ]);
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->get(route('storefront.cart.show', $storefront))
+            ->assertOk()
+            ->assertSeeText('ایزی پیسہ')
+            ->assertDontSeeText('کیش آن ڈیلیوری')
+            ->assertDontSeeText('ابھی ادائیگی نہیں');
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_UNPAID,
+        ])->assertSessionHasErrors('payment_method');
+        $this->assertDatabaseCount('storefront_orders', 0);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03007771111',
+            'payment_reference' => 'EP-CONTROL-1001',
+        ])->assertRedirect();
+        $this->assertSame(
+            StorefrontOrder::PAYMENT_EASYPAISA,
+            StorefrontOrder::firstOrFail()->payment_method
+        );
+    }
+
     public function test_another_client_cannot_view_or_change_the_order(): void
     {
         [$owner, $storefront, $listing, $color, $customer] = $this->catalog();

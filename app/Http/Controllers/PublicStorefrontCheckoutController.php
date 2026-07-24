@@ -23,6 +23,7 @@ class PublicStorefrontCheckoutController extends Controller
         StorefrontCheckoutService $checkout
     ) {
         $this->ensureVisible($storefront);
+        abort_unless($storefront->online_ordering_enabled, 404);
         $methods = array_values(array_filter([
             $storefront->pickup_enabled ? 'pickup' : null,
             $storefront->delivery_enabled ? 'delivery' : null,
@@ -37,7 +38,7 @@ class PublicStorefrontCheckoutController extends Controller
                 'max:1000',
             ],
             'customer_note' => ['nullable', 'string', 'max:1000'],
-            'payment_method' => ['required', Rule::in(array_keys(StorefrontOrder::paymentMethods()))],
+            'payment_method' => ['required', Rule::in(array_keys($storefront->acceptedPaymentMethods()))],
             'payment_sender_phone' => [
                 Rule::requiredIf($request->input('payment_method') === StorefrontOrder::PAYMENT_EASYPAISA),
                 'nullable',

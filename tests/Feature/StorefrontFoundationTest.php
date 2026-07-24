@@ -171,6 +171,44 @@ class StorefrontFoundationTest extends TestCase
         $this->assertDatabaseHas('storefronts', ['id' => $storefront->id, 'is_published' => true]);
     }
 
+    public function test_client_can_choose_catalogue_only_or_configure_online_order_methods(): void
+    {
+        [$owner, $business] = $this->business(false, true);
+        $storefront = Storefront::create([
+            'business_id' => $business->id,
+            'display_name' => 'Commerce Controls Shop',
+            'slug' => 'commerce-controls-shop',
+            'show_clothing' => true,
+        ]);
+
+        $this->actingAs($owner)->put(route('admin.storefront.update'), [
+            'display_name' => 'Commerce Controls Shop',
+            'slug' => 'commerce-controls-shop',
+            'default_locale' => 'ur',
+            'show_clothing' => '1',
+            'commerce_settings_present' => '1',
+            'pickup_enabled' => '1',
+        ])->assertRedirect(route('admin.storefront.edit'));
+        $this->assertFalse($storefront->fresh()->online_ordering_enabled);
+
+        $this->actingAs($owner)->put(route('admin.storefront.update'), [
+            'display_name' => 'Commerce Controls Shop',
+            'slug' => 'commerce-controls-shop',
+            'default_locale' => 'ur',
+            'show_clothing' => '1',
+            'commerce_settings_present' => '1',
+            'online_ordering_enabled' => '1',
+            'unpaid_orders_enabled' => '1',
+            'pickup_enabled' => '1',
+        ])->assertRedirect(route('admin.storefront.edit'));
+
+        $storefront->refresh();
+        $this->assertTrue($storefront->online_ordering_enabled);
+        $this->assertTrue($storefront->unpaid_orders_enabled);
+        $this->assertFalse($storefront->cod_enabled);
+        $this->assertFalse($storefront->easypaisa_enabled);
+    }
+
     public function test_employee_needs_explicit_storefront_permission(): void
     {
         [$owner, $business] = $this->business(true, true);

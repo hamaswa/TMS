@@ -11,7 +11,9 @@ class Storefront extends Model
     use HasFactory;
 
     public const MODERATION_ACTIVE = 'active';
+
     public const MODERATION_PAUSED = 'paused';
+
     public const MODERATION_STATUSES = [self::MODERATION_ACTIVE, self::MODERATION_PAUSED];
 
     protected $fillable = [
@@ -30,6 +32,10 @@ class Storefront extends Model
         'show_clothing',
         'show_tailoring',
         'inquiries_enabled',
+        'online_ordering_enabled',
+        'unpaid_orders_enabled',
+        'cod_enabled',
+        'easypaisa_enabled',
         'pickup_enabled',
         'delivery_enabled',
         'is_published',
@@ -42,6 +48,10 @@ class Storefront extends Model
             'show_clothing' => 'boolean',
             'show_tailoring' => 'boolean',
             'inquiries_enabled' => 'boolean',
+            'online_ordering_enabled' => 'boolean',
+            'unpaid_orders_enabled' => 'boolean',
+            'cod_enabled' => 'boolean',
+            'easypaisa_enabled' => 'boolean',
             'pickup_enabled' => 'boolean',
             'delivery_enabled' => 'boolean',
             'is_published' => 'boolean',
@@ -106,6 +116,24 @@ class Storefront extends Model
     public function isModerationActive(): bool
     {
         return $this->moderation_status === self::MODERATION_ACTIVE;
+    }
+
+    public function acceptedPaymentMethods(): array
+    {
+        if (! $this->online_ordering_enabled) {
+            return [];
+        }
+
+        return array_intersect_key(StorefrontOrder::publicPaymentMethods(), array_filter([
+            StorefrontOrder::PAYMENT_UNPAID => $this->unpaid_orders_enabled,
+            StorefrontOrder::PAYMENT_COD => $this->cod_enabled && $this->delivery_enabled,
+            StorefrontOrder::PAYMENT_EASYPAISA => $this->easypaisa_enabled,
+        ]));
+    }
+
+    public function acceptsPaymentMethod(string $method): bool
+    {
+        return array_key_exists($method, $this->acceptedPaymentMethods());
     }
 
     public function getLogoUrlAttribute(): ?string

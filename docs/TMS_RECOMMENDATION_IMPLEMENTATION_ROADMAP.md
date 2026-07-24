@@ -43,6 +43,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 - [x] Add city, category, price, delivery, and availability discovery filters.
 - [x] Add SEO titles/descriptions, canonical URLs, Open Graph cards, and LocalBusiness/Product structured data.
 - [x] Centralize currency formatting and provide consistent Urdu/English PKR labels.
+- [x] Let each client independently choose catalogue-only publishing, online ordering, and accepted manual payment methods.
 - [ ] Add customer-visible payment verification status and payment-history details.
 - [ ] Add return, exchange, refund, and paid-order cancellation workflows.
 - [ ] Add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.
@@ -143,5 +144,16 @@ At the Phase 4 Pakistan currency checkpoint:
 - Currency amounts use bidirectional isolation and non-wrapping presentation, while Product and Service structured data retains ISO `PKR` values.
 - Browser QA confirmed English LTR and Urdu RTL output, correct cart unit/line/total amounts, five live tailoring prices, no horizontal overflow at 390 px or desktop widths, and no console errors.
 - No database migration or existing client-data update was required.
+
+At the Phase 4 client commerce-control checkpoint:
+
+- Full suite: 181 tests passed, 1,310 assertions.
+- Focused storefront foundation, cart, and checkout suite: 32 tests passed, 302 assertions.
+- Clients can keep clothing pages as a public catalogue without exposing a cart, reservation, customer-registration, or checkout flow.
+- Online ordering is independently opt-in, and clients choose whether to accept unpaid orders, COD, or manually verified EasyPaisa references.
+- Disabled ordering and payment methods are enforced by the server, not only hidden in the interface. Existing secure order-tracking links remain available if a client later pauses new orders.
+- The settings explicitly explain that the current EasyPaisa reference flow is manual verification and is not a live payment gateway.
+- The additive migration retained existing behavior through compatibility defaults and did not delete or rewrite customer, product, order, or payment records.
+- Browser QA confirmed the Urdu client settings, 66 px mobile payment controls, public ordering controls, 390 px overflow safety, and no console errors.
 
 Next starting point: add customer-visible payment verification status and payment-history details.
