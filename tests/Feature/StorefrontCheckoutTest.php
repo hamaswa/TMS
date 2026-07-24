@@ -136,7 +136,8 @@ class StorefrontCheckoutTest extends TestCase
             ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
             ->assertDontSee('application/ld+json', false)
             ->assertSeeText('آرڈر کی محفوظ تفصیل')
-            ->assertDontSeeText('نیلا پریمیم کپڑا');
+            ->assertDontSeeText('نیلا پریمیم کپڑا')
+            ->assertDontSeeText('ادائیگی کا خلاصہ');
         preg_match('/<head>(.*?)<\/head>/s', $unauthorizedResponse->getContent(), $head);
         $this->assertStringNotContainsString($order->reference, $head[1]);
         $this->assertStringNotContainsString($customer->name, $head[1]);
@@ -250,7 +251,16 @@ class StorefrontCheckoutTest extends TestCase
             'recivedPayment' => 0,
             'remainingBalance' => 1450,
         ]);
-
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('ادائیگی کا خلاصہ')
+            ->assertSeeText('دستی تصدیق زیرِ انتظار')
+            ->assertSeeText('اس آرڈر کے ساتھ تصدیق شدہ رقم')
+            ->assertSeeText('0.00 روپے')
+            ->assertSeeText('اس آرڈر پر باقی رقم')
+            ->assertSeeText('1,450.00 روپے')
+            ->assertSeeText('EP-QA-1001')
+            ->assertSeeText('دکان کی طرف سے ادائیگی کے حوالے کی تصدیق کا انتظار ہے۔');
     }
 
     public function test_client_verifies_easypaisa_once_before_completing_order(): void
@@ -285,6 +295,12 @@ class StorefrontCheckoutTest extends TestCase
             'recivedPayment' => 1450,
             'remainingBalance' => 0,
         ]);
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('ادائیگی تصدیق شدہ')
+            ->assertSeeText('1,450.00 روپے')
+            ->assertSeeText('دکان نے اس آرڈر کے ساتھ ادائیگی کی تصدیق کر دی۔')
+            ->assertDontSeeText('Matched merchant statement');
 
         $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
             'decision' => StorefrontOrder::VERIFICATION_VERIFIED,
@@ -323,6 +339,11 @@ class StorefrontCheckoutTest extends TestCase
             'recivedPayment' => 0,
             'remainingBalance' => 1450,
         ]);
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('ادائیگی کا حوالہ مسترد')
+            ->assertSeeText('دکان نے جمع کیا گیا ادائیگی کا حوالہ مسترد کر دیا۔')
+            ->assertDontSeeText('Reference not found in statement');
 
         $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
             'status' => StorefrontOrder::STATUS_CANCELLED,

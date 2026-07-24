@@ -44,7 +44,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 - [x] Add SEO titles/descriptions, canonical URLs, Open Graph cards, and LocalBusiness/Product structured data.
 - [x] Centralize currency formatting and provide consistent Urdu/English PKR labels.
 - [x] Let each client independently choose catalogue-only publishing, online ordering, and accepted manual payment methods.
-- [ ] Add customer-visible payment verification status and payment-history details.
+- [x] Add customer-visible payment verification status and payment-history details.
 - [ ] Add return, exchange, refund, and paid-order cancellation workflows.
 - [ ] Add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.
 
@@ -156,4 +156,14 @@ At the Phase 4 client commerce-control checkpoint:
 - The additive migration retained existing behavior through compatibility defaults and did not delete or rewrite customer, product, order, or payment records.
 - Browser QA confirmed the Urdu client settings, 66 px mobile payment controls, public ordering controls, 390 px overflow safety, and no console errors.
 
-Next starting point: add customer-visible payment verification status and payment-history details.
+At the Phase 4 customer payment-visibility checkpoint:
+
+- Full suite: 181 tests passed, 1,329 assertions.
+- Focused checkout and private-metadata suite: 19 tests passed, 230 assertions.
+- Authenticated customers now see the payment method, verification status, amount verified against the online order, remaining order amount, and a timestamped payment timeline.
+- Pending, verified, rejected, pay-later, COD, and cancelled-order records use the same bilingual summary without implying that a general unified-account payment belongs only to one order.
+- The page does not expose internal verification notes or staff identities, and unauthenticated visitors cannot see the payment summary or item details.
+- Browser QA confirmed a real EasyPaisa-pending order in Urdu RTL and English LTR, `noindex,nofollow` privacy, one-column 390 px payment cards, logical-direction timelines, no horizontal overflow, and no console errors.
+- Mobile order-summary label spacing was corrected during visual QA. No migration or existing-data update was required.
+
+Next starting point: add return, exchange, refund, and paid-order cancellation workflows.
