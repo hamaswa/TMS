@@ -157,7 +157,7 @@ class PublicStorefrontController extends Controller
             ],
             'website' => ['prohibited'],
         ], [
-            'preferred_date.after_or_equal' => 'پسندیدہ تاریخ آج یا اس کے بعد کی منتخب کریں۔',
+            'preferred_date.after_or_equal' => __('storefront.messages.preferred_date'),
         ]);
         $service = null;
         if (! empty($validated['tailoring_service_id'])) {
@@ -175,7 +175,9 @@ class PublicStorefrontController extends Controller
         ]);
 
         return redirect()->route('storefront.tailoring.index', $storefront)
-            ->with('inquiry_success', 'آپ کی درخواست موصول ہو گئی ہے۔ حوالہ نمبر: '.$inquiry->reference);
+            ->with('inquiry_success', __('storefront.messages.inquiry_saved', [
+                'reference' => $inquiry->reference,
+            ]));
     }
 
     private function ensureTailoringVisible(Storefront $storefront): void

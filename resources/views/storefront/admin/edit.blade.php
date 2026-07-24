@@ -74,6 +74,14 @@
                                 <div class="form-group col-md-8"><label for="address">دکان کا پتہ</label><textarea id="address" name="address" class="form-control" rows="3" maxlength="1000">{{ old('address',$storefront->address) }}</textarea></div>
                                 <div class="form-group col-md-4"><label for="city">شہر</label><input id="city" name="city" class="form-control" maxlength="100" value="{{ old('city',$storefront->city) }}"></div>
                             </div>
+                            <div class="form-group">
+                                <label for="default_locale">عوامی دکان کی بنیادی زبان</label>
+                                <select id="default_locale" name="default_locale" class="form-control">
+                                    <option value="ur" @selected(old('default_locale', $storefront->default_locale ?: 'ur') === 'ur')>اردو — دائیں سے بائیں</option>
+                                    <option value="en" @selected(old('default_locale', $storefront->default_locale) === 'en')>English — left to right</option>
+                                </select>
+                                <small class="text-muted">گاہک زبان تبدیل کر سکتے ہیں؛ ان کا انتخاب اگلی بار بھی محفوظ رہے گا۔</small>
+                            </div>
                             <div class="row">
                                 <div class="col-md-4 mb-2"><label><input type="checkbox" name="inquiries_enabled" value="1" @checked(old('inquiries_enabled',$storefront->inquiries_enabled))> گاہک کے سوالات قبول کریں</label></div>
                                 <div class="col-md-4 mb-2"><label><input type="checkbox" name="pickup_enabled" value="1" @checked(old('pickup_enabled',$storefront->pickup_enabled))> دکان سے وصولی</label></div>

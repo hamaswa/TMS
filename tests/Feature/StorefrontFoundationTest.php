@@ -48,6 +48,7 @@ class StorefrontFoundationTest extends TestCase
         $this->actingAs($owner)->put(route('admin.storefront.update'), [
             'display_name' => 'صدیقی ٹیلرز اینڈ فیبرکس',
             'slug' => 'siddiqui-tailors',
+            'default_locale' => 'ur',
             'tagline' => 'معیاری کپڑا اور نفیس سلائی',
             'description' => 'راولپنڈی میں کپڑے اور سلائی کی مکمل سہولت۔',
             'public_phone' => '03001112222',
@@ -86,10 +87,68 @@ class StorefrontFoundationTest extends TestCase
         $this->actingAs($owner)->put(route('admin.storefront.update'), [
             'display_name' => 'صرف ٹیلرنگ',
             'slug' => 'tailoring-only',
+            'default_locale' => 'ur',
             'show_clothing' => '1',
         ])->assertSessionHasErrors('show_clothing');
 
         $this->assertDatabaseCount('storefronts', 0);
+    }
+
+    public function test_public_language_switch_persists_and_rejects_external_redirects(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('lang="ur"', false)
+            ->assertSee('dir="rtl"', false);
+
+        $this->get(route('public.locale.update', [
+            'locale' => 'en',
+            'redirect' => '/',
+        ]))->assertRedirect('/');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('lang="en"', false)
+            ->assertSee('dir="ltr"', false)
+            ->assertSeeText('Public shops');
+
+        $this->get(route('public.locale.update', [
+            'locale' => 'en',
+            'redirect' => 'https://example.com/phishing',
+        ]))->assertRedirect('/');
+
+        $this->get('/language/fr')->assertNotFound();
+    }
+
+    public function test_storefront_uses_client_default_locale_until_visitor_chooses(): void
+    {
+        [, $business] = $this->business(true, true);
+        $storefront = Storefront::create([
+            'business_id' => $business->id,
+            'display_name' => 'English Default Shop',
+            'slug' => 'english-default-shop',
+            'default_locale' => 'en',
+            'show_clothing' => true,
+            'show_tailoring' => true,
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->get(route('storefront.show', $storefront))
+            ->assertOk()
+            ->assertSee('lang="en"', false)
+            ->assertSee('dir="ltr"', false)
+            ->assertSeeText('About us');
+
+        $this->get(route('public.locale.update', [
+            'locale' => 'ur',
+            'redirect' => route('storefront.show', $storefront, false),
+        ]))->assertRedirect(route('storefront.show', $storefront, false));
+
+        $this->get(route('storefront.show', $storefront))
+            ->assertOk()
+            ->assertSee('lang="ur"', false)
+            ->assertSee('dir="rtl"', false);
     }
 
     public function test_suspended_business_storefront_is_hidden_without_deleting_it(): void

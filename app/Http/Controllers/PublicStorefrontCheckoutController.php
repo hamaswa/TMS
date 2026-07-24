@@ -55,12 +55,12 @@ class PublicStorefrontCheckoutController extends Controller
         if ($validated['payment_method'] === StorefrontOrder::PAYMENT_COD
             && $validated['fulfillment_method'] !== 'delivery') {
             throw ValidationException::withMessages([
-                'payment_method' => 'کیش آن ڈیلیوری کے لیے گھر تک فراہمی منتخب کریں۔',
+                'payment_method' => __('storefront.messages.cod_requires_delivery'),
             ]);
         }
         $cart = $cartService->find($storefront, $request->session()->get($this->cartSessionKey($storefront)));
         if (! $cart) {
-            throw ValidationException::withMessages(['checkout' => 'ٹوکری دستیاب نہیں یا اس کا وقت ختم ہو گیا ہے۔']);
+            throw ValidationException::withMessages(['checkout' => __('storefront.messages.cart_unavailable')]);
         }
 
         [$order] = $checkout->checkout(
@@ -81,7 +81,7 @@ class PublicStorefrontCheckoutController extends Controller
         }
 
         return redirect()->route('storefront.orders.show', [$storefront, $order->reference])
-            ->with('success', 'آپ کا آرڈر محفوظ ہو گیا ہے۔ حوالہ نمبر سنبھال کر رکھیں۔');
+            ->with('success', __('storefront.messages.order_saved'));
     }
 
     public function show(Request $request, Storefront $storefront, string $reference)
@@ -110,7 +110,7 @@ class PublicStorefrontCheckoutController extends Controller
             ->first();
         if (! $customer || ! $customer->mobile_pin || ! Hash::check($validated['pin'], $customer->mobile_pin)
             || $customer->phone_number1 !== $validated['phone']) {
-            throw ValidationException::withMessages(['phone' => 'فون نمبر یا پن درست نہیں ہے۔']);
+            throw ValidationException::withMessages(['phone' => __('storefront.messages.identity_invalid')]);
         }
         $request->session()->put($this->orderSessionKey($order), true);
 

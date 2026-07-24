@@ -45,6 +45,7 @@ use App\Http\Controllers\PublicStorefrontController;
 use App\Http\Controllers\PublicStorefrontCartController;
 use App\Http\Controllers\PublicStorefrontCheckoutController;
 use App\Http\Controllers\AdminStorefrontOrderController;
+use App\Http\Controllers\PublicLocaleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -59,29 +60,31 @@ use App\Http\Controllers\AdminStorefrontOrderController;
 
 Auth::routes();
 
-Route::get('/', [PublicStorefrontController::class, 'index'])->name('storefront.index');
+Route::get('/language/{locale}', [PublicLocaleController::class, 'update'])
+    ->whereIn('locale', ['ur', 'en'])->name('public.locale.update');
+Route::get('/', [PublicStorefrontController::class, 'index'])->middleware('public.locale')->name('storefront.index');
 Route::redirect('/shops', '/', 301)->name('storefront.legacy.index');
-Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->name('storefront.show');
-Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->name('storefront.clothing.index');
-Route::get('/shops/{storefront:slug}/clothes/{listing}', [PublicStorefrontController::class, 'clothingShow'])->name('storefront.clothing.show');
-Route::get('/shops/{storefront:slug}/cart', [PublicStorefrontCartController::class, 'show'])->name('storefront.cart.show');
+Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->middleware('public.locale')->name('storefront.show');
+Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->middleware('public.locale')->name('storefront.clothing.index');
+Route::get('/shops/{storefront:slug}/clothes/{listing}', [PublicStorefrontController::class, 'clothingShow'])->middleware('public.locale')->name('storefront.clothing.show');
+Route::get('/shops/{storefront:slug}/cart', [PublicStorefrontCartController::class, 'show'])->middleware('public.locale')->name('storefront.cart.show');
 Route::post('/shops/{storefront:slug}/clothes/{listing}/cart', [PublicStorefrontCartController::class, 'store'])
-    ->middleware('throttle:30,1')->name('storefront.cart.store');
-Route::patch('/shops/{storefront:slug}/cart/items/{item}', [PublicStorefrontCartController::class, 'update'])->name('storefront.cart.update');
-Route::delete('/shops/{storefront:slug}/cart/items/{item}', [PublicStorefrontCartController::class, 'destroy'])->name('storefront.cart.destroy');
+    ->middleware(['public.locale', 'throttle:30,1'])->name('storefront.cart.store');
+Route::patch('/shops/{storefront:slug}/cart/items/{item}', [PublicStorefrontCartController::class, 'update'])->middleware('public.locale')->name('storefront.cart.update');
+Route::delete('/shops/{storefront:slug}/cart/items/{item}', [PublicStorefrontCartController::class, 'destroy'])->middleware('public.locale')->name('storefront.cart.destroy');
 Route::post('/shops/{storefront:slug}/cart/customer', [PublicStorefrontCartController::class, 'linkCustomer'])
-    ->middleware('throttle:5,1')->name('storefront.cart.customer.link');
-Route::delete('/shops/{storefront:slug}/cart/customer', [PublicStorefrontCartController::class, 'unlinkCustomer'])->name('storefront.cart.customer.unlink');
+    ->middleware(['public.locale', 'throttle:5,1'])->name('storefront.cart.customer.link');
+Route::delete('/shops/{storefront:slug}/cart/customer', [PublicStorefrontCartController::class, 'unlinkCustomer'])->middleware('public.locale')->name('storefront.cart.customer.unlink');
 Route::post('/shops/{storefront:slug}/checkout', [PublicStorefrontCheckoutController::class, 'store'])
-    ->middleware('throttle:10,1')->name('storefront.checkout.store');
+    ->middleware(['public.locale', 'throttle:10,1'])->name('storefront.checkout.store');
 Route::get('/shops/{storefront:slug}/orders/{reference}', [PublicStorefrontCheckoutController::class, 'show'])
-    ->name('storefront.orders.show');
+    ->middleware('public.locale')->name('storefront.orders.show');
 Route::post('/shops/{storefront:slug}/orders/{reference}/access', [PublicStorefrontCheckoutController::class, 'authenticate'])
-    ->middleware('throttle:5,1')->name('storefront.orders.authenticate');
-Route::get('/shops/{storefront:slug}/tailoring', [PublicStorefrontController::class, 'tailoring'])->name('storefront.tailoring.index');
-Route::get('/shops/{storefront:slug}/tailoring/{service}', [PublicStorefrontController::class, 'tailoringShow'])->name('storefront.tailoring.show');
+    ->middleware(['public.locale', 'throttle:5,1'])->name('storefront.orders.authenticate');
+Route::get('/shops/{storefront:slug}/tailoring', [PublicStorefrontController::class, 'tailoring'])->middleware('public.locale')->name('storefront.tailoring.index');
+Route::get('/shops/{storefront:slug}/tailoring/{service}', [PublicStorefrontController::class, 'tailoringShow'])->middleware('public.locale')->name('storefront.tailoring.show');
 Route::post('/shops/{storefront:slug}/inquiries', [PublicStorefrontController::class, 'submitInquiry'])
-    ->middleware('throttle:10,1')
+    ->middleware(['public.locale', 'throttle:10,1'])
     ->name('storefront.inquiries.store');
 
 Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'business.status', 'business.activity'], 'as' => 'employee.password.'], function () {

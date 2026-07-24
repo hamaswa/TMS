@@ -22,16 +22,16 @@ This file is the durable continuation point for the QA recommendations. When wor
 
 ## Phase 2 — bilingual public experience
 
-Next starting point.
-
-- [ ] Move public storefront text, validation messages, checkout messages, tracking messages, and errors into Laravel language files.
-- [ ] Add a visible **اردو | English** language switch to every public page.
-- [ ] Keep Urdu as the current default, allow every client to select the storefront default, and persist each visitor’s choice.
-- [ ] Keep the super administrator interface English.
-- [ ] Ensure `lang`, `dir`, typography, icons, number formatting, and form alignment change correctly between Urdu RTL and English LTR.
-- [ ] Add automated locale and browser layout tests.
+- [x] Move public storefront text, validation messages, checkout messages, tracking messages, and errors into Laravel language files.
+- [x] Add a visible **اردو | English** language switch to every public page.
+- [x] Keep Urdu as the current default, allow every client to select the storefront default, and persist each visitor’s choice.
+- [x] Keep the super administrator interface English.
+- [x] Ensure `lang`, `dir`, typography, icons, number formatting, and form alignment change correctly between Urdu RTL and English LTR.
+- [x] Add automated locale tests and complete desktop/mobile browser layout QA.
 
 ## Phase 3 — accessibility and Pakistan identity handling
+
+Next starting point.
 
 - [ ] Add labels to public search, colour, and other filter controls.
 - [ ] Increase mobile login/action touch targets to at least 44 × 44 pixels.
@@ -83,3 +83,11 @@ At the end of Phase 1:
 - Focused P1 suite: 40 tests passed, 351 assertions.
 - Database migration applied without deleting or replacing existing records.
 - Browser QA confirmed the tailoring inquiry verification UI and salesperson online-order access/navigation.
+
+At the end of Phase 2:
+
+- Full suite: 150 tests passed, 1,126 assertions.
+- Focused storefront suite: 33 tests passed, 296 assertions.
+- Additive `default_locale` migration applied without deleting or replacing existing records.
+- Browser QA confirmed Urdu RTL and English LTR on the marketplace, combined storefront, clothing catalogue, cart, and tailoring inquiry flow.
+- Responsive QA confirmed no horizontal overflow at desktop or 390 px mobile width, with no browser console errors on the tested pages.

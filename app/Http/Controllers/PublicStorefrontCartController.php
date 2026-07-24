@@ -49,7 +49,7 @@ class PublicStorefrontCartController extends Controller
         $request->session()->put($this->sessionKey($storefront), $plainToken);
 
         return redirect()->route('storefront.cart.show', $storefront)
-            ->with('success', 'کپڑا 30 منٹ کے لیے محفوظ ہو گیا ہے۔');
+            ->with('success', __('storefront.messages.cart_reserved'));
     }
 
     public function update(
@@ -72,7 +72,7 @@ class PublicStorefrontCartController extends Controller
         );
 
         return redirect()->route('storefront.cart.show', $storefront)
-            ->with('success', 'محفوظ مقدار اور وقت تازہ ہو گیا ہے۔');
+            ->with('success', __('storefront.messages.cart_updated'));
     }
 
     public function destroy(
@@ -87,7 +87,7 @@ class PublicStorefrontCartController extends Controller
         $cartService->remove($cart, $item);
 
         return redirect()->route('storefront.cart.show', $storefront)
-            ->with('success', 'کپڑا ٹوکری سے نکال دیا گیا ہے۔');
+            ->with('success', __('storefront.messages.cart_removed'));
     }
 
     public function linkCustomer(
@@ -129,13 +129,13 @@ class PublicStorefrontCartController extends Controller
         if ($result !== 'linked') {
             throw ValidationException::withMessages([
                 'phone' => $result === 'locked'
-                    ? 'زیادہ غلط کوششوں کی وجہ سے شناخت عارضی طور پر بند ہے۔ 15 منٹ بعد کوشش کریں۔'
-                    : 'فون نمبر یا پن درست نہیں ہے۔',
+                    ? __('storefront.messages.identity_locked')
+                    : __('storefront.messages.identity_invalid'),
             ]);
         }
 
         return redirect()->route('storefront.cart.show', $storefront)
-            ->with('success', 'ٹوکری آپ کے موجودہ گاہک ریکارڈ سے منسلک ہو گئی ہے۔');
+            ->with('success', __('storefront.messages.identity_linked'));
     }
 
     public function unlinkCustomer(

@@ -69,7 +69,9 @@ class StorefrontCartService
             $available = max(0, (float) $lockedColor->length - $reservedByOthers);
             if ($quantity > $available) {
                 throw ValidationException::withMessages([
-                    'quantity' => 'اس رنگ میں صرف '.number_format($available, 2).' میٹر ابھی دستیاب ہے۔',
+                    'quantity' => __('storefront.messages.available_quantity', [
+                        'amount' => number_format($available, 2),
+                    ]),
                 ]);
             }
 

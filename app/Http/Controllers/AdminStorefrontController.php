@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\Storefront;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -37,6 +38,7 @@ class AdminStorefrontController extends Controller
             'public_email' => ['nullable', 'email', 'max:150'],
             'address' => ['nullable', 'string', 'max:1000'],
             'city' => ['nullable', 'string', 'max:100'],
+            'default_locale' => ['required', Rule::in(['ur', 'en'])],
             'show_clothing' => ['nullable', 'boolean'],
             'show_tailoring' => ['nullable', 'boolean'],
             'inquiries_enabled' => ['nullable', 'boolean'],
@@ -113,6 +115,7 @@ class AdminStorefrontController extends Controller
     {
         [, $storefront] = $this->storefrontForCurrentBusiness();
         abort_unless($storefront->exists, 404);
+        App::setLocale($storefront->default_locale ?: 'ur');
 
         return view('storefront.public.show', [
             'storefront' => $storefront->load('business'),
@@ -138,6 +141,7 @@ class AdminStorefrontController extends Controller
             'inquiries_enabled' => true,
             'pickup_enabled' => true,
             'delivery_enabled' => false,
+            'default_locale' => 'ur',
         ]);
 
         return [$business, $storefront];

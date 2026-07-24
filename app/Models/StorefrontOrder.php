@@ -58,6 +58,15 @@ class StorefrontOrder extends Model
         ];
     }
 
+    public static function publicPaymentMethods(): array
+    {
+        return [
+            self::PAYMENT_UNPAID => __('storefront.payment.methods.unpaid'),
+            self::PAYMENT_COD => __('storefront.payment.methods.cod'),
+            self::PAYMENT_EASYPAISA => __('storefront.payment.methods.easypaisa'),
+        ];
+    }
+
     protected $hidden = ['tracking_token_hash'];
 
     protected $casts = [

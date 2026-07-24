@@ -24,6 +24,7 @@ class Storefront extends Model
         'public_email',
         'address',
         'city',
+        'default_locale',
         'logo_path',
         'cover_path',
         'show_clothing',
