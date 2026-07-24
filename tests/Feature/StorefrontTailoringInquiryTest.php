@@ -103,6 +103,53 @@ class StorefrontTailoringInquiryTest extends TestCase
         $this->assertDatabaseCount('storefront_inquiries', 0);
     }
 
+    public function test_tailoring_inquiry_supports_client_enabled_raast_without_sender_mobile(): void
+    {
+        [, , $storefront] = $this->business();
+        $storefront->update([
+            'easypaisa_enabled' => false,
+            'jazzcash_enabled' => false,
+            'bank_transfer_enabled' => false,
+            'raast_enabled' => true,
+            'raast_account_title' => 'Tailoring Marketplace',
+            'raast_id' => '03001234567',
+        ]);
+
+        $this->get(route('storefront.tailoring.index', $storefront))
+            ->assertOk()
+            ->assertSeeText('راست')
+            ->assertSeeText('Tailoring Marketplace')
+            ->assertSeeText('03001234567')
+            ->assertDontSeeText('جاز کیش');
+        $this->post(route('storefront.inquiries.store', $storefront), [
+            'customer_name' => 'عائشہ خان',
+            'phone' => '03121112222',
+            'payment_method' => StorefrontInquiry::PAYMENT_RAAST,
+            'payment_reference' => 'RAAST-20260724-7788',
+        ])->assertRedirect(route('storefront.tailoring.index', $storefront))
+            ->assertSessionHas('inquiry_success');
+
+        $inquiry = StorefrontInquiry::firstOrFail();
+        $this->assertSame(StorefrontInquiry::PAYMENT_RAAST, $inquiry->payment_method);
+        $this->assertNull($inquiry->payment_sender_phone);
+        $this->assertSame(StorefrontInquiry::VERIFICATION_PENDING, $inquiry->payment_verification_status);
+    }
+
+    public function test_tailoring_inquiry_rejects_a_manual_method_disabled_by_client(): void
+    {
+        [, , $storefront] = $this->business();
+        $storefront->update(['bank_transfer_enabled' => false]);
+
+        $this->post(route('storefront.inquiries.store', $storefront), [
+            'customer_name' => 'Bilal Ahmed',
+            'phone' => '03001110000',
+            'payment_method' => StorefrontInquiry::PAYMENT_BANK_TRANSFER,
+            'payment_reference' => 'BANK-DISABLED-1',
+        ])->assertSessionHasErrors('payment_method');
+
+        $this->assertDatabaseCount('storefront_inquiries', 0);
+    }
+
     public function test_inquiries_can_be_disabled_and_private_services_stay_hidden(): void
     {
         [, , $storefront] = $this->business();

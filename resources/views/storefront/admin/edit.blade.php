@@ -55,14 +55,15 @@
                         </div>
                     </div>
 
-                    @if($business->clothing_enabled)
+                    @if($business->clothing_enabled || $business->tailoring_enabled)
                     <div class="card storefront-card mb-4">
                         <div class="card-header">
-                            <h2 class="h5 mb-1">آن لائن فروخت</h2>
-                            <p class="small text-muted mb-0">عوامی فہرست، آن لائن آرڈر اور ادائیگی کے طریقے الگ الگ کنٹرول کریں۔</p>
+                            <h2 class="h5 mb-1">آن لائن ادائیگی کے طریقے</h2>
+                            <p class="small text-muted mb-0">کپڑوں کے آرڈر اور ٹیلرنگ درخواستوں کے لیے قبول شدہ طریقے الگ الگ کنٹرول کریں۔</p>
                         </div>
                         <div class="card-body">
                             <input type="hidden" name="commerce_settings_present" value="1">
+                            @if($business->clothing_enabled)
                             <label class="module-choice d-block mb-3">
                                 <div class="d-flex">
                                     <input type="checkbox" name="online_ordering_enabled" value="1" @checked(old('online_ordering_enabled',$storefront->online_ordering_enabled))>
@@ -72,14 +73,35 @@
                                     </div>
                                 </div>
                             </label>
+                            @endif
                             <h3 class="h6">قبول شدہ طریقے</h3>
                             <div class="row">
                                 <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="unpaid_orders_enabled" value="1" @checked(old('unpaid_orders_enabled',$storefront->unpaid_orders_enabled))> ابھی ادائیگی نہیں</label></div>
                                 <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="cod_enabled" value="1" @checked(old('cod_enabled',$storefront->cod_enabled))> کیش آن ڈیلیوری</label></div>
                                 <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="easypaisa_enabled" value="1" @checked(old('easypaisa_enabled',$storefront->easypaisa_enabled))> ایزی پیسہ — دستی تصدیق</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="jazzcash_enabled" value="1" @checked(old('jazzcash_enabled',$storefront->jazzcash_enabled))> جاز کیش — دستی تصدیق</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="bank_transfer_enabled" value="1" @checked(old('bank_transfer_enabled',$storefront->bank_transfer_enabled))> بینک ٹرانسفر — دستی تصدیق</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="raast_enabled" value="1" @checked(old('raast_enabled',$storefront->raast_enabled))> راست / Raast QR — دستی تصدیق</label></div>
+                            </div>
+                            <div class="border rounded p-3 mt-3">
+                                <h3 class="h6">عوام کو دکھائی جانے والی وصولی کی معلومات</h3>
+                                <p class="small text-muted">صرف فعال ادائیگی کے طریقے کی معلومات چیک آؤٹ پر دکھائی جائیں گی۔ خفیہ PIN، OTP یا پاس ورڈ کبھی درج نہ کریں۔</p>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6"><label for="easypaisa_account_title">ایزی پیسہ اکاؤنٹ عنوان</label><input id="easypaisa_account_title" name="easypaisa_account_title" class="form-control" maxlength="150" value="{{ old('easypaisa_account_title',$storefront->easypaisa_account_title) }}"></div>
+                                    <div class="form-group col-md-6"><label for="easypaisa_account_number">ایزی پیسہ نمبر</label><input id="easypaisa_account_number" name="easypaisa_account_number" dir="ltr" class="form-control text-left" maxlength="50" value="{{ old('easypaisa_account_number',$storefront->easypaisa_account_number) }}"></div>
+                                    <div class="form-group col-md-6"><label for="jazzcash_account_title">جاز کیش اکاؤنٹ عنوان</label><input id="jazzcash_account_title" name="jazzcash_account_title" class="form-control" maxlength="150" value="{{ old('jazzcash_account_title',$storefront->jazzcash_account_title) }}"></div>
+                                    <div class="form-group col-md-6"><label for="jazzcash_account_number">جاز کیش نمبر</label><input id="jazzcash_account_number" name="jazzcash_account_number" dir="ltr" class="form-control text-left" maxlength="50" value="{{ old('jazzcash_account_number',$storefront->jazzcash_account_number) }}"></div>
+                                    <div class="form-group col-md-4"><label for="bank_name">بینک کا نام</label><input id="bank_name" name="bank_name" class="form-control" maxlength="150" value="{{ old('bank_name',$storefront->bank_name) }}"></div>
+                                    <div class="form-group col-md-4"><label for="bank_account_title">بینک اکاؤنٹ عنوان</label><input id="bank_account_title" name="bank_account_title" class="form-control" maxlength="150" value="{{ old('bank_account_title',$storefront->bank_account_title) }}"></div>
+                                    <div class="form-group col-md-4"><label for="bank_account_number">اکاؤنٹ نمبر</label><input id="bank_account_number" name="bank_account_number" dir="ltr" class="form-control text-left" maxlength="100" value="{{ old('bank_account_number',$storefront->bank_account_number) }}"></div>
+                                    <div class="form-group col-md-12"><label for="bank_iban">IBAN <small class="text-muted">(PK سے شروع ہونے والے 24 حروف)</small></label><input id="bank_iban" name="bank_iban" dir="ltr" class="form-control text-left text-uppercase" maxlength="24" value="{{ old('bank_iban',$storefront->bank_iban) }}"></div>
+                                    <div class="form-group col-md-6"><label for="raast_account_title">راست اکاؤنٹ عنوان</label><input id="raast_account_title" name="raast_account_title" class="form-control" maxlength="150" value="{{ old('raast_account_title',$storefront->raast_account_title) }}"></div>
+                                    <div class="form-group col-md-6"><label for="raast_id">راست ID / مرچنٹ Alias</label><input id="raast_id" name="raast_id" dir="ltr" class="form-control text-left" maxlength="100" value="{{ old('raast_id',$storefront->raast_id) }}"></div>
+                                    <div class="form-group col-md-12"><label for="raast_qr">بینک یا والٹ کا جاری کردہ Raast QR <small class="text-muted">(اختیاری، زیادہ سے زیادہ 2 MB)</small></label><input id="raast_qr" type="file" name="raast_qr" class="form-control-file" accept="image/*">@if($storefront->raast_qr_url)<img src="{{ $storefront->raast_qr_url }}" alt="موجودہ Raast QR" style="display:block;max-width:180px;max-height:180px;margin-top:10px">@endif</div>
+                                </div>
                             </div>
                             <div class="alert alert-info mb-0 mt-2">
-                                <strong>اہم:</strong> ایزی پیسہ ابھی لائیو گیٹ وے نہیں ہے۔ گاہک حوالہ درج کرتا ہے اور دکان اسے دستی طور پر تصدیق کرتی ہے۔
+                                <strong>اہم:</strong> یہ لائیو گیٹ وے نہیں ہیں۔ گاہک ادائیگی کر کے حوالہ درج کرتا ہے، اور دکان رقم اپنے والٹ یا بینک میں دیکھ کر دستی طور پر تصدیق کرتی ہے۔ صرف اپنے مالی ادارے کا جاری کردہ Raast QR اپ لوڈ کریں۔
                             </div>
                         </div>
                     </div>

@@ -29,6 +29,12 @@ class PublicStorefrontCheckoutController extends Controller
             $storefront->delivery_enabled ? 'delivery' : null,
         ]));
         $request->mergeIfMissing(['payment_method' => StorefrontOrder::PAYMENT_UNPAID]);
+        $paymentMethod = $request->input('payment_method');
+        $manualPayment = StorefrontOrder::requiresManualVerification($paymentMethod);
+        $mobileWallet = in_array($paymentMethod, [
+            StorefrontOrder::PAYMENT_EASYPAISA,
+            StorefrontOrder::PAYMENT_JAZZCASH,
+        ], true);
         $validated = $request->validate([
             'fulfillment_method' => ['required', Rule::in($methods)],
             'delivery_address' => [
@@ -40,14 +46,14 @@ class PublicStorefrontCheckoutController extends Controller
             'customer_note' => ['nullable', 'string', 'max:1000'],
             'payment_method' => ['required', Rule::in(array_keys($storefront->acceptedPaymentMethods()))],
             'payment_sender_phone' => [
-                Rule::requiredIf($request->input('payment_method') === StorefrontOrder::PAYMENT_EASYPAISA),
+                Rule::requiredIf($mobileWallet),
                 'nullable',
                 'string',
                 'min:7',
                 'max:50',
             ],
             'payment_reference' => [
-                Rule::requiredIf($request->input('payment_method') === StorefrontOrder::PAYMENT_EASYPAISA),
+                Rule::requiredIf($manualPayment),
                 'nullable',
                 'string',
                 'max:100',

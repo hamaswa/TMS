@@ -47,6 +47,20 @@ class AdminStorefrontController extends Controller
             'unpaid_orders_enabled' => ['nullable', 'boolean'],
             'cod_enabled' => ['nullable', 'boolean'],
             'easypaisa_enabled' => ['nullable', 'boolean'],
+            'jazzcash_enabled' => ['nullable', 'boolean'],
+            'bank_transfer_enabled' => ['nullable', 'boolean'],
+            'raast_enabled' => ['nullable', 'boolean'],
+            'easypaisa_account_title' => ['nullable', 'string', 'max:150'],
+            'easypaisa_account_number' => ['nullable', 'string', 'max:50'],
+            'jazzcash_account_title' => ['nullable', 'string', 'max:150'],
+            'jazzcash_account_number' => ['nullable', 'string', 'max:50'],
+            'bank_name' => ['nullable', 'string', 'max:150'],
+            'bank_account_title' => ['nullable', 'string', 'max:150'],
+            'bank_account_number' => ['nullable', 'string', 'max:100'],
+            'bank_iban' => ['nullable', 'string', 'max:34', 'regex:/^PK[0-9A-Z]{22}$/i'],
+            'raast_account_title' => ['nullable', 'string', 'max:150'],
+            'raast_id' => ['nullable', 'string', 'max:100'],
+            'raast_qr' => ['nullable', 'image', 'max:2048'],
             'pickup_enabled' => ['nullable', 'boolean'],
             'delivery_enabled' => ['nullable', 'boolean'],
             'logo' => ['nullable', 'image', 'max:2048'],
@@ -80,15 +94,34 @@ class AdminStorefrontController extends Controller
         $easypaisaEnabled = $commerceSettingsPresent
             ? $request->boolean('easypaisa_enabled')
             : (bool) $storefront->easypaisa_enabled;
+        $jazzcashEnabled = $commerceSettingsPresent
+            ? $request->boolean('jazzcash_enabled')
+            : (bool) $storefront->jazzcash_enabled;
+        $bankTransferEnabled = $commerceSettingsPresent
+            ? $request->boolean('bank_transfer_enabled')
+            : (bool) $storefront->bank_transfer_enabled;
+        $raastEnabled = $commerceSettingsPresent
+            ? $request->boolean('raast_enabled')
+            : (bool) $storefront->raast_enabled;
         if ($commerceSettingsPresent && $onlineOrderingEnabled && ! $showClothing) {
             throw ValidationException::withMessages([
                 'online_ordering_enabled' => 'آن لائن آرڈر کے لیے کپڑے کی عوامی دکان فعال کریں۔',
             ]);
         }
         if ($commerceSettingsPresent && $onlineOrderingEnabled
-            && ! $unpaidOrdersEnabled && ! $codEnabled && ! $easypaisaEnabled) {
+            && ! $unpaidOrdersEnabled && ! $codEnabled && ! $easypaisaEnabled
+            && ! $jazzcashEnabled && ! $bankTransferEnabled && ! $raastEnabled) {
             throw ValidationException::withMessages([
                 'online_ordering_enabled' => 'آن لائن آرڈر کے لیے کم از کم ایک ادائیگی کا طریقہ منتخب کریں۔',
+            ]);
+        }
+        if ($commerceSettingsPresent && $request->boolean('inquiries_enabled') && $showTailoring
+            && ! $unpaidOrdersEnabled
+            && ! ($codEnabled && $request->boolean('delivery_enabled'))
+            && ! $easypaisaEnabled && ! $jazzcashEnabled
+            && ! $bankTransferEnabled && ! $raastEnabled) {
+            throw ValidationException::withMessages([
+                'inquiries_enabled' => 'ٹیلرنگ درخواستوں کے لیے کم از کم ایک ادائیگی کا طریقہ منتخب کریں۔',
             ]);
         }
         if ($commerceSettingsPresent && $onlineOrderingEnabled
@@ -103,6 +136,29 @@ class AdminStorefrontController extends Controller
                 'cod_enabled' => 'کیش آن ڈیلیوری کے لیے گھر تک فراہمی فعال کریں۔',
             ]);
         }
+        if ($commerceSettingsPresent && $jazzcashEnabled
+            && (blank($validated['jazzcash_account_title'] ?? null)
+                || blank($validated['jazzcash_account_number'] ?? null))) {
+            throw ValidationException::withMessages([
+                'jazzcash_account_number' => 'جاز کیش فعال کرنے کے لیے اکاؤنٹ کا عنوان اور نمبر درج کریں۔',
+            ]);
+        }
+        if ($commerceSettingsPresent && $bankTransferEnabled
+            && (blank($validated['bank_name'] ?? null)
+                || blank($validated['bank_account_title'] ?? null)
+                || (blank($validated['bank_account_number'] ?? null) && blank($validated['bank_iban'] ?? null)))) {
+            throw ValidationException::withMessages([
+                'bank_account_number' => 'بینک ٹرانسفر کے لیے بینک، اکاؤنٹ عنوان، اور اکاؤنٹ نمبر یا IBAN درج کریں۔',
+            ]);
+        }
+        if ($commerceSettingsPresent && $raastEnabled
+            && blank($validated['raast_id'] ?? null)
+            && ! $request->hasFile('raast_qr')
+            && blank($storefront->raast_qr_path)) {
+            throw ValidationException::withMessages([
+                'raast_id' => 'راست فعال کرنے کے لیے راست ID یا اپنے بینک/والٹ کا جاری کردہ Raast QR اپ لوڈ کریں۔',
+            ]);
+        }
 
         $storefront->fill([
             ...collect($validated)->except([
@@ -113,6 +169,10 @@ class AdminStorefrontController extends Controller
                 'unpaid_orders_enabled',
                 'cod_enabled',
                 'easypaisa_enabled',
+                'jazzcash_enabled',
+                'bank_transfer_enabled',
+                'raast_enabled',
+                'raast_qr',
             ])->all(),
             'business_id' => $business->id,
             'slug' => Str::lower($validated['slug']),
@@ -123,6 +183,9 @@ class AdminStorefrontController extends Controller
             'unpaid_orders_enabled' => $unpaidOrdersEnabled,
             'cod_enabled' => $codEnabled,
             'easypaisa_enabled' => $easypaisaEnabled,
+            'jazzcash_enabled' => $jazzcashEnabled,
+            'bank_transfer_enabled' => $bankTransferEnabled,
+            'raast_enabled' => $raastEnabled,
             'pickup_enabled' => $request->boolean('pickup_enabled'),
             'delivery_enabled' => $request->boolean('delivery_enabled'),
         ]);
@@ -132,6 +195,9 @@ class AdminStorefrontController extends Controller
         }
         if ($request->hasFile('cover')) {
             $storefront->cover_path = $this->storeImage($request->file('cover'));
+        }
+        if ($request->hasFile('raast_qr')) {
+            $storefront->raast_qr_path = $this->storeImage($request->file('raast_qr'));
         }
         $storefront->save();
 
@@ -196,6 +262,9 @@ class AdminStorefrontController extends Controller
             'unpaid_orders_enabled' => true,
             'cod_enabled' => false,
             'easypaisa_enabled' => false,
+            'jazzcash_enabled' => false,
+            'bank_transfer_enabled' => false,
+            'raast_enabled' => false,
             'pickup_enabled' => true,
             'delivery_enabled' => false,
             'default_locale' => 'ur',

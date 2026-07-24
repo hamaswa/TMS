@@ -16,6 +16,9 @@ class StorefrontInquiry extends Model
     public const PAYMENT_UNPAID = 'unpaid';
     public const PAYMENT_COD = 'cod';
     public const PAYMENT_EASYPAISA = 'easypaisa';
+    public const PAYMENT_JAZZCASH = 'jazzcash';
+    public const PAYMENT_BANK_TRANSFER = 'bank_transfer';
+    public const PAYMENT_RAAST = 'raast';
 
     public const VERIFICATION_NOT_REQUIRED = 'not_required';
     public const VERIFICATION_PENDING = 'pending';
@@ -51,6 +54,9 @@ class StorefrontInquiry extends Model
             self::PAYMENT_UNPAID => 'ابھی ادائیگی نہیں',
             self::PAYMENT_COD => 'کیش آن ڈیلیوری',
             self::PAYMENT_EASYPAISA => 'ایزی پیسہ',
+            self::PAYMENT_JAZZCASH => 'جاز کیش',
+            self::PAYMENT_BANK_TRANSFER => 'بینک ٹرانسفر',
+            self::PAYMENT_RAAST => 'راست',
         ];
     }
 
@@ -60,7 +66,20 @@ class StorefrontInquiry extends Model
             self::PAYMENT_UNPAID => __('storefront.payment.methods.unpaid'),
             self::PAYMENT_COD => __('storefront.payment.methods.cod'),
             self::PAYMENT_EASYPAISA => __('storefront.payment.methods.easypaisa'),
+            self::PAYMENT_JAZZCASH => __('storefront.payment.methods.jazzcash'),
+            self::PAYMENT_BANK_TRANSFER => __('storefront.payment.methods.bank_transfer'),
+            self::PAYMENT_RAAST => __('storefront.payment.methods.raast'),
         ];
+    }
+
+    public static function manualPaymentMethods(): array
+    {
+        return StorefrontOrder::manualPaymentMethods();
+    }
+
+    public static function requiresManualVerification(?string $method): bool
+    {
+        return in_array($method, self::manualPaymentMethods(), true);
     }
 
     protected $casts = [

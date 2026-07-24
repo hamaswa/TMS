@@ -51,7 +51,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 
 ## Phase 5 — Pakistan payments and delivery
 
-- [ ] Extend the verified manual-payment workflow to JazzCash, bank transfer, and Raast QR.
+- [x] Extend the verified manual-payment workflow to JazzCash, bank transfer, and Raast QR.
 - [ ] Add payment evidence uploads with private storage and access control.
 - [ ] Add settlement and daily payment-method reconciliation.
 - [ ] Add province, district, tehsil, city, and delivery-area fields.
@@ -200,4 +200,14 @@ At the Phase 4 configurable-print checkpoint:
 - The additive settings migration preserved all existing rows and assigned backward-compatible defaults: 80 mm paper with QR enabled.
 - Browser QA confirmed 80 mm and A4 order/measurement prints, cloth-sale receipts, worker reports, Urdu controls, zero horizontal overflow, working QR SVGs, and no broken images. The legacy five-column cloth receipt was tightened after QA found numeric overlap.
 
-Next starting point: extend verified manual payments to JazzCash, bank transfer, and Raast QR.
+At the Phase 5 Pakistan manual-payments checkpoint:
+
+- Full suite: 192 tests passed, 1,498 assertions.
+- Clients can independently enable pay-later, COD, EasyPaisa, JazzCash, bank transfer, and Raast for public clothing orders and tailoring enquiries.
+- EasyPaisa and JazzCash require the sender mobile and transaction reference; bank transfer and Raast require the reference without inventing an unnecessary sender-mobile field.
+- The public checkout displays only the enabled method's receiving details. Raast accepts a client-supplied Raast ID and/or an official QR image issued by the client's bank or regulated wallet; TMS does not fabricate a payment QR from arbitrary text.
+- Every wallet, bank, and Raast claim remains due until the client verifies receipt. Verification, rejection, unified-ledger posting, completion gating, refunds, and returns now use the same database-locked workflow for every manual method.
+- New methods default to disabled and all receiving-detail fields are nullable. The additive batch-25 migration preserved existing storefronts, orders, enquiries, balances, and EasyPaisa records.
+- Browser QA confirmed the Urdu settings layout, public tailoring payment interaction, correct hidden/required fields, and zero console warnings or errors without changing the client's live payment configuration.
+
+Next starting point: add payment evidence uploads with private storage and access control.

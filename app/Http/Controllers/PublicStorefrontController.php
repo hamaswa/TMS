@@ -213,6 +213,12 @@ class PublicStorefrontController extends Controller
         $this->ensureTailoringVisible($storefront);
         abort_unless($storefront->inquiries_enabled, 404);
         $request->mergeIfMissing(['payment_method' => StorefrontInquiry::PAYMENT_UNPAID]);
+        $paymentMethod = $request->input('payment_method');
+        $manualPayment = StorefrontInquiry::requiresManualVerification($paymentMethod);
+        $mobileWallet = in_array($paymentMethod, [
+            StorefrontInquiry::PAYMENT_EASYPAISA,
+            StorefrontInquiry::PAYMENT_JAZZCASH,
+        ], true);
         $validated = $request->validate([
             'tailoring_service_id' => ['nullable', 'integer'],
             'customer_name' => ['required', 'string', 'max:150'],
@@ -221,16 +227,16 @@ class PublicStorefrontController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'preferred_date' => ['nullable', 'date', 'after_or_equal:today'],
             'message' => ['nullable', 'string', 'max:3000'],
-            'payment_method' => ['required', Rule::in(array_keys(StorefrontInquiry::paymentMethods()))],
+            'payment_method' => ['required', Rule::in(array_keys($storefront->acceptedInquiryPaymentMethods()))],
             'payment_sender_phone' => [
-                Rule::requiredIf($request->input('payment_method') === StorefrontInquiry::PAYMENT_EASYPAISA),
+                Rule::requiredIf($mobileWallet),
                 'nullable',
                 'string',
                 'min:7',
                 'max:50',
             ],
             'payment_reference' => [
-                Rule::requiredIf($request->input('payment_method') === StorefrontInquiry::PAYMENT_EASYPAISA),
+                Rule::requiredIf($manualPayment),
                 'nullable',
                 'string',
                 'max:100',
@@ -249,7 +255,7 @@ class PublicStorefrontController extends Controller
             ...collect($validated)->except(['website', 'tailoring_service_id'])->all(),
             'tailoring_service_id' => $service?->id,
             'status' => StorefrontInquiry::STATUS_NEW,
-            'payment_verification_status' => $validated['payment_method'] === StorefrontInquiry::PAYMENT_EASYPAISA
+            'payment_verification_status' => StorefrontInquiry::requiresManualVerification($validated['payment_method'])
                 ? StorefrontInquiry::VERIFICATION_PENDING
                 : StorefrontInquiry::VERIFICATION_NOT_REQUIRED,
         ]);

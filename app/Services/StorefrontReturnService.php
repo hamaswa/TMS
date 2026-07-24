@@ -46,10 +46,10 @@ class StorefrontReturnService
                     'return_type' => 'منسوخ یا مکمل رقم واپس کیے گئے آرڈر پر جزوی واپسی درج نہیں ہو سکتی۔',
                 ]);
             }
-            if ($lockedOrder->payment_method === StorefrontOrder::PAYMENT_EASYPAISA
+            if (StorefrontOrder::requiresManualVerification($lockedOrder->payment_method)
                 && $lockedOrder->payment_verification_status !== StorefrontOrder::VERIFICATION_VERIFIED) {
                 throw ValidationException::withMessages([
-                    'return_type' => 'ایزی پیسہ ادائیگی کی تصدیق کے بعد ہی جزوی واپسی یا تبدیلی درج کریں۔',
+                    'return_type' => 'دستی ادائیگی کی تصدیق کے بعد ہی جزوی واپسی یا تبدیلی درج کریں۔',
                 ]);
             }
 

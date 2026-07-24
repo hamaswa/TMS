@@ -672,6 +672,86 @@ class StorefrontCheckoutTest extends TestCase
         );
     }
 
+    public function test_jazzcash_checkout_is_pending_until_client_verifies_it(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $storefront->update([
+            'unpaid_orders_enabled' => false,
+            'cod_enabled' => false,
+            'easypaisa_enabled' => false,
+            'jazzcash_enabled' => true,
+            'jazzcash_account_title' => 'Checkout Business',
+            'jazzcash_account_number' => '03001234567',
+        ]);
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->get(route('storefront.cart.show', $storefront))
+            ->assertOk()
+            ->assertSeeText('جاز کیش')
+            ->assertSeeText('Checkout Business')
+            ->assertSeeText('03001234567');
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_JAZZCASH,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'JC-20260724-1001',
+        ])->assertRedirect();
+
+        $order = StorefrontOrder::firstOrFail();
+        $this->assertSame(StorefrontOrder::PAYMENT_JAZZCASH, $order->payment_method);
+        $this->assertSame(StorefrontOrder::VERIFICATION_PENDING, $order->payment_verification_status);
+        $this->assertSame('0.00', $order->paid_amount);
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
+            'decision' => StorefrontOrder::VERIFICATION_VERIFIED,
+            'payment_verification_notes' => 'JazzCash merchant wallet matched',
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+
+        $order->refresh();
+        $this->assertSame(StorefrontOrder::VERIFICATION_VERIFIED, $order->payment_verification_status);
+        $this->assertSame($order->subtotal, $order->paid_amount);
+        $this->assertSame($owner->id, $order->payment_verified_by_user_id);
+        $this->assertDatabaseHas('transactions', [
+            'id' => $order->transaction_id,
+            'customerId' => $customer->id,
+            'Order_type' => 'Sale',
+            'recivedPayment' => 1450,
+            'remainingBalance' => 0,
+        ]);
+    }
+
+    public function test_bank_transfer_checkout_requires_reference_but_not_sender_mobile(): void
+    {
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $storefront->update([
+            'unpaid_orders_enabled' => false,
+            'cod_enabled' => false,
+            'easypaisa_enabled' => false,
+            'bank_transfer_enabled' => true,
+            'bank_name' => 'Meezan Bank',
+            'bank_account_title' => 'Checkout Business',
+            'bank_iban' => 'PK36MEZN0001234567890123',
+        ]);
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_BANK_TRANSFER,
+        ])->assertSessionHasErrors('payment_reference');
+        $this->assertDatabaseCount('storefront_orders', 0);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_BANK_TRANSFER,
+            'payment_reference' => 'MBL-20260724-8842',
+        ])->assertRedirect();
+
+        $order = StorefrontOrder::firstOrFail();
+        $this->assertSame(StorefrontOrder::PAYMENT_BANK_TRANSFER, $order->payment_method);
+        $this->assertNull($order->payment_sender_phone);
+        $this->assertSame(StorefrontOrder::VERIFICATION_PENDING, $order->payment_verification_status);
+    }
+
     public function test_another_client_cannot_view_or_change_the_order(): void
     {
         [$owner, $storefront, $listing, $color, $customer] = $this->catalog();

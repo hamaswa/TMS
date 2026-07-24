@@ -22,7 +22,7 @@
         : ($returnCreditAmount > 0 ? 'adjusted' : $order->payment_verification_status);
 @endphp
 <section class="card order-summary"><div class="row"><strong>{{ __('storefront.order.status') }}</strong><span class="pill">{{ __('storefront.order.statuses.'.$order->status) }}</span></div><div class="row"><strong>{{ __('storefront.order.customer') }}</strong><span>{{ $order->customer->name }}</span></div><div class="row"><strong>{{ __('storefront.order.placed_at') }}</strong><span>{{ $order->placed_at->format('d-m-Y h:i A') }}</span></div><div class="row"><strong>{{ __('storefront.order.fulfillment') }}</strong><span>{{ __('storefront.order.methods.'.$order->fulfillment_method) }}</span></div><div class="row"><strong>{{ __('storefront.order.payment_choice') }}</strong><span>{{ \App\Models\StorefrontOrder::publicPaymentMethods()[$order->payment_method] ?? $order->payment_method }}</span></div>
-@if($order->payment_method===\App\Models\StorefrontOrder::PAYMENT_EASYPAISA)<div class="row"><strong>{{ __('storefront.order.payment_reference') }}</strong><span dir="ltr">{{ $order->payment_reference }}</span></div><div class="notice">@if($order->payment_verification_status===\App\Models\StorefrontOrder::VERIFICATION_VERIFIED){{ __('storefront.order.payment_verified') }}@elseif($order->payment_verification_status===\App\Models\StorefrontOrder::VERIFICATION_REJECTED){{ __('storefront.order.payment_rejected') }}@else{{ __('storefront.order.payment_pending') }}@endif</div>@endif
+@if(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method))<div class="row"><strong>{{ __('storefront.order.payment_reference') }}</strong><span dir="ltr">{{ $order->payment_reference }}</span></div><div class="notice">@if($order->payment_verification_status===\App\Models\StorefrontOrder::VERIFICATION_VERIFIED){{ __('storefront.order.payment_verified') }}@elseif($order->payment_verification_status===\App\Models\StorefrontOrder::VERIFICATION_REJECTED){{ __('storefront.order.payment_rejected') }}@else{{ __('storefront.order.payment_pending') }}@endif</div>@endif
 @if($order->delivery_address)<div class="row"><strong>{{ __('storefront.order.delivery_address') }}</strong><span>{{ $order->delivery_address }}</span></div>@endif</section>
 <section class="card" style="margin-top:18px">
     <h2>{{ __('storefront.order.payment_overview') }}</h2>
@@ -35,7 +35,7 @@
     <h3>{{ __('storefront.order.payment_history') }}</h3>
     <ol class="payment-timeline">
         <li>{{ __('storefront.order.history_time', ['event' => __('storefront.order.history_order_placed', ['method' => \App\Models\StorefrontOrder::publicPaymentMethods()[$order->payment_method] ?? $order->payment_method]), 'time' => $order->placed_at->format('d-m-Y h:i A')]) }}</li>
-        @if($order->payment_method===\App\Models\StorefrontOrder::PAYMENT_EASYPAISA)
+        @if(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method))
             <li>{{ __('storefront.order.history_time', ['event' => __('storefront.order.history_reference_submitted', ['reference' => $order->payment_reference]), 'time' => $order->placed_at->format('d-m-Y h:i A')]) }}</li>
             @if($order->payment_verification_status===\App\Models\StorefrontOrder::VERIFICATION_PENDING)
                 <li>{{ __('storefront.order.history_pending') }}</li>

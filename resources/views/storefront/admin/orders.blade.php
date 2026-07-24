@@ -32,13 +32,13 @@
                             <div class="text-left"><span class="badge badge-{{ $order->status==='pending'?'warning':($order->status==='complete'?'success':'secondary') }}">{{ $statusLabels[$order->status] ?? $order->status }}</span><div class="h5 mt-2">Rs {{ number_format($order->subtotal,2) }}</div></div>
                         </div>
                         <div class="mt-2"><strong>ادائیگی:</strong> {{ \App\Models\StorefrontOrder::paymentMethods()[$order->payment_method] ?? $order->payment_method }}
-                            @if($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA)
-                                · <span dir="ltr">{{ $order->payment_sender_phone }}</span>
+                            @if(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method))
+                                @if($order->payment_sender_phone) · <span dir="ltr">{{ $order->payment_sender_phone }}</span>@endif
                                 · <code>{{ $order->payment_reference }}</code>
                                 <span class="badge badge-{{ $order->payment_verification_status === \App\Models\StorefrontOrder::VERIFICATION_VERIFIED ? 'success' : ($order->payment_verification_status === \App\Models\StorefrontOrder::VERIFICATION_REJECTED ? 'danger' : 'info') }}">{{ \App\Models\StorefrontOrder::verificationStatuses()[$order->payment_verification_status] ?? 'دستی تصدیق درکار' }}</span>
                             @endif
                         </div>
-                        @if($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA)
+                        @if(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method))
                             @php
                                 $verificationLabels = \App\Models\StorefrontOrder::verificationStatuses();
                                 $verificationClass = match($order->payment_verification_status) {
@@ -49,7 +49,7 @@
                             @endphp
                             <div class="border rounded bg-light p-3 mt-3">
                                 <div class="d-flex flex-wrap justify-content-between align-items-center">
-                                    <strong>ایزی پیسہ تصدیق</strong>
+                                    <strong>{{ \App\Models\StorefrontOrder::paymentMethods()[$order->payment_method] ?? $order->payment_method }} تصدیق</strong>
                                     <span class="badge badge-{{ $verificationClass }}">{{ $verificationLabels[$order->payment_verification_status] ?? $order->payment_verification_status }}</span>
                                 </div>
                                 @if($order->paymentVerifier)
@@ -137,7 +137,7 @@
                         @endif
                         @if($order->status==='pending')
                             <div class="mt-3">
-                                <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success" @disabled($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA && $order->payment_verification_status !== \App\Models\StorefrontOrder::VERIFICATION_VERIFIED)>مکمل کریں</button></form>
+                                <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success" @disabled(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method) && $order->payment_verification_status !== \App\Models\StorefrontOrder::VERIFICATION_VERIFIED)>مکمل کریں</button></form>
                                 @if($order->returns->isNotEmpty())
                                     <div class="alert alert-light mt-2 mb-0">اس آرڈر پر جزوی واپسی یا تبدیلی موجود ہے، اس لیے مکمل منسوخی دستیاب نہیں۔ باقی مقدار الگ واپسی یا تبدیلی سے درج کریں۔</div>
                                 @elseif((float) $order->paid_amount <= 0)

@@ -128,7 +128,7 @@ class AdminStorefrontOrderController extends Controller
 
         return redirect()->route('admin.storefront.orders.index')
             ->with('success', $validated['decision'] === StorefrontOrder::VERIFICATION_VERIFIED
-                ? 'ایزی پیسہ ادائیگی تصدیق کر کے گاہک کے کھاتے میں درج کر دی گئی ہے۔'
+                ? 'ادائیگی تصدیق کر کے گاہک کے کھاتے میں درج کر دی گئی ہے۔'
                 : 'ادائیگی کا دعویٰ مسترد کر دیا گیا ہے۔');
     }
 

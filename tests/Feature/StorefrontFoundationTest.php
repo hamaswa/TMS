@@ -209,6 +209,70 @@ class StorefrontFoundationTest extends TestCase
         $this->assertFalse($storefront->easypaisa_enabled);
     }
 
+    public function test_client_can_configure_pakistan_manual_payment_receiving_details(): void
+    {
+        [$owner, $business] = $this->business(true, true);
+        $storefront = Storefront::create([
+            'business_id' => $business->id,
+            'display_name' => 'Pakistan Payments Shop',
+            'slug' => 'pakistan-payments-shop',
+            'show_clothing' => true,
+            'show_tailoring' => true,
+        ]);
+
+        $this->actingAs($owner)->put(route('admin.storefront.update'), [
+            'display_name' => 'Pakistan Payments Shop',
+            'slug' => 'pakistan-payments-shop',
+            'default_locale' => 'ur',
+            'show_clothing' => '1',
+            'show_tailoring' => '1',
+            'commerce_settings_present' => '1',
+            'online_ordering_enabled' => '1',
+            'pickup_enabled' => '1',
+            'jazzcash_enabled' => '1',
+            'jazzcash_account_title' => 'Pakistan Payments Shop',
+            'jazzcash_account_number' => '03001234567',
+            'bank_transfer_enabled' => '1',
+            'bank_name' => 'Meezan Bank',
+            'bank_account_title' => 'Pakistan Payments Shop',
+            'bank_iban' => 'PK36MEZN0001234567890123',
+            'raast_enabled' => '1',
+            'raast_account_title' => 'Pakistan Payments Shop',
+            'raast_id' => '03001234567',
+        ])->assertRedirect(route('admin.storefront.edit'));
+
+        $storefront->refresh();
+        $this->assertTrue($storefront->jazzcash_enabled);
+        $this->assertTrue($storefront->bank_transfer_enabled);
+        $this->assertTrue($storefront->raast_enabled);
+        $this->assertSame('03001234567', $storefront->jazzcash_account_number);
+        $this->assertSame('PK36MEZN0001234567890123', $storefront->bank_iban);
+        $this->assertSame('03001234567', $storefront->raast_id);
+    }
+
+    public function test_manual_payment_methods_require_safe_public_receiving_details(): void
+    {
+        [$owner, $business] = $this->business(true, true);
+        Storefront::create([
+            'business_id' => $business->id,
+            'display_name' => 'Incomplete Payments Shop',
+            'slug' => 'incomplete-payments-shop',
+            'show_clothing' => true,
+            'show_tailoring' => true,
+        ]);
+
+        $this->actingAs($owner)->from(route('admin.storefront.edit'))->put(route('admin.storefront.update'), [
+            'display_name' => 'Incomplete Payments Shop',
+            'slug' => 'incomplete-payments-shop',
+            'default_locale' => 'ur',
+            'show_clothing' => '1',
+            'show_tailoring' => '1',
+            'commerce_settings_present' => '1',
+            'jazzcash_enabled' => '1',
+        ])->assertRedirect(route('admin.storefront.edit'))
+            ->assertSessionHasErrors('jazzcash_account_number');
+    }
+
     public function test_employee_needs_explicit_storefront_permission(): void
     {
         [$owner, $business] = $this->business(true, true);

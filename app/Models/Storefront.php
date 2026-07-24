@@ -36,6 +36,20 @@ class Storefront extends Model
         'unpaid_orders_enabled',
         'cod_enabled',
         'easypaisa_enabled',
+        'jazzcash_enabled',
+        'bank_transfer_enabled',
+        'raast_enabled',
+        'easypaisa_account_title',
+        'easypaisa_account_number',
+        'jazzcash_account_title',
+        'jazzcash_account_number',
+        'bank_name',
+        'bank_account_title',
+        'bank_account_number',
+        'bank_iban',
+        'raast_account_title',
+        'raast_id',
+        'raast_qr_path',
         'pickup_enabled',
         'delivery_enabled',
         'is_published',
@@ -52,6 +66,9 @@ class Storefront extends Model
             'unpaid_orders_enabled' => 'boolean',
             'cod_enabled' => 'boolean',
             'easypaisa_enabled' => 'boolean',
+            'jazzcash_enabled' => 'boolean',
+            'bank_transfer_enabled' => 'boolean',
+            'raast_enabled' => 'boolean',
             'pickup_enabled' => 'boolean',
             'delivery_enabled' => 'boolean',
             'is_published' => 'boolean',
@@ -128,6 +145,21 @@ class Storefront extends Model
             StorefrontOrder::PAYMENT_UNPAID => $this->unpaid_orders_enabled,
             StorefrontOrder::PAYMENT_COD => $this->cod_enabled && $this->delivery_enabled,
             StorefrontOrder::PAYMENT_EASYPAISA => $this->easypaisa_enabled,
+            StorefrontOrder::PAYMENT_JAZZCASH => $this->jazzcash_enabled,
+            StorefrontOrder::PAYMENT_BANK_TRANSFER => $this->bank_transfer_enabled,
+            StorefrontOrder::PAYMENT_RAAST => $this->raast_enabled,
+        ]));
+    }
+
+    public function acceptedInquiryPaymentMethods(): array
+    {
+        return array_intersect_key(StorefrontInquiry::publicPaymentMethods(), array_filter([
+            StorefrontInquiry::PAYMENT_UNPAID => $this->unpaid_orders_enabled,
+            StorefrontInquiry::PAYMENT_COD => $this->cod_enabled && $this->delivery_enabled,
+            StorefrontInquiry::PAYMENT_EASYPAISA => $this->easypaisa_enabled,
+            StorefrontInquiry::PAYMENT_JAZZCASH => $this->jazzcash_enabled,
+            StorefrontInquiry::PAYMENT_BANK_TRANSFER => $this->bank_transfer_enabled,
+            StorefrontInquiry::PAYMENT_RAAST => $this->raast_enabled,
         ]));
     }
 
@@ -144,6 +176,11 @@ class Storefront extends Model
     public function getCoverUrlAttribute(): ?string
     {
         return $this->publicAssetUrl($this->cover_path);
+    }
+
+    public function getRaastQrUrlAttribute(): ?string
+    {
+        return $this->publicAssetUrl($this->raast_qr_path);
     }
 
     private function publicAssetUrl(?string $path): ?string

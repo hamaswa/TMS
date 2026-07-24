@@ -121,7 +121,7 @@ class AdminStorefrontTailoringController extends Controller
 
         DB::transaction(function () use ($inquiry, $validated) {
             $lockedInquiry = StorefrontInquiry::query()->lockForUpdate()->findOrFail($inquiry->id);
-            if ($lockedInquiry->payment_method !== StorefrontInquiry::PAYMENT_EASYPAISA) {
+            if (! StorefrontInquiry::requiresManualVerification($lockedInquiry->payment_method)) {
                 throw ValidationException::withMessages([
                     'payment_verification' => 'اس ادائیگی کے طریقے کے لیے دستی تصدیق درکار نہیں۔',
                 ]);
@@ -144,8 +144,8 @@ class AdminStorefrontTailoringController extends Controller
 
         return redirect()->route('admin.storefront.inquiries.index')
             ->with('success', $validated['decision'] === StorefrontInquiry::VERIFICATION_VERIFIED
-                ? 'ایزی پیسہ حوالہ تصدیق کر دیا گیا ہے۔'
-                : 'ایزی پیسہ حوالہ مسترد کر دیا گیا ہے۔');
+                ? 'دستی ادائیگی کا حوالہ تصدیق کر دیا گیا ہے۔'
+                : 'دستی ادائیگی کا حوالہ مسترد کر دیا گیا ہے۔');
     }
 
     private function storefront(bool $requireTailoring = true)

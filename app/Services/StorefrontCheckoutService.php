@@ -97,11 +97,11 @@ class StorefrontCheckoutService
                 'delivery_address' => $fulfillmentMethod === 'delivery' ? $deliveryAddress : null,
                 'customer_note' => $customerNote,
                 'payment_method' => $paymentMethod,
-                'payment_sender_phone' => $paymentMethod === StorefrontOrder::PAYMENT_EASYPAISA
+                'payment_sender_phone' => StorefrontOrder::requiresManualVerification($paymentMethod)
                     ? $paymentSenderPhone : null,
-                'payment_reference' => $paymentMethod === StorefrontOrder::PAYMENT_EASYPAISA
+                'payment_reference' => StorefrontOrder::requiresManualVerification($paymentMethod)
                     ? $paymentReference : null,
-                'payment_verification_status' => $paymentMethod === StorefrontOrder::PAYMENT_EASYPAISA
+                'payment_verification_status' => StorefrontOrder::requiresManualVerification($paymentMethod)
                     ? StorefrontOrder::VERIFICATION_PENDING
                     : StorefrontOrder::VERIFICATION_NOT_REQUIRED,
                 'subtotal' => $subtotal,
@@ -161,10 +161,10 @@ class StorefrontCheckoutService
                 if ($lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
                     throw ValidationException::withMessages(['status' => 'صرف زیرِ انتظار آرڈر مکمل کیا جا سکتا ہے۔']);
                 }
-                if ($lockedOrder->payment_method === StorefrontOrder::PAYMENT_EASYPAISA
+                if (StorefrontOrder::requiresManualVerification($lockedOrder->payment_method)
                     && $lockedOrder->payment_verification_status !== StorefrontOrder::VERIFICATION_VERIFIED) {
                     throw ValidationException::withMessages([
-                        'status' => 'ایزی پیسہ ادائیگی کی تصدیق کے بعد ہی آرڈر مکمل کریں۔',
+                        'status' => 'دستی ادائیگی کی تصدیق کے بعد ہی آرڈر مکمل کریں۔',
                     ]);
                 }
                 $lockedOrder->update([
@@ -233,7 +233,7 @@ class StorefrontCheckoutService
     ): StorefrontOrder {
         return DB::transaction(function () use ($order, $decision, $notes, $verifiedByUserId) {
             $lockedOrder = StorefrontOrder::query()->lockForUpdate()->findOrFail($order->id);
-            if ($lockedOrder->payment_method !== StorefrontOrder::PAYMENT_EASYPAISA) {
+            if (! StorefrontOrder::requiresManualVerification($lockedOrder->payment_method)) {
                 throw ValidationException::withMessages([
                     'payment_verification' => 'اس ادائیگی کے طریقے کے لیے دستی تصدیق درکار نہیں۔',
                 ]);
@@ -267,7 +267,8 @@ class StorefrontCheckoutService
                 'recivedPayment' => $amount,
                 'remainingBalance' => 0,
                 'comment' => trim(($transaction->comment ? $transaction->comment.' · ' : '')
-                    .'ایزی پیسہ تصدیق '.$lockedOrder->payment_reference),
+                    .(StorefrontOrder::paymentMethods()[$lockedOrder->payment_method] ?? $lockedOrder->payment_method)
+                    .' تصدیق '.$lockedOrder->payment_reference),
             ]);
             $lockedOrder->update([
                 'payment_verification_status' => StorefrontOrder::VERIFICATION_VERIFIED,
