@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\Customers;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -48,12 +48,32 @@ class CustomerCreationTest extends TestCase
             'name' => 'QA Urdu Customer',
             'user_id' => $owner->id,
             'Daaman' => '0',
+            'phone_number1_normalized' => '+923001234567',
         ]);
-        $this->assertTrue(Hash::check('482913', \App\Models\Customers::firstOrFail()->mobile_pin));
-        $customer = \App\Models\Customers::firstOrFail();
+        $this->assertTrue(Hash::check('482913', Customers::firstOrFail()->mobile_pin));
+        $customer = Customers::firstOrFail();
         $this->actingAs($owner)->get(route('admin.Customers.edit', $customer))
             ->assertOk()
             ->assertSeeInOrder(['name="chuta"', 'value="15"'], false);
+    }
+
+    public function test_client_cannot_create_same_mobile_in_local_and_international_formats(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        Customers::create([
+            'name' => 'Existing Customer',
+            'phone_number1' => '03001234567',
+            'user_id' => $owner->id,
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.Customers.store'), [
+            'name' => 'Duplicate Customer',
+            'contact' => '+92 300 1234567',
+        ])->assertSessionHasErrors('contact');
+
+        $this->assertDatabaseCount('customers', 1);
     }
 
     public function test_client_can_reset_customer_pin_and_existing_mobile_sessions_are_revoked(): void

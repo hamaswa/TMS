@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers\ReactNativeController;
 
-use Exception;
-use App\Models\Order;
+use App\Http\Controllers\Controller;
 use App\Models\Customers;
+use App\Models\Order;
 use App\Models\Setting;
 use App\Models\Transaction;
+use Exception;
 use Illuminate\Http\Request;
-use App\Models\ServerNotifications;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
-use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReactNativeController extends Controller
@@ -27,9 +26,10 @@ class ReactNativeController extends Controller
         ]);
 
         try {
-            $customer = Customers::where('user_id', $validatedData['shop_id'])
-                ->where('phone_number1', $validatedData['phone'])
-                ->first();
+            $customer = Customers::findByPhoneForOwner(
+                (int) $validatedData['shop_id'],
+                $validatedData['phone']
+            );
 
             if ($customer?->pin_locked_until?->isFuture()) {
                 return response()->json([
@@ -109,7 +109,7 @@ class ReactNativeController extends Controller
                 'notifications' => $notifications,
                 'unreadCount' => $unreadCount,
             ], 200);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -125,11 +125,10 @@ class ReactNativeController extends Controller
                 $notification->markAsRead();
             }
 
-
             return response()->json([
                 'success' => 'updated',
             ], 200);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -144,23 +143,26 @@ class ReactNativeController extends Controller
             })
             ->latest()
             ->get();
+
         return response()->json(['orders' => $orders], 200);
     }
-    
+
     public function AllShops()
     {
-        try{
+        try {
             $shops = Setting::all();
-        return response()->json(['shops' => $shops], 200);
-        }catch (\Exception $e) {
+
+            return response()->json(['shops' => $shops], 200);
+        } catch (Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
-        
+
     }
 
     public function AllTransactions(Request $request)
     {
         $transactions = Transaction::where('customerId', $request->user()->id)->latest()->get();
+
         return response()->json(['transactions' => $transactions], 200);
     }
 

@@ -102,11 +102,13 @@ class PublicStorefrontCartController extends Controller
         ]);
         $cart = $this->cartOrFail($request, $storefront, $cartService);
         $result = DB::transaction(function () use ($validated, $storefront, $cart) {
-            $customer = Customers::query()
-                ->where('user_id', $storefront->business->owner_user_id)
-                ->where('phone_number1', $validated['phone'])
-                ->lockForUpdate()
-                ->first();
+            $matched = Customers::findByPhoneForOwner(
+                $storefront->business->owner_user_id,
+                $validated['phone']
+            );
+            $customer = $matched
+                ? Customers::query()->whereKey($matched->id)->lockForUpdate()->first()
+                : null;
             if ($customer?->pin_locked_until?->isFuture()) {
                 return 'locked';
             }

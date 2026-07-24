@@ -62,7 +62,7 @@
                         </div>
                         <div class="col-md-6 form-group edit-field">
                             <label for="customer-contact">رابطہ نمبر <span class="text-danger">*</span></label>
-                            <input id="customer-contact" type="tel" class="form-control text-left" name="contact" value="{{ old('contact', $customer->phone_number1) }}" required dir="ltr" autocomplete="tel">
+                            <input id="customer-contact" type="tel" inputmode="tel" class="form-control text-left" name="contact" value="{{ old('contact', $customer->phone_number1) }}" required dir="ltr" autocomplete="tel" placeholder="03001234567 یا +923001234567">
                             @error('contact')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
                     </div>

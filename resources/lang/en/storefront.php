@@ -11,6 +11,7 @@ return [
         'shop_home' => 'Shop overview',
         'back_to_shop' => 'Back to shop',
         'phone' => 'Phone number',
+        'phone_placeholder' => '03001234567 or +923001234567',
         'email' => 'Email',
         'address' => 'Address',
         'city' => 'City',

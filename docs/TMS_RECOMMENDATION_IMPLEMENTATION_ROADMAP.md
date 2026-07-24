@@ -36,8 +36,8 @@ Next starting point.
 - [x] Add labels to public search, colour, date-range, and other filter controls.
 - [x] Increase mobile login and public-action touch targets to at least 44 × 44 pixels.
 - [x] Add semantic headings to legacy sales, tailor, expense, and daily-expense screens.
-- [ ] Introduce Pakistan phone normalization for `03xx...` and `+92...`.
-- [ ] Store a canonical phone value and safely migrate/deduplicate existing values.
+- [x] Introduce Pakistan phone normalization for `03xx...`, `+92...`, `0092...`, spacing, punctuation, and Urdu/Arabic digits.
+- [x] Store a canonical phone value, preserve the entered value, prevent format-based duplicates, and safely flag ambiguous legacy conflicts without merging customer records.
 - [ ] Add customer self-registration/guest checkout using PIN, rate limiting, and account linking.
 
 ## Phase 4 — public commerce quality
@@ -98,3 +98,12 @@ At the Phase 3 accessibility checkpoint:
 - Public marketplace browser QA confirmed 44 px language controls, 44 px navigation actions, and 45 px shop actions at 390 px width.
 - Browser QA confirmed correct Urdu RTL semantics, one page-level heading, no horizontal overflow, and no console errors.
 - No database migration or client-data update was required for this checkpoint.
+
+At the Phase 3 phone identity checkpoint:
+
+- Full suite: 165 tests passed, 1,166 assertions.
+- Focused phone/storefront suite: 35 tests passed, 164 assertions.
+- Additive canonical-phone migration applied to 20 existing customers; all 20 normalized successfully and no conflicts were found.
+- Original phone values were preserved. The database now prevents a second customer under the same client from using an equivalent local/international phone identity.
+- If a future database contains a legacy formatting collision, records are flagged rather than merged and PIN login refuses the ambiguous identity.
+- Browser QA confirmed the Urdu public phone field uses a telephone control, accepts both documented formats, remains 47 px high, has no overflow, and produces no console errors.

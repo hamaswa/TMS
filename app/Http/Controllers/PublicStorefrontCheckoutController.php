@@ -104,12 +104,12 @@ class PublicStorefrontCheckoutController extends Controller
             'pin' => ['required', 'digits:6'],
         ]);
         $order = $storefront->orders()->where('reference', $reference)->firstOrFail();
-        $customer = Customers::query()
-            ->whereKey($order->customer_id)
-            ->where('user_id', $storefront->business->owner_user_id)
-            ->first();
+        $customer = Customers::findByPhoneForOwner(
+            $storefront->business->owner_user_id,
+            $validated['phone']
+        );
         if (! $customer || ! $customer->mobile_pin || ! Hash::check($validated['pin'], $customer->mobile_pin)
-            || $customer->phone_number1 !== $validated['phone']) {
+            || (int) $customer->id !== (int) $order->customer_id) {
             throw ValidationException::withMessages(['phone' => __('storefront.messages.identity_invalid')]);
         }
         $request->session()->put($this->orderSessionKey($order), true);

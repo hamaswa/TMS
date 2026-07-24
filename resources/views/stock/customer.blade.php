@@ -22,8 +22,9 @@
 
                                 <div class="row" style="margin-bottom:20px;">
                                     <div class="col-sm-12">
-                                        <label style="position:relative;left:90%;font-weight:600;">گاہک کا نمبر</label>
-                                        <input type="number" required class="form-control" name="customer_num">
+                                        <label for="customer_num" style="font-weight:600;">گاہک کا نمبر</label>
+                                        <input id="customer_num" type="tel" inputmode="tel" required class="form-control" name="customer_num" dir="ltr" placeholder="03001234567 یا +923001234567">
+                                        @error('customer_num')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
 

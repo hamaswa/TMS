@@ -7,6 +7,7 @@ return [
     'common' => [
         'marketplace' => 'TMS بازار', 'business_login' => 'کاروباری لاگ اِن', 'all_shops' => 'تمام دکانیں',
         'shop_home' => 'دکان کا تعارف', 'back_to_shop' => 'دکان پر واپس جائیں', 'phone' => 'فون نمبر',
+        'phone_placeholder' => '03001234567 یا +923001234567',
         'email' => 'ای میل', 'address' => 'پتہ', 'city' => 'شہر', 'optional' => 'اختیاری', 'pakistan' => 'پاکستان',
         'clothing' => 'کپڑے کی دکان', 'tailoring' => 'ٹیلرنگ', 'delivery' => 'گھر تک فراہمی',
         'pickup' => 'دکان سے وصولی', 'featured' => 'منتخب', 'contact_shop' => 'دکان سے رابطہ کریں',

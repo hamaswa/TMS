@@ -3,15 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cloth;
-use League\Csv\Reader;
-use League\Csv\Writer;
-use App\Models\ClothType;
-use App\Models\Customers;
 use App\Models\ClothBrand;
 use App\Models\ClothColor;
-use Illuminate\Support\Str;
+use App\Models\ClothType;
+use App\Models\Customers;
+use App\Support\PakistanPhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use League\Csv\Reader;
+use League\Csv\Writer;
+use RuntimeException;
 
 class CsvController extends Controller
 {
@@ -34,6 +36,17 @@ class CsvController extends Controller
 
             // Loop through each record and insert it into the database
             foreach ($records as $record) {
+                $normalizedPhone = PakistanPhoneNumber::normalize($record['رابطہ'] ?? null);
+                if (! $normalizedPhone) {
+                    throw new RuntimeException('CSV میں پاکستانی موبائل نمبر درست نہیں ہے۔');
+                }
+                if (Customers::withTrashed()
+                    ->where('user_id', Auth::user()->businessOwnerId())
+                    ->where('phone_number1_normalized', $normalizedPhone)
+                    ->exists()) {
+                    throw new RuntimeException('CSV میں ایسا موبائل نمبر موجود ہے جو پہلے سے گاہک کے ساتھ درج ہے۔');
+                }
+
                 // Prepare customer data from the CSV columns
                 $customerData = [
                     'name' => $record['نام'],
@@ -71,7 +84,7 @@ class CsvController extends Controller
             return redirect()->back()->with('insert', 'Customers data imported successfully.');
         } catch (\Exception $e) {
             // Catch any exceptions and return error message
-            return redirect()->back()->with('error', 'Error importing CSV: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error importing CSV: '.$e->getMessage());
         }
     }
 
@@ -79,7 +92,6 @@ class CsvController extends Controller
     {
         try {
             $customers_list = Customers::select('name', 'phone_number1', 'sleeve', 'shoulder', 'senaChorai', 'shalwar', 'teraa', 'jeab', 'length', 'damanchorai', 'button', 'shirtbutton', 'swingtype', 'arms', 'Chuta', 'necktype', 'shalwarGheer', 'pancha', 'Daaman', 'plate_type', 'note', 'comments')->where('user_id', Auth::user()->businessOwnerId())->get();
-
 
             // Define Urdu headers
             $headers = [
@@ -104,9 +116,8 @@ class CsvController extends Controller
                 'دامن',
                 'پلیٹ',
                 'نوٹ',
-                'تبصرے'
+                'تبصرے',
             ];
-
 
             // Convert data to array
             $data = $customers_list->map(function ($customer) {
@@ -119,13 +130,14 @@ class CsvController extends Controller
             $csv->insertAll($data);    // Add data
 
             // Add UTF-8 BOM for proper encoding
-            $csv_content = "\xEF\xBB\xBF" . (string) $csv;
+            $csv_content = "\xEF\xBB\xBF".(string) $csv;
 
             // Return CSV as a downloadable response
             $csv_name = 'customers_list.csv';
+
             return response($csv_content)
                 ->header('Content-Type', 'text/csv; charset=UTF-8')
-                ->header('Content-Disposition', 'attachment; filename="' . $csv_name . '"');
+                ->header('Content-Disposition', 'attachment; filename="'.$csv_name.'"');
 
             // return response()->json($customers_list);
         } catch (\Exception $e) {
@@ -150,7 +162,7 @@ class CsvController extends Controller
                 'کپڑے کی لمبائی',
                 'ریٹ فی میٹر',
                 'کپڑے کی قیمت',
-                'مجموعی قیمت'
+                'مجموعی قیمت',
             ];
 
             // Prepare data by mapping the cloths data and excluding unnecessary fields (like images and videos)
@@ -160,10 +172,10 @@ class CsvController extends Controller
                         'کپڑے کی قسم' => $cloth->type->name,
                         'کپڑے کی کمپنی' => $cloth->brand->name,
                         'کپڑے کا رنگ' => $color->color,
-                        'کپڑے کی لمبائی' => $color->length . ' میٹر',
-                        'ریٹ فی میٹر' => 'Rs:' . number_format($cloth->price),
-                        'کپڑے کی قیمت' => 'Rs:' . number_format($cloth->price * $color->length),
-                        'مجموعی قیمت' => 'Rs:' . number_format($cloth->price * $color->length),
+                        'کپڑے کی لمبائی' => $color->length.' میٹر',
+                        'ریٹ فی میٹر' => 'Rs:'.number_format($cloth->price),
+                        'کپڑے کی قیمت' => 'Rs:'.number_format($cloth->price * $color->length),
+                        'مجموعی قیمت' => 'Rs:'.number_format($cloth->price * $color->length),
                     ];
                 });
             })->flatten(1)->toArray(); // Flatten the collection for CSV formatting
@@ -174,13 +186,14 @@ class CsvController extends Controller
             $csv->insertAll($data);    // Insert the data
 
             // Add UTF-8 BOM for proper encoding
-            $csv_content = "\xEF\xBB\xBF" . (string) $csv;
+            $csv_content = "\xEF\xBB\xBF".(string) $csv;
 
             // Prepare the response to download the CSV
             $csv_name = 'cloths_list.csv';
+
             return response($csv_content)
                 ->header('Content-Type', 'text/csv; charset=UTF-8')
-                ->header('Content-Disposition', 'attachment; filename="' . $csv_name . '"');
+                ->header('Content-Disposition', 'attachment; filename="'.$csv_name.'"');
         } catch (\Throwable $th) {
             // Handle exceptions
             return response()->json(['error' => $th->getMessage()], 500);
@@ -212,7 +225,7 @@ class CsvController extends Controller
 
                 // Check if the brand already exists
                 $existingBrand = ClothBrand::where('name', $name)->where('user_id', Auth::user()->businessOwnerId())->first();
-                if (!$existingBrand) {
+                if (! $existingBrand) {
                     $cloth_brand = ClothBrand::create([
                         'name' => $name,
                         'brand_slug' => $brand_slug,
@@ -224,7 +237,7 @@ class CsvController extends Controller
 
                 // Check if the type already exists
                 $existingType = ClothType::where('name', $type_name)->where('user_id', Auth::user()->businessOwnerId())->first();
-                if (!$existingType) {
+                if (! $existingType) {
                     $cloth_type = ClothType::create([
                         'name' => $type_name,
                         'type_slug' => $type_slug,
@@ -243,12 +256,12 @@ class CsvController extends Controller
                 // Remove the 'Rs:' prefix from the price string if it exists
                 $price = str_replace('Rs:', '', $price);
                 // Save the cloth
-                if (!$existingcloth) {
+                if (! $existingcloth) {
 
                     $cloth = Cloth::create([
                         'cloth_type_id' => $cloth_type->id,
                         'cloth_brand_id' => $cloth_brand->id,
-                        'price' => (int)$price,
+                        'price' => (int) $price,
                         'user_id' => Auth::user()->businessOwnerId(),
                     ]);
                 }
@@ -264,7 +277,7 @@ class CsvController extends Controller
                     ->where('color', $colors)
                     ->first();
 
-                if (!$existingColor) {
+                if (! $existingColor) {
                     ClothColor::create([
                         'cloth_id' => $cloth->id,
                         'color' => $colors,
@@ -274,6 +287,7 @@ class CsvController extends Controller
                     ]);
                 }
             }
+
             return redirect()->back()->with('insert', 'کپڑا کامیابی کے ساتھ شامل کیا گیا۔');
         } catch (\Exception $e) {
             return response()->json($e->getMessage());

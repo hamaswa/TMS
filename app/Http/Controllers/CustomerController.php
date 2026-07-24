@@ -2,49 +2,48 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\rack;
-use App\Models\Tailor;
-use App\Models\Options;
-use App\Models\Customers;
 use App\Models\BusinessRole;
+use App\Models\Customers;
 use App\Models\MeasurementTemplate;
+use App\Models\Options;
 use App\Models\OptionType;
-use App\Models\Transaction;
+use App\Models\rack;
 use App\Models\SaleStock;
-use App\Models\Notification;
+use App\Models\Tailor;
+use App\Models\Transaction;
+use App\Rules\PakistanMobileNumber;
+use App\Rules\UniqueCustomerPhone;
 use App\Services\MeasurementService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB as FacadesDB;
 use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
-    public function __construct(private MeasurementService $measurements)
-    {
-    }
+    public function __construct(private MeasurementService $measurements) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function test()
     {
         try {
-        $customers = Customers::all();
-        return response()->json(['customer' => $customers]);
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()], 500);
-    }
-    }
+            $customers = Customers::all();
 
+            return response()->json(['customer' => $customers]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 
     public function index()
     {
-        $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
+        $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
             ->where('parent_id', null)
             ->when($canViewBalances, fn ($query) => $query->withSum([
@@ -58,7 +57,7 @@ class CustomerController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -77,11 +76,10 @@ class CustomerController extends Controller
             DB::raw('MAX(option_types.type) as type'),
             DB::raw('MAX(option_types.slug) as slug')
         )
-        ->join('options', 'options.option_id', '=', 'option_types.id')
-        ->where('options.user_id', auth()->user()->businessOwnerId())
-        ->groupBy('options.option_id', 'options.user_id') // Group by both option_id and user_id
-        ->get();
-
+            ->join('options', 'options.option_id', '=', 'option_types.id')
+            ->where('options.user_id', auth()->user()->businessOwnerId())
+            ->groupBy('options.option_id', 'options.user_id') // Group by both option_id and user_id
+            ->get();
 
         // $data['optionTypes'] = OptionType::with('options')->where('user_id',Auth::user()->businessOwnerId())->get();
         // dd($data);
@@ -89,6 +87,7 @@ class CustomerController extends Controller
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = collect();
         $measurementTemplates = $this->measurementTemplates();
+
         return view('customer.create', compact('data', 'measurementFields', 'measurementValues', 'measurementTemplates'));
     }
 
@@ -221,8 +220,7 @@ class CustomerController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(Request $request)
     {
@@ -235,10 +233,8 @@ class CustomerController extends Controller
         $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'contact' => [
-                'required', 'string', 'max:50',
-                Rule::unique('customers', 'phone_number1')->where(
-                    fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId())
-                ),
+                'required', 'string', 'max:50', new PakistanMobileNumber,
+                new UniqueCustomerPhone(Auth::user()->businessOwnerId()),
             ],
             'mobile_pin' => ['nullable', 'digits:6'],
             'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
@@ -271,44 +267,43 @@ class CustomerController extends Controller
         $obj->note = $request->note;
 
         // select option
-        $daamanparts = explode("-", $request->add_daaman_type);
+        $daamanparts = explode('-', $request->add_daaman_type);
         $daaman = isset($daamanparts[1]) ? $daamanparts[1] : 0; // Using isset instead of null coalescing
         // dd($daaman);
 
         $obj->Daaman = $daaman;
 
-
-        $plate_typeparts = explode("-", $request->plate_type);
+        $plate_typeparts = explode('-', $request->plate_type);
         $platet_type = $request['plate_type'] = $plate_typeparts[1] ?? 0;
         // dd($platet_type);
         $obj->plate_type = $platet_type;
 
-        $necktypeparts = explode("-", $request->add_neck_type);
+        $necktypeparts = explode('-', $request->add_neck_type);
         $neck_type = $request['neck_type'] = $necktypeparts[1] ?? 0;
         // dd($neck_type);
         $obj->necktype = $neck_type; //
 
-        $jeabparts = explode("-", $request->add_pocket_type);
+        $jeabparts = explode('-', $request->add_pocket_type);
         $jeab_type = $request['jeab_type'] = $jeabparts[1] ?? 0;
         // dd($jeab_type);
         $obj->jeab = $jeab_type;
 
-        $buttonparts = explode("-", $request->add_button_type);
+        $buttonparts = explode('-', $request->add_button_type);
         $button_type = $request['button_type'] = $buttonparts[1] ?? 0;
         // dd($button_type);
         $obj->button = $button_type;
 
-        $sewing_typeparts = explode("-", $request->add_sewing_type);
+        $sewing_typeparts = explode('-', $request->add_sewing_type);
         $sewing_type = $request['sewing_type'] = $sewing_typeparts[1] ?? 0;
         // dd($sewing_type);
         $obj->swingtype = $sewing_type;
 
-        $shirt_button_typeparts = explode("-", $request->add_shirt_button_type);
+        $shirt_button_typeparts = explode('-', $request->add_shirt_button_type);
         $shirt_button_type = $request['shirt_button_type'] = $shirt_button_typeparts[1] ?? 0;
         // dd($shirt_button_type);
         $obj->shirtbutton = $shirt_button_type;
 
-        $sleeve_opening_typeparts = explode("-", $request->add_sleeve_opening_type);
+        $sleeve_opening_typeparts = explode('-', $request->add_sleeve_opening_type);
         $sleeve_opening_type = $request['sleeve_opening_type'] = $sleeve_opening_typeparts[1] ?? 0;
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
@@ -328,6 +323,7 @@ class CustomerController extends Controller
                 'customer_created',
             );
         });
+
         // dd($obj);
         return redirect('admin/Customers')
             ->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔')
@@ -339,7 +335,7 @@ class CustomerController extends Controller
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit($id)
     {
@@ -350,7 +346,7 @@ class CustomerController extends Controller
         // ->where('options.user_id',Auth::user()->businessOwnerId())
         // ->groupBy('options.option_id')
         // ->get();
-    
+
         // dd($customer);
         $optionTypes = OptionType::select('options.option_id', 'options.user_id', 'option_types.Name as otn', 'option_types.type', 'option_types.slug')
             ->join('options', 'options.option_id', '=', 'option_types.id')
@@ -361,18 +357,18 @@ class CustomerController extends Controller
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = $customer->measurementValues()->pluck('value', 'measurement_field_id');
         $measurementTemplates = $this->measurementTemplates();
+
         return view('customer.edit', compact('customer', 'optionTypes', 'measurementFields', 'measurementValues', 'measurementTemplates'));
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(Request $request, $id)
-{
+    {
         $measurementTemplates = $this->measurementTemplates();
         $measurementTemplate = $measurementTemplates->firstWhere('id', (int) $request->input('measurement_template_id'));
         $measurementFields = $this->measurements->fieldsForTemplate(
@@ -382,10 +378,8 @@ class CustomerController extends Controller
         $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'contact' => [
-                'required', 'string', 'max:50',
-                Rule::unique('customers', 'phone_number1')
-                    ->where(fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
-                    ->ignore($id),
+                'required', 'string', 'max:50', new PakistanMobileNumber,
+                new UniqueCustomerPhone(Auth::user()->businessOwnerId(), (int) $id),
             ],
             'mobile_pin' => ['nullable', 'digits:6'],
             'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
@@ -413,44 +407,41 @@ class CustomerController extends Controller
         $obj->note = $request->note;
 
         // select option
-        $daamanparts = explode("-", $request->add_daaman_type);
-$daaman = isset($daamanparts[1]) ? trim($daamanparts[1]) : 0;
-$obj->Daaman = $daaman;
+        $daamanparts = explode('-', $request->add_daaman_type);
+        $daaman = isset($daamanparts[1]) ? trim($daamanparts[1]) : 0;
+        $obj->Daaman = $daaman;
 
-        
-
-
-        $plate_typeparts = explode("-", $request->plate_type);
+        $plate_typeparts = explode('-', $request->plate_type);
         $platet_type = $request['plate_type'] = $plate_typeparts[1] ?? 0;
         // dd($platet_type);
         $obj->plate_type = $platet_type;
 
-        $necktypeparts = explode("-", $request->add_neck_type);
+        $necktypeparts = explode('-', $request->add_neck_type);
         $neck_type = $request['neck_type'] = $necktypeparts[1] ?? 0;
         // dd($neck_type);
         $obj->necktype = $neck_type; //
 
-        $jeabparts = explode("-", $request->add_pocket_type);
+        $jeabparts = explode('-', $request->add_pocket_type);
         $jeab_type = $request['jeab_type'] = $jeabparts[1] ?? 0;
         // dd($jeab_type);
         $obj->jeab = $jeab_type;
 
-        $buttonparts = explode("-", $request->add_button_type);
+        $buttonparts = explode('-', $request->add_button_type);
         $button_type = $request['button_type'] = $buttonparts[1] ?? 0;
         // dd($button_type);
         $obj->button = $button_type;
 
-        $sewing_typeparts = explode("-", $request->add_sewing_type);
+        $sewing_typeparts = explode('-', $request->add_sewing_type);
         $sewing_type = $request['sewing_type'] = $sewing_typeparts[1] ?? 0;
         // dd($sewing_type);
         $obj->swingtype = $sewing_type;
 
-        $shirt_button_typeparts = explode("-", $request->add_shirt_button_type);
+        $shirt_button_typeparts = explode('-', $request->add_shirt_button_type);
         $shirt_button_type = $request['shirt_button_type'] = $shirt_button_typeparts[1] ?? 0;
         // dd($shirt_button_type);
         $obj->shirtbutton = $shirt_button_type;
 
-        $sleeve_opening_typeparts = explode("-", $request->add_sleeve_opening_type);
+        $sleeve_opening_typeparts = explode('-', $request->add_sleeve_opening_type);
         $sleeve_opening_type = $request['sleeve_opening_type'] = $sleeve_opening_typeparts[1] ?? 0;
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
@@ -477,22 +468,21 @@ $obj->Daaman = $daaman;
             }
         });
         // dd($obj);
-    $response = redirect('admin/Customers')->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
+        $response = redirect('admin/Customers')->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
 
-    if (! empty($validated['mobile_pin'])) {
-        $response->with('customer_pin', $validated['mobile_pin'])
-            ->with('customer_pin_name', $obj->name);
+        if (! empty($validated['mobile_pin'])) {
+            $response->with('customer_pin', $validated['mobile_pin'])
+                ->with('customer_pin_name', $obj->name);
+        }
+
+        return $response;
     }
-
-    return $response;
-}
-
 
     /**
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy($id)
     {
@@ -518,7 +508,7 @@ $obj->Daaman = $daaman;
         if ($validated['DirectPayment'] > $currentBalance) {
             // If the payment exceeds the current balance, show an error message
             return redirect()->back()->with([
-                'balanceError' => "موجودہ واجبات Rs: {$currentBalance} ہیں۔ {$customerName} کے لئے آپ نے  Rs : {$req->DirectPayment} کی رقم درج کی ہے جو دستیاب واجبات سے زیادہ ہے"
+                'balanceError' => "موجودہ واجبات Rs: {$currentBalance} ہیں۔ {$customerName} کے لئے آپ نے  Rs : {$req->DirectPayment} کی رقم درج کی ہے جو دستیاب واجبات سے زیادہ ہے",
             ]);
         }
 
@@ -569,7 +559,7 @@ $obj->Daaman = $daaman;
         if ($validated['DirectPayment'] > $currentBalance) {
             // If the payment exceeds the current balance, show an error message
             return redirect()->back()->with([
-                'balanceError' => "موجودہ واجبات {$currentBalance} ہیں۔ {$customerName} کے لئے آپ نے {$req->DirectPayment} کی رقم درج کی ہے جو دستیاب واجبات سے زیادہ ہے"
+                'balanceError' => "موجودہ واجبات {$currentBalance} ہیں۔ {$customerName} کے لئے آپ نے {$req->DirectPayment} کی رقم درج کی ہے جو دستیاب واجبات سے زیادہ ہے",
             ]);
         }
         $obj = new Transaction;
@@ -595,16 +585,19 @@ $obj->Daaman = $daaman;
 
     public function AddsaleCustomer(Request $request)
     {
-        try {
-            $validatedData = $request->validate([
-                'customer_name' => 'required',
-                'customer_num' => 'required'
-            ]);
+        $validatedData = $request->validate([
+            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_num' => [
+                'required', 'string', 'max:50', new PakistanMobileNumber,
+                new UniqueCustomerPhone(auth()->user()->businessOwnerId()),
+            ],
+        ]);
 
+        try {
             Customers::create([
                 'name' => $validatedData['customer_name'],
                 'phone_number1' => $validatedData['customer_num'],
-                'user_id' => auth()->user()->businessOwnerId()
+                'user_id' => auth()->user()->businessOwnerId(),
             ]);
 
             return redirect()->route('admin.stock.index')->with('insert', 'نیا کسٹمر شامل کیا گیا ہے۔');
@@ -623,5 +616,4 @@ $obj->Daaman = $daaman;
         return MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())
             ->where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
     }
-
 }

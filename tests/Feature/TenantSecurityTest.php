@@ -12,9 +12,10 @@ use App\Models\Order;
 use App\Models\Tailor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class TenantSecurityTest extends TestCase
@@ -139,7 +140,7 @@ class TenantSecurityTest extends TestCase
         ]);
 
         $this->postJson('/api/v2/login', [
-            'phone' => $customer->phone_number1,
+            'phone' => '+92 300 1112222',
             'shop_id' => $shopOwner->id,
             'pin' => '482913',
             'device_name' => 'security-test',
@@ -147,6 +148,34 @@ class TenantSecurityTest extends TestCase
             ->assertJsonPath('customer.id', $customer->id)
             ->assertJsonMissingPath('customer.mobile_pin')
             ->assertJsonStructure(['customer', 'token']);
+    }
+
+    public function test_normalization_conflict_never_selects_an_ambiguous_customer(): void
+    {
+        $shopOwner = $this->userWithRole('shop_owner');
+        $customer = Customers::create([
+            'name' => 'First Customer',
+            'phone_number1' => '03001112222',
+            'user_id' => $shopOwner->id,
+            'mobile_pin' => Hash::make('482913'),
+        ]);
+        $customer->forceFill(['phone_normalization_conflict' => true])->save();
+        DB::table('customers')->insert([
+            'name' => 'Legacy Duplicate',
+            'phone_number1' => '+92 300 1112222',
+            'phone_number1_normalized' => null,
+            'phone_normalization_conflict' => true,
+            'user_id' => $shopOwner->id,
+            'mobile_pin' => Hash::make('482913'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->postJson('/api/v2/login', [
+            'phone' => '+923001112222',
+            'shop_id' => $shopOwner->id,
+            'pin' => '482913',
+        ])->assertUnauthorized();
     }
 
     public function test_customer_mobile_login_uses_generic_unauthorized_response_and_is_rate_limited(): void

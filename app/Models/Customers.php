@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use Laravel\Sanctum\HasApiTokens;
+use App\Support\PakistanPhoneNumber;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
- * @property integer $id
+ * @property int $id
  * @property string $name
  * @property string $phone_number1
  * @property string $phone_number2
@@ -27,14 +28,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * @property string $chestplatewidth
  * @property string $neckwidth
  * @property string $neckheight
- * @property integer $comments
+ * @property int $comments
  * @property string $created_at
  * @property string $updated_at
  * @property CustomerOption[] $customerOptions
  */
 class Customers extends Authenticatable
 {
-    use HasApiTokens, SoftDeletes, Notifiable;
+    use HasApiTokens, Notifiable, SoftDeletes;
+
     /**
      * The "type" of the auto-incrementing ID.
      *
@@ -45,22 +47,56 @@ class Customers extends Authenticatable
     /**
      * @var array
      */
-    protected $fillable = ['name','parent_id', 'phone_number1', 'phone_number2', 'ref_phone_number',
-                           'shirtlength', 'sleeve', 'sleevetop', 'shoulder', 'chest',
-                           'senaChorai','necktype', 'comments', 'created_at', 'updated_at',
-                           'jeab','teraa','length','button','shirtbutton','damanchorai','chuta',
-                           'swingtype','arms','user_id','pancha','shalwarGheer','shalwar','note','plate_type','Daaman',
-                           'mobile_pin','measurement_template_id'];
+    protected $fillable = ['name', 'parent_id', 'phone_number1', 'phone_number2', 'ref_phone_number',
+        'shirtlength', 'sleeve', 'sleevetop', 'shoulder', 'chest',
+        'senaChorai', 'necktype', 'comments', 'created_at', 'updated_at',
+        'jeab', 'teraa', 'length', 'button', 'shirtbutton', 'damanchorai', 'chuta',
+        'swingtype', 'arms', 'user_id', 'pancha', 'shalwarGheer', 'shalwar', 'note', 'plate_type', 'Daaman',
+        'mobile_pin', 'measurement_template_id'];
 
     protected $hidden = ['mobile_pin', 'pin_failed_attempts', 'pin_locked_until'];
 
     protected $casts = [
         'pin_locked_until' => 'datetime',
         'pin_changed_at' => 'datetime',
+        'phone_normalization_conflict' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (Customers $customer) {
+            if ($customer->isDirty('phone_number1')) {
+                $customer->phone_number1_normalized = PakistanPhoneNumber::normalize($customer->phone_number1);
+                $customer->phone_normalization_conflict = false;
+            }
+        });
+    }
+
+    public static function findByPhoneForOwner(int $ownerId, string $phone): ?self
+    {
+        $normalized = PakistanPhoneNumber::normalize($phone);
+        if (! $normalized) {
+            return static::where('user_id', $ownerId)
+                ->where('phone_number1', trim($phone))
+                ->first();
+        }
+
+        $matches = static::where('user_id', $ownerId)
+            ->where('phone_number1_normalized', $normalized)
+            ->limit(2)
+            ->get();
+        $legacyConflicts = static::where('user_id', $ownerId)
+            ->where('phone_normalization_conflict', true)
+            ->whereNull('phone_number1_normalized')
+            ->get()
+            ->filter(fn (Customers $customer) => PakistanPhoneNumber::normalize($customer->phone_number1) === $normalized);
+        $matches = $matches->concat($legacyConflicts)->unique('id');
+
+        return $matches->count() === 1 ? $matches->first() : null;
+    }
+
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function customerOptions()
     {
@@ -69,12 +105,12 @@ class Customers extends Authenticatable
 
     public function orders()
     {
-        return $this->hasMany(Order::class,'customerId','id');
+        return $this->hasMany(Order::class, 'customerId', 'id');
     }
 
     public function transactions()
     {
-        return $this->hasMany(Transaction::class,'customerId','id');
+        return $this->hasMany(Transaction::class, 'customerId', 'id');
     }
 
     public function sales()
@@ -104,6 +140,6 @@ class Customers extends Authenticatable
 
     public function servernotifi()
     {
-        return $this->hasMany(ServerNotifications::class,'customer_id');
+        return $this->hasMany(ServerNotifications::class, 'customer_id');
     }
 }

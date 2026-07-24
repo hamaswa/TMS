@@ -104,7 +104,7 @@ class StorefrontCartReservationTest extends TestCase
         ]);
         $expectedExpiry = StorefrontCart::firstOrFail()->expires_at->toDateTimeString();
         $this->post(route('storefront.cart.customer.link', $storefront), [
-            'phone' => '03007771111',
+            'phone' => '+92 300 7771111',
             'pin' => '482913',
         ])->assertRedirect(route('storefront.cart.show', $storefront));
 
