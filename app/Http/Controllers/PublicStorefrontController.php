@@ -2,23 +2,58 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClothType;
 use App\Models\Storefront;
 use App\Models\StorefrontClothingListing;
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PublicStorefrontController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $storefronts = Storefront::query()
-            ->publiclyVisible()
+        $publicQuery = Storefront::query()->publiclyVisible();
+        $cities = (clone $publicQuery)
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->orderBy('city')
+            ->distinct()
+            ->pluck('city');
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'category' => ['nullable', Rule::in(['clothing', 'tailoring', 'both'])],
+            'delivery' => ['nullable', Rule::in(['1'])],
+        ]);
+        $storefronts = $publicQuery
+            ->when($filters['q'] ?? null, function ($query, $term) {
+                $query->where(function ($query) use ($term) {
+                    $query->where('display_name', 'like', '%'.$term.'%')
+                        ->orWhere('tagline', 'like', '%'.$term.'%')
+                        ->orWhere('description', 'like', '%'.$term.'%')
+                        ->orWhere('city', 'like', '%'.$term.'%');
+                });
+            })
+            ->when($filters['city'] ?? null, fn ($query, $city) => $query->where('city', $city))
+            ->when($filters['delivery'] ?? null, fn ($query) => $query->where('delivery_enabled', true))
+            ->when($filters['category'] ?? null, function ($query, $category) {
+                if (in_array($category, ['clothing', 'both'], true)) {
+                    $query->where('show_clothing', true)
+                        ->whereHas('business', fn ($business) => $business->where('clothing_enabled', true));
+                }
+                if (in_array($category, ['tailoring', 'both'], true)) {
+                    $query->where('show_tailoring', true)
+                        ->whereHas('business', fn ($business) => $business->where('tailoring_enabled', true));
+                }
+            })
             ->with('business:id,status,tailoring_enabled,clothing_enabled')
             ->latest('published_at')
-            ->paginate(12);
+            ->paginate(12)
+            ->withQueryString();
 
-        return view('storefront.public.index', compact('storefronts'));
+        return view('storefront.public.index', compact('storefronts', 'cities', 'filters'));
     }
 
     public function show(Storefront $storefront)
@@ -39,9 +74,31 @@ class PublicStorefrontController extends Controller
     public function clothing(Request $request, Storefront $storefront)
     {
         $this->ensureClothingVisible($storefront);
+        $typeIds = $storefront->clothingListings()
+            ->where('is_published', true)
+            ->join('cloths', 'cloths.id', '=', 'storefront_clothing_listings.cloth_id')
+            ->where('cloths.user_id', $storefront->business->owner_user_id)
+            ->whereNull('cloths.deleted_at')
+            ->whereNotNull('cloths.cloth_type_id')
+            ->distinct()
+            ->pluck('cloths.cloth_type_id');
+        $types = ClothType::query()
+            ->whereIn('id', $typeIds)
+            ->orderBy('name')
+            ->get(['id', 'name']);
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'color' => ['nullable', 'string', 'max:100'],
+            'type' => ['nullable', 'integer', Rule::in($types->pluck('id')->all())],
+            'min_price' => ['nullable', 'numeric', 'min:0', 'max:10000000'],
+            'max_price' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:10000000',
+                Rule::when($request->filled('min_price'), ['gte:min_price']),
+            ],
+            'availability' => ['nullable', Rule::in(['in_stock'])],
         ]);
         $listings = $storefront->clothingListings()
             ->where('is_published', true)
@@ -60,6 +117,29 @@ class PublicStorefrontController extends Controller
                 'cloth.colors',
                 fn ($colors) => $colors->where('color', $color)
             ))
+            ->when($filters['type'] ?? null, fn ($query, $type) => $query->whereHas(
+                'cloth',
+                fn ($cloth) => $cloth->where('cloth_type_id', $type)
+            ))
+            ->when(
+                array_key_exists('min_price', $filters) && $filters['min_price'] !== null,
+                fn ($query) => $query->whereHas(
+                    'cloth',
+                    fn ($cloth) => $cloth->whereRaw(
+                        "CAST(COALESCE(NULLIF(sale_price, ''), price) AS DECIMAL(12,2)) >= ?",
+                        [$filters['min_price']]
+                    )
+                ))
+            ->when(
+                array_key_exists('max_price', $filters) && $filters['max_price'] !== null,
+                fn ($query) => $query->whereHas(
+                    'cloth',
+                    fn ($cloth) => $cloth->whereRaw(
+                        "CAST(COALESCE(NULLIF(sale_price, ''), price) AS DECIMAL(12,2)) <= ?",
+                        [$filters['max_price']]
+                    )
+                ))
+            ->when($filters['availability'] ?? null, fn ($query) => $query->withReservableStock())
             ->with(['cloth.brand', 'cloth.type', 'cloth.colors', 'cloth.images'])
             ->orderByDesc('is_featured')
             ->orderBy('sort_order')
@@ -76,7 +156,7 @@ class PublicStorefrontController extends Controller
             ->distinct()
             ->pluck('cloth_colors.color');
 
-        return view('storefront.public.clothing.index', compact('storefront', 'listings', 'colors', 'filters'));
+        return view('storefront.public.clothing.index', compact('storefront', 'listings', 'colors', 'types', 'filters'));
     }
 
     public function clothingShow(Storefront $storefront, StorefrontClothingListing $listing)
@@ -141,16 +221,16 @@ class PublicStorefrontController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'preferred_date' => ['nullable', 'date', 'after_or_equal:today'],
             'message' => ['nullable', 'string', 'max:3000'],
-            'payment_method' => ['required', \Illuminate\Validation\Rule::in(array_keys(StorefrontInquiry::paymentMethods()))],
+            'payment_method' => ['required', Rule::in(array_keys(StorefrontInquiry::paymentMethods()))],
             'payment_sender_phone' => [
-                \Illuminate\Validation\Rule::requiredIf($request->input('payment_method') === StorefrontInquiry::PAYMENT_EASYPAISA),
+                Rule::requiredIf($request->input('payment_method') === StorefrontInquiry::PAYMENT_EASYPAISA),
                 'nullable',
                 'string',
                 'min:7',
                 'max:50',
             ],
             'payment_reference' => [
-                \Illuminate\Validation\Rule::requiredIf($request->input('payment_method') === StorefrontInquiry::PAYMENT_EASYPAISA),
+                Rule::requiredIf($request->input('payment_method') === StorefrontInquiry::PAYMENT_EASYPAISA),
                 'nullable',
                 'string',
                 'max:100',

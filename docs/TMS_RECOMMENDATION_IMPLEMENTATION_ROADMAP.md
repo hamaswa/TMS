@@ -40,9 +40,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 
 ## Phase 4 — public commerce quality
 
-Next starting point.
-
-- [ ] Add city, category, price, delivery, and availability discovery filters.
+- [x] Add city, category, price, delivery, and availability discovery filters.
 - [ ] Add SEO titles/descriptions, canonical URLs, Open Graph cards, and LocalBusiness/Product structured data.
 - [ ] Centralize currency formatting and provide consistent Urdu/English PKR labels.
 - [ ] Add customer-visible payment verification status and payment-history details.
@@ -116,3 +114,14 @@ At the completed Phase 3 customer registration checkpoint:
 - Public registration creates the same client-owned customer record used by clothing and tailoring, hashes the PIN, links the cart atomically, rejects duplicate phone identities and weak PINs, and rate-limits repeated attempts.
 - A self-registered customer can proceed through checkout into the existing unified customer balance; no payment is falsely recorded.
 - Browser QA confirmed bilingual Urdu RTL and English LTR forms, clear no-OTP/unverified-phone messaging, 47 px mobile inputs, no horizontal overflow at 390 px, weak-PIN feedback, and successful cart linking.
+
+At the Phase 4 public discovery checkpoint:
+
+- Full suite: 172 tests passed, 1,225 assertions.
+- Focused discovery suite: 3 tests passed, 28 assertions; combined storefront regression suite: 22 tests passed, 167 assertions.
+- Marketplace discovery now combines shop text, city, clothing/tailoring category, and home-delivery filters while keeping inactive or unpublished businesses hidden.
+- Clothing catalogues now combine fabric type, colour, minimum/maximum price, and live availability filters. “In stock” subtracts active cart reservations and automatically restores availability after expiry.
+- Filter values are tenant-scoped, validated, retained across pagination, and translated in Urdu and English. No database migration or existing-data update was required.
+- Browser QA confirmed English LTR and Urdu RTL results, complete desktop labels, 44–47 px controls, and no horizontal overflow at 375 px mobile width.
+
+Next starting point: Phase 4 SEO metadata, canonical URLs, social cards, and structured data.
