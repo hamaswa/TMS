@@ -7,8 +7,10 @@ use App\Models\Storefront;
 use App\Models\StorefrontClothingListing;
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
+use App\Services\StorefrontPaymentEvidenceService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 
 class PublicStorefrontController extends Controller
 {
@@ -208,7 +210,11 @@ class PublicStorefrontController extends Controller
         return view('storefront.public.tailoring.show', compact('storefront', 'service'));
     }
 
-    public function submitInquiry(Request $request, Storefront $storefront)
+    public function submitInquiry(
+        Request $request,
+        Storefront $storefront,
+        StorefrontPaymentEvidenceService $evidenceService
+    )
     {
         $this->ensureTailoringVisible($storefront);
         abort_unless($storefront->inquiries_enabled, 404);
@@ -241,6 +247,11 @@ class PublicStorefrontController extends Controller
                 'string',
                 'max:100',
             ],
+            'payment_evidence' => [
+                Rule::prohibitedIf(! $manualPayment),
+                'nullable',
+                File::types(['jpg', 'jpeg', 'png', 'webp', 'pdf'])->max(5 * 1024),
+            ],
             'website' => ['prohibited'],
         ], [
             'preferred_date.after_or_equal' => __('storefront.messages.preferred_date'),
@@ -251,14 +262,23 @@ class PublicStorefrontController extends Controller
                 ->where('is_published', true)
                 ->findOrFail($validated['tailoring_service_id']);
         }
-        $inquiry = $storefront->inquiries()->create([
-            ...collect($validated)->except(['website', 'tailoring_service_id'])->all(),
-            'tailoring_service_id' => $service?->id,
-            'status' => StorefrontInquiry::STATUS_NEW,
-            'payment_verification_status' => StorefrontInquiry::requiresManualVerification($validated['payment_method'])
-                ? StorefrontInquiry::VERIFICATION_PENDING
-                : StorefrontInquiry::VERIFICATION_NOT_REQUIRED,
-        ]);
+        $evidence = $request->hasFile('payment_evidence')
+            ? $evidenceService->store($request->file('payment_evidence'), $storefront)
+            : [];
+        try {
+            $inquiry = $storefront->inquiries()->create([
+                ...collect($validated)->except(['website', 'tailoring_service_id', 'payment_evidence'])->all(),
+                ...$evidence,
+                'tailoring_service_id' => $service?->id,
+                'status' => StorefrontInquiry::STATUS_NEW,
+                'payment_verification_status' => StorefrontInquiry::requiresManualVerification($validated['payment_method'])
+                    ? StorefrontInquiry::VERIFICATION_PENDING
+                    : StorefrontInquiry::VERIFICATION_NOT_REQUIRED,
+            ]);
+        } catch (\Throwable $exception) {
+            $evidenceService->delete($evidence);
+            throw $exception;
+        }
 
         return redirect()->route('storefront.tailoring.index', $storefront)
             ->with('inquiry_success', __('storefront.messages.inquiry_saved', [

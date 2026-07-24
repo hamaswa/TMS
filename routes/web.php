@@ -154,12 +154,16 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::patch('/storefront/inquiries/{inquiry}', [AdminStorefrontTailoringController::class, 'updateInquiry'])->name('storefront.inquiries.update');
         Route::patch('/storefront/inquiries/{inquiry}/payment-verification', [AdminStorefrontTailoringController::class, 'verifyInquiryPayment'])
             ->name('storefront.inquiries.payment-verification');
+        Route::get('/storefront/inquiries/{inquiry}/payment-evidence', [AdminStorefrontTailoringController::class, 'inquiryPaymentEvidence'])
+            ->name('storefront.inquiries.payment-evidence');
     });
     Route::middleware('business.permission:clothing.sales')->group(function () {
         Route::get('/storefront/orders', [AdminStorefrontOrderController::class, 'index'])->name('storefront.orders.index');
         Route::patch('/storefront/orders/{order}', [AdminStorefrontOrderController::class, 'update'])->name('storefront.orders.update');
         Route::patch('/storefront/orders/{order}/payment-verification', [AdminStorefrontOrderController::class, 'verifyPayment'])
             ->name('storefront.orders.payment-verification');
+        Route::get('/storefront/orders/{order}/payment-evidence', [AdminStorefrontOrderController::class, 'paymentEvidence'])
+            ->name('storefront.orders.payment-evidence');
         Route::post('/storefront/orders/{order}/returns', [AdminStorefrontOrderController::class, 'storeReturn'])
             ->name('storefront.orders.returns.store');
     });

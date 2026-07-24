@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
+use App\Services\StorefrontPaymentEvidenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,24 @@ use Illuminate\Validation\ValidationException;
 
 class AdminStorefrontTailoringController extends Controller
 {
+    public function inquiryPaymentEvidence(
+        StorefrontInquiry $inquiry,
+        StorefrontPaymentEvidenceService $evidenceService
+    ) {
+        $storefront = $this->storefront(false);
+        abort_unless(
+            $inquiry->storefront_id === $storefront->id
+            && $inquiry->payment_evidence_path,
+            404
+        );
+
+        return $evidenceService->response(
+            $inquiry->payment_evidence_path,
+            $inquiry->payment_evidence_original_name,
+            $inquiry->payment_evidence_mime_type,
+        );
+    }
+
     public function services()
     {
         $storefront = $this->storefront();

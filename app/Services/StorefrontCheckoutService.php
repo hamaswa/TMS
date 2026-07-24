@@ -23,6 +23,7 @@ class StorefrontCheckoutService
         string $paymentMethod = StorefrontOrder::PAYMENT_UNPAID,
         ?string $paymentSenderPhone = null,
         ?string $paymentReference = null,
+        array $paymentEvidence = [],
     ): array {
         $trackingToken = Str::random(64);
 
@@ -34,6 +35,7 @@ class StorefrontCheckoutService
             $paymentMethod,
             $paymentSenderPhone,
             $paymentReference,
+            $paymentEvidence,
             $trackingToken
         ) {
             $lockedCart = StorefrontCart::query()->lockForUpdate()->findOrFail($cart->id);
@@ -101,6 +103,7 @@ class StorefrontCheckoutService
                     ? $paymentSenderPhone : null,
                 'payment_reference' => StorefrontOrder::requiresManualVerification($paymentMethod)
                     ? $paymentReference : null,
+                ...$paymentEvidence,
                 'payment_verification_status' => StorefrontOrder::requiresManualVerification($paymentMethod)
                     ? StorefrontOrder::VERIFICATION_PENDING
                     : StorefrontOrder::VERIFICATION_NOT_REQUIRED,

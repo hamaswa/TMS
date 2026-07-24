@@ -19,9 +19,11 @@ use App\Models\User;
 use App\Notifications\NewStorefrontOrderNotification;
 use App\Services\FinancialReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -750,6 +752,100 @@ class StorefrontCheckoutTest extends TestCase
         $this->assertSame(StorefrontOrder::PAYMENT_BANK_TRANSFER, $order->payment_method);
         $this->assertNull($order->payment_sender_phone);
         $this->assertSame(StorefrontOrder::VERIFICATION_PENDING, $order->payment_verification_status);
+    }
+
+    public function test_payment_evidence_is_private_and_tenant_scoped(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'EP-PRIVATE-1001',
+            'payment_evidence' => UploadedFile::fake()->image('receipt.jpg', 800, 1200),
+        ])->assertRedirect();
+
+        $order = StorefrontOrder::firstOrFail();
+        $this->assertNotNull($order->payment_evidence_path);
+        $this->assertSame('receipt.jpg', $order->payment_evidence_original_name);
+        $this->assertSame('image/jpeg', $order->payment_evidence_mime_type);
+        $this->assertNotNull($order->payment_evidence_submitted_at);
+        Storage::disk('local')->assertExists($order->payment_evidence_path);
+        Storage::disk('public')->assertMissing($order->payment_evidence_path);
+
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertDontSeeText('receipt.jpg')
+            ->assertDontSee(route('admin.storefront.orders.payment-evidence', $order), false);
+        $this->get(route('admin.storefront.orders.payment-evidence', $order))
+            ->assertRedirect(route('login'));
+        $this->actingAs($owner)
+            ->get(route('admin.storefront.orders.payment-evidence', $order))
+            ->assertOk()
+            ->assertHeader('content-type', 'image/jpeg')
+            ->assertHeader('cache-control', 'max-age=0, no-store, private');
+
+        [$otherOwner] = $this->catalog();
+        $this->actingAs($otherOwner)
+            ->get(route('admin.storefront.orders.payment-evidence', $order))
+            ->assertNotFound();
+    }
+
+    public function test_payment_evidence_is_rejected_for_non_manual_payment(): void
+    {
+        Storage::fake('local');
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_UNPAID,
+            'payment_evidence' => UploadedFile::fake()->image('unrelated.jpg'),
+        ])->assertSessionHasErrors('payment_evidence');
+
+        $this->assertDatabaseCount('storefront_orders', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_failed_checkout_removes_staged_private_payment_evidence(): void
+    {
+        Storage::fake('local');
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 2);
+        $color->update(['length' => 1]);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'EP-ROLLBACK-1',
+            'payment_evidence' => UploadedFile::fake()->image('failed-receipt.jpg'),
+        ])->assertSessionHasErrors('checkout');
+
+        $this->assertDatabaseCount('storefront_orders', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_payment_evidence_rejects_unsafe_file_types(): void
+    {
+        Storage::fake('local');
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'EP-UNSAFE-1',
+            'payment_evidence' => UploadedFile::fake()->create('receipt.svg', 10, 'image/svg+xml'),
+        ])->assertSessionHasErrors('payment_evidence');
+
+        $this->assertDatabaseCount('storefront_orders', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_another_client_cannot_view_or_change_the_order(): void

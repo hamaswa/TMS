@@ -6,6 +6,7 @@ use App\Models\StorefrontOrder;
 use App\Models\StorefrontOrderRefund;
 use App\Models\StorefrontOrderReturn;
 use App\Services\StorefrontCheckoutService;
+use App\Services\StorefrontPaymentEvidenceService;
 use App\Services\StorefrontReturnService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,25 @@ use Illuminate\Validation\Rule;
 
 class AdminStorefrontOrderController extends Controller
 {
+    public function paymentEvidence(
+        StorefrontOrder $order,
+        StorefrontPaymentEvidenceService $evidenceService
+    ) {
+        $storefront = Auth::user()->business?->storefront;
+        abort_unless(
+            $storefront
+            && $order->storefront_id === $storefront->id
+            && $order->payment_evidence_path,
+            404
+        );
+
+        return $evidenceService->response(
+            $order->payment_evidence_path,
+            $order->payment_evidence_original_name,
+            $order->payment_evidence_mime_type,
+        );
+    }
+
     public function index(Request $request)
     {
         $storefront = Auth::user()->business?->storefront;

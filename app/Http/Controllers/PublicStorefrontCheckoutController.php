@@ -8,10 +8,12 @@ use App\Models\StorefrontOrder;
 use App\Notifications\NewStorefrontOrderNotification;
 use App\Services\StorefrontCartService;
 use App\Services\StorefrontCheckoutService;
+use App\Services\StorefrontPaymentEvidenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 use Illuminate\Validation\ValidationException;
 
 class PublicStorefrontCheckoutController extends Controller
@@ -20,7 +22,8 @@ class PublicStorefrontCheckoutController extends Controller
         Request $request,
         Storefront $storefront,
         StorefrontCartService $cartService,
-        StorefrontCheckoutService $checkout
+        StorefrontCheckoutService $checkout,
+        StorefrontPaymentEvidenceService $evidenceService,
     ) {
         $this->ensureVisible($storefront);
         abort_unless($storefront->online_ordering_enabled, 404);
@@ -58,6 +61,11 @@ class PublicStorefrontCheckoutController extends Controller
                 'string',
                 'max:100',
             ],
+            'payment_evidence' => [
+                Rule::prohibitedIf(! $manualPayment),
+                'nullable',
+                File::types(['jpg', 'jpeg', 'png', 'webp', 'pdf'])->max(5 * 1024),
+            ],
         ]);
         if ($validated['payment_method'] === StorefrontOrder::PAYMENT_COD
             && $validated['fulfillment_method'] !== 'delivery') {
@@ -70,15 +78,24 @@ class PublicStorefrontCheckoutController extends Controller
             throw ValidationException::withMessages(['checkout' => __('storefront.messages.cart_unavailable')]);
         }
 
-        [$order] = $checkout->checkout(
-            $cart,
-            $validated['fulfillment_method'],
-            $validated['delivery_address'] ?? null,
-            $validated['customer_note'] ?? null,
-            $validated['payment_method'],
-            $validated['payment_sender_phone'] ?? null,
-            $validated['payment_reference'] ?? null,
-        );
+        $evidence = $request->hasFile('payment_evidence')
+            ? $evidenceService->store($request->file('payment_evidence'), $storefront)
+            : [];
+        try {
+            [$order] = $checkout->checkout(
+                $cart,
+                $validated['fulfillment_method'],
+                $validated['delivery_address'] ?? null,
+                $validated['customer_note'] ?? null,
+                $validated['payment_method'],
+                $validated['payment_sender_phone'] ?? null,
+                $validated['payment_reference'] ?? null,
+                $evidence,
+            );
+        } catch (\Throwable $exception) {
+            $evidenceService->delete($evidence);
+            throw $exception;
+        }
         $request->session()->forget($this->cartSessionKey($storefront));
         $request->session()->put($this->orderSessionKey($order), true);
         try {

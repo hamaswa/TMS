@@ -44,6 +44,16 @@
                 @if($inquiry->payment_verification_notes)
                     <div class="small mt-2">{{ $inquiry->payment_verification_notes }}</div>
                 @endif
+                @if($inquiry->payment_evidence_path)
+                    <div class="mt-2">
+                        <a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="{{ route('admin.storefront.inquiries.payment-evidence', $inquiry) }}">
+                            <i class="fas fa-paperclip ml-1"></i> ادائیگی کا ثبوت دیکھیں
+                        </a>
+                        <small class="text-muted mr-2">{{ $inquiry->payment_evidence_original_name }} · {{ number_format(($inquiry->payment_evidence_size ?? 0) / 1024, 1) }} KB</small>
+                    </div>
+                @else
+                    <div class="small text-muted mt-2">گاہک نے ادائیگی کا ثبوت منسلک نہیں کیا۔</div>
+                @endif
                 @if($inquiry->payment_verification_status !== \App\Models\StorefrontInquiry::VERIFICATION_VERIFIED)
                     <form method="POST" action="{{ route('admin.storefront.inquiries.payment-verification', $inquiry) }}" class="mt-3">
                         @csrf @method('PATCH')

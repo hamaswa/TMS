@@ -8,6 +8,8 @@ use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -148,6 +150,34 @@ class StorefrontTailoringInquiryTest extends TestCase
         ])->assertSessionHasErrors('payment_method');
 
         $this->assertDatabaseCount('storefront_inquiries', 0);
+    }
+
+    public function test_tailoring_payment_evidence_is_private_and_tenant_scoped(): void
+    {
+        Storage::fake('local');
+        [$owner, , $storefront] = $this->business();
+
+        $this->post(route('storefront.inquiries.store', $storefront), [
+            'customer_name' => 'مریم اقبال',
+            'phone' => '03001112222',
+            'payment_method' => StorefrontInquiry::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03001112222',
+            'payment_reference' => 'EP-TAILOR-PRIVATE-1',
+            'payment_evidence' => UploadedFile::fake()->image('tailoring-receipt.png'),
+        ])->assertRedirect(route('storefront.tailoring.index', $storefront));
+
+        $inquiry = StorefrontInquiry::firstOrFail();
+        Storage::disk('local')->assertExists($inquiry->payment_evidence_path);
+        $this->assertSame('tailoring-receipt.png', $inquiry->payment_evidence_original_name);
+        $this->actingAs($owner)
+            ->get(route('admin.storefront.inquiries.payment-evidence', $inquiry))
+            ->assertOk()
+            ->assertHeader('content-type', 'image/png');
+
+        [$otherOwner] = $this->business('other-private-tailor');
+        $this->actingAs($otherOwner)
+            ->get(route('admin.storefront.inquiries.payment-evidence', $inquiry))
+            ->assertNotFound();
     }
 
     public function test_inquiries_can_be_disabled_and_private_services_stay_hidden(): void

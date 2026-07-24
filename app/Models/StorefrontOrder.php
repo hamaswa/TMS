@@ -49,6 +49,11 @@ class StorefrontOrder extends Model
         'payment_method',
         'payment_sender_phone',
         'payment_reference',
+        'payment_evidence_path',
+        'payment_evidence_original_name',
+        'payment_evidence_mime_type',
+        'payment_evidence_size',
+        'payment_evidence_submitted_at',
         'payment_verification_status',
         'payment_verification_notes',
         'payment_verified_by_user_id',
@@ -112,6 +117,8 @@ class StorefrontOrder extends Model
         'cancelled_at' => 'datetime',
         'payment_verified_at' => 'datetime',
         'payment_rejected_at' => 'datetime',
+        'payment_evidence_size' => 'integer',
+        'payment_evidence_submitted_at' => 'datetime',
     ];
 
     public function storefront()

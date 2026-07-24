@@ -52,7 +52,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 ## Phase 5 — Pakistan payments and delivery
 
 - [x] Extend the verified manual-payment workflow to JazzCash, bank transfer, and Raast QR.
-- [ ] Add payment evidence uploads with private storage and access control.
+- [x] Add payment evidence uploads with private storage and access control.
 - [ ] Add settlement and daily payment-method reconciliation.
 - [ ] Add province, district, tehsil, city, and delivery-area fields.
 - [ ] Add configurable delivery charges and courier/tracking support.
@@ -210,4 +210,15 @@ At the Phase 5 Pakistan manual-payments checkpoint:
 - New methods default to disabled and all receiving-detail fields are nullable. The additive batch-25 migration preserved existing storefronts, orders, enquiries, balances, and EasyPaisa records.
 - Browser QA confirmed the Urdu settings layout, public tailoring payment interaction, correct hidden/required fields, and zero console warnings or errors without changing the client's live payment configuration.
 
-Next starting point: add payment evidence uploads with private storage and access control.
+At the Phase 5 private payment-evidence checkpoint:
+
+- Full suite: 197 tests passed, 1,544 assertions.
+- Clothing checkout and tailoring enquiries accept an optional JPG, PNG, WebP, or PDF receipt up to 5 MB only when a manual payment method is selected.
+- Evidence files use Laravel's private local disk under `storage/app/private`; they receive random storage names and are never linked from the public storage directory.
+- Customers see only a safe bilingual confirmation that their receipt was received privately. Public order pages never expose the original filename, storage path, or protected route.
+- Client staff can open evidence only through permission-protected admin routes that re-check the record's storefront tenant. Guests are redirected, other clients receive 404, images are served with `nosniff`, CSP sandbox, private/no-store caching, and non-image evidence downloads as an attachment.
+- Unsafe SVG uploads are rejected. A failed checkout removes its staged file so no orphaned private evidence remains.
+- The additive batch-26 migration added nullable evidence metadata only and preserved every existing order, enquiry, payment, and file.
+- Browser QA confirmed the Urdu conditional upload control, private-access guidance, file limits, responsive form layout, and zero console warnings or errors without adding live test data.
+
+Next starting point: add settlement and daily payment-method reconciliation.
