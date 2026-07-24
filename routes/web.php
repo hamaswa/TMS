@@ -74,6 +74,8 @@ Route::patch('/shops/{storefront:slug}/cart/items/{item}', [PublicStorefrontCart
 Route::delete('/shops/{storefront:slug}/cart/items/{item}', [PublicStorefrontCartController::class, 'destroy'])->middleware('public.locale')->name('storefront.cart.destroy');
 Route::post('/shops/{storefront:slug}/cart/customer', [PublicStorefrontCartController::class, 'linkCustomer'])
     ->middleware(['public.locale', 'throttle:5,1'])->name('storefront.cart.customer.link');
+Route::post('/shops/{storefront:slug}/cart/customer/register', [PublicStorefrontCartController::class, 'registerCustomer'])
+    ->middleware(['public.locale', 'throttle:3,1'])->name('storefront.cart.customer.register');
 Route::delete('/shops/{storefront:slug}/cart/customer', [PublicStorefrontCartController::class, 'unlinkCustomer'])->middleware('public.locale')->name('storefront.cart.customer.unlink');
 Route::post('/shops/{storefront:slug}/checkout', [PublicStorefrontCheckoutController::class, 'store'])
     ->middleware(['public.locale', 'throttle:10,1'])->name('storefront.checkout.store');

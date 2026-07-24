@@ -59,6 +59,8 @@ class Customers extends Authenticatable
     protected $casts = [
         'pin_locked_until' => 'datetime',
         'pin_changed_at' => 'datetime',
+        'self_registered_at' => 'datetime',
+        'phone_verified_at' => 'datetime',
         'phone_normalization_conflict' => 'boolean',
     ];
 

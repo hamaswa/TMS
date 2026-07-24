@@ -31,16 +31,16 @@ This file is the durable continuation point for the QA recommendations. When wor
 
 ## Phase 3 — accessibility and Pakistan identity handling
 
-Next starting point.
-
 - [x] Add labels to public search, colour, date-range, and other filter controls.
 - [x] Increase mobile login and public-action touch targets to at least 44 × 44 pixels.
 - [x] Add semantic headings to legacy sales, tailor, expense, and daily-expense screens.
 - [x] Introduce Pakistan phone normalization for `03xx...`, `+92...`, `0092...`, spacing, punctuation, and Urdu/Arabic digits.
 - [x] Store a canonical phone value, preserve the entered value, prevent format-based duplicates, and safely flag ambiguous legacy conflicts without merging customer records.
-- [ ] Add customer self-registration/guest checkout using PIN, rate limiting, and account linking.
+- [x] Add customer self-registration/guest checkout using PIN, rate limiting, and account linking.
 
 ## Phase 4 — public commerce quality
+
+Next starting point.
 
 - [ ] Add city, category, price, delivery, and availability discovery filters.
 - [ ] Add SEO titles/descriptions, canonical URLs, Open Graph cards, and LocalBusiness/Product structured data.
@@ -107,3 +107,12 @@ At the Phase 3 phone identity checkpoint:
 - Original phone values were preserved. The database now prevents a second customer under the same client from using an equivalent local/international phone identity.
 - If a future database contains a legacy formatting collision, records are flagged rather than merged and PIN login refuses the ambiguous identity.
 - Browser QA confirmed the Urdu public phone field uses a telephone control, accepts both documented formats, remains 47 px high, has no overflow, and produces no console errors.
+
+At the completed Phase 3 customer registration checkpoint:
+
+- Full suite: 169 tests passed, 1,197 assertions.
+- Focused cart identity suite: 9 tests passed, 66 assertions.
+- An additive migration introduced self-registration and phone-verification timestamps without replacing or deleting customer data.
+- Public registration creates the same client-owned customer record used by clothing and tailoring, hashes the PIN, links the cart atomically, rejects duplicate phone identities and weak PINs, and rate-limits repeated attempts.
+- A self-registered customer can proceed through checkout into the existing unified customer balance; no payment is falsely recorded.
+- Browser QA confirmed bilingual Urdu RTL and English LTR forms, clear no-OTP/unverified-phone messaging, 47 px mobile inputs, no horizontal overflow at 390 px, weak-PIN feedback, and successful cart linking.

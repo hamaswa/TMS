@@ -6,7 +6,11 @@ use App\Models\Customers;
 use App\Models\Storefront;
 use App\Models\StorefrontCart;
 use App\Models\StorefrontClothingListing;
+use App\Rules\PakistanMobileNumber;
+use App\Rules\SecureCustomerPin;
+use App\Rules\UniqueCustomerPhone;
 use App\Services\StorefrontCartService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -150,6 +154,76 @@ class PublicStorefrontCartController extends Controller
         $cart->update(['customer_id' => null, 'last_activity_at' => now()]);
 
         return redirect()->route('storefront.cart.show', $storefront);
+    }
+
+    public function registerCustomer(
+        Request $request,
+        Storefront $storefront,
+        StorefrontCartService $cartService
+    ) {
+        $this->ensureVisible($storefront);
+        $ownerId = (int) $storefront->business->owner_user_id;
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'phone' => [
+                'required',
+                'string',
+                'max:50',
+                new PakistanMobileNumber,
+                new UniqueCustomerPhone(
+                    $ownerId,
+                    message: __('storefront.messages.phone_exists')
+                ),
+            ],
+            'pin' => ['required', 'digits:6', 'confirmed', new SecureCustomerPin],
+        ]);
+        $cart = $this->cartOrFail($request, $storefront, $cartService);
+
+        try {
+            DB::transaction(function () use ($validated, $ownerId, $storefront, $cart) {
+                $lockedCart = StorefrontCart::query()
+                    ->whereKey($cart->id)
+                    ->where('storefront_id', $storefront->id)
+                    ->whereNull('checked_out_at')
+                    ->where('expires_at', '>', now())
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $lockedCart || ! $lockedCart->items()->exists()) {
+                    throw ValidationException::withMessages([
+                        'registration' => __('storefront.messages.cart_unavailable'),
+                    ]);
+                }
+
+                $customer = new Customers([
+                    'user_id' => $ownerId,
+                    'name' => trim($validated['name']),
+                    'phone_number1' => trim($validated['phone']),
+                ]);
+                $customer->forceFill([
+                    'mobile_pin' => Hash::make($validated['pin']),
+                    'pin_changed_at' => now(),
+                    'self_registered_at' => now(),
+                    'phone_verified_at' => null,
+                ])->save();
+
+                $lockedCart->update([
+                    'customer_id' => $customer->id,
+                    'last_activity_at' => now(),
+                ]);
+            });
+        } catch (QueryException $exception) {
+            if (! in_array((string) $exception->getCode(), ['23000', '23505'], true)) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages([
+                'phone' => __('storefront.messages.phone_exists'),
+            ]);
+        }
+
+        return redirect()->route('storefront.cart.show', $storefront)
+            ->with('success', __('storefront.messages.registration_linked'));
     }
 
     private function cartOrFail(Request $request, Storefront $storefront, StorefrontCartService $cartService): StorefrontCart

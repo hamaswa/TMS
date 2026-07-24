@@ -12,6 +12,7 @@ use App\Models\Storefront;
 use App\Models\StorefrontCart;
 use App\Models\StorefrontCartItem;
 use App\Models\StorefrontClothingListing;
+use App\Models\StorefrontOrder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -139,6 +140,135 @@ class StorefrontCartReservationTest extends TestCase
         ])->assertSessionHasErrors('phone');
 
         $this->assertNull(StorefrontCart::where('storefront_id', $storefront->id)->firstOrFail()->customer_id);
+    }
+
+    public function test_new_customer_can_securely_register_and_link_the_unified_record(): void
+    {
+        [$owner, $storefront, $listing, $color] = $this->catalog();
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.11'])
+            ->post(route('storefront.cart.store', [$storefront, $listing]), [
+                'cloth_color_id' => $color->id,
+                'quantity' => 2,
+            ])->assertSessionHasNoErrors();
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.11'])
+            ->post(route('storefront.cart.customer.register', $storefront), [
+                'name' => 'Ayesha Siddiqua',
+                'phone' => '+92 300 555 1122',
+                'pin' => '482913',
+                'pin_confirmation' => '482913',
+            ])->assertRedirect(route('storefront.cart.show', $storefront));
+
+        $customer = Customers::where('user_id', $owner->id)->firstOrFail();
+        $this->assertSame('Ayesha Siddiqua', $customer->name);
+        $this->assertSame('+923005551122', $customer->phone_number1_normalized);
+        $this->assertTrue(Hash::check('482913', $customer->mobile_pin));
+        $this->assertNotNull($customer->self_registered_at);
+        $this->assertNull($customer->phone_verified_at);
+        $this->assertSame($customer->id, StorefrontCart::firstOrFail()->customer_id);
+        $this->assertDatabaseCount('customers', 1);
+        $this->assertDatabaseCount('storefront_orders', 0);
+        $this->assertDatabaseCount('transactions', 0);
+        $this->get(route('storefront.cart.show', $storefront))
+            ->assertOk()
+            ->assertSeeText('Ayesha Siddiqua');
+    }
+
+    public function test_registration_cannot_duplicate_an_existing_phone_or_use_a_weak_pin(): void
+    {
+        [$owner, $storefront, $listing, $color] = $this->catalog();
+        Customers::create([
+            'user_id' => $owner->id,
+            'name' => 'Existing Customer',
+            'phone_number1' => '03005551122',
+            'mobile_pin' => Hash::make('482913'),
+        ]);
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.12'])
+            ->post(route('storefront.cart.store', [$storefront, $listing]), [
+                'cloth_color_id' => $color->id,
+                'quantity' => 1,
+            ]);
+        $this->get(route('public.locale.update', [
+            'locale' => 'en',
+            'redirect' => route('storefront.cart.show', $storefront, false),
+        ]))->assertRedirect();
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.12'])
+            ->post(route('storefront.cart.customer.register', $storefront), [
+                'name' => 'Duplicate Customer',
+                'phone' => '+92 300 555 1122',
+                'pin' => '482913',
+                'pin_confirmation' => '482913',
+            ])->assertSessionHasErrors([
+                'phone' => 'A customer record already exists for this phone. Use the existing-customer form or contact the shop.',
+            ]);
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.12'])
+            ->post(route('storefront.cart.customer.register', $storefront), [
+                'name' => 'Weak PIN Customer',
+                'phone' => '03005552233',
+                'pin' => '123456',
+                'pin_confirmation' => '123456',
+            ])->assertSessionHasErrors('pin');
+
+        $this->assertDatabaseCount('customers', 1);
+        $this->assertNull(StorefrontCart::firstOrFail()->customer_id);
+    }
+
+    public function test_self_registered_customer_can_checkout_to_the_unified_balance(): void
+    {
+        [$owner, $storefront, $listing, $color] = $this->catalog();
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.14'])
+            ->post(route('storefront.cart.store', [$storefront, $listing]), [
+                'cloth_color_id' => $color->id,
+                'quantity' => 2,
+            ]);
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.14'])
+            ->post(route('storefront.cart.customer.register', $storefront), [
+                'name' => 'Bilal Ahmed',
+                'phone' => '03006667788',
+                'pin' => '739281',
+                'pin_confirmation' => '739281',
+            ])->assertSessionHasNoErrors();
+
+        $response = $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.14'])
+            ->post(route('storefront.checkout.store', $storefront), [
+                'fulfillment_method' => 'pickup',
+                'payment_method' => 'unpaid',
+            ]);
+
+        $order = StorefrontOrder::firstOrFail();
+        $customer = Customers::firstOrFail();
+        $response->assertRedirect(route('storefront.orders.show', [$storefront, $order->reference]));
+        $this->assertSame($customer->id, $order->customer_id);
+        $this->assertSame(8.0, (float) $color->fresh()->length);
+        $this->assertDatabaseHas('transactions', [
+            'id' => $order->transaction_id,
+            'customerId' => $customer->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Sale',
+            'remainingBalance' => 2900,
+            'recivedPayment' => 0,
+        ]);
+    }
+
+    public function test_public_registration_is_rate_limited(): void
+    {
+        [, $storefront, $listing, $color] = $this->catalog();
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.99'])
+            ->post(route('storefront.cart.store', [$storefront, $listing]), [
+                'cloth_color_id' => $color->id,
+                'quantity' => 1,
+            ]);
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.13'])
+                ->post(route('storefront.cart.customer.register', $storefront), [])
+                ->assertSessionHasErrors();
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.50.0.13'])
+            ->post(route('storefront.cart.customer.register', $storefront), [])
+            ->assertTooManyRequests();
     }
 
     private function catalog(string $slug = 'reservation-shop'): array

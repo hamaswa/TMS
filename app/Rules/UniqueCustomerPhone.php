@@ -12,6 +12,7 @@ class UniqueCustomerPhone implements ValidationRule
     public function __construct(
         private readonly int $ownerId,
         private readonly ?int $ignoreCustomerId = null,
+        private readonly ?string $message = null,
     ) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -34,8 +35,16 @@ class UniqueCustomerPhone implements ValidationRule
             ->when($this->ignoreCustomerId, fn ($query) => $query->where('id', '!=', $this->ignoreCustomerId))
             ->exists();
 
-        if ($exists) {
-            $fail('اس موبائل نمبر کے ساتھ گاہک پہلے سے موجود ہے۔');
+        $legacyConflictExists = Customers::withTrashed()
+            ->where('user_id', $this->ownerId)
+            ->where('phone_normalization_conflict', true)
+            ->whereNull('phone_number1_normalized')
+            ->when($this->ignoreCustomerId, fn ($query) => $query->where('id', '!=', $this->ignoreCustomerId))
+            ->get()
+            ->contains(fn (Customers $customer) => PakistanPhoneNumber::normalize($customer->phone_number1) === $normalized);
+
+        if ($exists || $legacyConflictExists) {
+            $fail($this->message ?? 'اس موبائل نمبر کے ساتھ گاہک پہلے سے موجود ہے۔');
         }
     }
 }
