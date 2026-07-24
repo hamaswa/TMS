@@ -7,6 +7,7 @@ use App\Models\BusinessRole;
 use App\Models\BusinessActivityLog;
 use App\Models\Order;
 use App\Models\Supplier;
+use App\Models\Storefront;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -65,6 +66,31 @@ class BusinessEmployeeAccessTest extends TestCase
             ->assertSeeText('روپے 1,234.00');
         $this->actingAs($employee)->get(route('admin.dashboard.tailoring'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.dashboard.clothing'))->assertForbidden();
+    }
+
+    public function test_clothing_salesperson_can_manage_online_orders_without_storefront_settings_access(): void
+    {
+        [, $business] = $this->business(false, true);
+        Storefront::create([
+            'business_id' => $business->id,
+            'slug' => 'sales-order-queue-'.$business->id,
+            'display_name' => 'Sales Order Queue',
+            'show_clothing' => true,
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+        $role = BusinessRole::create([
+            'business_id' => $business->id,
+            'name' => 'Salesperson',
+            'permissions' => [BusinessRole::CLOTHING_ACCESS, BusinessRole::CLOTHING_SALES],
+        ]);
+        $employee = $this->employee($business, $role);
+
+        $this->actingAs($employee)->get(route('admin.storefront.orders.index'))
+            ->assertOk()
+            ->assertSeeText('آن لائن آرڈرز')
+            ->assertDontSeeText('دکان کی ترتیب');
+        $this->actingAs($employee)->get(route('admin.storefront.edit'))->assertForbidden();
     }
 
     public function test_client_team_management_is_split_into_focused_pages(): void

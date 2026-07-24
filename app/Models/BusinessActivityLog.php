@@ -78,6 +78,8 @@ class BusinessActivityLog extends Model
             'admin.RackNo' => 'آرڈر کا ریک نمبر درج کیا',
             'admin.DirectPayment' => 'گاہک کی براہ راست ادائیگی درج کی',
             'admin.sale-direct-payment' => 'فروخت کی براہ راست ادائیگی درج کی',
+            'admin.storefront.orders.payment-verification' => 'آن لائن آرڈر کی دستی ادائیگی کی تصدیق کی',
+            'admin.storefront.inquiries.payment-verification' => 'ٹیلرنگ درخواست کی دستی ادائیگی کی تصدیق کی',
             default => null,
         };
 

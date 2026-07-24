@@ -19,7 +19,11 @@ class AdminStorefrontOrderController extends Controller
             'search' => ['nullable', 'string', 'max:100'],
         ]);
         $orders = $storefront->orders()
-            ->with(['customer:id,name,phone_number1', 'items:id,storefront_order_id,item_name,color,quantity,line_total'])
+            ->with([
+                'customer:id,name,phone_number1',
+                'items:id,storefront_order_id,item_name,color,quantity,line_total',
+                'paymentVerifier:id,name,username',
+            ])
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($validated['search'] ?? null, fn ($query, $search) => $query->where(function ($nested) use ($search) {
                 $nested->where('reference', 'like', "%{$search}%")
@@ -50,5 +54,37 @@ class AdminStorefrontOrderController extends Controller
             ->with('success', $validated['status'] === 'complete'
                 ? 'آن لائن آرڈر مکمل کر دیا گیا ہے۔'
                 : 'آن لائن آرڈر منسوخ کر کے اسٹاک اور گاہک کا بقایا درست کر دیا گیا ہے۔');
+    }
+
+    public function verifyPayment(
+        Request $request,
+        StorefrontOrder $order,
+        StorefrontCheckoutService $checkout
+    ) {
+        $storefront = Auth::user()->business?->storefront;
+        abort_unless($storefront && $order->storefront_id === $storefront->id, 404);
+        $validated = $request->validate([
+            'decision' => ['required', Rule::in([
+                StorefrontOrder::VERIFICATION_VERIFIED,
+                StorefrontOrder::VERIFICATION_REJECTED,
+            ])],
+            'payment_verification_notes' => [
+                Rule::requiredIf($request->input('decision') === StorefrontOrder::VERIFICATION_REJECTED),
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+        ]);
+        $checkout->verifyManualPayment(
+            $order,
+            $validated['decision'],
+            $validated['payment_verification_notes'] ?? null,
+            (int) Auth::id(),
+        );
+
+        return redirect()->route('admin.storefront.orders.index')
+            ->with('success', $validated['decision'] === StorefrontOrder::VERIFICATION_VERIFIED
+                ? 'ایزی پیسہ ادائیگی تصدیق کر کے گاہک کے کھاتے میں درج کر دی گئی ہے۔'
+                : 'ادائیگی کا دعویٰ مسترد کر دیا گیا ہے۔');
     }
 }

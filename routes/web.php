@@ -9,7 +9,6 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\UserController;
-use Illuminate\Support\Facades\Redirect;
 use App\Http\Controllers\ClothController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\DesignController;
@@ -90,10 +89,6 @@ Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'busines
     Route::put('/password', [EmployeePasswordController::class, 'update'])->middleware('throttle:6,1')->name('update');
 });
 
-Route::get('/new-tab', function () {
-    return Redirect::away('http://heera.it');
-});
-
 //Administrator routes
 Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:administrative'], 'as' => 'administrator.'], function () {
 
@@ -153,10 +148,14 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::put('/storefront/tailoring/{service}', [AdminStorefrontTailoringController::class, 'updateService'])->name('storefront.tailoring.update');
         Route::get('/storefront/inquiries', [AdminStorefrontTailoringController::class, 'inquiries'])->name('storefront.inquiries.index');
         Route::patch('/storefront/inquiries/{inquiry}', [AdminStorefrontTailoringController::class, 'updateInquiry'])->name('storefront.inquiries.update');
+        Route::patch('/storefront/inquiries/{inquiry}/payment-verification', [AdminStorefrontTailoringController::class, 'verifyInquiryPayment'])
+            ->name('storefront.inquiries.payment-verification');
     });
-    Route::middleware(['business.permission:storefront.manage', 'business.permission:clothing.sales'])->group(function () {
+    Route::middleware('business.permission:clothing.sales')->group(function () {
         Route::get('/storefront/orders', [AdminStorefrontOrderController::class, 'index'])->name('storefront.orders.index');
         Route::patch('/storefront/orders/{order}', [AdminStorefrontOrderController::class, 'update'])->name('storefront.orders.update');
+        Route::patch('/storefront/orders/{order}/payment-verification', [AdminStorefrontOrderController::class, 'verifyPayment'])
+            ->name('storefront.orders.payment-verification');
     });
 
     Route::middleware('business.permission:settings.manage')->group(function () {

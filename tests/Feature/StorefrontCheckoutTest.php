@@ -235,6 +235,7 @@ class StorefrontCheckoutTest extends TestCase
         $this->assertSame(StorefrontOrder::PAYMENT_EASYPAISA, $order->payment_method);
         $this->assertSame('03009998888', $order->payment_sender_phone);
         $this->assertSame('EP-QA-1001', $order->payment_reference);
+        $this->assertSame(StorefrontOrder::VERIFICATION_PENDING, $order->payment_verification_status);
         $this->assertSame('0.00', $order->paid_amount);
         $this->assertSame($order->subtotal, $order->balance_amount);
         $this->assertDatabaseHas('transactions', [
@@ -242,6 +243,87 @@ class StorefrontCheckoutTest extends TestCase
             'recivedPayment' => 0,
             'remainingBalance' => 1450,
         ]);
+
+    }
+
+    public function test_client_verifies_easypaisa_once_before_completing_order(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'EP-VERIFY-1001',
+        ])->assertRedirect();
+        $order = StorefrontOrder::firstOrFail();
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_COMPLETE,
+        ])->assertSessionHasErrors('status');
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
+            'decision' => StorefrontOrder::VERIFICATION_VERIFIED,
+            'payment_verification_notes' => 'Matched merchant statement',
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+
+        $order->refresh();
+        $this->assertSame(StorefrontOrder::VERIFICATION_VERIFIED, $order->payment_verification_status);
+        $this->assertSame($owner->id, $order->payment_verified_by_user_id);
+        $this->assertSame('1450.00', $order->paid_amount);
+        $this->assertSame('0.00', $order->balance_amount);
+        $this->assertNotNull($order->payment_verified_at);
+        $this->assertDatabaseHas('transactions', [
+            'id' => $order->transaction_id,
+            'recivedPayment' => 1450,
+            'remainingBalance' => 0,
+        ]);
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
+            'decision' => StorefrontOrder::VERIFICATION_VERIFIED,
+        ])->assertSessionHasErrors('payment_verification');
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_COMPLETE,
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+        $this->assertSame(StorefrontOrder::STATUS_COMPLETE, $order->fresh()->status);
+    }
+
+    public function test_rejecting_easypaisa_requires_notes_and_does_not_post_payment(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'EP-REJECT-1001',
+        ]);
+        $order = StorefrontOrder::firstOrFail();
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
+            'decision' => StorefrontOrder::VERIFICATION_REJECTED,
+        ])->assertSessionHasErrors('payment_verification_notes');
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
+            'decision' => StorefrontOrder::VERIFICATION_REJECTED,
+            'payment_verification_notes' => 'Reference not found in statement',
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+
+        $order->refresh();
+        $this->assertSame(StorefrontOrder::VERIFICATION_REJECTED, $order->payment_verification_status);
+        $this->assertSame('0.00', $order->paid_amount);
+        $this->assertDatabaseHas('transactions', [
+            'id' => $order->transaction_id,
+            'recivedPayment' => 0,
+            'remainingBalance' => 1450,
+        ]);
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CANCELLED,
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
+            'decision' => StorefrontOrder::VERIFICATION_VERIFIED,
+        ])->assertSessionHasErrors('payment_verification');
+        $this->assertSame(StorefrontOrder::STATUS_CANCELLED, $order->fresh()->status);
     }
 
     public function test_cash_on_delivery_requires_delivery_fulfillment(): void

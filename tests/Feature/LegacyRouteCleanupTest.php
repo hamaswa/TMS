@@ -23,6 +23,7 @@ class LegacyRouteCleanupTest extends TestCase
 
         $this->assertNull($routes->getByName('admin.payment-received'));
         $this->assertNull($routes->getByName('admin.tailor-rates.edit'));
+        $this->get('/new-tab')->assertNotFound();
     }
 
     public function test_order_print_redirects_with_an_urdu_message_when_shop_setup_is_inactive(): void

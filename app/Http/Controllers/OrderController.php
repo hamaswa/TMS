@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Notification;
 use App\Notifications\OrderCompleteNotification;
 use App\Services\MeasurementService;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use App\Services\ProductionWorkforceService;
 
 
@@ -86,6 +87,9 @@ class OrderController extends Controller
         $measurementCustomerId = $validated['sub_id'] ?? $validated['customerId'];
         $measurementChanged = (int) $order->sub_customer !== (int) $measurementCustomerId;
         $measurementCustomer = $this->ownedCustomer($measurementCustomerId);
+        if ($measurementChanged || ! $order->measurementValues()->exists()) {
+            $this->ensureRequiredMeasurements($measurementCustomer, $order->measurementTemplate);
+        }
 
         DB::transaction(function () use ($validated, $order, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer) {
             $order->update([
@@ -183,7 +187,12 @@ class OrderController extends Controller
         $measurementCustomer = $this->ownedCustomer($subCustomerId);
         $measurementTemplate = ! empty($validated['measurement_template_id'])
             ? MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['measurement_template_id'])
-            : null;
+            : ($measurementCustomer->measurementTemplate
+                ?: MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())
+                    ->where('is_active', true)
+                    ->where('is_default', true)
+                    ->first());
+        $this->ensureRequiredMeasurements($measurementCustomer, $measurementTemplate);
         [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $remainingBalance, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
             $obj = Order::create([
                 'customerId' => $validated['customerId'],
@@ -526,5 +535,23 @@ class OrderController extends Controller
     private function ownedTailor($id): Tailor
     {
         return Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
+
+    private function ensureRequiredMeasurements(
+        Customers $customer,
+        ?MeasurementTemplate $template,
+    ): void {
+        $missing = $this->measurements->missingRequiredMeasurements(
+            $customer,
+            Auth::user()->businessOwnerId(),
+            $template,
+        );
+        if ($missing->isEmpty()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'measurement_template_id' => 'آرڈر بنانے سے پہلے یہ ضروری پیمائش مکمل کریں: '.$missing->implode('، '),
+        ]);
     }
 }

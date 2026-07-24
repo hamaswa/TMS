@@ -102,6 +102,9 @@ class StorefrontCheckoutService
                     ? $paymentSenderPhone : null,
                 'payment_reference' => $paymentMethod === StorefrontOrder::PAYMENT_EASYPAISA
                     ? $paymentReference : null,
+                'payment_verification_status' => $paymentMethod === StorefrontOrder::PAYMENT_EASYPAISA
+                    ? StorefrontOrder::VERIFICATION_PENDING
+                    : StorefrontOrder::VERIFICATION_NOT_REQUIRED,
                 'subtotal' => $subtotal,
                 'paid_amount' => 0,
                 'balance_amount' => $subtotal,
@@ -159,6 +162,12 @@ class StorefrontCheckoutService
                 if ($lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
                     throw ValidationException::withMessages(['status' => 'صرف زیرِ انتظار آرڈر مکمل کیا جا سکتا ہے۔']);
                 }
+                if ($lockedOrder->payment_method === StorefrontOrder::PAYMENT_EASYPAISA
+                    && $lockedOrder->payment_verification_status !== StorefrontOrder::VERIFICATION_VERIFIED) {
+                    throw ValidationException::withMessages([
+                        'status' => 'ایزی پیسہ ادائیگی کی تصدیق کے بعد ہی آرڈر مکمل کریں۔',
+                    ]);
+                }
                 $lockedOrder->update([
                     'status' => StorefrontOrder::STATUS_COMPLETE,
                     'completed_at' => now(),
@@ -169,6 +178,11 @@ class StorefrontCheckoutService
 
             if ($status !== StorefrontOrder::STATUS_CANCELLED || $lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
                 throw ValidationException::withMessages(['status' => 'صرف زیرِ انتظار آرڈر منسوخ کیا جا سکتا ہے۔']);
+            }
+            if ((float) $lockedOrder->paid_amount > 0) {
+                throw ValidationException::withMessages([
+                    'status' => 'وصول شدہ ادائیگی والے آرڈر کو منسوخ کرنے سے پہلے رقم واپسی درج کریں۔',
+                ]);
             }
 
             $items = $lockedOrder->items()->orderBy('cloth_color_id')->lockForUpdate()->get();
@@ -198,6 +212,64 @@ class StorefrontCheckoutService
             $lockedOrder->update([
                 'status' => StorefrontOrder::STATUS_CANCELLED,
                 'cancelled_at' => now(),
+                'balance_amount' => 0,
+            ]);
+
+            return $lockedOrder;
+        }, 3);
+    }
+
+    public function verifyManualPayment(
+        StorefrontOrder $order,
+        string $decision,
+        ?string $notes,
+        int $verifiedByUserId,
+    ): StorefrontOrder {
+        return DB::transaction(function () use ($order, $decision, $notes, $verifiedByUserId) {
+            $lockedOrder = StorefrontOrder::query()->lockForUpdate()->findOrFail($order->id);
+            if ($lockedOrder->payment_method !== StorefrontOrder::PAYMENT_EASYPAISA) {
+                throw ValidationException::withMessages([
+                    'payment_verification' => 'اس ادائیگی کے طریقے کے لیے دستی تصدیق درکار نہیں۔',
+                ]);
+            }
+            if ($lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
+                throw ValidationException::withMessages([
+                    'payment_verification' => 'صرف زیرِ انتظار آرڈر کی ادائیگی تصدیق کی جا سکتی ہے۔',
+                ]);
+            }
+            if ($lockedOrder->payment_verification_status === StorefrontOrder::VERIFICATION_VERIFIED) {
+                throw ValidationException::withMessages([
+                    'payment_verification' => 'یہ ادائیگی پہلے ہی تصدیق ہو چکی ہے۔',
+                ]);
+            }
+
+            if ($decision === StorefrontOrder::VERIFICATION_REJECTED) {
+                $lockedOrder->update([
+                    'payment_verification_status' => StorefrontOrder::VERIFICATION_REJECTED,
+                    'payment_verification_notes' => $notes,
+                    'payment_verified_by_user_id' => $verifiedByUserId,
+                    'payment_verified_at' => null,
+                    'payment_rejected_at' => now(),
+                ]);
+
+                return $lockedOrder;
+            }
+
+            $transaction = Transaction::query()->lockForUpdate()->findOrFail($lockedOrder->transaction_id);
+            $amount = (float) $lockedOrder->subtotal;
+            $transaction->update([
+                'recivedPayment' => $amount,
+                'remainingBalance' => 0,
+                'comment' => trim(($transaction->comment ? $transaction->comment.' · ' : '')
+                    .'ایزی پیسہ تصدیق '.$lockedOrder->payment_reference),
+            ]);
+            $lockedOrder->update([
+                'payment_verification_status' => StorefrontOrder::VERIFICATION_VERIFIED,
+                'payment_verification_notes' => $notes,
+                'payment_verified_by_user_id' => $verifiedByUserId,
+                'payment_verified_at' => now(),
+                'payment_rejected_at' => null,
+                'paid_amount' => $amount,
                 'balance_amount' => 0,
             ]);
 

@@ -132,6 +132,41 @@ class MeasurementService
         return $rows;
     }
 
+    public function missingRequiredMeasurements(
+        Customers $customer,
+        int $ownerId,
+        ?MeasurementTemplate $template,
+    ): Collection {
+        if (! $template) {
+            return collect();
+        }
+
+        $missing = collect($template->system_fields ?? [])
+            ->filter(fn (string $key) => array_key_exists($key, self::SYSTEM_FIELDS))
+            ->filter(fn (string $key) => $customer->{$key} === null || $customer->{$key} === '')
+            ->map(fn (string $key) => self::SYSTEM_FIELDS[$key]['label']);
+
+        $requiredCustomFields = MeasurementField::query()
+            ->where('user_id', $ownerId)
+            ->where('is_active', true)
+            ->where('is_required', true)
+            ->whereIn('id', array_map('intval', $template->custom_field_ids ?? []))
+            ->orderBy('sort_order')
+            ->get(['id', 'label']);
+        $availableCustomIds = $customer->measurementValues()
+            ->whereIn('measurement_field_id', $requiredCustomFields->pluck('id'))
+            ->whereNotNull('value')
+            ->where('value', '!=', '')
+            ->pluck('measurement_field_id')
+            ->map(fn ($id) => (int) $id);
+
+        return $missing->concat(
+            $requiredCustomFields
+                ->reject(fn ($field) => $availableCustomIds->contains((int) $field->id))
+                ->pluck('label')
+        )->values();
+    }
+
     public function measurementFingerprint(Collection $rows, ?MeasurementTemplate $template = null): string
     {
         return hash('sha256', json_encode([

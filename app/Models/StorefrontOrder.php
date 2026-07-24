@@ -17,6 +17,11 @@ class StorefrontOrder extends Model
     public const PAYMENT_COD = 'cod';
     public const PAYMENT_EASYPAISA = 'easypaisa';
 
+    public const VERIFICATION_NOT_REQUIRED = 'not_required';
+    public const VERIFICATION_PENDING = 'pending';
+    public const VERIFICATION_VERIFIED = 'verified';
+    public const VERIFICATION_REJECTED = 'rejected';
+
     protected $fillable = [
         'storefront_id',
         'storefront_cart_id',
@@ -31,6 +36,11 @@ class StorefrontOrder extends Model
         'payment_method',
         'payment_sender_phone',
         'payment_reference',
+        'payment_verification_status',
+        'payment_verification_notes',
+        'payment_verified_by_user_id',
+        'payment_verified_at',
+        'payment_rejected_at',
         'subtotal',
         'paid_amount',
         'balance_amount',
@@ -57,6 +67,8 @@ class StorefrontOrder extends Model
         'placed_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'payment_verified_at' => 'datetime',
+        'payment_rejected_at' => 'datetime',
     ];
 
     public function storefront()
@@ -82,5 +94,20 @@ class StorefrontOrder extends Model
     public function items()
     {
         return $this->hasMany(StorefrontOrderItem::class);
+    }
+
+    public function paymentVerifier()
+    {
+        return $this->belongsTo(User::class, 'payment_verified_by_user_id');
+    }
+
+    public static function verificationStatuses(): array
+    {
+        return [
+            self::VERIFICATION_NOT_REQUIRED => 'تصدیق درکار نہیں',
+            self::VERIFICATION_PENDING => 'تصدیق زیرِ انتظار',
+            self::VERIFICATION_VERIFIED => 'ادائیگی تصدیق شدہ',
+            self::VERIFICATION_REJECTED => 'ادائیگی مسترد',
+        ];
     }
 }

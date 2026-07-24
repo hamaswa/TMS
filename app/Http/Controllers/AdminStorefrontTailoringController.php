@@ -6,6 +6,7 @@ use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -60,7 +61,7 @@ class AdminStorefrontTailoringController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
         ]);
         $inquiries = $storefront->inquiries()
-            ->with('service:id,name')
+            ->with(['service:id,name', 'paymentVerifier:id,name,username'])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['q'] ?? null, function ($query, $term) {
                 $query->where(function ($query) use ($term) {
@@ -99,6 +100,52 @@ class AdminStorefrontTailoringController extends Controller
 
         return redirect()->route('admin.storefront.inquiries.index')
             ->with('success', 'درخواست کی حالت محفوظ ہو گئی ہے۔');
+    }
+
+    public function verifyInquiryPayment(Request $request, StorefrontInquiry $inquiry)
+    {
+        $storefront = $this->storefront(false);
+        abort_unless($inquiry->storefront_id === $storefront->id, 404);
+        $validated = $request->validate([
+            'decision' => ['required', Rule::in([
+                StorefrontInquiry::VERIFICATION_VERIFIED,
+                StorefrontInquiry::VERIFICATION_REJECTED,
+            ])],
+            'payment_verification_notes' => [
+                Rule::requiredIf($request->input('decision') === StorefrontInquiry::VERIFICATION_REJECTED),
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+        ]);
+
+        DB::transaction(function () use ($inquiry, $validated) {
+            $lockedInquiry = StorefrontInquiry::query()->lockForUpdate()->findOrFail($inquiry->id);
+            if ($lockedInquiry->payment_method !== StorefrontInquiry::PAYMENT_EASYPAISA) {
+                throw ValidationException::withMessages([
+                    'payment_verification' => 'اس ادائیگی کے طریقے کے لیے دستی تصدیق درکار نہیں۔',
+                ]);
+            }
+            if ($lockedInquiry->payment_verification_status === StorefrontInquiry::VERIFICATION_VERIFIED) {
+                throw ValidationException::withMessages([
+                    'payment_verification' => 'یہ ادائیگی پہلے ہی تصدیق ہو چکی ہے۔',
+                ]);
+            }
+
+            $verified = $validated['decision'] === StorefrontInquiry::VERIFICATION_VERIFIED;
+            $lockedInquiry->update([
+                'payment_verification_status' => $validated['decision'],
+                'payment_verification_notes' => $validated['payment_verification_notes'] ?? null,
+                'payment_verified_by_user_id' => Auth::id(),
+                'payment_verified_at' => $verified ? now() : null,
+                'payment_rejected_at' => $verified ? null : now(),
+            ]);
+        }, 3);
+
+        return redirect()->route('admin.storefront.inquiries.index')
+            ->with('success', $validated['decision'] === StorefrontInquiry::VERIFICATION_VERIFIED
+                ? 'ایزی پیسہ حوالہ تصدیق کر دیا گیا ہے۔'
+                : 'ایزی پیسہ حوالہ مسترد کر دیا گیا ہے۔');
     }
 
     private function storefront(bool $requireTailoring = true)

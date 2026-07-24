@@ -57,9 +57,37 @@ class StorefrontTailoringInquiryTest extends TestCase
         $this->assertSame($service->id, $inquiry->tailoring_service_id);
         $this->assertSame(StorefrontInquiry::PAYMENT_EASYPAISA, $inquiry->payment_method);
         $this->assertSame('EP-TAILOR-1001', $inquiry->payment_reference);
+        $this->assertSame(StorefrontInquiry::VERIFICATION_PENDING, $inquiry->payment_verification_status);
         $this->assertDatabaseCount('customers', 0);
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_client_can_verify_or_reject_easypaisa_inquiry_reference_with_an_audit_actor(): void
+    {
+        [$owner, , $storefront] = $this->business();
+        $inquiry = $storefront->inquiries()->create([
+            'customer_name' => 'Payment Verification Customer',
+            'phone' => '03002223333',
+            'payment_method' => StorefrontInquiry::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03002223333',
+            'payment_reference' => 'EP-INQUIRY-1001',
+            'payment_verification_status' => StorefrontInquiry::VERIFICATION_PENDING,
+            'status' => StorefrontInquiry::STATUS_NEW,
+        ]);
+
+        $this->actingAs($owner)->patch(route('admin.storefront.inquiries.payment-verification', $inquiry), [
+            'decision' => StorefrontInquiry::VERIFICATION_REJECTED,
+        ])->assertSessionHasErrors('payment_verification_notes');
+        $this->actingAs($owner)->patch(route('admin.storefront.inquiries.payment-verification', $inquiry), [
+            'decision' => StorefrontInquiry::VERIFICATION_VERIFIED,
+            'payment_verification_notes' => 'Matched in merchant account',
+        ])->assertRedirect(route('admin.storefront.inquiries.index'));
+
+        $inquiry->refresh();
+        $this->assertSame(StorefrontInquiry::VERIFICATION_VERIFIED, $inquiry->payment_verification_status);
+        $this->assertSame($owner->id, $inquiry->payment_verified_by_user_id);
+        $this->assertNotNull($inquiry->payment_verified_at);
     }
 
     public function test_easypaisa_tailoring_preference_requires_manual_reference_details(): void

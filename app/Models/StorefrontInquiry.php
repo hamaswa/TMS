@@ -17,6 +17,11 @@ class StorefrontInquiry extends Model
     public const PAYMENT_COD = 'cod';
     public const PAYMENT_EASYPAISA = 'easypaisa';
 
+    public const VERIFICATION_NOT_REQUIRED = 'not_required';
+    public const VERIFICATION_PENDING = 'pending';
+    public const VERIFICATION_VERIFIED = 'verified';
+    public const VERIFICATION_REJECTED = 'rejected';
+
     protected $fillable = [
         'storefront_id',
         'tailoring_service_id',
@@ -29,6 +34,11 @@ class StorefrontInquiry extends Model
         'payment_method',
         'payment_sender_phone',
         'payment_reference',
+        'payment_verification_status',
+        'payment_verification_notes',
+        'payment_verified_by_user_id',
+        'payment_verified_at',
+        'payment_rejected_at',
         'status',
         'admin_notes',
         'contacted_at',
@@ -48,6 +58,8 @@ class StorefrontInquiry extends Model
         'preferred_date' => 'date',
         'contacted_at' => 'datetime',
         'closed_at' => 'datetime',
+        'payment_verified_at' => 'datetime',
+        'payment_rejected_at' => 'datetime',
     ];
 
     public static function statuses(): array
@@ -67,6 +79,21 @@ class StorefrontInquiry extends Model
     public function service()
     {
         return $this->belongsTo(StorefrontTailoringService::class, 'tailoring_service_id');
+    }
+
+    public function paymentVerifier()
+    {
+        return $this->belongsTo(User::class, 'payment_verified_by_user_id');
+    }
+
+    public static function verificationStatuses(): array
+    {
+        return [
+            self::VERIFICATION_NOT_REQUIRED => 'تصدیق درکار نہیں',
+            self::VERIFICATION_PENDING => 'تصدیق زیرِ انتظار',
+            self::VERIFICATION_VERIFIED => 'ادائیگی تصدیق شدہ',
+            self::VERIFICATION_REJECTED => 'ادائیگی مسترد',
+        ];
     }
 
     public function getReferenceAttribute(): string

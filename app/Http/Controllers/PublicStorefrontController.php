@@ -169,6 +169,9 @@ class PublicStorefrontController extends Controller
             ...collect($validated)->except(['website', 'tailoring_service_id'])->all(),
             'tailoring_service_id' => $service?->id,
             'status' => StorefrontInquiry::STATUS_NEW,
+            'payment_verification_status' => $validated['payment_method'] === StorefrontInquiry::PAYMENT_EASYPAISA
+                ? StorefrontInquiry::VERIFICATION_PENDING
+                : StorefrontInquiry::VERIFICATION_NOT_REQUIRED,
         ]);
 
         return redirect()->route('storefront.tailoring.index', $storefront)

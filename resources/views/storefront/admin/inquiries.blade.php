@@ -18,9 +18,43 @@
             @if($inquiry->payment_method === \App\Models\StorefrontInquiry::PAYMENT_EASYPAISA)
                 · <span dir="ltr">{{ $inquiry->payment_sender_phone }}</span>
                 · <code>{{ $inquiry->payment_reference }}</code>
-                <span class="badge badge-info">دستی تصدیق درکار</span>
+                <span class="badge badge-{{ $inquiry->payment_verification_status === \App\Models\StorefrontInquiry::VERIFICATION_VERIFIED ? 'success' : ($inquiry->payment_verification_status === \App\Models\StorefrontInquiry::VERIFICATION_REJECTED ? 'danger' : 'info') }}">{{ \App\Models\StorefrontInquiry::verificationStatuses()[$inquiry->payment_verification_status] ?? 'دستی تصدیق درکار' }}</span>
             @endif
         </div>
+        @if($inquiry->payment_method === \App\Models\StorefrontInquiry::PAYMENT_EASYPAISA)
+            @php
+                $verificationLabels = \App\Models\StorefrontInquiry::verificationStatuses();
+                $verificationClass = match($inquiry->payment_verification_status) {
+                    \App\Models\StorefrontInquiry::VERIFICATION_VERIFIED => 'success',
+                    \App\Models\StorefrontInquiry::VERIFICATION_REJECTED => 'danger',
+                    default => 'warning',
+                };
+            @endphp
+            <div class="border rounded bg-light p-3 mt-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-center">
+                    <strong>ایزی پیسہ حوالہ کی تصدیق</strong>
+                    <span class="badge badge-{{ $verificationClass }}">{{ $verificationLabels[$inquiry->payment_verification_status] ?? $inquiry->payment_verification_status }}</span>
+                </div>
+                @if($inquiry->paymentVerifier)
+                    <small class="text-muted d-block mt-2">
+                        کارروائی: {{ $inquiry->paymentVerifier->name ?: $inquiry->paymentVerifier->username }}
+                        · {{ ($inquiry->payment_verified_at ?: $inquiry->payment_rejected_at)?->format('d-m-Y h:i A') }}
+                    </small>
+                @endif
+                @if($inquiry->payment_verification_notes)
+                    <div class="small mt-2">{{ $inquiry->payment_verification_notes }}</div>
+                @endif
+                @if($inquiry->payment_verification_status !== \App\Models\StorefrontInquiry::VERIFICATION_VERIFIED)
+                    <form method="POST" action="{{ route('admin.storefront.inquiries.payment-verification', $inquiry) }}" class="mt-3">
+                        @csrf @method('PATCH')
+                        <label for="inquiry_payment_notes_{{ $inquiry->id }}">تصدیقی نوٹ <small class="text-muted">(مسترد کرنے پر ضروری)</small></label>
+                        <textarea id="inquiry_payment_notes_{{ $inquiry->id }}" name="payment_verification_notes" class="form-control mb-2" rows="2" maxlength="1000"></textarea>
+                        <button name="decision" value="verified" class="btn btn-success">حوالہ تصدیق کریں</button>
+                        <button name="decision" value="rejected" class="btn btn-outline-danger">حوالہ مسترد کریں</button>
+                    </form>
+                @endif
+            </div>
+        @endif
         @if($inquiry->message)<div class="bg-light rounded p-3 mt-3">{{ $inquiry->message }}</div>@endif
         <form method="POST" action="{{ route('admin.storefront.inquiries.update',$inquiry) }}" class="mt-3">@csrf @method('PATCH')
             <div class="form-row align-items-end"><div class="form-group col-md-3"><label>حالت</label><select name="status" class="form-control">@foreach($statuses as $value=>$label)<option value="{{ $value }}" @selected($inquiry->status===$value)>{{ $label }}</option>@endforeach</select></div><div class="form-group col-md-7"><label>اندرونی نوٹ</label><textarea name="admin_notes" rows="2" maxlength="3000" class="form-control">{{ $inquiry->admin_notes }}</textarea></div><div class="form-group col-md-2"><button class="btn btn-primary btn-block">محفوظ کریں</button></div></div>

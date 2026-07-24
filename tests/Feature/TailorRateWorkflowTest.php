@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Options;
 use App\Models\Customers;
 use App\Models\Order;
+use App\Models\MeasurementTemplate;
 use App\Models\Tailor;
 use App\Models\Transaction;
 use App\Models\User;
@@ -148,6 +149,69 @@ class TailorRateWorkflowTest extends TestCase
             ->assertSessionHasErrors('recivedPayment');
 
         $this->assertDatabaseCount('orders', 1);
+    }
+
+    public function test_order_is_blocked_until_selected_template_measurements_are_complete(): void
+    {
+        Notification::fake();
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'Required suit measurements',
+            'system_fields' => ['length', 'arms'],
+            'custom_field_ids' => [],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+        $customer = Customers::create([
+            'name' => 'Incomplete Measurement Customer',
+            'phone_number1' => '03005550001',
+            'user_id' => $owner->id,
+            'measurement_template_id' => $template->id,
+            'length' => 42,
+        ]);
+        $tailor = Tailor::create([
+            'name' => 'Measurement QA Tailor',
+            'phone_number1' => '03001230009',
+            'password' => bcrypt('QaTailor@2026'),
+            'user_id' => $owner->id,
+        ]);
+        $rateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $tailor->id,
+            'options_id' => null,
+            'type' => 'Mens suit',
+            'price' => 900,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $payload = [
+            'customerId' => $customer->id,
+            'measurement_template_id' => $template->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 3200,
+            'recivedPayment' => 1000,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'tailorId' => $tailor->id,
+            'tailor_price' => $rateId.'-900',
+        ];
+
+        $this->actingAs($owner)
+            ->from(route('admin.order.create', $customer))
+            ->post(route('admin.order.insert'), $payload)
+            ->assertRedirect(route('admin.order.create', $customer))
+            ->assertSessionHasErrors('measurement_template_id');
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('transactions', 0);
+
+        $customer->update(['arms' => 24]);
+        $this->actingAs($owner)->post(route('admin.order.insert'), $payload)->assertRedirect();
+        $this->assertDatabaseCount('orders', 1);
+        $this->assertDatabaseHas('order_measurement_values', [
+            'source_key' => 'system.arms',
+            'value' => '24',
+        ]);
     }
 
     public function test_order_edit_has_one_tailor_selector_and_separates_order_and_customer_balances(): void
