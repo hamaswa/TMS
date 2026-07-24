@@ -1,5 +1,16 @@
 @extends('storefront.public.layout')
 @section('title', __('storefront.marketplace.title'))
+@section('meta_description', __('storefront.marketplace.hero_text'))
+@section('canonical_url', route('storefront.index'))
+@push('structured_data')
+<script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(
+    \App\Support\StorefrontSeo::website(
+        __('storefront.common.marketplace'),
+        __('storefront.marketplace.hero_text'),
+        route('storefront.index')
+    )
+)) !!}</script>
+@endpush
 @push('styles')
 .market-nav{background:#0b3d2e;color:#fff}.market-nav .nav-brand,.market-nav .nav-link{color:#fff}.market-hero{padding:68px 0;background:radial-gradient(circle at 15% 20%,#2ca679 0,transparent 28%),linear-gradient(135deg,#0b3d2e,#126f50)}.market-filters{margin:-28px auto 32px;position:relative}.market-filter-grid{display:grid;grid-template-columns:1.5fr .85fr 1.25fr 1.25fr auto;gap:12px;align-items:end}.filter-field label{display:block;font-size:.82rem;font-weight:800;margin-bottom:6px}.filter-actions{display:flex;gap:8px}.shop{padding:0;overflow:hidden;display:flex;flex-direction:column}.cover{height:170px;background:linear-gradient(135deg,#d9efe6,#9ed7c0);background-size:cover;background-position:center}.shop-body{padding:20px;display:flex;flex-direction:column;flex:1}.shop-body h2{margin:0}.tags{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}.shop .btn{margin-top:auto}@media(max-width:950px){.market-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-actions{grid-column:1/-1}}@media(max-width:600px){.market-filter-grid{grid-template-columns:1fr}}
 @endpush

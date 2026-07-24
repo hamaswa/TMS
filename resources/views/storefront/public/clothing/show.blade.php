@@ -1,5 +1,15 @@
 @extends('storefront.public.layout')
 @section('title', $listing->display_name.' — '.$storefront->display_name)
+@section('meta_description', \App\Support\StorefrontSeo::description($listing->description, collect([$listing->cloth->brand?->name,$listing->cloth->type?->name,$storefront->display_name])->filter()->implode(' · ')))
+@section('canonical_url', route('storefront.clothing.show',[$storefront,$listing]))
+@section('meta_type', 'product')
+@section('meta_image', $listing->cloth->images->first(fn($image)=>$image->image_url)?->image_url ?: $storefront->cover_url ?: '')
+@section('meta_image_alt', $listing->display_name)
+@push('structured_data')
+<script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(
+    \App\Support\StorefrontSeo::product($storefront,$listing)
+)) !!}</script>
+@endpush
 @push('styles')
 .product{display:grid;grid-template-columns:1.05fr 1fr;gap:38px}.gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.photo{min-height:250px;background:#e1ede8;border-radius:18px;overflow:hidden;display:grid;place-items:center;font-size:4rem}.photo:first-child{grid-column:1/-1;min-height:390px}.photo img{width:100%;height:100%;object-fit:cover}.colors{display:grid;gap:9px}.cart-grid{display:grid;grid-template-columns:1.3fr .7fr auto;gap:10px}@media(max-width:760px){.product{grid-template-columns:1fr}.cart-grid{grid-template-columns:1fr}.photo:first-child{min-height:290px}}
 @endpush

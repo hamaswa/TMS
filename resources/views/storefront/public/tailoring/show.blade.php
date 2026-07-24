@@ -1,5 +1,13 @@
 @extends('storefront.public.layout')
 @section('title', $service->name.' — '.$storefront->display_name)
+@section('meta_description', \App\Support\StorefrontSeo::description($service->description, __('storefront.tailoring.default_description')))
+@section('canonical_url', route('storefront.tailoring.show',[$storefront,$service]))
+@section('meta_image', $storefront->cover_url ?: $storefront->logo_url ?: '')
+@push('structured_data')
+<script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(
+    \App\Support\StorefrontSeo::service($storefront,$service)
+)) !!}</script>
+@endpush
 @push('styles')
 :root{--primary:#314f7e;--primary-dark:#253d63;--ink:#243750;--bg:#f5f6f8;--line:#e0e5eb}.detail{max-width:920px}.panel{padding:34px}.panel h1{font-size:clamp(2.2rem,6vw,4rem);line-height:1.4}.meta{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}
 @endpush

@@ -1,5 +1,8 @@
 @extends('storefront.public.layout')
-@section('title', __('storefront.order.title',['reference'=>$order->reference]).' — '.$storefront->display_name)
+@section('title', __('storefront.order.secure_title').' — '.$storefront->display_name)
+@section('meta_description', __('storefront.order.secure_text'))
+@section('canonical_url', route('storefront.show',$storefront))
+@section('robots', 'noindex,nofollow')
 @section('body')
 <nav class="nav"><div class="shell"><a class="nav-brand" href="{{ route('storefront.show',$storefront) }}">{{ $storefront->display_name }}</a><div class="nav-actions">@include('storefront.public.partials.language-switch')<a class="nav-link" href="{{ route('storefront.clothing.index',$storefront) }}">{{ __('storefront.common.back_to_shop') }}</a></div></div></nav>
 <header class="hero"><div class="shell"><div>{{ __('storefront.order.online_order') }}</div><h1 dir="ltr">{{ $order->reference }}</h1></div></header>

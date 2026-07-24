@@ -41,7 +41,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 ## Phase 4 — public commerce quality
 
 - [x] Add city, category, price, delivery, and availability discovery filters.
-- [ ] Add SEO titles/descriptions, canonical URLs, Open Graph cards, and LocalBusiness/Product structured data.
+- [x] Add SEO titles/descriptions, canonical URLs, Open Graph cards, and LocalBusiness/Product structured data.
 - [ ] Centralize currency formatting and provide consistent Urdu/English PKR labels.
 - [ ] Add customer-visible payment verification status and payment-history details.
 - [ ] Add return, exchange, refund, and paid-order cancellation workflows.
@@ -124,4 +124,15 @@ At the Phase 4 public discovery checkpoint:
 - Filter values are tenant-scoped, validated, retained across pagination, and translated in Urdu and English. No database migration or existing-data update was required.
 - Browser QA confirmed English LTR and Urdu RTL results, complete desktop labels, 44–47 px controls, and no horizontal overflow at 375 px mobile width.
 
-Next starting point: Phase 4 SEO metadata, canonical URLs, social cards, and structured data.
+At the Phase 4 SEO and structured-data checkpoint:
+
+- Full suite: 176 tests passed, 1,273 assertions.
+- Focused metadata and checkout privacy suite: 17 tests passed, 193 assertions.
+- Public marketplace, shop, catalogue, product, tailoring catalogue, and service pages now provide localized descriptions, clean canonical URLs, Open Graph/Twitter cards, Pakistan locales, and safe fallback share images.
+- JSON-LD now describes the marketplace as a `WebSite`, shops as `LocalBusiness`, catalogues as `CollectionPage`, fabrics as `Product` with PKR offers and live availability, and tailoring work as `Service`.
+- Filter query strings canonicalize to the underlying public page to avoid duplicate search URLs.
+- Cart, order-tracking, and client-preview pages are `noindex,nofollow`. They publish no structured data, and private customer, address, payment, note, and order-reference values are excluded from the document head.
+- Browser source QA confirmed parseable schemas, correct `en_PK`/`ur_PK` Open Graph locales, clean product canonicals, live `InStock` data, and cart privacy protection.
+- No database migration or existing-data update was required.
+
+Next starting point: centralize PKR currency formatting across Urdu and English public pages.

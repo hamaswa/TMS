@@ -1,5 +1,17 @@
 @extends('storefront.public.layout')
 @section('title', $storefront->display_name.' — '.__('storefront.common.marketplace'))
+@section('meta_description', \App\Support\StorefrontSeo::description($storefront->description ?: $storefront->tagline, __('storefront.home.default_description')))
+@section('canonical_url', route('storefront.show',$storefront))
+@section('meta_image', $storefront->cover_url ?: $storefront->logo_url ?: '')
+@section('meta_image_alt', $storefront->display_name)
+@section('robots', $preview ? 'noindex,nofollow' : 'index,follow')
+@if(!$preview)
+@push('structured_data')
+<script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(
+    \App\Support\StorefrontSeo::localBusiness($storefront)
+)) !!}</script>
+@endpush
+@endif
 @push('styles')
 .preview{background:#f9c74f;color:#3d3100;text-align:center;padding:9px;font-weight:800}.logo{width:44px;height:44px;border-radius:13px;object-fit:cover;background:#dcece5}.store-hero{min-height:410px;display:flex;align-items:end;background:linear-gradient(90deg,rgba(5,40,29,.93),rgba(5,40,29,.48)),linear-gradient(135deg,#137253,#69b99b);background-size:cover;background-position:center}.badges{display:flex;gap:8px;flex-wrap:wrap}.badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:7px 12px}.about{background:#e9f4ef}
 @endpush

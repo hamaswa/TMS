@@ -65,6 +65,8 @@ class StorefrontCheckoutTest extends TestCase
         $this->assertDatabaseCount('storefront_cart_items', 0);
         $this->assertDatabaseCount('online_orders', 0);
         $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
+            ->assertDontSee('application/ld+json', false)
             ->assertOk()
             ->assertSeeText($customer->name)
             ->assertSeeText('Rs 2,900.00')
@@ -130,9 +132,14 @@ class StorefrontCheckoutTest extends TestCase
         $order = StorefrontOrder::firstOrFail();
         $this->app['session']->flush();
 
-        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+        $unauthorizedResponse = $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
+            ->assertDontSee('application/ld+json', false)
             ->assertSeeText('آرڈر کی محفوظ تفصیل')
             ->assertDontSeeText('نیلا پریمیم کپڑا');
+        preg_match('/<head>(.*?)<\/head>/s', $unauthorizedResponse->getContent(), $head);
+        $this->assertStringNotContainsString($order->reference, $head[1]);
+        $this->assertStringNotContainsString($customer->name, $head[1]);
         $this->post(route('storefront.orders.authenticate', [$storefront, $order->reference]), [
             'phone' => $customer->phone_number1,
             'pin' => '111111',

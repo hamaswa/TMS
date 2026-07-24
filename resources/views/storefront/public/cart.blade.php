@@ -1,5 +1,8 @@
 @extends('storefront.public.layout')
 @section('title', __('storefront.cart.title').' — '.$storefront->display_name)
+@section('meta_description', __('storefront.cart.intro'))
+@section('canonical_url', route('storefront.cart.show',$storefront))
+@section('robots', 'noindex,nofollow')
 @push('styles')
 .item{display:grid;grid-template-columns:1fr auto;gap:14px;border-bottom:1px solid var(--line);padding:15px 0}.controls{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.controls form{display:flex;gap:7px}.controls .control{max-width:130px}.total{display:flex;justify-content:space-between;font-size:1.2rem;font-weight:900}.choice{display:block;border:1px solid #c9d8d1;border-radius:12px;padding:10px 12px;margin:7px 0;background:#f8fbfa}.payment-extra{background:#fff8df;border:1px solid #ead79c;border-radius:12px;padding:12px;margin-top:10px}@media(max-width:600px){.item{grid-template-columns:1fr}}
 @endpush

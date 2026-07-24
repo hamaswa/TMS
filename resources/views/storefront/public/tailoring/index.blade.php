@@ -1,5 +1,18 @@
 @extends('storefront.public.layout')
 @section('title', __('storefront.tailoring.title').' — '.$storefront->display_name)
+@section('meta_description', __('storefront.tailoring.intro'))
+@section('canonical_url', route('storefront.tailoring.index',$storefront))
+@section('meta_image', $storefront->cover_url ?: $storefront->logo_url ?: '')
+@push('structured_data')
+<script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(
+    \App\Support\StorefrontSeo::collection(
+        __('storefront.tailoring.title').' — '.$storefront->display_name,
+        __('storefront.tailoring.intro'),
+        route('storefront.tailoring.index',$storefront),
+        $storefront
+    )
+)) !!}</script>
+@endpush
 @push('styles')
 :root{--primary:#314f7e;--primary-dark:#253d63;--ink:#23364d;--bg:#f5f6f8;--line:#e0e5eb}.inquiry-wrap{background:#e9eef5}.inquiry-grid{display:grid;grid-template-columns:.8fr 1.25fr;gap:30px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.wide{grid-column:1/-1}@media(max-width:850px){.inquiry-grid{grid-template-columns:1fr}}@media(max-width:600px){.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}}
 @endpush

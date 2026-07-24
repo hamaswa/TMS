@@ -1,5 +1,18 @@
 @extends('storefront.public.layout')
 @section('title', __('storefront.clothing.catalog_title').' — '.$storefront->display_name)
+@section('meta_description', __('storefront.clothing.catalog_intro'))
+@section('canonical_url', route('storefront.clothing.index',$storefront))
+@section('meta_image', $storefront->cover_url ?: $storefront->logo_url ?: '')
+@push('structured_data')
+<script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(
+    \App\Support\StorefrontSeo::collection(
+        __('storefront.clothing.catalog_title').' — '.$storefront->display_name,
+        __('storefront.clothing.catalog_intro'),
+        route('storefront.clothing.index',$storefront),
+        $storefront
+    )
+)) !!}</script>
+@endpush
 @push('styles')
 .filters{margin:-24px auto 30px;position:relative}.filter-grid{display:grid;grid-template-columns:2fr repeat(5,minmax(120px,1fr));gap:12px;align-items:end}.filter-field label{display:block;font-size:.82rem;font-weight:800;margin-bottom:6px}.filter-actions{display:flex;gap:8px;grid-column:1/-1}.product-card{padding:0;overflow:hidden}.photo{height:235px;background:linear-gradient(135deg,#e2eee9,#f2f7f4);display:grid;place-items:center;font-size:3rem}.photo img{width:100%;height:100%;object-fit:cover}.product-body{padding:19px}.colors{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.product-body .btn{display:block;margin-top:14px}@media(max-width:1050px){.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:600px){.filter-grid{grid-template-columns:1fr}}
 @endpush

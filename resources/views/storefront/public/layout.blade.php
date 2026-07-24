@@ -1,10 +1,44 @@
 <!doctype html>
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ur' ? 'rtl' : 'ltr' }}">
 <head>
+    @php
+        $seoTitle = trim($__env->yieldContent('title', __('storefront.common.marketplace')));
+        $seoDescription = \App\Support\StorefrontSeo::description(
+            trim($__env->yieldContent('meta_description')),
+            __('storefront.marketplace.hero_text')
+        );
+        $seoCanonical = trim($__env->yieldContent('canonical_url', url()->current()));
+        $seoType = trim($__env->yieldContent('meta_type', 'website'));
+        $seoRobots = trim($__env->yieldContent('robots', 'index,follow'));
+        $seoImageValue = trim($__env->yieldContent('meta_image'));
+        $seoImage = \App\Support\StorefrontSeo::absoluteUrl(
+            $seoImageValue ?: asset('assets/images/public-layout/public-banner.jpg')
+        );
+        $seoImageAlt = trim($__env->yieldContent('meta_image_alt', $seoTitle));
+        $seoLocale = app()->getLocale() === 'ur' ? 'ur_PK' : 'en_PK';
+        $seoAlternateLocale = app()->getLocale() === 'ur' ? 'en_PK' : 'ur_PK';
+    @endphp
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', __('storefront.common.marketplace'))</title>
+    <title>{{ $seoTitle }}</title>
+    <meta name="description" content="{{ $seoDescription }}">
+    <meta name="robots" content="{{ $seoRobots }}">
+    <link rel="canonical" href="{{ $seoCanonical }}">
+    <meta property="og:site_name" content="{{ __('storefront.common.marketplace') }}">
+    <meta property="og:type" content="{{ $seoType }}">
+    <meta property="og:title" content="{{ $seoTitle }}">
+    <meta property="og:description" content="{{ $seoDescription }}">
+    <meta property="og:url" content="{{ $seoCanonical }}">
+    <meta property="og:locale" content="{{ $seoLocale }}">
+    <meta property="og:locale:alternate" content="{{ $seoAlternateLocale }}">
+    @if($seoImage)<meta property="og:image" content="{{ $seoImage }}"><meta property="og:image:alt" content="{{ $seoImageAlt }}">@endif
+    <meta name="twitter:card" content="{{ $seoImage ? 'summary_large_image' : 'summary' }}">
+    <meta name="twitter:title" content="{{ $seoTitle }}">
+    <meta name="twitter:description" content="{{ $seoDescription }}">
+    @if($seoImage)<meta name="twitter:image" content="{{ $seoImage }}">@endif
+    <meta name="theme-color" content="#0b4937">
     <link rel="icon" href="{{ asset('assets/images/favicon.ico') }}">
+    @stack('structured_data')
     @stack('head')
     <style>
         @font-face{font-family:Nastaliq;src:url('{{ asset('assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') }}') format('woff2');font-display:swap}
