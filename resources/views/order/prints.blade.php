@@ -238,9 +238,11 @@
                 position: relative;
             } */
     </style>
+    @include('print.partials.document-styles')
 </head>
 
 <body>
+    @include('print.partials.toolbar')
     <div id="invoice-POS">
 
         <center id="top">
@@ -666,6 +668,7 @@
 
 
 
+    @include('print.partials.qr')
 </body>
 
 </html>

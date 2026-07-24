@@ -35,8 +35,10 @@
             @page { size: 88mm auto; margin: 0; }
         }
     </style>
+    @include('print.partials.document-styles')
 </head>
-<body>
+<body class="tms-worker-print">
+@include('print.partials.toolbar')
 @php
     $groupedReports = $tailor_report->groupBy(fn ($report) => $report->created_at->format('d-m-Y'));
     $totalSuits = (float) $tailor_report->sum('suitQuantity');
@@ -97,5 +99,6 @@
         <div>{{ $setting->contact_no }}</div>
     </div>
 </main>
+@include('print.partials.qr')
 </body>
 </html>

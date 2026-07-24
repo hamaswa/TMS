@@ -47,7 +47,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 - [x] Add customer-visible payment verification status and payment-history details.
 - [x] Add full verified-payment refund and paid-order cancellation with stock and cash-ledger reversal.
 - [x] Add item-level partial return, exchange, and replacement workflows.
-- [ ] Add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.
+- [x] Add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.
 
 ## Phase 5 — Pakistan payments and delivery
 
@@ -190,4 +190,14 @@ At the Phase 4 item-level return and exchange checkpoint:
 - The additive migration introduced only return headers and line records. A failed first migration attempt caused by MySQL's identifier-length limit created two empty tables; both were verified empty, removed, recreated with a short explicit index name, and the migration then completed successfully without touching existing data.
 - Browser QA completed a real 0.50-metre COD colour exchange for Usman Ali, confirmed the Urdu client history, English and Urdu customer histories, and the linked stock return/issue entries. The filtered client order is left open for review.
 
-Next starting point: add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.
+At the Phase 4 configurable-print checkpoint:
+
+- Full suite: 186 tests passed, 1,447 assertions.
+- Clients can choose 80 mm receipt or A4 as their default print size and can switch paper size for one document without changing the saved preference.
+- Tailoring orders and measurements, duplicate order receipts, sales invoices, cloth-sale receipts, and weekly production-worker reports share one print configuration and controlled page-break rules.
+- Printed documents can show a server-generated QR code containing only a non-secret TMS shop/type/reference identifier. Customer names, phones, addresses, balances, and internal notes are not encoded.
+- Invalid paper query values safely fall back to the client default, and clients can disable QR references.
+- The additive settings migration preserved all existing rows and assigned backward-compatible defaults: 80 mm paper with QR enabled.
+- Browser QA confirmed 80 mm and A4 order/measurement prints, cloth-sale receipts, worker reports, Urdu controls, zero horizontal overflow, working QR SVGs, and no broken images. The legacy five-column cloth receipt was tightened after QA found numeric overlap.
+
+Next starting point: extend verified manual payments to JazzCash, bank transfer, and Raast QR.

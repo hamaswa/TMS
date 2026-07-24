@@ -80,6 +80,51 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSeeText('Suit 1');
     }
 
+    public function test_print_documents_support_safe_paper_overrides_and_qr_references(): void
+    {
+        [$owner, $order] = $this->orderWithoutActiveSetting();
+        $order->update(['suitNum' => json_encode(['Suit 1'])]);
+        $setting = Setting::forceCreate([
+            'user_id' => $owner->id,
+            'name' => 'QA Tailors',
+            'shop_slug' => 'qa-tailors',
+            'status' => 1,
+            'note' => '',
+            'address' => '',
+            'logo' => '',
+            'contact_no' => '',
+            'print_paper_size' => Setting::PRINT_PAPER_RECEIPT_80,
+            'print_show_qr' => true,
+        ]);
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'orderId' => $order->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'recivedPayment' => 500,
+            'remainingBalance' => 500,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.order-print', $order).'?paper=a4')
+            ->assertOk()
+            ->assertSee('tms-paper-a4', false)
+            ->assertSee('TMS REF: '.$order->id)
+            ->assertSee('<svg', false);
+
+        $this->actingAs($owner)
+            ->get(route('admin.order-print', $order).'?paper=unsupported')
+            ->assertOk()
+            ->assertSee('tms-paper-receipt_80', false);
+
+        $setting->update(['print_show_qr' => false]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.order-print', $order))
+            ->assertOk()
+            ->assertDontSee('TMS REF: '.$order->id);
+    }
+
     private function orderWithoutActiveSetting(): array
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

@@ -27,6 +27,8 @@ class SettingController extends Controller
             'logo' => ['required', 'image', 'max:2048'],
             'note' => ['nullable', 'string', 'max:1000'],
             'address' => ['nullable', 'string', 'max:2000'],
+            'print_paper_size' => ['required', \Illuminate\Validation\Rule::in(array_keys(Setting::printPaperSizes()))],
+            'print_show_qr' => ['nullable', 'boolean'],
         ]);
         $image = $req->file('logo');
         $imageName = $image->hashName();
@@ -42,6 +44,8 @@ class SettingController extends Controller
         $obj->note=$validated['note'] ?? null;
         $obj->user_id=Auth::user()->businessOwnerId();
         $obj->address=$validated['address'] ?? null;
+        $obj->print_paper_size = $validated['print_paper_size'];
+        $obj->print_show_qr = $req->boolean('print_show_qr');
         $obj->save();
         return redirect('admin/setting')->with('success','Setting Added');
     }
@@ -53,6 +57,8 @@ class SettingController extends Controller
             'logo' => ['nullable', 'image', 'max:2048'],
             'note' => ['nullable', 'string', 'max:1000'],
             'address' => ['nullable', 'string', 'max:2000'],
+            'print_paper_size' => ['required', \Illuminate\Validation\Rule::in(array_keys(Setting::printPaperSizes()))],
+            'print_show_qr' => ['nullable', 'boolean'],
         ]);
         $obj = Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $imageName = $obj->logo;
@@ -74,6 +80,8 @@ class SettingController extends Controller
         $obj->note=$validated['note'] ?? null;
         $obj->user_id=Auth::user()->businessOwnerId();
         $obj->address=$validated['address'] ?? null;
+        $obj->print_paper_size = $validated['print_paper_size'];
+        $obj->print_show_qr = $req->boolean('print_show_qr');
         $obj->save();
         return redirect('admin/setting')->with('update','Setting Updated');
     }

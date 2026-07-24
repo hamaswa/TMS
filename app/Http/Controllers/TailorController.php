@@ -437,8 +437,10 @@ class TailorController extends Controller
                 ->sum('tailor_price');
 
             // dd($total_amount);
+            $printConfig = app(\App\Services\PrintDocumentService::class)
+                ->make($setting, request(), 'worker-weekly-report', $tailor->id);
 
-            return view('tailor.tailor-report-print', compact('tailor_report', 'total_amount', 'tailor', 'setting', 'tailor_record', 'tailor_records', 'transaction'));
+            return view('tailor.tailor-report-print', compact('tailor_report', 'total_amount', 'tailor', 'setting', 'tailor_record', 'tailor_records', 'transaction', 'printConfig'));
         } catch (\Throwable $th) {
             throw $th;
         }

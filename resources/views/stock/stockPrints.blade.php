@@ -174,9 +174,11 @@
             margin-top: 0 !important;
         }
     </style>
+    @include('print.partials.document-styles')
 </head>
 
-<body>
+<body class="tms-stock-print">
+    @include('print.partials.toolbar')
 
     <div id="invoice-POS">
 
@@ -318,6 +320,7 @@
 
 
 
+    @include('print.partials.qr')
 </body>
 
 </html>

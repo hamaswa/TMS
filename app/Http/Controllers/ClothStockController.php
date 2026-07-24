@@ -450,8 +450,10 @@ class ClothStockController extends Controller
             $customerName = $latestSaleStock->c_name;
             $phone = $latestSaleStock->phone;
             $sellStock = SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('created_at', $latestSaleStock->created_at)->get();
+            $printConfig = app(\App\Services\PrintDocumentService::class)
+                ->make($setting, request(), 'cloth-sale', $sale_id);
 
-            return view('stock.stockPrint', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'tailortransactions', 'previousBalance', 'latestBalance', 'remaining', 'payment', 'id'));
+            return view('stock.stockPrint', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'tailortransactions', 'previousBalance', 'latestBalance', 'remaining', 'payment', 'id', 'printConfig'));
         } else {
             return view('stock.stockPrint')->with('error', 'No SaleStock records found.');
         }
@@ -508,9 +510,11 @@ class ClothStockController extends Controller
                 ->where('user_id', Auth::user()->businessOwnerId())
                 ->where('c_id', $id)
                 ->get();
+            $printConfig = app(\App\Services\PrintDocumentService::class)
+                ->make($setting, request(), 'cloth-sale-copy', $sale_id);
             // dd($saleStock);
 
-            return view('stock.stockPrints', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'id', 'remaining', 'payment', 'latestReceivedPayment', 'previousBalance', 'saleStocks'));
+            return view('stock.stockPrints', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'id', 'remaining', 'payment', 'latestReceivedPayment', 'previousBalance', 'saleStocks', 'printConfig'));
         } else {
             return view('stock.stockPrints')->with('error', 'No SaleStock records found.');
         }

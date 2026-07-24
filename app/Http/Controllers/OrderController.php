@@ -336,7 +336,10 @@ class OrderController extends Controller
             return back()->with('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
         } else {
             $status = "default";
-            return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor'));
+            $printConfig = app(\App\Services\PrintDocumentService::class)
+                ->make($setting, request(), 'tailor-order', $order->id);
+
+            return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor', 'printConfig'));
         }
     }
 
@@ -396,7 +399,10 @@ class OrderController extends Controller
             return back()->with('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
         } else {
             $status = "default";
-            return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor'));
+            $printConfig = app(\App\Services\PrintDocumentService::class)
+                ->make($setting, request(), 'tailor-order-copy', $order->id);
+
+            return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor', 'printConfig'));
         }
     }
 

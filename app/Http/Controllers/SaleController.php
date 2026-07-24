@@ -174,7 +174,10 @@ class SaleController extends Controller
         } else {
 
             $status = "default";
-            return view('sale.print', compact('sale', 'setting', 'status', 'transaction', 'latestBalance', 'previousBalance'));
+            $printConfig = app(\App\Services\PrintDocumentService::class)
+                ->make($setting, request(), 'sale-invoice', $sale->id);
+
+            return view('sale.print', compact('sale', 'setting', 'status', 'transaction', 'latestBalance', 'previousBalance', 'printConfig'));
         }
     }
 

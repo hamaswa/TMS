@@ -115,8 +115,10 @@
                     }
                 }
      </style>
+    @include('print.partials.document-styles')
     </head>
-    <body>
+    <body class="tms-sale-print">
+    @include('print.partials.toolbar')
 
 
   <div id="invoice-POS">
@@ -226,6 +228,7 @@
 
   </div><!--End Invoice-->
 
+    @include('print.partials.qr')
     </body>
       <script>
     document.querySelector('.print')?.addEventListener('click', function () {

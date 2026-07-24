@@ -9,7 +9,38 @@ class Setting extends Model
 {
     use HasFactory;
 
-    protected $fillable =['user_id','name','logo','note','address','status','contact','shop_slug'];
+    public const PRINT_PAPER_RECEIPT_80 = 'receipt_80';
+
+    public const PRINT_PAPER_A4 = 'a4';
+
+    protected $fillable = [
+        'user_id',
+        'name',
+        'logo',
+        'note',
+        'address',
+        'status',
+        'contact',
+        'contact_no',
+        'shop_slug',
+        'print_paper_size',
+        'print_show_qr',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'print_show_qr' => 'boolean',
+        ];
+    }
+
+    public static function printPaperSizes(): array
+    {
+        return [
+            self::PRINT_PAPER_RECEIPT_80 => '80 ملی میٹر رسید',
+            self::PRINT_PAPER_A4 => 'A4 مکمل صفحہ',
+        ];
+    }
 
     public function getLogoUrlAttribute(): ?string
     {
