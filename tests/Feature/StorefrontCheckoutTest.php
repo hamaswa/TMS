@@ -69,7 +69,7 @@ class StorefrontCheckoutTest extends TestCase
             ->assertDontSee('application/ld+json', false)
             ->assertOk()
             ->assertSeeText($customer->name)
-            ->assertSeeText('Rs 2,900.00')
+            ->assertSeeText('2,900.00 روپے')
             ->assertSeeText('شام پانچ بجے وصول کروں گا');
         Notification::assertSentTo($owner, NewStorefrontOrderNotification::class);
     }

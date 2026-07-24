@@ -40,7 +40,7 @@ class StorefrontCartReservationTest extends TestCase
         $this->assertDatabaseCount('online_orders', 0);
         $this->get(route('storefront.cart.show', $storefront))
             ->assertOk()
-            ->assertSeeText('Rs 4,350.00')
+            ->assertSeeText('4,350.00 روپے')
             ->assertSeeText('30 منٹ');
     }
 

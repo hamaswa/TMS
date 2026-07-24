@@ -36,15 +36,23 @@ class StorefrontClothingCatalogTest extends TestCase
             ->assertOk()
             ->assertSeeText('گرمیوں کا نیلا واش اینڈ ویئر')
             ->assertSeeText('18.50 میٹر دستیاب')
-            ->assertSeeText('Rs 1,450.00 فی میٹر');
+            ->assertSeeText('1,450.00 روپے فی میٹر');
         $this->get(route('storefront.clothing.show', [$storefront, $listing]))
             ->assertOk()
             ->assertSeeText('نرم، ہلکا اور روزمرہ استعمال کے لیے موزوں۔');
 
+        $this->get(route('public.locale.update', [
+            'locale' => 'en',
+            'redirect' => route('storefront.clothing.index', $storefront, false),
+        ]))->assertRedirect(route('storefront.clothing.index', $storefront, false));
+        $this->get(route('storefront.clothing.index', $storefront))
+            ->assertOk()
+            ->assertSeeText('Rs 1,450.00 per metre');
+
         $color->update(['length' => 7.25]);
         $this->get(route('storefront.clothing.show', [$storefront, $listing]))
             ->assertOk()
-            ->assertSeeText('7.25 میٹر');
+            ->assertSeeText('7.25 metres');
     }
 
     public function test_client_cannot_publish_another_business_cloth(): void

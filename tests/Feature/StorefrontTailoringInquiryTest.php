@@ -33,7 +33,7 @@ class StorefrontTailoringInquiryTest extends TestCase
         $this->get(route('storefront.tailoring.index', $storefront))
             ->assertOk()
             ->assertSeeText('پریمیم مردانہ شلوار قمیض سلائی')
-            ->assertSeeText('Rs 1,800.00');
+            ->assertSeeText('1,800.00 روپے');
         $this->get(route('storefront.tailoring.show', [$storefront, $service]))
             ->assertOk()
             ->assertSeeText('ماہرانہ کٹنگ، نفیس سلائی اور فٹنگ ٹرائل شامل ہے۔');

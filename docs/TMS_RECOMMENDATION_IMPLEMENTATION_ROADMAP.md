@@ -42,7 +42,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 
 - [x] Add city, category, price, delivery, and availability discovery filters.
 - [x] Add SEO titles/descriptions, canonical URLs, Open Graph cards, and LocalBusiness/Product structured data.
-- [ ] Centralize currency formatting and provide consistent Urdu/English PKR labels.
+- [x] Centralize currency formatting and provide consistent Urdu/English PKR labels.
 - [ ] Add customer-visible payment verification status and payment-history details.
 - [ ] Add return, exchange, refund, and paid-order cancellation workflows.
 - [ ] Add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.
@@ -135,4 +135,13 @@ At the Phase 4 SEO and structured-data checkpoint:
 - Browser source QA confirmed parseable schemas, correct `en_PK`/`ur_PK` Open Graph locales, clean product canonicals, live `InStock` data, and cart privacy protection.
 - No database migration or existing-data update was required.
 
-Next starting point: centralize PKR currency formatting across Urdu and English public pages.
+At the Phase 4 Pakistan currency checkpoint:
+
+- Full suite: 178 tests passed, 1,283 assertions.
+- Focused currency, catalogue, cart, checkout, and tailoring suite: 32 tests passed, 285 assertions.
+- Public clothing, cart, order, and tailoring prices now use one fixed-Pakistan formatter: `Rs 1,450.00` in English and `1,450.00 روپے` in Urdu.
+- Currency amounts use bidirectional isolation and non-wrapping presentation, while Product and Service structured data retains ISO `PKR` values.
+- Browser QA confirmed English LTR and Urdu RTL output, correct cart unit/line/total amounts, five live tailoring prices, no horizontal overflow at 390 px or desktop widths, and no console errors.
+- No database migration or existing client-data update was required.
+
+Next starting point: add customer-visible payment verification status and payment-history details.

@@ -141,7 +141,7 @@ class StorefrontSeo
                 '@type' => 'Offer',
                 'url' => $url,
                 'priceCurrency' => 'PKR',
-                'price' => number_format($price, 2, '.', ''),
+                'price' => PakistanCurrency::isoAmount($price),
                 'availability' => $available > 0
                     ? 'https://schema.org/InStock'
                     : 'https://schema.org/OutOfStock',
@@ -183,7 +183,7 @@ class StorefrontSeo
                 '@type' => 'Offer',
                 'url' => $url,
                 'priceCurrency' => 'PKR',
-                'price' => number_format((float) $service->price_from, 2, '.', ''),
+                'price' => PakistanCurrency::isoAmount($service->price_from),
             ];
         }
 
