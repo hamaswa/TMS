@@ -178,6 +178,11 @@ class StorefrontCheckoutService
             if ($status !== StorefrontOrder::STATUS_CANCELLED || $lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
                 throw ValidationException::withMessages(['status' => 'صرف زیرِ انتظار آرڈر منسوخ کیا جا سکتا ہے۔']);
             }
+            if ($lockedOrder->returns()->exists()) {
+                throw ValidationException::withMessages([
+                    'status' => 'جزوی واپسی یا تبدیلی والے آرڈر کو مکمل منسوخ نہیں کیا جا سکتا۔',
+                ]);
+            }
             if ((float) $lockedOrder->paid_amount > 0) {
                 throw ValidationException::withMessages([
                     'status' => 'وصول شدہ ادائیگی والے آرڈر کو منسوخ کرنے سے پہلے رقم واپسی درج کریں۔',
@@ -317,6 +322,11 @@ class StorefrontCheckoutService
             if ($lockedOrder->refunds()->exists()) {
                 throw ValidationException::withMessages([
                     'refund_method' => 'اس آرڈر کی رقم پہلے ہی واپس کی جا چکی ہے۔',
+                ]);
+            }
+            if ($lockedOrder->returns()->exists()) {
+                throw ValidationException::withMessages([
+                    'refund_method' => 'جزوی واپسی یا تبدیلی والے آرڈر پر مکمل رقم واپسی نہیں ہو سکتی۔',
                 ]);
             }
 

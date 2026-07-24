@@ -73,6 +73,57 @@
                             </div>
                         @endif
                         <ul class="mt-2 mb-3">@foreach($order->items as $item)<li>{{ $item->item_name }} — {{ $item->color }}، {{ number_format($item->quantity,2) }} میٹر</li>@endforeach</ul>
+                        @if($order->returns->isNotEmpty())
+                            <div class="border rounded bg-light p-3 mt-3">
+                                <strong>جزوی واپسی اور تبدیلی کی تاریخ</strong>
+                                @foreach($order->returns as $return)
+                                    @php $returnItem = $return->items->first(); @endphp
+                                    <div class="small border-top pt-2 mt-2">
+                                        <span dir="ltr">{{ $return->reference }}</span>
+                                        · {{ \App\Models\StorefrontOrderReturn::types()[$return->type] ?? $return->type }}
+                                        · {{ $returnItem?->orderItem?->item_name }}
+                                        · {{ number_format((float) $returnItem?->quantity, 2) }} میٹر
+                                        @if((float) $return->refund_amount > 0) · {{ \App\Support\PakistanCurrency::format($return->refund_amount) }}@endif
+                                        @if($returnItem?->replacementColor) · متبادل رنگ: {{ $returnItem->replacementColor->color }}@endif
+                                        · {{ $returnItem?->restocked ? 'اسٹاک میں واپس' : 'خراب / اسٹاک میں واپس نہیں' }}
+                                        <span class="d-block text-muted">{{ $return->processed_at->format('d-m-Y h:i A') }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                        @if($order->status !== \App\Models\StorefrontOrder::STATUS_CANCELLED && $order->refunds->isEmpty())
+                            <div class="mt-3">
+                                @foreach($order->items as $item)
+                                    @php
+                                        $processedQuantity = (float) $item->returnItems->sum('quantity');
+                                        $returnableQuantity = max(0, (float) $item->quantity - $processedQuantity);
+                                    @endphp
+                                    @if($returnableQuantity > 0)
+                                        <details class="border rounded p-2 mb-2">
+                                            <summary class="font-weight-bold" style="cursor:pointer">{{ $item->item_name }} — جزوی واپسی یا رنگ تبدیل کریں <small class="text-muted">(دستیاب {{ number_format($returnableQuantity, 2) }} میٹر)</small></summary>
+                                            <form method="POST" action="{{ route('admin.storefront.orders.returns.store', $order) }}" class="mt-3">
+                                                @csrf
+                                                <input type="hidden" name="order_item_id" value="{{ $item->id }}">
+                                                <div class="form-row">
+                                                    <div class="col-md-3 mb-2"><label for="return_type_{{ $item->id }}">کارروائی</label><select id="return_type_{{ $item->id }}" name="return_type" class="form-control" required>@foreach(\App\Models\StorefrontOrderReturn::types() as $value=>$label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
+                                                    <div class="col-md-2 mb-2"><label for="return_quantity_{{ $item->id }}">مقدار (میٹر)</label><input id="return_quantity_{{ $item->id }}" name="quantity" type="number" class="form-control" min="0.01" max="{{ $returnableQuantity }}" step="0.01" required></div>
+                                                    <div class="col-md-3 mb-2"><label for="replacement_color_{{ $item->id }}">متبادل رنگ <small class="text-muted">(صرف تبدیلی)</small></label><select id="replacement_color_{{ $item->id }}" name="replacement_cloth_color_id" class="form-control"><option value="">منتخب کریں</option>@foreach($item->cloth?->colors ?? [] as $color)@if($color->id !== $item->cloth_color_id)<option value="{{ $color->id }}">{{ $color->color }} — {{ number_format((float)$color->length,2) }} میٹر</option>@endif @endforeach</select></div>
+                                                    @if((float) $order->paid_amount > 0)
+                                                        <div class="col-md-2 mb-2"><label for="partial_refund_method_{{ $item->id }}">رقم واپسی <small class="text-muted">(صرف واپسی)</small></label><select id="partial_refund_method_{{ $item->id }}" name="refund_method" class="form-control"><option value="">منتخب کریں</option>@foreach(\App\Models\StorefrontOrderRefund::methods() as $value=>$label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
+                                                        <div class="col-md-2 mb-2"><label for="partial_refund_reference_{{ $item->id }}">ادائیگی حوالہ</label><input id="partial_refund_reference_{{ $item->id }}" name="refund_reference" class="form-control" maxlength="100" dir="ltr"></div>
+                                                    @endif
+                                                </div>
+                                                <div class="form-row align-items-end">
+                                                    <div class="col-md-7 mb-2"><label for="return_notes_{{ $item->id }}">اندرونی نوٹ <small class="text-muted">(اختیاری)</small></label><input id="return_notes_{{ $item->id }}" name="return_notes" class="form-control" maxlength="1000"></div>
+                                                    <div class="col-md-3 mb-2"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="restock_{{ $item->id }}" name="restock" value="1" checked><label class="custom-control-label" for="restock_{{ $item->id }}">کپڑا قابلِ فروخت ہے، اسٹاک میں واپس کریں</label></div></div>
+                                                    <div class="col-md-2 mb-2"><button class="btn btn-warning btn-block" onclick="return confirm('مقدار، رقم اور اسٹاک کی تفصیل دوبارہ دیکھ لی ہے؟')">درج کریں</button></div>
+                                                </div>
+                                            </form>
+                                        </details>
+                                    @endif
+                                @endforeach
+                            </div>
+                        @endif
                         @if($order->refunds->isNotEmpty())
                             @foreach($order->refunds as $refund)
                                 <div class="alert alert-info mt-3 mb-0">
@@ -87,7 +138,9 @@
                         @if($order->status==='pending')
                             <div class="mt-3">
                                 <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success" @disabled($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA && $order->payment_verification_status !== \App\Models\StorefrontOrder::VERIFICATION_VERIFIED)>مکمل کریں</button></form>
-                                @if((float) $order->paid_amount <= 0)
+                                @if($order->returns->isNotEmpty())
+                                    <div class="alert alert-light mt-2 mb-0">اس آرڈر پر جزوی واپسی یا تبدیلی موجود ہے، اس لیے مکمل منسوخی دستیاب نہیں۔ باقی مقدار الگ واپسی یا تبدیلی سے درج کریں۔</div>
+                                @elseif((float) $order->paid_amount <= 0)
                                     <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block" onsubmit="return confirm('آرڈر منسوخ کرنے سے اسٹاک اور گاہک کا بقایا واپس ہوگا۔ جاری رکھیں؟')">@csrf @method('PATCH')<input type="hidden" name="status" value="cancelled"><button class="btn btn-outline-danger">منسوخ کریں</button></form>
                                 @else
                                     <div class="border border-danger rounded p-3 mt-3">

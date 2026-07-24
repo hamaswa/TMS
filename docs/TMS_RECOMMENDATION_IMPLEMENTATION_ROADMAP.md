@@ -46,7 +46,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 - [x] Let each client independently choose catalogue-only publishing, online ordering, and accepted manual payment methods.
 - [x] Add customer-visible payment verification status and payment-history details.
 - [x] Add full verified-payment refund and paid-order cancellation with stock and cash-ledger reversal.
-- [ ] Add item-level partial return, exchange, and replacement workflows.
+- [x] Add item-level partial return, exchange, and replacement workflows.
 - [ ] Add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.
 
 ## Phase 5 — Pakistan payments and delivery
@@ -177,4 +177,17 @@ At the Phase 4 audited paid-order refund checkpoint:
 - The schema migration was additive and did not delete or rewrite existing customer, order, inventory, or payment data.
 - Browser QA completed a real EasyPaisa QA order from verification through refund/cancellation, confirmed the Urdu client form and English customer history, and left the secure customer refund record open for review.
 
-Next starting point: add item-level partial returns and exchange/replacement processing without changing the completed full-refund audit trail.
+At the Phase 4 item-level return and exchange checkpoint:
+
+- Full suite: 185 tests passed, 1,439 assertions.
+- Focused checkout, return, refund, and exchange suite: 19 tests passed, 298 assertions.
+- Clients can return part of a fabric line for a payment refund or unified-balance credit, or exchange the same quantity for another colour of the same fabric.
+- The client explicitly marks returned fabric as resellable or damaged. Only resellable quantities return to stock; exchanges issue the replacement colour through a separate inventory movement.
+- Order, item, return rows, and affected colour stocks are locked in deterministic order. Cumulative returned quantity cannot exceed the original quantity, cross-client items/colours are rejected, and pending EasyPaisa claims must be verified first.
+- Orders with partial activity cannot later use full cancellation or full refund, preventing double stock restoration or duplicated financial reversals.
+- Financial reports subtract return revenue in the return period and reverse cost only when returned fabric was restocked. Inventory-ledger filters now expose storefront sale, cancellation, return, and exchange movements.
+- Customers see safe bilingual return/exchange references, quantities, replacement colours, refund methods, balance credits, and timestamps. Internal notes and staff identity remain private.
+- The additive migration introduced only return headers and line records. A failed first migration attempt caused by MySQL's identifier-length limit created two empty tables; both were verified empty, removed, recreated with a short explicit index name, and the migration then completed successfully without touching existing data.
+- Browser QA completed a real 0.50-metre COD colour exchange for Usman Ali, confirmed the Urdu client history, English and Urdu customer histories, and the linked stock return/issue entries. The filtered client order is left open for review.
+
+Next starting point: add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.

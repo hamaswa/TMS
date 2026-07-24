@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ClothColor;
 use App\Models\InventoryMovement;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use App\Services\InventoryService;
 
 class InventoryLedgerController extends Controller
 {
@@ -19,6 +19,7 @@ class InventoryLedgerController extends Controller
             'movement_type' => ['nullable', Rule::in([
                 'purchase_receipt', 'purchase_return', 'counter_sale', 'online_order',
                 'online_cancellation', 'online_reorder', 'cart_reservation', 'cart_release',
+                'storefront_order', 'storefront_cancellation', 'storefront_return', 'storefront_exchange_issue',
                 'manual_adjustment_in', 'manual_adjustment_out',
             ])],
             'from_date' => ['nullable', 'date'],
@@ -58,6 +59,7 @@ class InventoryLedgerController extends Controller
                 $inventory->issue($color, (float) $validated['quantity'], 'manual_adjustment_out', $color, $validated['note']);
             }
         });
+
         return back()->with('success', 'اسٹاک کی تبدیلی کامیابی سے درج کر دی گئی ہے۔');
     }
 
@@ -81,6 +83,7 @@ class InventoryLedgerController extends Controller
         $totals['margin'] = $totals['retail'] - $totals['cost'];
         $colors = $query->with('cloth.brand', 'cloth.type')->orderBy('cloth_id')
             ->paginate((int) ($validated['per_page'] ?? 25))->withQueryString();
+
         return view('inventory-ledger.valuation', compact('colors', 'totals', 'validated'));
     }
 }

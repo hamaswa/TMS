@@ -7,7 +7,6 @@ use App\Models\DaliyExpenses;
 use App\Models\Expenses;
 use App\Models\OnlineOrder;
 use App\Models\Order;
-use App\Models\Purchase;
 use App\Models\PurchaseReturn;
 use App\Models\SaleStock;
 use App\Models\StorefrontOrder;
@@ -39,10 +38,22 @@ class FinancialReportService
             'storefront.business',
             fn ($query) => $query->where('owner_user_id', $userId)
         )->whereBetween('placed_at', [$from, $to])->where('status', '!=', StorefrontOrder::STATUS_CANCELLED)->sum('subtotal') : 0;
+        $storefrontReturnRevenue = $clothingEnabled ? (float) DB::table('storefront_order_returns')
+            ->join('storefront_orders', 'storefront_orders.id', '=', 'storefront_order_returns.storefront_order_id')
+            ->join('storefronts', 'storefronts.id', '=', 'storefront_orders.storefront_id')
+            ->join('businesses', 'businesses.id', '=', 'storefronts.business_id')
+            ->where('businesses.owner_user_id', $userId)
+            ->whereBetween('storefront_order_returns.processed_at', [$from, $to])
+            ->sum('storefront_order_returns.refund_amount') : 0;
+        $storefrontRevenue -= $storefrontReturnRevenue;
         $onlineRevenue = $legacyOnlineRevenue + $storefrontRevenue;
         $revenue = [];
-        if ($tailoringEnabled) $revenue['ٹیلرنگ آرڈرز'] = $tailoringRevenue;
-        if ($clothingEnabled) $revenue += ['کاؤنٹر کپڑا فروخت' => $counterRevenue, 'مصنوعات کی فروخت' => $manualSalesRevenue, 'آن لائن آرڈرز' => $onlineRevenue];
+        if ($tailoringEnabled) {
+            $revenue['ٹیلرنگ آرڈرز'] = $tailoringRevenue;
+        }
+        if ($clothingEnabled) {
+            $revenue += ['کاؤنٹر کپڑا فروخت' => $counterRevenue, 'مصنوعات کی فروخت' => $manualSalesRevenue, 'آن لائن آرڈرز' => $onlineRevenue];
+        }
 
         $counterCogs = $clothingEnabled ? (float) SaleStock::where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum('cost_total') : 0;
         $legacyOnlineCogs = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
@@ -55,6 +66,18 @@ class FinancialReportService
             ->where('storefront_orders.status', '!=', StorefrontOrder::STATUS_CANCELLED)
             ->whereBetween('storefront_orders.placed_at', [$from, $to])
             ->sum('storefront_order_items.cost_total') : 0;
+        $storefrontReturnedCogs = $clothingEnabled ? (float) DB::table('storefront_order_return_items')
+            ->join('storefront_order_returns', 'storefront_order_returns.id', '=', 'storefront_order_return_items.storefront_order_return_id')
+            ->join('storefront_order_items', 'storefront_order_items.id', '=', 'storefront_order_return_items.storefront_order_item_id')
+            ->join('storefront_orders', 'storefront_orders.id', '=', 'storefront_order_returns.storefront_order_id')
+            ->join('storefronts', 'storefronts.id', '=', 'storefront_orders.storefront_id')
+            ->join('businesses', 'businesses.id', '=', 'storefronts.business_id')
+            ->where('businesses.owner_user_id', $userId)
+            ->where('storefront_order_returns.type', 'refund')
+            ->where('storefront_order_return_items.restocked', true)
+            ->whereBetween('storefront_order_returns.processed_at', [$from, $to])
+            ->sum(DB::raw('storefront_order_return_items.quantity * storefront_order_items.cost_per_meter')) : 0;
+        $storefrontCogs -= $storefrontReturnedCogs;
         $onlineCogs = $legacyOnlineCogs + $storefrontCogs;
         $tailorLabor = $tailoringEnabled ? (float) Order::where('userId', $userId)->whereBetween('created_at', [$from, $to])->sum(DB::raw('tailor_price * suitQuantity')) : 0;
         $productionWorkerEarnings = $tailoringEnabled ? (float) DB::table('worker_ledger_entries')
@@ -69,7 +92,9 @@ class FinancialReportService
             $directCosts['درزی کی مزدوری'] = $tailorLabor;
             $directCosts['پروڈکشن ورکرز کی اجرت'] = $productionWorkerEarnings;
         }
-        if ($clothingEnabled) $directCosts += ['کاؤنٹر فروخت کی لاگت' => $counterCogs, 'آن لائن آرڈر کی لاگت' => $onlineCogs];
+        if ($clothingEnabled) {
+            $directCosts += ['کاؤنٹر فروخت کی لاگت' => $counterCogs, 'آن لائن آرڈر کی لاگت' => $onlineCogs];
+        }
 
         $monthlyExpenses = (float) Expenses::where('user_id', $userId)->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
             ->sum(DB::raw('COALESCE(Monthly_Rent,0) + COALESCE(Monthly_Bill,0) + COALESCE(Extra_Expenses,0)'));
@@ -168,7 +193,7 @@ class FinancialReportService
             ->select(['customers.id', 'customers.name', 'customers.phone_number1'])
             ->selectSub(clone $balance, 'balance')
             ->where('customers.user_id', $userId)
-            ->whereRaw('(' . $balance->toSql() . ') > 0', $balance->getBindings())
+            ->whereRaw('('.$balance->toSql().') > 0', $balance->getBindings())
             ->when($search, fn ($query) => $query->where(function ($nested) use ($search) {
                 $nested->where('customers.name', 'like', "%{$search}%")
                     ->orWhere('customers.phone_number1', 'like', "%{$search}%");

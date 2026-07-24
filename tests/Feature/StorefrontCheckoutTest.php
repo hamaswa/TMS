@@ -13,6 +13,7 @@ use App\Models\StorefrontCart;
 use App\Models\StorefrontClothingListing;
 use App\Models\StorefrontOrder;
 use App\Models\StorefrontOrderRefund;
+use App\Models\StorefrontOrderReturn;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\NewStorefrontOrderNotification;
@@ -435,6 +436,170 @@ class StorefrontCheckoutTest extends TestCase
         $this->assertSame(StorefrontOrder::STATUS_CANCELLED, $order->fresh()->status);
     }
 
+    public function test_unpaid_partial_return_restores_resellable_stock_and_reduces_unified_balance(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 2);
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+        ])->assertRedirect();
+        $order = StorefrontOrder::firstOrFail();
+        $item = $order->items()->firstOrFail();
+
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_REFUND,
+            'quantity' => 0.5,
+            'restock' => 1,
+            'return_notes' => 'Customer returned sealed fabric',
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+
+        $return = $order->returns()->firstOrFail();
+        $this->assertSame('725.00', $return->refund_amount);
+        $this->assertNull($return->refund_method);
+        $this->assertSame('2175.00', $order->fresh()->balance_amount);
+        $this->assertSame(8.5, (float) $color->fresh()->length);
+        $this->assertSame(2175.0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+        $this->assertDatabaseHas('inventory_movements', [
+            'movement_type' => 'storefront_return',
+            'quantity' => 0.5,
+        ]);
+        $report = app(FinancialReportService::class)->build($owner->id, now()->startOfDay(), now()->endOfDay());
+        $this->assertSame(2175.0, (float) $report['summary']['total_revenue']);
+        $this->assertSame(675.0, (float) $report['summary']['gross_profit']);
+
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_REFUND,
+            'quantity' => 1.51,
+        ])->assertSessionHasErrors('quantity');
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CANCELLED,
+        ])->assertSessionHasErrors('status');
+        $this->assertDatabaseCount('storefront_order_returns', 1);
+        $this->assertSame(8.5, (float) $color->fresh()->length);
+
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('آرڈر کا بقایا ایڈجسٹ کر دیا گیا')
+            ->assertSeeText('725.00 روپے')
+            ->assertSeeText($return->reference)
+            ->assertSeeText('گاہک کے بقایا میں کمی')
+            ->assertDontSeeText('Customer returned sealed fabric');
+    }
+
+    public function test_paid_partial_return_requires_refund_proof_and_reverses_received_cash(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 2);
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'EP-PARTIAL-1001',
+        ]);
+        $order = StorefrontOrder::firstOrFail();
+        $item = $order->items()->firstOrFail();
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_REFUND,
+            'quantity' => 0.5,
+            'refund_method' => StorefrontOrderRefund::METHOD_CASH,
+        ])->assertSessionHasErrors('return_type');
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
+            'decision' => StorefrontOrder::VERIFICATION_VERIFIED,
+        ])->assertRedirect();
+
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_REFUND,
+            'quantity' => 0.5,
+        ])->assertSessionHasErrors('refund_method');
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_REFUND,
+            'quantity' => 0.5,
+            'refund_method' => StorefrontOrderRefund::METHOD_EASYPAISA,
+        ])->assertSessionHasErrors('refund_reference');
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_REFUND,
+            'quantity' => 0.5,
+            'restock' => 0,
+            'refund_method' => StorefrontOrderRefund::METHOD_EASYPAISA,
+            'refund_reference' => 'EP-PARTIAL-REFUND-1001',
+        ])->assertRedirect();
+
+        $return = $order->returns()->firstOrFail();
+        $this->assertSame('725.00', $return->refund_amount);
+        $this->assertSame(StorefrontOrderRefund::METHOD_EASYPAISA, $return->refund_method);
+        $this->assertSame('0.00', $order->fresh()->balance_amount);
+        $this->assertSame(8.0, (float) $color->fresh()->length);
+        $this->assertSame(2175.0, (float) Transaction::where('customerId', $customer->id)->sum('recivedPayment'));
+        $this->assertDatabaseMissing('inventory_movements', ['movement_type' => 'storefront_return']);
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('ادائیگی واپس کر دی گئی')
+            ->assertSeeText('EP-PARTIAL-REFUND-1001');
+    }
+
+    public function test_same_fabric_colour_exchange_is_tenant_scoped_and_moves_stock_once(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer, $replacementColor] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 2);
+        $this->post(route('storefront.checkout.store', $storefront), ['fulfillment_method' => 'pickup']);
+        $order = StorefrontOrder::firstOrFail();
+        $item = $order->items()->firstOrFail();
+        [$otherOwner, , , , , $otherColor] = $this->catalog();
+
+        $this->actingAs($otherOwner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_EXCHANGE,
+            'quantity' => 1,
+            'replacement_cloth_color_id' => $otherColor->id,
+        ])->assertNotFound();
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_EXCHANGE,
+            'quantity' => 1,
+            'restock' => 1,
+            'replacement_cloth_color_id' => $otherColor->id,
+        ])->assertSessionHasErrors('replacement_cloth_color_id');
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_EXCHANGE,
+            'quantity' => 1,
+            'restock' => 1,
+            'replacement_cloth_color_id' => $replacementColor->id,
+        ])->assertRedirect();
+
+        $return = $order->returns()->firstOrFail();
+        $this->assertSame(StorefrontOrderReturn::TYPE_EXCHANGE, $return->type);
+        $this->assertSame(9.0, (float) $color->fresh()->length);
+        $this->assertSame(7.0, (float) $replacementColor->fresh()->length);
+        $this->assertDatabaseHas('inventory_movements', ['movement_type' => 'storefront_return', 'quantity' => 1]);
+        $this->assertDatabaseHas('inventory_movements', ['movement_type' => 'storefront_exchange_issue', 'quantity' => -1]);
+        $this->assertDatabaseCount('transactions', 1);
+        $this->actingAs($owner)->get(route('admin.storefront.orders.index', ['search' => $order->reference]))
+            ->assertOk()
+            ->assertSeeText('جزوی واپسی اور تبدیلی کی تاریخ')
+            ->assertSeeText('اس آرڈر پر جزوی واپسی یا تبدیلی موجود ہے، اس لیے مکمل منسوخی دستیاب نہیں۔');
+
+        $this->actingAs($owner)->post(route('admin.storefront.orders.returns.store', $order), [
+            'order_item_id' => $item->id,
+            'return_type' => StorefrontOrderReturn::TYPE_EXCHANGE,
+            'quantity' => 1.01,
+            'replacement_cloth_color_id' => $replacementColor->id,
+        ])->assertSessionHasErrors('quantity');
+        $this->assertDatabaseCount('storefront_order_returns', 1);
+        $this->assertSame(9.0, (float) $color->fresh()->length);
+        $this->assertSame(7.0, (float) $replacementColor->fresh()->length);
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('سرمئی')
+            ->assertSeeText($return->reference);
+    }
+
     public function test_cash_on_delivery_requires_delivery_fulfillment(): void
     {
         [, $storefront, $listing, $color, $customer] = $this->catalog();
@@ -587,6 +752,13 @@ class StorefrontCheckoutTest extends TestCase
             'length' => 10,
             'average_unit_cost' => 1000,
         ]);
+        $replacementColor = ClothColor::create([
+            'cloth_id' => $cloth->id,
+            'user_id' => $owner->id,
+            'color' => 'سرمئی',
+            'length' => 8,
+            'average_unit_cost' => 1000,
+        ]);
         $listing = StorefrontClothingListing::create([
             'storefront_id' => $storefront->id,
             'cloth_id' => $cloth->id,
@@ -600,6 +772,6 @@ class StorefrontCheckoutTest extends TestCase
             'mobile_pin' => Hash::make('482913'),
         ]);
 
-        return [$owner->fresh(), $storefront, $listing, $color, $customer];
+        return [$owner->fresh(), $storefront, $listing, $color, $customer, $replacementColor];
     }
 }

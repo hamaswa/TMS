@@ -50,4 +50,9 @@ class StorefrontOrderItem extends Model
     {
         return $this->belongsTo(ClothColor::class, 'cloth_color_id');
     }
+
+    public function returnItems()
+    {
+        return $this->hasMany(StorefrontOrderReturnItem::class);
+    }
 }

@@ -122,6 +122,11 @@ class StorefrontOrder extends Model
         return $this->hasMany(StorefrontOrderRefund::class);
     }
 
+    public function returns()
+    {
+        return $this->hasMany(StorefrontOrderReturn::class);
+    }
+
     public static function verificationStatuses(): array
     {
         return [

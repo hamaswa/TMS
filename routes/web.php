@@ -1,51 +1,50 @@
 <?php
 
 use App\Events\NotificationEvent;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CsvController;
+use App\Http\Controllers\AdministratorController;
+use App\Http\Controllers\AdminStorefrontClothingController;
+use App\Http\Controllers\AdminStorefrontController;
+use App\Http\Controllers\AdminStorefrontOrderController;
+use App\Http\Controllers\AdminStorefrontTailoringController;
+use App\Http\Controllers\BusinessActivityController;
+use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\CartController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\SaleController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\ClothController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\DesignController;
-use App\Http\Controllers\TailorController;
-use App\Http\Controllers\TailorJobController;
-use App\Http\Controllers\OptionsController;
-use App\Http\Controllers\SettingController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\ExpensesController;
-use App\Http\Controllers\ClothTypeController;
 use App\Http\Controllers\ClothBrandController;
+use App\Http\Controllers\ClothController;
 use App\Http\Controllers\ClothStockController;
-use App\Http\Controllers\OptionTypeController;
+use App\Http\Controllers\ClothTypeController;
+use App\Http\Controllers\CsvController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DesignController;
+use App\Http\Controllers\EmployeePasswordController;
+use App\Http\Controllers\ExpensesController;
+use App\Http\Controllers\FinancialReportController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\InventoryLedgerController;
 use App\Http\Controllers\MeasurementFieldController;
 use App\Http\Controllers\MeasurementTemplateController;
-use App\Http\Controllers\TailorRateController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\PushNotificationController;
-use App\Http\Controllers\SaleCustomerController;
-use App\Http\Controllers\AdministratorController;
-use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\PurchaseController;
-use App\Http\Controllers\InventoryLedgerController;
-use App\Http\Controllers\FinancialReportController;
-use App\Http\Controllers\BusinessTeamController;
-use App\Http\Controllers\BusinessActivityController;
-use App\Http\Controllers\EmployeePasswordController;
-use App\Http\Controllers\ProductionWorkerController;
+use App\Http\Controllers\OptionsController;
+use App\Http\Controllers\OptionTypeController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderWorkAssignmentController;
-use App\Http\Controllers\AdminStorefrontController;
-use App\Http\Controllers\AdminStorefrontClothingController;
-use App\Http\Controllers\AdminStorefrontTailoringController;
-use App\Http\Controllers\PublicStorefrontController;
+use App\Http\Controllers\ProductionWorkerController;
+use App\Http\Controllers\PublicLocaleController;
 use App\Http\Controllers\PublicStorefrontCartController;
 use App\Http\Controllers\PublicStorefrontCheckoutController;
-use App\Http\Controllers\AdminStorefrontOrderController;
-use App\Http\Controllers\PublicLocaleController;
+use App\Http\Controllers\PublicStorefrontController;
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PushNotificationController;
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleCustomerController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\TailorController;
+use App\Http\Controllers\TailorJobController;
+use App\Http\Controllers\TailorRateController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -94,7 +93,7 @@ Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'busines
     Route::put('/password', [EmployeePasswordController::class, 'update'])->middleware('throttle:6,1')->name('update');
 });
 
-//Administrator routes
+// Administrator routes
 Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:administrative'], 'as' => 'administrator.'], function () {
 
     Route::get('/', [AdministratorController::class, 'showData'])->name('index');
@@ -124,8 +123,8 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
     Route::delete('/roles-delete/{id}', [AdministratorController::class, 'deleteRoles'])->name('role.delete');
     Route::delete('/permi-delete/{id}', [AdministratorController::class, 'deletePermissions'])->name('perm.delete');
 
-    Route::get('/notify/{id}',[AdministratorController::class,'send'])->name('noti');
-    Route::post('/send',[AdministratorController::class,'store'])->name('send');
+    Route::get('/notify/{id}', [AdministratorController::class, 'send'])->name('noti');
+    Route::post('/send', [AdministratorController::class, 'store'])->name('send');
     // Route::get('/sse-update', [AdministratorController::class, 'SSEupdates']);
 });
 
@@ -161,17 +160,19 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::patch('/storefront/orders/{order}', [AdminStorefrontOrderController::class, 'update'])->name('storefront.orders.update');
         Route::patch('/storefront/orders/{order}/payment-verification', [AdminStorefrontOrderController::class, 'verifyPayment'])
             ->name('storefront.orders.payment-verification');
+        Route::post('/storefront/orders/{order}/returns', [AdminStorefrontOrderController::class, 'storeReturn'])
+            ->name('storefront.orders.returns.store');
     });
 
     Route::middleware('business.permission:settings.manage')->group(function () {
-    Route::get('setting', [SettingController::class, 'list'])->name('setting.index');
-    Route::get('setting/add', [SettingController::class, 'add'])->name('add-setting');
-    Route::post('setting/insert', [SettingController::class, 'insert'])->name('insert-setting');
-    Route::get('setting/edit/{id}', [SettingController::class, 'edit'])->name('edit-setting');
-    Route::post('setting/update/{id}', [SettingController::class, 'update'])->name('update-setting');
-    Route::delete('setting/delete/{id}', [SettingController::class, 'delete'])->name('delete-setting');
-    Route::patch('setting/active/{id}', [SettingController::class, 'active'])->name('active-setting');
-    Route::patch('setting/deactive/{id}', [SettingController::class, 'deactive'])->name('deactive-setting');
+        Route::get('setting', [SettingController::class, 'list'])->name('setting.index');
+        Route::get('setting/add', [SettingController::class, 'add'])->name('add-setting');
+        Route::post('setting/insert', [SettingController::class, 'insert'])->name('insert-setting');
+        Route::get('setting/edit/{id}', [SettingController::class, 'edit'])->name('edit-setting');
+        Route::post('setting/update/{id}', [SettingController::class, 'update'])->name('update-setting');
+        Route::delete('setting/delete/{id}', [SettingController::class, 'delete'])->name('delete-setting');
+        Route::patch('setting/active/{id}', [SettingController::class, 'active'])->name('active-setting');
+        Route::patch('setting/deactive/{id}', [SettingController::class, 'deactive'])->name('deactive-setting');
     });
     Route::get('/user-details', [UserController::class, 'index'])->name('users');
     Route::get('/user-edit/{id}', [UserController::class, 'edit'])->name('user.edit');
@@ -194,23 +195,23 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     });
 
     Route::middleware('business.permission:expenses.manage')->group(function () {
-    Route::get('/expense', [ExpensesController::class, 'index'])->name('expense.index');
-    Route::get('/create-expense', [ExpensesController::class, 'create'])->name('expense.create');
-    Route::post('/create-expense', [ExpensesController::class, 'insert'])->name('expense.insert');
-    Route::get('/expense-edit/{id}', [ExpensesController::class, 'edit'])->name('expense.edit');
-    Route::post('/expense-update/{id}', [ExpensesController::class, 'update'])->name('expense.update');
-    Route::delete('/expense-delete/{id}', [ExpensesController::class, 'delete'])->name('expense.delete');
-    Route::get('/workers-edit/{id}', [ExpensesController::class, 'workersedit'])->name('worker.edit');
-    Route::post('/workers-update/{id}', [ExpensesController::class, 'workersupdate'])->name('worker.update');
-    Route::delete('/workers-delete/{id}', [ExpensesController::class, 'workersdelete'])->name('worker.delete');
-    Route::post('specific-expense', [ExpensesController::class, 'showSpecificExpense'])->name('expense.specific');
-    Route::get('/daily-expense', [ExpensesController::class, 'Dailyindex'])->name('dailyexpense.index');
-    Route::get('/create-daily-expense', [ExpensesController::class, 'Dailycreate'])->name('dailyexpense.create');
-    Route::post('/create-daily-expense', [ExpensesController::class, 'Dailyinsert'])->name('dailyexpense.insert');
-    Route::get('/dailyexpense-edit/{id}', [ExpensesController::class, 'Dailyedit'])->name('dailyexpense.edit');
-    Route::post('/dailyexpense-update/{id}', [ExpensesController::class, 'Dailyupdate'])->name('dailyexpense.update');
-    Route::delete('/dailyexpense-delete/{id}', [ExpensesController::class, 'Dailydelete'])->name('dailyexpense.delete');
-    Route::post('daily-specific-expense', [ExpensesController::class, 'showdailySpecificExpense'])->name('dailyexpense.specific');
+        Route::get('/expense', [ExpensesController::class, 'index'])->name('expense.index');
+        Route::get('/create-expense', [ExpensesController::class, 'create'])->name('expense.create');
+        Route::post('/create-expense', [ExpensesController::class, 'insert'])->name('expense.insert');
+        Route::get('/expense-edit/{id}', [ExpensesController::class, 'edit'])->name('expense.edit');
+        Route::post('/expense-update/{id}', [ExpensesController::class, 'update'])->name('expense.update');
+        Route::delete('/expense-delete/{id}', [ExpensesController::class, 'delete'])->name('expense.delete');
+        Route::get('/workers-edit/{id}', [ExpensesController::class, 'workersedit'])->name('worker.edit');
+        Route::post('/workers-update/{id}', [ExpensesController::class, 'workersupdate'])->name('worker.update');
+        Route::delete('/workers-delete/{id}', [ExpensesController::class, 'workersdelete'])->name('worker.delete');
+        Route::post('specific-expense', [ExpensesController::class, 'showSpecificExpense'])->name('expense.specific');
+        Route::get('/daily-expense', [ExpensesController::class, 'Dailyindex'])->name('dailyexpense.index');
+        Route::get('/create-daily-expense', [ExpensesController::class, 'Dailycreate'])->name('dailyexpense.create');
+        Route::post('/create-daily-expense', [ExpensesController::class, 'Dailyinsert'])->name('dailyexpense.insert');
+        Route::get('/dailyexpense-edit/{id}', [ExpensesController::class, 'Dailyedit'])->name('dailyexpense.edit');
+        Route::post('/dailyexpense-update/{id}', [ExpensesController::class, 'Dailyupdate'])->name('dailyexpense.update');
+        Route::delete('/dailyexpense-delete/{id}', [ExpensesController::class, 'Dailydelete'])->name('dailyexpense.delete');
+        Route::post('daily-specific-expense', [ExpensesController::class, 'showdailySpecificExpense'])->name('dailyexpense.specific');
     });
 });
 
@@ -221,187 +222,182 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     //     return response()->json('Event Dispacthed');
     // });
 
-
     // Route::get('/notifications-stream', [UserController::class, 'notificationsStream'])->name('notifications-stream');
 
     Route::middleware('business.permission:tailoring.customers')->group(function () {
-    Route::resource('/Customers', CustomerController::class);
-    Route::post('DirectPayment', [CustomerController::class, 'DirectPayment'])->middleware('business.permission:customers.balances')->name('DirectPayment');
-    Route::post('RackNo', [CustomerController::class, 'RackNo'])->name('RackNo');
-    Route::get('/export-csv-customers',[CsvController::class,'exportCsv'])->name('customercsv');
-    Route::post('/import-csv-customers',[CsvController::class,'importCsv'])->name('customerscsv');
+        Route::resource('/Customers', CustomerController::class);
+        Route::post('DirectPayment', [CustomerController::class, 'DirectPayment'])->middleware('business.permission:customers.balances')->name('DirectPayment');
+        Route::post('RackNo', [CustomerController::class, 'RackNo'])->name('RackNo');
+        Route::get('/export-csv-customers', [CsvController::class, 'exportCsv'])->name('customercsv');
+        Route::post('/import-csv-customers', [CsvController::class, 'importCsv'])->name('customerscsv');
     });
 
     // Sale
     Route::middleware('business.permission:tailoring.orders')->group(function () {
-    Route::resource('/sale', SaleController::class);
-    Route::get('sale/print/{id}', [SaleController::class, 'print'])->name('sale-print');
+        Route::resource('/sale', SaleController::class);
+        Route::get('sale/print/{id}', [SaleController::class, 'print'])->name('sale-print');
     });
 
     // OptionTypes
     Route::middleware('business.permission:tailoring.configuration')->group(function () {
-    Route::resource('/OptionType', OptionTypeController::class);
-    Route::resource('/Options', OptionsController::class);
-    Route::resource('/measurement-fields', MeasurementFieldController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::resource('/measurement-templates', MeasurementTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::get('Options/add/{id}', [OptionsController::class, 'add'])->name('options.add');
+        Route::resource('/OptionType', OptionTypeController::class);
+        Route::resource('/Options', OptionsController::class);
+        Route::resource('/measurement-fields', MeasurementFieldController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('/measurement-templates', MeasurementTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::get('Options/add/{id}', [OptionsController::class, 'add'])->name('options.add');
 
-    //design
-    Route::get('/design', [DesignController::class, 'index'])->name('design.index');
-    Route::get('/design/create', [DesignController::class, 'create'])->name('design.create');
-    Route::post('/design/store', [DesignController::class, 'store'])->name('design.store');
-    Route::get('/design/edit/{id}', [DesignController::class, 'edit'])->name('design.edit');
-    Route::post('/design/update/{id}', [DesignController::class, 'update'])->name('design.update');
-    Route::delete('/design/delete/{id}', [DesignController::class, 'delete'])->name('design.delete');
-    Route::get('/design/price/{id}', [DesignController::class, 'price'])->name('design.price');
-    Route::get('Lang-change', [SettingController::class, 'langChange'])->name('language.change');
+        // design
+        Route::get('/design', [DesignController::class, 'index'])->name('design.index');
+        Route::get('/design/create', [DesignController::class, 'create'])->name('design.create');
+        Route::post('/design/store', [DesignController::class, 'store'])->name('design.store');
+        Route::get('/design/edit/{id}', [DesignController::class, 'edit'])->name('design.edit');
+        Route::post('/design/update/{id}', [DesignController::class, 'update'])->name('design.update');
+        Route::delete('/design/delete/{id}', [DesignController::class, 'delete'])->name('design.delete');
+        Route::get('/design/price/{id}', [DesignController::class, 'price'])->name('design.price');
+        Route::get('Lang-change', [SettingController::class, 'langChange'])->name('language.change');
     });
 
     // Tailor
     Route::resource('/Tailor', TailorController::class)->middleware('business.permission:tailoring.tailors');
     Route::middleware('business.permission:tailoring.workshop')->group(function () {
-    Route::get('tailor-jobs', [TailorJobController::class, 'adminIndex'])->name('tailor-jobs.index');
-    Route::get('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'index'])->name('orders.workforce.index');
-    Route::post('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'store'])->name('orders.workforce.store');
-    Route::patch('orders/{order}/workforce/{assignment}/status', [OrderWorkAssignmentController::class, 'updateStatus'])->name('orders.workforce.status');
-    Route::patch('tailor-jobs/{order}/status', [TailorJobController::class, 'updateStatus'])->name('tailor-jobs.status');
-    Route::patch('tailor-jobs/{order}/payment', [TailorJobController::class, 'updatePayment'])->name('tailor-jobs.payment');
-    Route::post('tailor-jobs/{order}/notifications/{delivery}/retry', [TailorJobController::class, 'retryNotification'])->name('tailor-jobs.notifications.retry');
-    Route::post('order-status', [TailorJobController::class, 'updateLegacyStatus'])->name('order.status');
+        Route::get('tailor-jobs', [TailorJobController::class, 'adminIndex'])->name('tailor-jobs.index');
+        Route::get('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'index'])->name('orders.workforce.index');
+        Route::post('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'store'])->name('orders.workforce.store');
+        Route::patch('orders/{order}/workforce/{assignment}/status', [OrderWorkAssignmentController::class, 'updateStatus'])->name('orders.workforce.status');
+        Route::patch('tailor-jobs/{order}/status', [TailorJobController::class, 'updateStatus'])->name('tailor-jobs.status');
+        Route::patch('tailor-jobs/{order}/payment', [TailorJobController::class, 'updatePayment'])->name('tailor-jobs.payment');
+        Route::post('tailor-jobs/{order}/notifications/{delivery}/retry', [TailorJobController::class, 'retryNotification'])->name('tailor-jobs.notifications.retry');
+        Route::post('order-status', [TailorJobController::class, 'updateLegacyStatus'])->name('order.status');
     });
     Route::middleware('business.permission:tailoring.tailors')->group(function () {
-    Route::get('production-workers', [ProductionWorkerController::class, 'index'])->name('production-workers.index');
-    Route::get('production-workers/create', [ProductionWorkerController::class, 'create'])->name('production-workers.create');
-    Route::post('production-workers', [ProductionWorkerController::class, 'store'])->name('production-workers.store');
-    Route::get('production-workers/{worker}', [ProductionWorkerController::class, 'show'])->name('production-workers.show');
-    Route::get('production-workers/{worker}/edit', [ProductionWorkerController::class, 'edit'])->name('production-workers.edit');
-    Route::put('production-workers/{worker}', [ProductionWorkerController::class, 'update'])->name('production-workers.update');
-    Route::post('production-work-types', [ProductionWorkerController::class, 'storeWorkType'])->name('production-work-types.store');
-    Route::post('production-workers/{worker}/compensation', [ProductionWorkerController::class, 'storeCompensation'])->name('production-workers.compensation.store');
-    Route::post('production-workers/{worker}/payments', [ProductionWorkerController::class, 'payment'])->name('production-workers.payments.store');
-    Route::get('tailor-orders/{id}', [TailorController::class, 'tailorRecord'])->name('tailor-orders');
-    Route::match(['get', 'post'], 'tailor-report/{id}', [TailorController::class, 'tailorReport'])->name('tailor-report');
-    Route::get('tailor-weekly-report-print/{id}', [TailorController::class, 'tailorReportPrint'])->name('report-print');
-    Route::get('tailor-rates/{id}', [TailorController::class, 'tailorRates'])->name('tailor-rates');
-    Route::post('tailor/addRecord/{id}', [TailorController::class, 'addRecord'])->name('tailor.addRecord');
-    Route::post('tailor/addAdvanceRecord/{id}', [TailorController::class, 'addAdnvanceRecord'])->name('tailor.addAdvanceRecord');
+        Route::get('production-workers', [ProductionWorkerController::class, 'index'])->name('production-workers.index');
+        Route::get('production-workers/create', [ProductionWorkerController::class, 'create'])->name('production-workers.create');
+        Route::post('production-workers', [ProductionWorkerController::class, 'store'])->name('production-workers.store');
+        Route::get('production-workers/{worker}', [ProductionWorkerController::class, 'show'])->name('production-workers.show');
+        Route::get('production-workers/{worker}/edit', [ProductionWorkerController::class, 'edit'])->name('production-workers.edit');
+        Route::put('production-workers/{worker}', [ProductionWorkerController::class, 'update'])->name('production-workers.update');
+        Route::post('production-work-types', [ProductionWorkerController::class, 'storeWorkType'])->name('production-work-types.store');
+        Route::post('production-workers/{worker}/compensation', [ProductionWorkerController::class, 'storeCompensation'])->name('production-workers.compensation.store');
+        Route::post('production-workers/{worker}/payments', [ProductionWorkerController::class, 'payment'])->name('production-workers.payments.store');
+        Route::get('tailor-orders/{id}', [TailorController::class, 'tailorRecord'])->name('tailor-orders');
+        Route::match(['get', 'post'], 'tailor-report/{id}', [TailorController::class, 'tailorReport'])->name('tailor-report');
+        Route::get('tailor-weekly-report-print/{id}', [TailorController::class, 'tailorReportPrint'])->name('report-print');
+        Route::get('tailor-rates/{id}', [TailorController::class, 'tailorRates'])->name('tailor-rates');
+        Route::post('tailor/addRecord/{id}', [TailorController::class, 'addRecord'])->name('tailor.addRecord');
+        Route::post('tailor/addAdvanceRecord/{id}', [TailorController::class, 'addAdnvanceRecord'])->name('tailor.addAdvanceRecord');
 
-    //new route
-    Route::post('tailor/cutAdvanceRecord/{id}', [TailorController::class, 'cutAdvanceRecord'])->name('tailor.cutAdvanceRecord');
-    Route::post('specific-record/{id}', [TailorController::class, 'showSpecificRecord'])->name('record.specific');
+        // new route
+        Route::post('tailor/cutAdvanceRecord/{id}', [TailorController::class, 'cutAdvanceRecord'])->name('tailor.cutAdvanceRecord');
+        Route::post('specific-record/{id}', [TailorController::class, 'showSpecificRecord'])->name('record.specific');
 
-    // Tailor Salary or Rates
-    Route::get('salary/{user_id}', [TailorController::class, 'tailorSalary'])->name('tailor.salary');
-    Route::get('tailors-rates/create/{id}', [TailorRateController::class, 'create'])->name('tailor-rates.create');
-    Route::post('tailors-rates/store/{id}', [TailorRateController::class, 'store'])->name('tailor-rates.store');
-    Route::delete('tailors-rates/delete/{id}', [TailorRateController::class, 'destroy'])->name('tailor-rates.delete');
-    Route::post('tailor-weakly-print/{id}', [TailorController::class, 'tailor_weekly'])->name('tailor.weekly-print');
+        // Tailor Salary or Rates
+        Route::get('salary/{user_id}', [TailorController::class, 'tailorSalary'])->name('tailor.salary');
+        Route::get('tailors-rates/create/{id}', [TailorRateController::class, 'create'])->name('tailor-rates.create');
+        Route::post('tailors-rates/store/{id}', [TailorRateController::class, 'store'])->name('tailor-rates.store');
+        Route::delete('tailors-rates/delete/{id}', [TailorRateController::class, 'destroy'])->name('tailor-rates.delete');
+        Route::post('tailor-weakly-print/{id}', [TailorController::class, 'tailor_weekly'])->name('tailor.weekly-print');
     });
 
     // order
     Route::middleware('business.permission:tailoring.orders')->group(function () {
-    Route::get('/order/edit/{id}', [OrderController::class, 'edit'])->name('order.edit');
-    Route::put('/order/update/{id}', [OrderController::class, 'update'])->name('order.update');
-    Route::get('/order/{id}', [OrderController::class, 'createOrder'])->name('order.create');
-    Route::post('/order/insert', [OrderController::class, 'insert'])->name('order.insert');
-    Route::get('/getCustomer', [OrderController::class, 'getCustomer'])->name('getCustomer');
-    Route::get('order/print/{id}', [OrderController::class, 'print'])->name('order-print');
-    Route::get('order/prints/{id}', [OrderController::class, 'two_prints'])->name('order-prints');
-    Route::get('search', [OrderController::class, 'search'])->name('search');
-    Route::post('/order/update-rack-no/{orderId}', [OrderController::class, 'updateRackNo'])->name('order.updateRackNo');
-    Route::post('/order/order-complete', [OrderController::class, 'orderCompleteNotify'])->name('order.notify');
-    Route::post('/save-subscription', [NotificationController::class, 'saveSubscription'])->name('save-subscription');
-    Route::post('/save-push-noti',[PushNotificationController::class,'saveSubscription'])->name('save-push');
-    Route::get('/total_orde', [OrderController::class, 'totalOrder'])->name('order.total');
+        Route::get('/order/edit/{id}', [OrderController::class, 'edit'])->name('order.edit');
+        Route::put('/order/update/{id}', [OrderController::class, 'update'])->name('order.update');
+        Route::get('/order/{id}', [OrderController::class, 'createOrder'])->name('order.create');
+        Route::post('/order/insert', [OrderController::class, 'insert'])->name('order.insert');
+        Route::get('/getCustomer', [OrderController::class, 'getCustomer'])->name('getCustomer');
+        Route::get('order/print/{id}', [OrderController::class, 'print'])->name('order-print');
+        Route::get('order/prints/{id}', [OrderController::class, 'two_prints'])->name('order-prints');
+        Route::get('search', [OrderController::class, 'search'])->name('search');
+        Route::post('/order/update-rack-no/{orderId}', [OrderController::class, 'updateRackNo'])->name('order.updateRackNo');
+        Route::post('/order/order-complete', [OrderController::class, 'orderCompleteNotify'])->name('order.notify');
+        Route::post('/save-subscription', [NotificationController::class, 'saveSubscription'])->name('save-subscription');
+        Route::post('/save-push-noti', [PushNotificationController::class, 'saveSubscription'])->name('save-push');
+        Route::get('/total_orde', [OrderController::class, 'totalOrder'])->name('order.total');
     });
-
 
     // csv import and export route
 });
 
-
 Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:stock_seller|shop_owner', 'module:clothing', 'business.activity'], 'as' => 'admin.'], function () {
     Route::get('/shop-dashboard', [HomeController::class, 'clothing'])->name('dashboard.clothing');
     Route::middleware('business.permission:clothing.suppliers')->group(function () {
-    Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
-    Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
-    Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
-    Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
-    Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
-    Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'payment'])->name('suppliers.payment');
+        Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+        Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+        Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
+        Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
+        Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
+        Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'payment'])->name('suppliers.payment');
     });
     Route::middleware('business.permission:clothing.purchases')->group(function () {
-    Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
-    Route::get('/purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
-    Route::post('/purchases', [PurchaseController::class, 'store'])->name('purchases.store');
-    Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
-    Route::patch('/purchases/{purchase}/receive', [PurchaseController::class, 'receive'])->name('purchases.receive');
-    Route::patch('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
-    Route::post('/purchases/{purchase}/payments', [PurchaseController::class, 'payment'])->name('purchases.payment');
-    Route::post('/purchases/{purchase}/returns', [PurchaseController::class, 'returnItem'])->name('purchases.return');
+        Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
+        Route::get('/purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
+        Route::post('/purchases', [PurchaseController::class, 'store'])->name('purchases.store');
+        Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
+        Route::patch('/purchases/{purchase}/receive', [PurchaseController::class, 'receive'])->name('purchases.receive');
+        Route::patch('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
+        Route::post('/purchases/{purchase}/payments', [PurchaseController::class, 'payment'])->name('purchases.payment');
+        Route::post('/purchases/{purchase}/returns', [PurchaseController::class, 'returnItem'])->name('purchases.return');
     });
     Route::middleware('business.permission:clothing.inventory')->group(function () {
-    Route::get('/inventory-ledger', [InventoryLedgerController::class, 'index'])->name('inventory-ledger.index');
-    Route::post('/inventory-ledger/adjustments', [InventoryLedgerController::class, 'adjust'])->name('inventory-ledger.adjust');
-    Route::get('/inventory-valuation', [InventoryLedgerController::class, 'valuation'])->name('inventory-valuation.index');
-    // Route::get('/', [HomeController::class, 'index'])->name('admin');
-    // ClothType
-    Route::resource('/clothtype', ClothTypeController::class);
+        Route::get('/inventory-ledger', [InventoryLedgerController::class, 'index'])->name('inventory-ledger.index');
+        Route::post('/inventory-ledger/adjustments', [InventoryLedgerController::class, 'adjust'])->name('inventory-ledger.adjust');
+        Route::get('/inventory-valuation', [InventoryLedgerController::class, 'valuation'])->name('inventory-valuation.index');
+        // Route::get('/', [HomeController::class, 'index'])->name('admin');
+        // ClothType
+        Route::resource('/clothtype', ClothTypeController::class);
 
-    // ClothBrand
-    Route::resource('/clothbrand', ClothBrandController::class);
+        // ClothBrand
+        Route::resource('/clothbrand', ClothBrandController::class);
 
-    // Cloth
-    Route::resource('/cloth', ClothController::class);
-    Route::get('/edit-cloth/{id}/{color}', [ClothController::class, 'editCloth'])->name('edit-cloths');
-    Route::post('/delete-cloth', [ClothController::class, 'deleteCloth'])->name('delete-cloths');
+        // Cloth
+        Route::resource('/cloth', ClothController::class);
+        Route::get('/edit-cloth/{id}/{color}', [ClothController::class, 'editCloth'])->name('edit-cloths');
+        Route::post('/delete-cloth', [ClothController::class, 'deleteCloth'])->name('delete-cloths');
 
-    // Cloth Stock
-    Route::resource('/stock', ClothStockController::class);
+        // Cloth Stock
+        Route::resource('/stock', ClothStockController::class);
 
-    Route::get('/export-csv-clothes',[CsvController::class,'exportCsvCloths'])->name('clothscsv');
-    Route::post('/import-csv-clothes',[CsvController::class,'importCsvCloths'])->name('clothescsv');
+        Route::get('/export-csv-clothes', [CsvController::class, 'exportCsvCloths'])->name('clothscsv');
+        Route::post('/import-csv-clothes', [CsvController::class, 'importCsvCloths'])->name('clothescsv');
     });
 
     Route::get('/getType', [ClothStockController::class, 'getType'])->middleware('business.permission:clothing.sales|clothing.inventory')->name('cloth-type.lookup');
 
     Route::middleware('business.permission:clothing.sales')->group(function () {
-    Route::get('/cloths-index', [ClothStockController::class, 'index'])->name('cloths.index');
-    Route::get('sellcloth', [ClothStockController::class, 'sellCloth'])->name('sellCloth');
-    Route::get('/getSale', [ClothStockController::class, 'getSale'])->name('getSale');
+        Route::get('/cloths-index', [ClothStockController::class, 'index'])->name('cloths.index');
+        Route::get('sellcloth', [ClothStockController::class, 'sellCloth'])->name('sellCloth');
+        Route::get('/getSale', [ClothStockController::class, 'getSale'])->name('getSale');
 
-    // Define the route for processing the sell form
-    Route::post('stock/sell', [ClothStockController::class, 'sellStock'])->name('sellStock');
-    Route::get('/print/{id}/{customerId}', [ClothStockController::class, 'printStock'])->name('printStock');
+        // Define the route for processing the sell form
+        Route::post('stock/sell', [ClothStockController::class, 'sellStock'])->name('sellStock');
+        Route::get('/print/{id}/{customerId}', [ClothStockController::class, 'printStock'])->name('printStock');
 
-    Route::get('/prints/{id}/{customerId}', [ClothStockController::class, 'printStocks'])->name('printStocks');
+        Route::get('/prints/{id}/{customerId}', [ClothStockController::class, 'printStocks'])->name('printStocks');
 
-    Route::get('/getNmbr', [ClothStockController::class, 'getNmbr'])->name('nmbr');
-    Route::get('/getId', [ClothStockController::class, 'getId'])->name('Id');
+        Route::get('/getNmbr', [ClothStockController::class, 'getNmbr'])->name('nmbr');
+        Route::get('/getId', [ClothStockController::class, 'getId'])->name('Id');
 
-    Route::post('specific-sales', [ClothStockController::class, 'showSpecificSales'])->name('sales.specific');
+        Route::post('specific-sales', [ClothStockController::class, 'showSpecificSales'])->name('sales.specific');
 
-    Route::get('/customer-add', [CustomerController::class, 'saleCustomer'])->name('customers.sale');
-    Route::post('/customer-add', [CustomerController::class, 'AddsaleCustomer'])->name('addcustomers.sale');
-    Route::get('/customers-record', [ClothStockController::class, 'showList'])->name('record');
-    Route::get('/customers-detail/{id}', [ClothStockController::class, 'customersDetail'])->name('customers.details');
-    Route::delete('/dlt/{id}', [ClothStockController::class, 'dlt'])->name('dlt');
-    Route::post('SaleDirectPayment', [CustomerController::class, 'SaleDirectPayment'])->middleware('business.permission:customers.balances')->name('sale-direct-payment');
+        Route::get('/customer-add', [CustomerController::class, 'saleCustomer'])->name('customers.sale');
+        Route::post('/customer-add', [CustomerController::class, 'AddsaleCustomer'])->name('addcustomers.sale');
+        Route::get('/customers-record', [ClothStockController::class, 'showList'])->name('record');
+        Route::get('/customers-detail/{id}', [ClothStockController::class, 'customersDetail'])->name('customers.details');
+        Route::delete('/dlt/{id}', [ClothStockController::class, 'dlt'])->name('dlt');
+        Route::post('SaleDirectPayment', [CustomerController::class, 'SaleDirectPayment'])->middleware('business.permission:customers.balances')->name('sale-direct-payment');
 
+        Route::get('/total_sale', [ClothStockController::class, 'totalSales'])->name('sales.total');
+        Route::get('/total_earning', [ClothStockController::class, 'totalEarning'])->name('earning.total');
 
-    Route::get('/total_sale', [ClothStockController::class, 'totalSales'])->name('sales.total');
-    Route::get('/total_earning', [ClothStockController::class, 'totalEarning'])->name('earning.total');
+        // notifications route
+        Route::get('/notifications', [NotificationController::class, 'showNotifications'])->name('notifications.index');
+        Route::get('/notify-admin', [NotificationController::class, 'AdminNotifications'])->name('notify');
+        Route::get('/notify-user', [NotificationController::class, 'UserNotifications'])->name('user');
+        Route::post('/mark-as-read/{id}', [NotificationController::class, 'readNotifications'])->name('notification.read');
+        Route::post('/order-complete/{id}', [NotificationController::class, 'orderComplete'])->name('order.complete');
 
-
-    // notifications route
-    Route::get('/notifications', [NotificationController::class, 'showNotifications'])->name('notifications.index');
-    Route::get('/notify-admin',[NotificationController::class,'AdminNotifications'])->name('notify');
-    Route::get('/notify-user',[NotificationController::class,'UserNotifications'])->name('user');
-    Route::post('/mark-as-read/{id}', [NotificationController::class, 'readNotifications'])->name('notification.read');
-    Route::post('/order-complete/{id}', [NotificationController::class, 'orderComplete'])->name('order.complete');
-
-    // Online Orders Route
-    Route::get('/Online-Orders', [NotificationController::class, 'showOnlineOrders'])->name('orders.online');
+        // Online Orders Route
+        Route::get('/Online-Orders', [NotificationController::class, 'showOnlineOrders'])->name('orders.online');
     });
 });
 
@@ -418,7 +414,6 @@ Route::group(['middleware' => 'Tailor', 'prefix' => 'tailor'], function () {
 Route::get('tailor-login', [TailorController::class, 'tailor_login']);
 Route::post('tailor-login', [TailorController::class, 'login'])->middleware('throttle:5,1');
 
-
 // for user come for shopping
 Route::group(['prefix' => 'user', 'middleware' => ['auth', 'role:user'], 'as' => 'user.'], function () {
     Route::get('/home', [SaleCustomerController::class, 'shops'])->name('shops');
@@ -426,7 +421,6 @@ Route::group(['prefix' => 'user', 'middleware' => ['auth', 'role:user'], 'as' =>
     Route::get('/{slug}/stock/{id}', [SaleCustomerController::class, 'Stock'])->name('customer.stock');
     Route::post('/{slug}/stock', [SaleCustomerController::class, 'stockSearch'])->name('stock.search');
     Route::get('/{slug}/stock_check/{brand_id}/{type_id}/{color}', [SaleCustomerController::class, 'ShowStock'])->name('customer.stock.show');
-
 
     Route::post('/{slug}/add_cart', [CartController::class, 'AddCart'])->name('stock.cart');
 
@@ -436,7 +430,6 @@ Route::group(['prefix' => 'user', 'middleware' => ['auth', 'role:user'], 'as' =>
 
     Route::post('/{slug}/add_order', [CartController::class, 'AddOrder'])->name('stock.order');
     Route::get('/{slug}/thank_you', [CartController::class, 'ThankYou'])->name('thank_you');
-
 
     Route::get('/{slug}/customer-details', [SaleCustomerController::class, 'AccountDetails'])->name('customers.details');
     Route::get('edit/{id}', [SaleCustomerController::class, 'edit'])->name('customers.edit');

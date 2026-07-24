@@ -94,6 +94,10 @@ class PublicStorefrontCheckoutController extends Controller
                 'customer',
                 'items',
                 'refunds:id,storefront_order_id,reference,amount,method,external_reference,refunded_at',
+                'returns:id,storefront_order_id,reference,type,refund_amount,refund_method,external_reference,processed_at',
+                'returns.items:id,storefront_order_return_id,storefront_order_item_id,quantity,line_total,restocked,replacement_cloth_color_id,replacement_quantity',
+                'returns.items.orderItem:id,item_name,color',
+                'returns.items.replacementColor:id,color',
             ])
             ->firstOrFail();
         $authorized = $request->session()->get($this->orderSessionKey($order), false);
