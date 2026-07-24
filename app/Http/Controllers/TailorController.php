@@ -619,11 +619,11 @@ class TailorController extends Controller
 }
 function tailor_pre_week()
 {
-    $previous_week = strtotime("-1 week +1 day");
-    $start_week = strtotime("last saturday midnight", $previous_week);
-    $end_week = strtotime("next friday", $start_week);
-    $start = date("Y-m-d", $start_week);
-    $end = date("Y-m-d", $end_week);
+    $start = Carbon::now()
+        ->startOfWeek(Carbon::SATURDAY)
+        ->subWeek()
+        ->startOfDay();
+    $end = $start->copy()->addDays(6)->endOfDay();
     $suit = count_suit($start, $end);
     $payment = sum_of_payment($start, $end);
     $paid = sum_of_paid_amount($start, $end);

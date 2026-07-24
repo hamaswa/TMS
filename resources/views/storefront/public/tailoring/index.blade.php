@@ -32,6 +32,21 @@
             <div class="group"><label for="preferred_date">پسندیدہ تاریخ</label><input id="preferred_date" type="date" min="{{ now()->toDateString() }}" name="preferred_date" class="control" value="{{ old('preferred_date') }}"></div>
             <div class="group"><label for="email">ای میل <span>(اختیاری)</span></label><input id="email" type="email" name="email" maxlength="150" dir="ltr" class="control" value="{{ old('email') }}"></div>
             <div class="group"><label for="city">شہر <span>(اختیاری)</span></label><input id="city" name="city" maxlength="100" class="control" value="{{ old('city') }}"></div>
+            <div class="group wide">
+                <label for="tailoring_payment_method">متوقع ادائیگی کا طریقہ</label>
+                <select id="tailoring_payment_method" name="payment_method" class="control">
+                    @foreach(\App\Models\StorefrontInquiry::paymentMethods() as $value => $label)
+                        <option value="{{ $value }}" @selected(old('payment_method','unpaid')===$value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <small>یہ صرف ترجیح ہے۔ حتمی قیمت اور ادائیگی دکان کی تصدیق کے بعد ہوگی۔</small>
+            </div>
+            <div id="tailoring-easypaisa-fields" class="group wide">
+                <div class="form-grid">
+                    <div class="group"><label for="tailoring_payment_phone">ایزی پیسہ بھیجنے والا نمبر</label><input id="tailoring_payment_phone" name="payment_sender_phone" dir="ltr" maxlength="50" class="control" value="{{ old('payment_sender_phone') }}"></div>
+                    <div class="group"><label for="tailoring_payment_reference">ٹرانزیکشن آئی ڈی / حوالہ</label><input id="tailoring_payment_reference" name="payment_reference" dir="ltr" maxlength="100" class="control" value="{{ old('payment_reference') }}"></div>
+                </div>
+            </div>
             <div class="group wide"><label for="message">تفصیل یا سوال</label><textarea id="message" name="message" maxlength="3000" rows="4" class="control">{{ old('message') }}</textarea></div>
             <div class="wide"><button class="btn">درخواست بھیجیں</button></div>
         </div>
@@ -39,5 +54,21 @@
 </div></div></section>
 @endif
 </main>
+<script>
+    (() => {
+        const method = document.getElementById('tailoring_payment_method');
+        const fields = document.getElementById('tailoring-easypaisa-fields');
+        const phone = document.getElementById('tailoring_payment_phone');
+        const reference = document.getElementById('tailoring_payment_reference');
+        const refresh = () => {
+            const visible = method?.value === 'easypaisa';
+            if (fields) fields.hidden = !visible;
+            if (phone) phone.required = visible;
+            if (reference) reference.required = visible;
+        };
+        method?.addEventListener('change', refresh);
+        refresh();
+    })();
+</script>
 </body>
 </html>

@@ -17,6 +17,7 @@ auth.json
 npm-debug.log
 yarn-error.log
 /output.log
+/docs/qa-artifacts/**/*.png
 /public/public.zip
 /.fleet
 /.idea

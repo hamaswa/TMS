@@ -26,12 +26,18 @@
         @php
             $statusLabels=['pending'=>'زیرِ انتظار','complete'=>'مکمل','cancelled'=>'منسوخ'];
             $methodLabels=['pickup'=>'دکان سے وصولی','delivery'=>'گھر تک فراہمی'];
+            $paymentLabels=\App\Models\StorefrontOrder::paymentMethods();
         @endphp
         <section class="card">
             <div class="row"><strong>حالت</strong><span class="status">{{ $statusLabels[$order->status] ?? $order->status }}</span></div>
             <div class="row"><strong>گاہک</strong><span>{{ $order->customer->name }}</span></div>
             <div class="row"><strong>آرڈر کی تاریخ</strong><span>{{ $order->placed_at->format('d-m-Y h:i A') }}</span></div>
             <div class="row"><strong>وصولی</strong><span>{{ $methodLabels[$order->fulfillment_method] ?? $order->fulfillment_method }}</span></div>
+            <div class="row"><strong>ادائیگی کا انتخاب</strong><span>{{ $paymentLabels[$order->payment_method] ?? $order->payment_method }}</span></div>
+            @if($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA)
+                <div class="row"><strong>ایزی پیسہ حوالہ</strong><span dir="ltr">{{ $order->payment_reference }}</span></div>
+                <div class="notice">ایزی پیسہ کی تصدیق دکان دستی طور پر کرے گی۔ اس وقت تک رقم بقایا رہے گی۔</div>
+            @endif
             @if($order->delivery_address)<div class="row"><strong>فراہمی کا پتہ</strong><span>{{ $order->delivery_address }}</span></div>@endif
         </section>
         <section class="card"><h2>کپڑے کی تفصیل</h2>

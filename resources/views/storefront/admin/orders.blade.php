@@ -31,6 +31,13 @@
                             <div><strong dir="ltr">{{ $order->reference }}</strong><div>{{ $order->customer->name }} · <span dir="ltr">{{ $order->customer->phone_number1 }}</span></div><small class="text-muted">{{ $order->placed_at->format('d-m-Y h:i A') }}</small></div>
                             <div class="text-left"><span class="badge badge-{{ $order->status==='pending'?'warning':($order->status==='complete'?'success':'secondary') }}">{{ $statusLabels[$order->status] ?? $order->status }}</span><div class="h5 mt-2">Rs {{ number_format($order->subtotal,2) }}</div></div>
                         </div>
+                        <div class="mt-2"><strong>ادائیگی:</strong> {{ \App\Models\StorefrontOrder::paymentMethods()[$order->payment_method] ?? $order->payment_method }}
+                            @if($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA)
+                                · <span dir="ltr">{{ $order->payment_sender_phone }}</span>
+                                · <code>{{ $order->payment_reference }}</code>
+                                <span class="badge badge-info">دستی تصدیق درکار</span>
+                            @endif
+                        </div>
                         <ul class="mt-2 mb-3">@foreach($order->items as $item)<li>{{ $item->item_name }} — {{ $item->color }}، {{ number_format($item->quantity,2) }} میٹر</li>@endforeach</ul>
                         @if($order->status==='pending')
                             <div class="d-flex flex-wrap">

@@ -20,7 +20,10 @@ class StorefrontCheckoutService
         StorefrontCart $cart,
         string $fulfillmentMethod,
         ?string $deliveryAddress,
-        ?string $customerNote
+        ?string $customerNote,
+        string $paymentMethod = StorefrontOrder::PAYMENT_UNPAID,
+        ?string $paymentSenderPhone = null,
+        ?string $paymentReference = null,
     ): array {
         $trackingToken = Str::random(64);
 
@@ -29,6 +32,9 @@ class StorefrontCheckoutService
             $fulfillmentMethod,
             $deliveryAddress,
             $customerNote,
+            $paymentMethod,
+            $paymentSenderPhone,
+            $paymentReference,
             $trackingToken
         ) {
             $lockedCart = StorefrontCart::query()->lockForUpdate()->findOrFail($cart->id);
@@ -91,6 +97,11 @@ class StorefrontCheckoutService
                 'fulfillment_method' => $fulfillmentMethod,
                 'delivery_address' => $fulfillmentMethod === 'delivery' ? $deliveryAddress : null,
                 'customer_note' => $customerNote,
+                'payment_method' => $paymentMethod,
+                'payment_sender_phone' => $paymentMethod === StorefrontOrder::PAYMENT_EASYPAISA
+                    ? $paymentSenderPhone : null,
+                'payment_reference' => $paymentMethod === StorefrontOrder::PAYMENT_EASYPAISA
+                    ? $paymentReference : null,
                 'subtotal' => $subtotal,
                 'paid_amount' => 0,
                 'balance_amount' => $subtotal,

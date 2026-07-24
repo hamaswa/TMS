@@ -46,15 +46,33 @@ class StorefrontTailoringInquiryTest extends TestCase
             'city' => 'راولپنڈی',
             'preferred_date' => now()->addDays(10)->toDateString(),
             'message' => 'عید سے پہلے دو سوٹ تیار کروانے ہیں۔',
+            'payment_method' => StorefrontInquiry::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03001234567',
+            'payment_reference' => 'EP-TAILOR-1001',
         ])->assertRedirect(route('storefront.tailoring.index', $storefront))
             ->assertSessionHas('inquiry_success');
 
         $inquiry = StorefrontInquiry::firstOrFail();
         $this->assertSame(StorefrontInquiry::STATUS_NEW, $inquiry->status);
         $this->assertSame($service->id, $inquiry->tailoring_service_id);
+        $this->assertSame(StorefrontInquiry::PAYMENT_EASYPAISA, $inquiry->payment_method);
+        $this->assertSame('EP-TAILOR-1001', $inquiry->payment_reference);
         $this->assertDatabaseCount('customers', 0);
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_easypaisa_tailoring_preference_requires_manual_reference_details(): void
+    {
+        [, , $storefront] = $this->business();
+
+        $this->post(route('storefront.inquiries.store', $storefront), [
+            'customer_name' => 'حمزہ سعید',
+            'phone' => '03005551111',
+            'payment_method' => StorefrontInquiry::PAYMENT_EASYPAISA,
+        ])->assertSessionHasErrors(['payment_sender_phone', 'payment_reference']);
+
+        $this->assertDatabaseCount('storefront_inquiries', 0);
     }
 
     public function test_inquiries_can_be_disabled_and_private_services_stay_hidden(): void

@@ -5,7 +5,7 @@
     <title>میری ٹوکری — {{ $storefront->display_name }}</title>
     <style>
         @font-face{font-family:Nastaliq;src:url('{{ asset('assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') }}') format('woff2');font-display:swap}
-        *{box-sizing:border-box}body{margin:0;background:#f4f7f5;color:#19382e;font-family:Nastaliq,Tahoma,sans-serif}.shell{width:min(1050px,calc(100% - 28px));margin:auto}.nav{background:#fff;border-bottom:1px solid #dce7e2}.nav .shell{min-height:70px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#156046;text-decoration:none;border:1px solid #bfd2ca;border-radius:10px;padding:7px 13px}.hero{background:linear-gradient(135deg,#0c4c38,#197b5c);color:#fff;padding:42px 0}.hero h1{font-size:clamp(2rem,5vw,3.4rem);margin:0}.section{padding:35px 0}.layout{display:grid;grid-template-columns:1.4fr .8fr;gap:22px}.card{background:#fff;border:1px solid #dfe8e4;border-radius:18px;padding:20px;box-shadow:0 9px 27px rgba(22,69,53,.07);margin-bottom:16px}.item{display:grid;grid-template-columns:1fr auto;gap:14px;border-bottom:1px solid #e5ece9;padding:15px 0}.item:last-child{border:0}.muted{color:#697d75}.price{font-weight:900}.controls{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.control{border:1px solid #c9d8d1;border-radius:9px;padding:8px;font:inherit;max-width:130px}.btn{border:0;border-radius:9px;background:#146b4f;color:#fff;padding:8px 13px;font:inherit;cursor:pointer}.danger{background:#9b3d3d}.outline{background:#fff;color:#146b4f;border:1px solid #a9c8bc}.notice{background:#e5f2ed;border-radius:12px;padding:12px}.success{background:#dcf3e6;color:#175e38;border-radius:12px;padding:12px;margin-bottom:14px}.errors{background:#f7e0e0;color:#8f3030;border-radius:12px;padding:12px;margin-bottom:14px}.total{display:flex;justify-content:space-between;font-size:1.25rem;font-weight:900}.empty{text-align:center;padding:50px 20px}.linked{background:#e2f4ea;border-radius:13px;padding:14px}.form-group{margin-bottom:12px}.form-group label{display:block;font-weight:800}.full{width:100%;max-width:none}.continue{display:block;text-align:center;text-decoration:none;margin-top:12px}@media(max-width:760px){.layout{grid-template-columns:1fr}.item{grid-template-columns:1fr}.nav .shell{min-height:62px}}
+        *{box-sizing:border-box}body{margin:0;background:#f4f7f5;color:#19382e;font-family:Nastaliq,Tahoma,sans-serif}.shell{width:min(1050px,calc(100% - 28px));margin:auto}.nav{background:#fff;border-bottom:1px solid #dce7e2}.nav .shell{min-height:70px;display:flex;justify-content:space-between;align-items:center}.nav a{color:#156046;text-decoration:none;border:1px solid #bfd2ca;border-radius:10px;padding:7px 13px}.hero{background:linear-gradient(135deg,#0c4c38,#197b5c);color:#fff;padding:42px 0}.hero h1{font-size:clamp(2rem,5vw,3.4rem);margin:0}.section{padding:35px 0}.layout{display:grid;grid-template-columns:1.4fr .8fr;gap:22px}.card{background:#fff;border:1px solid #dfe8e4;border-radius:18px;padding:20px;box-shadow:0 9px 27px rgba(22,69,53,.07);margin-bottom:16px}.item{display:grid;grid-template-columns:1fr auto;gap:14px;border-bottom:1px solid #e5ece9;padding:15px 0}.item:last-child{border:0}.muted{color:#697d75}.price{font-weight:900}.controls{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.control{border:1px solid #c9d8d1;border-radius:9px;padding:8px;font:inherit;max-width:130px}.btn{border:0;border-radius:9px;background:#146b4f;color:#fff;padding:8px 13px;font:inherit;cursor:pointer}.danger{background:#9b3d3d}.outline{background:#fff;color:#146b4f;border:1px solid #a9c8bc}.notice{background:#e5f2ed;border-radius:12px;padding:12px}.success{background:#dcf3e6;color:#175e38;border-radius:12px;padding:12px;margin-bottom:14px}.errors{background:#f7e0e0;color:#8f3030;border-radius:12px;padding:12px;margin-bottom:14px}.total{display:flex;justify-content:space-between;font-size:1.25rem;font-weight:900}.empty{text-align:center;padding:50px 20px}.linked{background:#e2f4ea;border-radius:13px;padding:14px}.form-group{margin-bottom:12px}.form-group label{display:block;font-weight:800}.payment-choice{display:block;border:1px solid #c9d8d1;border-radius:12px;padding:10px 12px;margin:7px 0;background:#f8fbfa}.payment-choice input{margin-left:7px}.payment-extra{background:#fff8df;border:1px solid #ead79c;border-radius:12px;padding:12px;margin-top:10px}.full{width:100%;max-width:none}.continue{display:block;text-align:center;text-decoration:none;margin-top:12px}@media(max-width:760px){.layout{grid-template-columns:1fr}.item{grid-template-columns:1fr}.nav .shell{min-height:62px}}
     </style>
 </head>
 <body>
@@ -41,6 +41,17 @@
                     @if($storefront->delivery_enabled)
                         <div class="form-group"><label for="delivery_address">فراہمی کا مکمل پتہ</label><textarea id="delivery_address" name="delivery_address" class="control full" rows="3" maxlength="1000">{{ old('delivery_address') }}</textarea></div>
                     @endif
+                    <div class="form-group">
+                        <label>ادائیگی کا طریقہ</label>
+                        @foreach(\App\Models\StorefrontOrder::paymentMethods() as $value => $label)
+                            <label class="payment-choice"><input type="radio" name="payment_method" value="{{ $value }}" @checked(old('payment_method','unpaid')===$value)> {{ $label }}</label>
+                        @endforeach
+                        <small class="muted">ایزی پیسہ کی ادائیگی دکان دستی طور پر تصدیق کرے گی۔ تصدیق تک رقم بقایا رہے گی۔</small>
+                        <div id="easypaisa-order-fields" class="payment-extra">
+                            <div class="form-group"><label for="payment_sender_phone">ایزی پیسہ بھیجنے والا نمبر</label><input id="payment_sender_phone" name="payment_sender_phone" dir="ltr" class="control full" maxlength="50" value="{{ old('payment_sender_phone') }}"></div>
+                            <div class="form-group"><label for="payment_reference">ٹرانزیکشن آئی ڈی / حوالہ</label><input id="payment_reference" name="payment_reference" dir="ltr" class="control full" maxlength="100" value="{{ old('payment_reference') }}"></div>
+                        </div>
+                    </div>
                     <div class="form-group"><label for="customer_note">آرڈر کے متعلق نوٹ (اختیاری)</label><textarea id="customer_note" name="customer_note" class="control full" rows="3" maxlength="1000">{{ old('customer_note') }}</textarea></div>
                     @if($storefront->pickup_enabled || $storefront->delivery_enabled)
                         <button class="btn full" type="submit">آرڈر حتمی کریں</button>
@@ -59,5 +70,20 @@
         @else<p class="muted">پہلے ٹوکری میں کپڑا شامل کریں۔</p>@endif
     </aside></div>
 </div></main>
+<script>
+    (() => {
+        const fields = document.getElementById('easypaisa-order-fields');
+        const sender = document.getElementById('payment_sender_phone');
+        const reference = document.getElementById('payment_reference');
+        const refresh = () => {
+            const visible = document.querySelector('input[name="payment_method"]:checked')?.value === 'easypaisa';
+            if (fields) fields.hidden = !visible;
+            if (sender) sender.required = visible;
+            if (reference) reference.required = visible;
+        };
+        document.querySelectorAll('input[name="payment_method"]').forEach(input => input.addEventListener('change', refresh));
+        refresh();
+    })();
+</script>
 </body>
 </html>

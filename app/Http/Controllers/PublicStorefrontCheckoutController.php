@@ -27,6 +27,7 @@ class PublicStorefrontCheckoutController extends Controller
             $storefront->pickup_enabled ? 'pickup' : null,
             $storefront->delivery_enabled ? 'delivery' : null,
         ]));
+        $request->mergeIfMissing(['payment_method' => StorefrontOrder::PAYMENT_UNPAID]);
         $validated = $request->validate([
             'fulfillment_method' => ['required', Rule::in($methods)],
             'delivery_address' => [
@@ -36,7 +37,27 @@ class PublicStorefrontCheckoutController extends Controller
                 'max:1000',
             ],
             'customer_note' => ['nullable', 'string', 'max:1000'],
+            'payment_method' => ['required', Rule::in(array_keys(StorefrontOrder::paymentMethods()))],
+            'payment_sender_phone' => [
+                Rule::requiredIf($request->input('payment_method') === StorefrontOrder::PAYMENT_EASYPAISA),
+                'nullable',
+                'string',
+                'min:7',
+                'max:50',
+            ],
+            'payment_reference' => [
+                Rule::requiredIf($request->input('payment_method') === StorefrontOrder::PAYMENT_EASYPAISA),
+                'nullable',
+                'string',
+                'max:100',
+            ],
         ]);
+        if ($validated['payment_method'] === StorefrontOrder::PAYMENT_COD
+            && $validated['fulfillment_method'] !== 'delivery') {
+            throw ValidationException::withMessages([
+                'payment_method' => 'کیش آن ڈیلیوری کے لیے گھر تک فراہمی منتخب کریں۔',
+            ]);
+        }
         $cart = $cartService->find($storefront, $request->session()->get($this->cartSessionKey($storefront)));
         if (! $cart) {
             throw ValidationException::withMessages(['checkout' => 'ٹوکری دستیاب نہیں یا اس کا وقت ختم ہو گیا ہے۔']);
@@ -46,7 +67,10 @@ class PublicStorefrontCheckoutController extends Controller
             $cart,
             $validated['fulfillment_method'],
             $validated['delivery_address'] ?? null,
-            $validated['customer_note'] ?? null
+            $validated['customer_note'] ?? null,
+            $validated['payment_method'],
+            $validated['payment_sender_phone'] ?? null,
+            $validated['payment_reference'] ?? null,
         );
         $request->session()->forget($this->cartSessionKey($storefront));
         $request->session()->put($this->orderSessionKey($order), true);

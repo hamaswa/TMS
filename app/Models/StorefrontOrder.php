@@ -13,6 +13,10 @@ class StorefrontOrder extends Model
     public const STATUS_COMPLETE = 'complete';
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const PAYMENT_UNPAID = 'unpaid';
+    public const PAYMENT_COD = 'cod';
+    public const PAYMENT_EASYPAISA = 'easypaisa';
+
     protected $fillable = [
         'storefront_id',
         'storefront_cart_id',
@@ -24,6 +28,9 @@ class StorefrontOrder extends Model
         'fulfillment_method',
         'delivery_address',
         'customer_note',
+        'payment_method',
+        'payment_sender_phone',
+        'payment_reference',
         'subtotal',
         'paid_amount',
         'balance_amount',
@@ -31,6 +38,15 @@ class StorefrontOrder extends Model
         'completed_at',
         'cancelled_at',
     ];
+
+    public static function paymentMethods(): array
+    {
+        return [
+            self::PAYMENT_UNPAID => 'ابھی ادائیگی نہیں',
+            self::PAYMENT_COD => 'کیش آن ڈیلیوری',
+            self::PAYMENT_EASYPAISA => 'ایزی پیسہ',
+        ];
+    }
 
     protected $hidden = ['tracking_token_hash'];
 

@@ -132,6 +132,7 @@ class PublicStorefrontController extends Controller
     {
         $this->ensureTailoringVisible($storefront);
         abort_unless($storefront->inquiries_enabled, 404);
+        $request->mergeIfMissing(['payment_method' => StorefrontInquiry::PAYMENT_UNPAID]);
         $validated = $request->validate([
             'tailoring_service_id' => ['nullable', 'integer'],
             'customer_name' => ['required', 'string', 'max:150'],
@@ -140,6 +141,20 @@ class PublicStorefrontController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'preferred_date' => ['nullable', 'date', 'after_or_equal:today'],
             'message' => ['nullable', 'string', 'max:3000'],
+            'payment_method' => ['required', \Illuminate\Validation\Rule::in(array_keys(StorefrontInquiry::paymentMethods()))],
+            'payment_sender_phone' => [
+                \Illuminate\Validation\Rule::requiredIf($request->input('payment_method') === StorefrontInquiry::PAYMENT_EASYPAISA),
+                'nullable',
+                'string',
+                'min:7',
+                'max:50',
+            ],
+            'payment_reference' => [
+                \Illuminate\Validation\Rule::requiredIf($request->input('payment_method') === StorefrontInquiry::PAYMENT_EASYPAISA),
+                'nullable',
+                'string',
+                'max:100',
+            ],
             'website' => ['prohibited'],
         ], [
             'preferred_date.after_or_equal' => 'پسندیدہ تاریخ آج یا اس کے بعد کی منتخب کریں۔',

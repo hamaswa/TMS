@@ -13,6 +13,10 @@ class StorefrontInquiry extends Model
     public const STATUS_CONTACTED = 'contacted';
     public const STATUS_CLOSED = 'closed';
 
+    public const PAYMENT_UNPAID = 'unpaid';
+    public const PAYMENT_COD = 'cod';
+    public const PAYMENT_EASYPAISA = 'easypaisa';
+
     protected $fillable = [
         'storefront_id',
         'tailoring_service_id',
@@ -22,11 +26,23 @@ class StorefrontInquiry extends Model
         'city',
         'preferred_date',
         'message',
+        'payment_method',
+        'payment_sender_phone',
+        'payment_reference',
         'status',
         'admin_notes',
         'contacted_at',
         'closed_at',
     ];
+
+    public static function paymentMethods(): array
+    {
+        return [
+            self::PAYMENT_UNPAID => 'ابھی ادائیگی نہیں',
+            self::PAYMENT_COD => 'کیش آن ڈیلیوری',
+            self::PAYMENT_EASYPAISA => 'ایزی پیسہ',
+        ];
+    }
 
     protected $casts = [
         'preferred_date' => 'date',

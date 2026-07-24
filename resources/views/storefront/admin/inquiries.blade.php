@@ -14,6 +14,13 @@
     <div class="card inquiry-card mb-4"><div class="card-body">
         <div class="d-flex flex-wrap justify-content-between"><div><span class="ref">{{ $inquiry->reference }}</span><h2 class="h5 mt-2 mb-1">{{ $inquiry->customer_name }}</h2><div dir="ltr" class="text-right">{{ $inquiry->phone }} @if($inquiry->email) · {{ $inquiry->email }}@endif</div></div><div class="text-muted">{{ $inquiry->created_at->format('d-m-Y h:i A') }}</div></div>
         <hr><div class="row"><div class="col-md-4"><strong>خدمت:</strong> {{ $inquiry->service->name ?? 'عمومی درخواست' }}</div><div class="col-md-4"><strong>شہر:</strong> {{ $inquiry->city ?: '—' }}</div><div class="col-md-4"><strong>پسندیدہ تاریخ:</strong> {{ $inquiry->preferred_date?->format('d-m-Y') ?: '—' }}</div></div>
+        <div class="mt-2"><strong>ادائیگی کی ترجیح:</strong> {{ \App\Models\StorefrontInquiry::paymentMethods()[$inquiry->payment_method] ?? $inquiry->payment_method }}
+            @if($inquiry->payment_method === \App\Models\StorefrontInquiry::PAYMENT_EASYPAISA)
+                · <span dir="ltr">{{ $inquiry->payment_sender_phone }}</span>
+                · <code>{{ $inquiry->payment_reference }}</code>
+                <span class="badge badge-info">دستی تصدیق درکار</span>
+            @endif
+        </div>
         @if($inquiry->message)<div class="bg-light rounded p-3 mt-3">{{ $inquiry->message }}</div>@endif
         <form method="POST" action="{{ route('admin.storefront.inquiries.update',$inquiry) }}" class="mt-3">@csrf @method('PATCH')
             <div class="form-row align-items-end"><div class="form-group col-md-3"><label>حالت</label><select name="status" class="form-control">@foreach($statuses as $value=>$label)<option value="{{ $value }}" @selected($inquiry->status===$value)>{{ $label }}</option>@endforeach</select></div><div class="form-group col-md-7"><label>اندرونی نوٹ</label><textarea name="admin_notes" rows="2" maxlength="3000" class="form-control">{{ $inquiry->admin_notes }}</textarea></div><div class="form-group col-md-2"><button class="btn btn-primary btn-block">محفوظ کریں</button></div></div>

@@ -214,6 +214,56 @@ class StorefrontCheckoutTest extends TestCase
         $this->assertSame(2900.0, (float) $report['summary']['receivables']);
     }
 
+    public function test_payment_preferences_are_recorded_without_falsely_marking_money_as_received(): void
+    {
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+        ])->assertSessionHasErrors(['payment_sender_phone', 'payment_reference']);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'EP-QA-1001',
+        ])->assertRedirect();
+
+        $order = StorefrontOrder::firstOrFail();
+        $this->assertSame(StorefrontOrder::PAYMENT_EASYPAISA, $order->payment_method);
+        $this->assertSame('03009998888', $order->payment_sender_phone);
+        $this->assertSame('EP-QA-1001', $order->payment_reference);
+        $this->assertSame('0.00', $order->paid_amount);
+        $this->assertSame($order->subtotal, $order->balance_amount);
+        $this->assertDatabaseHas('transactions', [
+            'id' => $order->transaction_id,
+            'recivedPayment' => 0,
+            'remainingBalance' => 1450,
+        ]);
+    }
+
+    public function test_cash_on_delivery_requires_delivery_fulfillment(): void
+    {
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_COD,
+        ])->assertSessionHasErrors('payment_method');
+        $this->assertDatabaseCount('storefront_orders', 0);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'delivery',
+            'delivery_address' => 'مکان 12، سیٹلائٹ ٹاؤن، راولپنڈی',
+            'payment_method' => StorefrontOrder::PAYMENT_COD,
+        ])->assertRedirect();
+
+        $this->assertSame(StorefrontOrder::PAYMENT_COD, StorefrontOrder::firstOrFail()->payment_method);
+    }
+
     public function test_another_client_cannot_view_or_change_the_order(): void
     {
         [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
