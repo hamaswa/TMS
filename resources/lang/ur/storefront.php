@@ -98,12 +98,14 @@ return [
         'payment_status' => 'ادائیگی کی حالت',
         'verified_amount' => 'اس آرڈر کے ساتھ تصدیق شدہ رقم',
         'remaining_amount' => 'اس آرڈر پر باقی رقم',
+        'refunded_amount' => 'گاہک کو واپس کی گئی رقم',
         'payment_history' => 'ادائیگی کی تاریخ',
         'payment_statuses' => [
             'not_required' => 'کوئی آن لائن ادائیگی تصدیق نہیں ہوئی',
             'pending' => 'دستی تصدیق زیرِ انتظار',
             'verified' => 'ادائیگی تصدیق شدہ',
             'rejected' => 'ادائیگی کا حوالہ مسترد',
+            'refunded' => 'ادائیگی واپس کر دی گئی',
         ],
         'history_order_placed' => ':method منتخب کر کے آرڈر درج کیا گیا۔',
         'history_reference_submitted' => 'ایزی پیسہ حوالہ :reference دستی تصدیق کے لیے جمع کیا گیا۔',
@@ -111,6 +113,8 @@ return [
         'history_verified' => 'دکان نے اس آرڈر کے ساتھ ادائیگی کی تصدیق کر دی۔',
         'history_rejected' => 'دکان نے جمع کیا گیا ادائیگی کا حوالہ مسترد کر دیا۔',
         'history_cancelled' => 'آرڈر منسوخ کر کے اس آرڈر کا بقایا ختم کر دیا گیا۔',
+        'history_refunded' => ':amount بذریعہ :method واپس کیے گئے۔ رقم واپسی حوالہ: :reference۔',
+        'refund_external_reference' => 'ادائیگی ادارے کا حوالہ: :reference۔',
         'history_time' => ':event — :time',
         'delivery_address' => 'فراہمی کا پتہ', 'items' => 'کپڑے کی تفصیل', 'total' => 'کل رقم',
         'balance_note' => 'یہ فروخت گاہک کے مشترکہ بقایا میں شامل ہے۔ دکان میں درج عمومی ادائیگی مجموعی بقایا کم کرے گی اور صرف اس آرڈر کے ساتھ الگ مختص نہیں ہوگی۔',
@@ -136,6 +140,7 @@ return [
     ],
     'payment' => [
         'methods' => ['unpaid' => 'ابھی ادائیگی نہیں', 'cod' => 'کیش آن ڈیلیوری', 'easypaisa' => 'ایزی پیسہ'],
+        'refund_methods' => ['cash' => 'نقد رقم', 'easypaisa' => 'ایزی پیسہ', 'bank_transfer' => 'بینک ٹرانسفر', 'raast' => 'راست'],
         'verification' => ['not_required' => 'تصدیق درکار نہیں', 'pending' => 'تصدیق زیرِ انتظار', 'verified' => 'ادائیگی تصدیق شدہ', 'rejected' => 'ادائیگی مسترد'],
     ],
     'messages' => [

@@ -12,15 +12,20 @@
 <main class="section"><div class="shell">@if(session('success'))<div class="success">{{ session('success') }}</div>@endif @if($errors->any())<div class="errors">{{ $errors->first() }}</div>@endif
 @if(!$authorized)<section class="card"><h2>{{ __('storefront.order.secure_title') }}</h2><p class="muted">{{ __('storefront.order.secure_text') }}</p><form method="POST" action="{{ route('storefront.orders.authenticate',[$storefront,$order->reference]) }}">@csrf<div class="form-group"><label for="order_phone">{{ __('storefront.common.phone') }}</label><input id="order_phone" name="phone" type="tel" inputmode="tel" dir="ltr" class="control" required maxlength="50" placeholder="{{ __('storefront.common.phone_placeholder') }}"></div><div class="form-group"><label for="order_pin">{{ __('storefront.cart.pin') }}</label><input id="order_pin" name="pin" dir="ltr" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" class="control" required></div><button class="btn">{{ __('storefront.order.view') }}</button></form></section>
 @else
+@php
+    $refundedAmount = (float) $order->refunds->sum('amount');
+    $paymentDisplayStatus = $refundedAmount > 0 ? 'refunded' : $order->payment_verification_status;
+@endphp
 <section class="card order-summary"><div class="row"><strong>{{ __('storefront.order.status') }}</strong><span class="pill">{{ __('storefront.order.statuses.'.$order->status) }}</span></div><div class="row"><strong>{{ __('storefront.order.customer') }}</strong><span>{{ $order->customer->name }}</span></div><div class="row"><strong>{{ __('storefront.order.placed_at') }}</strong><span>{{ $order->placed_at->format('d-m-Y h:i A') }}</span></div><div class="row"><strong>{{ __('storefront.order.fulfillment') }}</strong><span>{{ __('storefront.order.methods.'.$order->fulfillment_method) }}</span></div><div class="row"><strong>{{ __('storefront.order.payment_choice') }}</strong><span>{{ \App\Models\StorefrontOrder::publicPaymentMethods()[$order->payment_method] ?? $order->payment_method }}</span></div>
 @if($order->payment_method===\App\Models\StorefrontOrder::PAYMENT_EASYPAISA)<div class="row"><strong>{{ __('storefront.order.payment_reference') }}</strong><span dir="ltr">{{ $order->payment_reference }}</span></div><div class="notice">@if($order->payment_verification_status===\App\Models\StorefrontOrder::VERIFICATION_VERIFIED){{ __('storefront.order.payment_verified') }}@elseif($order->payment_verification_status===\App\Models\StorefrontOrder::VERIFICATION_REJECTED){{ __('storefront.order.payment_rejected') }}@else{{ __('storefront.order.payment_pending') }}@endif</div>@endif
 @if($order->delivery_address)<div class="row"><strong>{{ __('storefront.order.delivery_address') }}</strong><span>{{ $order->delivery_address }}</span></div>@endif</section>
 <section class="card" style="margin-top:18px">
     <h2>{{ __('storefront.order.payment_overview') }}</h2>
     <div class="payment-grid">
-        <div class="payment-metric"><strong>{{ __('storefront.order.payment_status') }}</strong><span class="pill">{{ __('storefront.order.payment_statuses.'.$order->payment_verification_status) }}</span></div>
+        <div class="payment-metric"><strong>{{ __('storefront.order.payment_status') }}</strong><span class="pill">{{ __('storefront.order.payment_statuses.'.$paymentDisplayStatus) }}</span></div>
         <div class="payment-metric"><strong>{{ __('storefront.order.verified_amount') }}</strong>{!! \App\Support\PakistanCurrency::html($order->paid_amount) !!}</div>
         <div class="payment-metric"><strong>{{ __('storefront.order.remaining_amount') }}</strong>{!! \App\Support\PakistanCurrency::html($order->balance_amount) !!}</div>
+        @if($refundedAmount > 0)<div class="payment-metric"><strong>{{ __('storefront.order.refunded_amount') }}</strong>{!! \App\Support\PakistanCurrency::html($refundedAmount) !!}</div>@endif
     </div>
     <h3>{{ __('storefront.order.payment_history') }}</h3>
     <ol class="payment-timeline">
@@ -35,6 +40,19 @@
                 <li>{{ __('storefront.order.history_time', ['event' => __('storefront.order.history_rejected'), 'time' => $order->payment_rejected_at->format('d-m-Y h:i A')]) }}</li>
             @endif
         @endif
+        @foreach($order->refunds as $refund)
+            <li>
+                {{ __('storefront.order.history_time', [
+                    'event' => __('storefront.order.history_refunded', [
+                        'amount' => \App\Support\PakistanCurrency::format($refund->amount),
+                        'method' => \App\Models\StorefrontOrderRefund::publicMethods()[$refund->method] ?? $refund->method,
+                        'reference' => $refund->reference,
+                    ]),
+                    'time' => $refund->refunded_at->format('d-m-Y h:i A'),
+                ]) }}
+                @if($refund->external_reference)<div class="muted" dir="ltr">{{ __('storefront.order.refund_external_reference', ['reference' => $refund->external_reference]) }}</div>@endif
+            </li>
+        @endforeach
         @if($order->status===\App\Models\StorefrontOrder::STATUS_CANCELLED && $order->cancelled_at)
             <li>{{ __('storefront.order.history_time', ['event' => __('storefront.order.history_cancelled'), 'time' => $order->cancelled_at->format('d-m-Y h:i A')]) }}</li>
         @endif

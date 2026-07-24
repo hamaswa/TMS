@@ -10,16 +10,23 @@ class StorefrontOrder extends Model
     use HasFactory;
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_COMPLETE = 'complete';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const PAYMENT_UNPAID = 'unpaid';
+
     public const PAYMENT_COD = 'cod';
+
     public const PAYMENT_EASYPAISA = 'easypaisa';
 
     public const VERIFICATION_NOT_REQUIRED = 'not_required';
+
     public const VERIFICATION_PENDING = 'pending';
+
     public const VERIFICATION_VERIFIED = 'verified';
+
     public const VERIFICATION_REJECTED = 'rejected';
 
     protected $fillable = [
@@ -108,6 +115,11 @@ class StorefrontOrder extends Model
     public function paymentVerifier()
     {
         return $this->belongsTo(User::class, 'payment_verified_by_user_id');
+    }
+
+    public function refunds()
+    {
+        return $this->hasMany(StorefrontOrderRefund::class);
     }
 
     public static function verificationStatuses(): array

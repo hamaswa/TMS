@@ -90,7 +90,11 @@ class PublicStorefrontCheckoutController extends Controller
         $this->ensureVisible($storefront);
         $order = $storefront->orders()
             ->where('reference', $reference)
-            ->with(['customer', 'items'])
+            ->with([
+                'customer',
+                'items',
+                'refunds:id,storefront_order_id,reference,amount,method,external_reference,refunded_at',
+            ])
             ->firstOrFail();
         $authorized = $request->session()->get($this->orderSessionKey($order), false);
 

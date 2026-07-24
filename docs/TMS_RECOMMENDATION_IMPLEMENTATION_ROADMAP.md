@@ -45,7 +45,8 @@ This file is the durable continuation point for the QA recommendations. When wor
 - [x] Centralize currency formatting and provide consistent Urdu/English PKR labels.
 - [x] Let each client independently choose catalogue-only publishing, online ordering, and accepted manual payment methods.
 - [x] Add customer-visible payment verification status and payment-history details.
-- [ ] Add return, exchange, refund, and paid-order cancellation workflows.
+- [x] Add full verified-payment refund and paid-order cancellation with stock and cash-ledger reversal.
+- [ ] Add item-level partial return, exchange, and replacement workflows.
 - [ ] Add configurable A4 and 80 mm print templates, controlled page breaks, and order QR codes.
 
 ## Phase 5 — Pakistan payments and delivery
@@ -166,4 +167,14 @@ At the Phase 4 customer payment-visibility checkpoint:
 - Browser QA confirmed a real EasyPaisa-pending order in Urdu RTL and English LTR, `noindex,nofollow` privacy, one-column 390 px payment cards, logical-direction timelines, no horizontal overflow, and no console errors.
 - Mobile order-summary label spacing was corrected during visual QA. No migration or existing-data update was required.
 
-Next starting point: add return, exchange, refund, and paid-order cancellation workflows.
+At the Phase 4 audited paid-order refund checkpoint:
+
+- Full suite: 182 tests passed, 1,372 assertions.
+- Focused checkout/refund suite: 16 tests passed, 231 assertions.
+- A paid pending order can only be cancelled through an explicit full-refund form. The client records cash, EasyPaisa, bank-transfer, or Raast refund method; non-cash refunds require a provider reference.
+- Database locking, a one-refund-per-order database constraint, and order-state validation prevent simultaneous or repeated refunds. Stock is restored once, the received-cash ledger receives an equal negative entry, and the historical paid amount remains auditable.
+- Customers see the refund amount, safe TMS refund reference, method, provider reference, and timestamp in their secure bilingual payment history. Internal notes and staff identity remain private.
+- The schema migration was additive and did not delete or rewrite existing customer, order, inventory, or payment data.
+- Browser QA completed a real EasyPaisa QA order from verification through refund/cancellation, confirmed the Urdu client form and English customer history, and left the secure customer refund record open for review.
+
+Next starting point: add item-level partial returns and exchange/replacement processing without changing the completed full-refund audit trail.

@@ -73,10 +73,38 @@
                             </div>
                         @endif
                         <ul class="mt-2 mb-3">@foreach($order->items as $item)<li>{{ $item->item_name }} — {{ $item->color }}، {{ number_format($item->quantity,2) }} میٹر</li>@endforeach</ul>
+                        @if($order->refunds->isNotEmpty())
+                            @foreach($order->refunds as $refund)
+                                <div class="alert alert-info mt-3 mb-0">
+                                    <strong>رقم واپس کی گئی:</strong> {{ \App\Support\PakistanCurrency::format($refund->amount) }}
+                                    · {{ \App\Models\StorefrontOrderRefund::methods()[$refund->method] ?? $refund->method }}
+                                    · <span dir="ltr">{{ $refund->reference }}</span>
+                                    @if($refund->external_reference) · بیرونی حوالہ: <span dir="ltr">{{ $refund->external_reference }}</span>@endif
+                                    <small class="d-block mt-1">{{ $refund->refunded_at->format('d-m-Y h:i A') }}</small>
+                                </div>
+                            @endforeach
+                        @endif
                         @if($order->status==='pending')
-                            <div class="d-flex flex-wrap">
-                                <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success" @disabled($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA && $order->payment_verification_status !== \App\Models\StorefrontOrder::VERIFICATION_VERIFIED)>مکمل کریں</button></form>
-                                <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" onsubmit="return confirm('آرڈر منسوخ کرنے سے اسٹاک اور گاہک کا بقایا واپس ہوگا۔ جاری رکھیں؟')">@csrf @method('PATCH')<input type="hidden" name="status" value="cancelled"><button class="btn btn-outline-danger">منسوخ کریں</button></form>
+                            <div class="mt-3">
+                                <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success" @disabled($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA && $order->payment_verification_status !== \App\Models\StorefrontOrder::VERIFICATION_VERIFIED)>مکمل کریں</button></form>
+                                @if((float) $order->paid_amount <= 0)
+                                    <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block" onsubmit="return confirm('آرڈر منسوخ کرنے سے اسٹاک اور گاہک کا بقایا واپس ہوگا۔ جاری رکھیں؟')">@csrf @method('PATCH')<input type="hidden" name="status" value="cancelled"><button class="btn btn-outline-danger">منسوخ کریں</button></form>
+                                @else
+                                    <div class="border border-danger rounded p-3 mt-3">
+                                        <h2 class="h5">مکمل رقم واپس کر کے آرڈر منسوخ کریں</h2>
+                                        <p class="mb-3">واپس کی جانے والی رقم: <strong>{{ \App\Support\PakistanCurrency::format($order->paid_amount) }}</strong>۔ یہ کارروائی اسٹاک واپس کرے گی اور ایک قابلِ جانچ مالی اندراج بنائے گی۔</p>
+                                        <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" onsubmit="return confirm('کیا رقم واقعی گاہک کو واپس کر دی گئی ہے؟ یہ کارروائی دوبارہ نہیں کی جا سکے گی۔')">
+                                            @csrf @method('PATCH')
+                                            <input type="hidden" name="status" value="cancelled">
+                                            <div class="form-row">
+                                                <div class="col-md-4 mb-2"><label for="refund_method_{{ $order->id }}">رقم واپسی کا طریقہ</label><select id="refund_method_{{ $order->id }}" name="refund_method" class="form-control" required>@foreach(\App\Models\StorefrontOrderRefund::methods() as $value=>$label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
+                                                <div class="col-md-4 mb-2"><label for="refund_reference_{{ $order->id }}">واپسی کا بیرونی حوالہ <small class="text-muted">(نقد کے علاوہ ضروری)</small></label><input id="refund_reference_{{ $order->id }}" name="refund_reference" class="form-control" maxlength="100" dir="ltr"></div>
+                                                <div class="col-md-4 mb-2"><label for="refund_notes_{{ $order->id }}">اندرونی نوٹ <small class="text-muted">(اختیاری)</small></label><input id="refund_notes_{{ $order->id }}" name="refund_notes" class="form-control" maxlength="1000"></div>
+                                            </div>
+                                            <button class="btn btn-danger">رقم واپس اور آرڈر منسوخ کریں</button>
+                                        </form>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </article>

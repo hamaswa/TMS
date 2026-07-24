@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\StorefrontOrder;
+use App\Models\StorefrontOrderRefund;
 use App\Services\StorefrontCheckoutService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,7 @@ class AdminStorefrontOrderController extends Controller
                 'customer:id,name,phone_number1',
                 'items:id,storefront_order_id,item_name,color,quantity,line_total',
                 'paymentVerifier:id,name,username',
+                'refunds:id,storefront_order_id,reference,amount,method,external_reference,refunded_at',
             ])
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($validated['search'] ?? null, fn ($query, $search) => $query->where(function ($nested) use ($search) {
@@ -47,13 +49,46 @@ class AdminStorefrontOrderController extends Controller
         abort_unless($storefront && $order->storefront_id === $storefront->id, 404);
         $validated = $request->validate([
             'status' => ['required', Rule::in(['complete', 'cancelled'])],
+            'refund_method' => [
+                Rule::requiredIf(
+                    $request->input('status') === StorefrontOrder::STATUS_CANCELLED
+                    && (float) $order->paid_amount > 0
+                ),
+                'nullable',
+                Rule::in(array_keys(StorefrontOrderRefund::methods())),
+            ],
+            'refund_reference' => [
+                Rule::requiredIf(
+                    $request->input('status') === StorefrontOrder::STATUS_CANCELLED
+                    && (float) $order->paid_amount > 0
+                    && $request->input('refund_method') !== StorefrontOrderRefund::METHOD_CASH
+                ),
+                'nullable',
+                'string',
+                'max:100',
+            ],
+            'refund_notes' => ['nullable', 'string', 'max:1000'],
         ]);
-        $checkout->updateStatus($order, $validated['status']);
+        $isPaidCancellation = $validated['status'] === StorefrontOrder::STATUS_CANCELLED
+            && (float) $order->paid_amount > 0;
+        if ($isPaidCancellation) {
+            $checkout->refundAndCancel(
+                $order,
+                $validated['refund_method'],
+                $validated['refund_reference'] ?? null,
+                $validated['refund_notes'] ?? null,
+                (int) Auth::id(),
+            );
+        } else {
+            $checkout->updateStatus($order, $validated['status']);
+        }
 
         return redirect()->route('admin.storefront.orders.index')
             ->with('success', $validated['status'] === 'complete'
                 ? 'آن لائن آرڈر مکمل کر دیا گیا ہے۔'
-                : 'آن لائن آرڈر منسوخ کر کے اسٹاک اور گاہک کا بقایا درست کر دیا گیا ہے۔');
+                : ($isPaidCancellation
+                    ? 'گاہک کی مکمل رقم واپس درج کر کے آرڈر منسوخ اور اسٹاک بحال کر دیا گیا ہے۔'
+                    : 'آن لائن آرڈر منسوخ کر کے اسٹاک اور گاہک کا بقایا درست کر دیا گیا ہے۔'));
     }
 
     public function verifyPayment(

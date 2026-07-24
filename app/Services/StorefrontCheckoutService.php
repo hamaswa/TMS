@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ClothColor;
 use App\Models\StorefrontCart;
 use App\Models\StorefrontOrder;
+use App\Models\StorefrontOrderRefund;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -12,9 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class StorefrontCheckoutService
 {
-    public function __construct(private InventoryService $inventory)
-    {
-    }
+    public function __construct(private InventoryService $inventory) {}
 
     public function checkout(
         StorefrontCart $cart,
@@ -202,7 +201,9 @@ class StorefrontCheckoutService
                 );
             }
             Transaction::create([
-                'remainingBalance' => -((float) $lockedOrder->balance_amount),
+                'remainingBalance' => (float) $lockedOrder->balance_amount > 0
+                    ? -((float) $lockedOrder->balance_amount)
+                    : 0,
                 'recivedPayment' => 0,
                 'customerId' => $lockedOrder->customer_id,
                 'userId' => $lockedOrder->storefront->business->owner_user_id,
@@ -277,6 +278,79 @@ class StorefrontCheckoutService
         }, 3);
     }
 
+    public function refundAndCancel(
+        StorefrontOrder $order,
+        string $method,
+        ?string $externalReference,
+        ?string $notes,
+        int $processedByUserId,
+    ): StorefrontOrder {
+        return DB::transaction(function () use (
+            $order,
+            $method,
+            $externalReference,
+            $notes,
+            $processedByUserId
+        ) {
+            if (! array_key_exists($method, StorefrontOrderRefund::methods())) {
+                throw ValidationException::withMessages([
+                    'refund_method' => 'رقم واپسی کا درست طریقہ منتخب کریں۔',
+                ]);
+            }
+            if ($method !== StorefrontOrderRefund::METHOD_CASH && blank($externalReference)) {
+                throw ValidationException::withMessages([
+                    'refund_reference' => 'غیر نقد رقم واپسی کا حوالہ درج کریں۔',
+                ]);
+            }
+
+            $lockedOrder = StorefrontOrder::query()->lockForUpdate()->findOrFail($order->id);
+            if ($lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
+                throw ValidationException::withMessages([
+                    'status' => 'صرف زیرِ انتظار آرڈر کی رقم واپس کر کے اسے منسوخ کیا جا سکتا ہے۔',
+                ]);
+            }
+            if ((float) $lockedOrder->paid_amount <= 0) {
+                throw ValidationException::withMessages([
+                    'refund_method' => 'اس آرڈر کے ساتھ کوئی تصدیق شدہ ادائیگی موجود نہیں ہے۔',
+                ]);
+            }
+            if ($lockedOrder->refunds()->exists()) {
+                throw ValidationException::withMessages([
+                    'refund_method' => 'اس آرڈر کی رقم پہلے ہی واپس کی جا چکی ہے۔',
+                ]);
+            }
+
+            $this->restoreCancelledOrderInventory($lockedOrder);
+            $amount = round((float) $lockedOrder->paid_amount, 2);
+            $refund = $lockedOrder->refunds()->create([
+                'reference' => $this->refundReference(),
+                'amount' => $amount,
+                'method' => $method,
+                'external_reference' => $externalReference,
+                'notes' => $notes,
+                'processed_by_user_id' => $processedByUserId,
+                'refunded_at' => now(),
+            ]);
+            Transaction::create([
+                'remainingBalance' => (float) $lockedOrder->balance_amount > 0
+                    ? -((float) $lockedOrder->balance_amount)
+                    : 0,
+                'recivedPayment' => -$amount,
+                'customerId' => $lockedOrder->customer_id,
+                'userId' => $lockedOrder->storefront->business->owner_user_id,
+                'Order_type' => 'Sale',
+                'comment' => 'آن لائن آرڈر رقم واپسی '.$lockedOrder->reference.' · '.$refund->reference,
+            ]);
+            $lockedOrder->update([
+                'status' => StorefrontOrder::STATUS_CANCELLED,
+                'cancelled_at' => now(),
+                'balance_amount' => 0,
+            ]);
+
+            return $lockedOrder->fresh('refunds');
+        }, 3);
+    }
+
     private function reference(): string
     {
         do {
@@ -284,5 +358,34 @@ class StorefrontCheckoutService
         } while (StorefrontOrder::where('reference', $reference)->exists());
 
         return $reference;
+    }
+
+    private function refundReference(): string
+    {
+        do {
+            $reference = 'TMSR-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
+        } while (StorefrontOrderRefund::where('reference', $reference)->exists());
+
+        return $reference;
+    }
+
+    private function restoreCancelledOrderInventory(StorefrontOrder $lockedOrder): void
+    {
+        $items = $lockedOrder->items()->orderBy('cloth_color_id')->lockForUpdate()->get();
+        $colors = ClothColor::query()
+            ->whereIn('id', $items->pluck('cloth_color_id')->unique())
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+        foreach ($items as $item) {
+            $this->inventory->restore(
+                $colors->get($item->cloth_color_id),
+                (float) $item->quantity,
+                'storefront_cancellation',
+                $item,
+                'Cancelled storefront order '.$lockedOrder->reference
+            );
+        }
     }
 }

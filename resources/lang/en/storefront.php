@@ -167,12 +167,14 @@ return [
         'payment_status' => 'Payment status',
         'verified_amount' => 'Verified against this order',
         'remaining_amount' => 'Remaining on this order',
+        'refunded_amount' => 'Refunded to customer',
         'payment_history' => 'Payment history',
         'payment_statuses' => [
             'not_required' => 'No online payment verified',
             'pending' => 'Manual verification pending',
             'verified' => 'Payment verified',
             'rejected' => 'Payment reference rejected',
+            'refunded' => 'Payment refunded',
         ],
         'history_order_placed' => 'Order placed with :method selected.',
         'history_reference_submitted' => 'EasyPaisa reference :reference submitted for manual verification.',
@@ -180,6 +182,8 @@ return [
         'history_verified' => 'The shop verified the payment against this order.',
         'history_rejected' => 'The shop rejected the submitted payment reference.',
         'history_cancelled' => 'The order was cancelled and its outstanding order balance was cleared.',
+        'history_refunded' => ':amount was refunded by :method. Refund reference: :reference.',
+        'refund_external_reference' => 'Provider reference: :reference.',
         'history_time' => ':event — :time',
         'delivery_address' => 'Delivery address',
         'items' => 'Fabric details',
@@ -217,6 +221,7 @@ return [
     ],
     'payment' => [
         'methods' => ['unpaid' => 'Pay later', 'cod' => 'Cash on delivery', 'easypaisa' => 'EasyPaisa'],
+        'refund_methods' => ['cash' => 'Cash', 'easypaisa' => 'EasyPaisa', 'bank_transfer' => 'Bank transfer', 'raast' => 'Raast'],
         'verification' => ['not_required' => 'No verification required', 'pending' => 'Verification pending', 'verified' => 'Payment verified', 'rejected' => 'Payment rejected'],
     ],
     'messages' => [

@@ -12,11 +12,13 @@ use App\Models\Storefront;
 use App\Models\StorefrontCart;
 use App\Models\StorefrontClothingListing;
 use App\Models\StorefrontOrder;
+use App\Models\StorefrontOrderRefund;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\NewStorefrontOrderNotification;
 use App\Services\FinancialReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
@@ -309,6 +311,85 @@ class StorefrontCheckoutTest extends TestCase
             'status' => StorefrontOrder::STATUS_COMPLETE,
         ])->assertRedirect(route('admin.storefront.orders.index'));
         $this->assertSame(StorefrontOrder::STATUS_COMPLETE, $order->fresh()->status);
+    }
+
+    public function test_paid_order_is_refunded_and_cancelled_once_with_inventory_and_cash_audit(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+            'payment_method' => StorefrontOrder::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03009998888',
+            'payment_reference' => 'EP-PAID-1001',
+        ])->assertRedirect();
+        $order = StorefrontOrder::firstOrFail();
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.payment-verification', $order), [
+            'decision' => StorefrontOrder::VERIFICATION_VERIFIED,
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+        $this->actingAs($owner)->get(route('admin.storefront.orders.index'))
+            ->assertOk()
+            ->assertSeeText('مکمل رقم واپس کر کے آرڈر منسوخ کریں')
+            ->assertSeeText('واپس کی جانے والی رقم: 1,450.00 روپے')
+            ->assertSeeText('واپسی کا بیرونی حوالہ');
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CANCELLED,
+        ])->assertSessionHasErrors('refund_method');
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CANCELLED,
+            'refund_method' => StorefrontOrderRefund::METHOD_EASYPAISA,
+        ])->assertSessionHasErrors('refund_reference');
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CANCELLED,
+            'refund_method' => StorefrontOrderRefund::METHOD_EASYPAISA,
+            'refund_reference' => 'EP-REFUND-1001',
+            'refund_notes' => 'Internal refund note',
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+
+        $order->refresh();
+        $refund = $order->refunds()->firstOrFail();
+        $this->assertSame(StorefrontOrder::STATUS_CANCELLED, $order->status);
+        $this->assertSame('1450.00', $order->paid_amount);
+        $this->assertSame('0.00', $order->balance_amount);
+        $this->assertSame('1450.00', $refund->amount);
+        $this->assertSame(StorefrontOrderRefund::METHOD_EASYPAISA, $refund->method);
+        $this->assertSame('EP-REFUND-1001', $refund->external_reference);
+        $this->assertSame($owner->id, $refund->processed_by_user_id);
+        $this->assertSame(10.0, (float) $color->fresh()->length);
+        $this->assertSame(1, DB::table('inventory_movements')
+            ->where('movement_type', 'storefront_cancellation')->count());
+        $this->assertDatabaseHas('transactions', [
+            'customerId' => $customer->id,
+            'recivedPayment' => -1450,
+            'remainingBalance' => 0,
+        ]);
+        $this->assertSame(0.0, (float) Transaction::where('customerId', $customer->id)->sum('recivedPayment'));
+        $this->actingAs($owner)->get(route('admin.storefront.orders.index'))
+            ->assertOk()
+            ->assertSeeText('رقم واپس کی گئی:')
+            ->assertSeeText($refund->reference)
+            ->assertSeeText('EP-REFUND-1001')
+            ->assertDontSeeText('Internal refund note');
+
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('ادائیگی واپس کر دی گئی')
+            ->assertSeeText('گاہک کو واپس کی گئی رقم')
+            ->assertSeeText('1,450.00 روپے')
+            ->assertSeeText($refund->reference)
+            ->assertSeeText('EP-REFUND-1001')
+            ->assertDontSeeText('Internal refund note');
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CANCELLED,
+            'refund_method' => StorefrontOrderRefund::METHOD_CASH,
+        ])->assertSessionHasErrors('status');
+        $this->assertDatabaseCount('storefront_order_refunds', 1);
+        $this->assertSame(10.0, (float) $color->fresh()->length);
+        $this->assertSame(2, Transaction::where('customerId', $customer->id)->count());
     }
 
     public function test_rejecting_easypaisa_requires_notes_and_does_not_post_payment(): void
