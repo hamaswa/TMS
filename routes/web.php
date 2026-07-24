@@ -60,7 +60,8 @@ use App\Http\Controllers\AdminStorefrontOrderController;
 
 Auth::routes();
 
-Route::get('/shops', [PublicStorefrontController::class, 'index'])->name('storefront.index');
+Route::get('/', [PublicStorefrontController::class, 'index'])->name('storefront.index');
+Route::redirect('/shops', '/', 301)->name('storefront.legacy.index');
 Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->name('storefront.show');
 Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->name('storefront.clothing.index');
 Route::get('/shops/{storefront:slug}/clothes/{listing}', [PublicStorefrontController::class, 'clothingShow'])->name('storefront.clothing.show');
@@ -93,24 +94,6 @@ Route::get('/new-tab', function () {
     return Redirect::away('http://heera.it');
 });
 
-// Common route for both roles
-Route::get('/', function () {
-    if (auth()->check()) {
-        // Check if the user has the 'shop_owner' role
-        if (auth()->user()->isBusinessMember()) {
-            return redirect()->route('admin.home'); // Adjust this route name as needed
-        }
-        // Check if the user has the 'user' role
-        elseif (auth()->user()->hasRole('user')) {
-            return redirect()->route('user.shops'); // Adjust this route name as needed
-        } elseif (auth()->user()->hasRole('administrative')) {
-            return redirect()->route('administrator.index');
-        }
-    }
-
-    // If not authenticated or no specific role, redirect to login or another page
-    return redirect('/login');
-});
 //Administrator routes
 Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:administrative'], 'as' => 'administrator.'], function () {
 

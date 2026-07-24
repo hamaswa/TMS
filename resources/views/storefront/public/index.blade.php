@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ٹی ایم ایس بازار — مقامی کپڑے اور ٹیلرنگ</title>
+    <link rel="canonical" href="{{ route('storefront.index') }}">
     <link rel="icon" href="{{ asset('assets/images/favicon.ico') }}">
     <style>
         @font-face{font-family:Nastaliq;src:url('{{ asset('assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') }}') format('woff2');font-display:swap}

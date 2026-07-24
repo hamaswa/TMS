@@ -2,19 +2,19 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
-    /**
-     * A basic test example.
-     */
-    public function test_guests_are_redirected_to_login(): void
-    {
-        $response = $this->get('/');
+    use RefreshDatabase;
 
-        $response->assertRedirect('/login');
+    public function test_guests_see_the_public_marketplace_home_page(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertViewIs('storefront.public.index')
+            ->assertSee(route('login'), false);
     }
 
     public function test_login_page_uses_the_branded_tms_experience_and_compiled_assets(): void

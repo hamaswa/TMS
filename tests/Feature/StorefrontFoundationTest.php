@@ -14,6 +14,29 @@ class StorefrontFoundationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_public_marketplace_is_the_home_page_and_legacy_url_redirects(): void
+    {
+        $this->get(route('storefront.index'))
+            ->assertOk()
+            ->assertViewIs('storefront.public.index')
+            ->assertSee(route('login'), false);
+
+        $this->get('/shops')
+            ->assertStatus(301)
+            ->assertRedirect(route('storefront.index'));
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee(route('storefront.index'), false);
+
+        [$owner] = $this->business(true, true);
+
+        $this->actingAs($owner)
+            ->get('/')
+            ->assertOk()
+            ->assertViewIs('storefront.public.index');
+    }
+
     public function test_client_can_save_preview_and_publish_a_public_storefront(): void
     {
         [$owner, $business] = $this->business(true, true);
