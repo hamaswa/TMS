@@ -1,6 +1,6 @@
 <style>
     .locale-switch{display:inline-flex;align-items:center;gap:7px;direction:ltr;white-space:nowrap;font-family:Arial,sans-serif}
-    .locale-switch a{color:inherit;text-decoration:none;opacity:.72;padding:4px 7px;border-radius:7px}
+    .locale-switch a{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;color:inherit;text-decoration:none;opacity:.72;padding:4px 7px;border-radius:7px}
     .locale-switch a.active{opacity:1;background:rgba(255,255,255,.16);font-weight:800}
 </style>
 <div class="locale-switch" role="group" aria-label="{{ __('storefront.language.label') }}">

@@ -10,7 +10,7 @@ span{
 
             <div class="card col-sm-10 mx-auto">
                 @include('inc.message')
-                <h2 class="mb-4 text-right">اخراجات شامل کریں۔</h2>
+                <h1 class="h4 mb-4 text-right">اخراجات شامل کریں</h1>
                 <form id="cc-form__addCustomerForm" class="add-customer-form"
                     method="post" action="{{route('admin.expense.insert')}}">
                     @csrf
@@ -116,5 +116,4 @@ span{
 });
 
 </script>
-
 

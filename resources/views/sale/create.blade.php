@@ -5,7 +5,7 @@
          <div class="card">
         <div class="row">
             <div class="col-md-12">
-                <h5 class="text-right">نئی فروخت</h5>
+                <h1 class="h4 text-right">نئی فروخت</h1>
                 <div class="bg-white px-3 py-4">
                     <div class="tab-content" id="v-pills-tabContent">
                         <div class="tab-pane fade show active" id="v-pills-sewing" role="tabpanel"

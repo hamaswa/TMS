@@ -3,7 +3,7 @@
 <section class="main-content">
     <div class="container">
          <div class="card">
-        <h5 class="mb-4 text-right">درزی</h5>
+        <h1 class="h4 mb-4 text-right">درزی کی معلومات تبدیل کریں</h1>
         <div class="row">
 
 

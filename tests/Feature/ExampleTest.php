@@ -26,4 +26,40 @@ class ExampleTest extends TestCase
             ->assertSee('/build/assets/app-', false)
             ->assertDontSee('public/css/app.css', false);
     }
+
+    public function test_login_and_public_marketplace_expose_accessible_mobile_controls(): void
+    {
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('.auth-link{min-height:44px', false)
+            ->assertSee('.market-home{min-height:44px', false);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('.nav-link{min-height:44px', false)
+            ->assertSee('.locale-switch a{min-width:44px;min-height:44px', false);
+    }
+
+    public function test_core_legacy_workspaces_have_one_semantic_page_heading(): void
+    {
+        foreach ([
+            'sale/create.blade.php',
+            'sale/edit.blade.php',
+            'sale/list.blade.php',
+            'sale/show.blade.php',
+            'tailor/add.blade.php',
+            'tailor/edit.blade.php',
+            'tailor/list.blade.php',
+            'Expenses/index.blade.php',
+            'Expenses/create.blade.php',
+            'Expenses/expense_edit.blade.php',
+            'DailyExpenses/index.blade.php',
+            'DailyExpenses/create.blade.php',
+            'DailyExpenses/edit.blade.php',
+        ] as $view) {
+            $contents = file_get_contents(resource_path('views/'.$view));
+
+            $this->assertSame(1, preg_match_all('/<h1\b/i', $contents), $view);
+        }
+    }
 }

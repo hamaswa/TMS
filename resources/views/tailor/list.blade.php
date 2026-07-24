@@ -24,7 +24,7 @@
                     <p class="text-right"><a href="{{url('admin/Tailor/create')}}" class="btn btn-primary">نیا درزی شامل کریں</a>
                     </p>
                     <div class="table-title  mb-4 mt-2">
-                        <h5 class="text-right">درزی ریکارڈ</h5>
+                        <h1 class="h4 text-right">درزی ریکارڈ</h1>
                     </div>
                     <div class="row">
                         <div class="col-md-12">

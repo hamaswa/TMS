@@ -33,9 +33,9 @@ This file is the durable continuation point for the QA recommendations. When wor
 
 Next starting point.
 
-- [ ] Add labels to public search, colour, and other filter controls.
-- [ ] Increase mobile login/action touch targets to at least 44 × 44 pixels.
-- [ ] Add semantic headings to legacy sales, tailor, expense, and daily-expense screens.
+- [x] Add labels to public search, colour, date-range, and other filter controls.
+- [x] Increase mobile login and public-action touch targets to at least 44 × 44 pixels.
+- [x] Add semantic headings to legacy sales, tailor, expense, and daily-expense screens.
 - [ ] Introduce Pakistan phone normalization for `03xx...` and `+92...`.
 - [ ] Store a canonical phone value and safely migrate/deduplicate existing values.
 - [ ] Add customer self-registration/guest checkout using PIN, rate limiting, and account linking.
@@ -91,3 +91,10 @@ At the end of Phase 2:
 - Additive `default_locale` migration applied without deleting or replacing existing records.
 - Browser QA confirmed Urdu RTL and English LTR on the marketplace, combined storefront, clothing catalogue, cart, and tailoring inquiry flow.
 - Responsive QA confirmed no horizontal overflow at desktop or 390 px mobile width, with no browser console errors on the tested pages.
+
+At the Phase 3 accessibility checkpoint:
+
+- Full suite: 152 tests passed, 1,145 assertions.
+- Public marketplace browser QA confirmed 44 px language controls, 44 px navigation actions, and 45 px shop actions at 390 px width.
+- Browser QA confirmed correct Urdu RTL semantics, one page-level heading, no horizontal overflow, and no console errors.
+- No database migration or client-data update was required for this checkpoint.

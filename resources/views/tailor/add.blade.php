@@ -5,7 +5,7 @@
          <div class="card">
         <div class="row">
             <div class="col-md-12">
-                <h5 class="text-right">درزی</h5>
+                <h1 class="h4 text-right">نیا درزی شامل کریں</h1>
                 @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
                 <div class="bg-white px-3 py-4">
                     <div class="tab-content" id="v-pills-tabContent">

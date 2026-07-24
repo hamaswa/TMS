@@ -12,15 +12,16 @@
                                     نئے
                                     اخراجات شامل کریں۔ +</a>
                             </p>
-                            <p style="font-size: 24px;">اپنے اخراجات چیک کریں۔</p>
+                            <h1 class="h4 text-right">روزانہ اخراجات چیک کریں</h1>
 
                             <form class="form-inline reversed-flex-direction" method="POST"
                                 action="{{ route('admin.dailyexpense.specific') }}" id="date">
                                 @csrf
                                 <!-- Date range picker input field -->
                                 <div class="form-group mr-2">
+                                    <label class="sr-only" for="daily_expense_date_range">تاریخ کی حد</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" name="date_range" id="date_range"
+                                        <input type="text" class="form-control" name="date_range" id="daily_expense_date_range"
                                             placeholder="تاریخ کی حد منتخب کریں۔" autocomplete="off">
                                         <div class="input-group-append">
                                             <span class="input-group-text">
@@ -35,7 +36,7 @@
                             </form>
 
                             <div class="table-title  mb-4 mt-2">
-                                <h5 class="text-right"> اخراجات کی فہرست</h5>
+                                <h2 class="h5 text-right">روزانہ اخراجات کی فہرست</h2>
                             </div>
 
                             <div class="row">
