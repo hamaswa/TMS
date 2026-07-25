@@ -38,6 +38,7 @@ use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleCustomerController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\StorefrontPaymentReconciliationController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TailorController;
 use App\Http\Controllers\TailorJobController;
@@ -134,6 +135,9 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         ->name('customers.statement');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->middleware('business.permission:finance.view')->name('financial-reports.index');
     Route::get('/financial-reports/export/{section}', [FinancialReportController::class, 'export'])->middleware('business.permission:finance.view')->name('financial-reports.export');
+    Route::get('/payment-reconciliation', [StorefrontPaymentReconciliationController::class, 'index'])->middleware('business.permission:finance.view')->name('payment-reconciliation.index');
+    Route::post('/payment-reconciliation', [StorefrontPaymentReconciliationController::class, 'store'])->middleware('business.permission:finance.view')->name('payment-reconciliation.store');
+    Route::get('/payment-reconciliation/export', [StorefrontPaymentReconciliationController::class, 'export'])->middleware('business.permission:finance.view')->name('payment-reconciliation.export');
     Route::get('/', [HomeController::class, 'index'])->name('home');
     Route::get('/workspace/current', [HomeController::class, 'current'])->name('workspace.current');
     Route::get('/workspace/{workspace}', [HomeController::class, 'switch'])->whereIn('workspace', ['tailoring', 'clothing'])->name('workspace.switch');

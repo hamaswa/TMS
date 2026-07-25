@@ -1,6 +1,6 @@
 # TMS Recommendation Implementation Roadmap
 
-Last updated: 24 July 2026
+Last updated: 25 July 2026
 Branch: `feature/client-public-storefronts`
 
 This file is the durable continuation point for the QA recommendations. When work resumes with “go next”, start at the first unchecked phase and preserve existing production data through additive migrations and backward-compatible defaults.
@@ -53,7 +53,7 @@ This file is the durable continuation point for the QA recommendations. When wor
 
 - [x] Extend the verified manual-payment workflow to JazzCash, bank transfer, and Raast QR.
 - [x] Add payment evidence uploads with private storage and access control.
-- [ ] Add settlement and daily payment-method reconciliation.
+- [x] Add settlement and daily payment-method reconciliation.
 - [ ] Add province, district, tehsil, city, and delivery-area fields.
 - [ ] Add configurable delivery charges and courier/tracking support.
 - [ ] Add COD settlement reconciliation.
@@ -221,4 +221,14 @@ At the Phase 5 private payment-evidence checkpoint:
 - The additive batch-26 migration added nullable evidence metadata only and preserved every existing order, enquiry, payment, and file.
 - Browser QA confirmed the Urdu conditional upload control, private-access guidance, file limits, responsive form layout, and zero console warnings or errors without adding live test data.
 
-Next starting point: add settlement and daily payment-method reconciliation.
+At the Phase 5 daily payment-reconciliation checkpoint:
+
+- Full suite: 203 tests passed, 1,591 assertions.
+- Verified EasyPaisa, JazzCash, bank-transfer, and Raast storefront-order payments are grouped by verification date and payment method. Pending, rejected, unpaid, COD, and tailoring-enquiry preferences are excluded from financial settlement totals.
+- Finance-authorized client users can record the provider's actual amount, provider reference, and notes, then see matched, pending, or variance status against the live TMS expected total.
+- Every revision appends an immutable reconciliation event. Database row locking prevents simultaneous updates from producing conflicting current records, while later-verified payments produce a visible drift warning instead of silently rewriting history.
+- Reports remain tenant-scoped, do not repost the unified customer ledger, and provide a formula-safe CSV export.
+- The additive migration initially stopped because MySQL rejected an auto-generated composite index name longer than 64 characters. The only partially created table was confirmed empty, that new empty table alone was removed, explicit short index names were added, and batch 27 then completed successfully. No existing table or business data was removed or rewritten.
+- Automated view and permission coverage confirmed the Urdu finance workflow, employee access rules, validation, tenant isolation, revision history, drift detection, and safe export. The previous browser session expired before final live visual inspection, so the route was confirmed to return the Urdu login screen without changing data.
+
+Next starting point: add province, district, tehsil, city, and delivery-area fields.

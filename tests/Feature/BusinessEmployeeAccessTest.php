@@ -32,6 +32,7 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($employee)->get(route('admin.tailor-jobs.index'))->assertOk();
         $this->actingAs($employee)->get(route('admin.purchases.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.financial-reports.index'))->assertForbidden();
+        $this->actingAs($employee)->get(route('admin.payment-reconciliation.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.team.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.team.employees.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.team.roles.index'))->assertForbidden();
@@ -52,6 +53,12 @@ class BusinessEmployeeAccessTest extends TestCase
             ],
         ]);
         $employee = $this->employee($business, $role);
+        Storefront::create([
+            'business_id' => $business->id,
+            'slug' => 'finance-reconciliation-'.$business->id,
+            'display_name' => 'Finance Reconciliation',
+            'show_clothing' => true,
+        ]);
         Order::create([
             'suitQuantity' => 1,
             'totalPayment' => 1234,
@@ -64,6 +71,7 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($employee)->get(route('admin.financial-reports.index'))
             ->assertOk()
             ->assertSeeText('روپے 1,234.00');
+        $this->actingAs($employee)->get(route('admin.payment-reconciliation.index'))->assertOk();
         $this->actingAs($employee)->get(route('admin.dashboard.tailoring'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.dashboard.clothing'))->assertForbidden();
     }
