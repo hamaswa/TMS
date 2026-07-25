@@ -135,7 +135,11 @@ class OrderController extends Controller
         $data['remainingBalance'] = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
             ? Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $id)->sum('remainingBalance')
             : null;
-        $data['tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
+        $data['tailors'] = Tailor::with('tailorsalary')
+            ->where('user_id', Auth::user()->businessOwnerId())->get();
+        $data['hasReadyTailor'] = $data['tailors']->contains(
+            fn (Tailor $tailor) => $tailor->tailorsalary->isNotEmpty()
+        );
         $data['childData'] = Customers::where('parent_id', $id)->get();
         $data['design'] = Options::where('option_id', 1)->where('user_id', auth()->user()->businessOwnerId())->get();
         $data['measurementTemplates'] = MeasurementTemplate::where('user_id', auth()->user()->businessOwnerId())

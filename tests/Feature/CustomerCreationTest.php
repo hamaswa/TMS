@@ -13,6 +13,18 @@ class CustomerCreationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_customer_list_exposes_a_clear_create_customer_action(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+
+        $this->actingAs($owner)->get(route('admin.Customers.index'))
+            ->assertOk()
+            ->assertSee(route('admin.Customers.create'), false)
+            ->assertSeeText('نیا گاہک شامل کریں');
+    }
+
     public function test_tailoring_client_can_create_a_customer_with_default_design_options(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

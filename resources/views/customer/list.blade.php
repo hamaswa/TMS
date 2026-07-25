@@ -33,6 +33,9 @@
                     @endif
                 </div>
                 <div>
+                    <a href="{{ route('admin.Customers.create') }}" class="btn btn-primary">
+                        <i class="fa fa-user-plus ml-1" aria-hidden="true"></i> نیا گاہک شامل کریں
+                    </a>
                     <button type="button" class="btn btn-green" data-toggle="modal" data-target="#customersCsvModal"> ایکسل فائل اپ لوڈ کریں۔ </button>
                     <button type="button" class="btn btn-blue px-2 py-3" data-toggle="modal" data-target="#myRackModal">ریک نمبر شامل
                         کریں</button>

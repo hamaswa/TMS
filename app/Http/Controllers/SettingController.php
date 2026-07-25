@@ -24,26 +24,32 @@ class SettingController extends Controller
         $validated = $req->validate([
             'title' => ['required', 'string', 'max:255'],
             'contact_no' => ['nullable', 'string', 'max:50'],
-            'logo' => ['required', 'image', 'max:2048'],
+            'logo' => ['nullable', 'image', 'max:2048'],
             'note' => ['nullable', 'string', 'max:1000'],
             'address' => ['nullable', 'string', 'max:2000'],
             'print_paper_size' => ['required', \Illuminate\Validation\Rule::in(array_keys(Setting::printPaperSizes()))],
             'print_show_qr' => ['nullable', 'boolean'],
         ]);
-        $image = $req->file('logo');
-        $imageName = $image->hashName();
-        $image->move(public_path('images/setting'), $imageName);
+        $imageName = '';
+        if ($req->hasFile('logo')) {
+            $image = $req->file('logo');
+            $imageName = $image->hashName();
+            $image->move(public_path('images/setting'), $imageName);
+        }
+        $ownerId = Auth::user()->businessOwnerId();
+        $isFirstSetting = ! Setting::where('user_id', $ownerId)->exists();
         $obj = new Setting();
         $obj->name=$validated['title'];
         $parts = explode(' ', $obj->name);
         $firstPart = strtolower($parts[0]);
         $slug = $firstPart . '_shop';
-        $obj->contact_no=$validated['contact_no'] ?? null;
+        $obj->contact_no=$validated['contact_no'] ?? '';
         $obj->logo=$imageName;
         $obj->shop_slug = $slug;
-        $obj->note=$validated['note'] ?? null;
-        $obj->user_id=Auth::user()->businessOwnerId();
-        $obj->address=$validated['address'] ?? null;
+        $obj->note=$validated['note'] ?? '';
+        $obj->user_id=$ownerId;
+        $obj->address=$validated['address'] ?? '';
+        $obj->status = $isFirstSetting ? 1 : 0;
         $obj->print_paper_size = $validated['print_paper_size'];
         $obj->print_show_qr = $req->boolean('print_show_qr');
         $obj->save();
@@ -72,14 +78,14 @@ class SettingController extends Controller
         $obj->name=$validated['title'];
         $parts = explode(' ', $obj->name);
         $firstPart = strtolower($parts[0]);
-        $obj->contact_no=$validated['contact_no'] ?? null;
+        $obj->contact_no=$validated['contact_no'] ?? '';
         $slug = $firstPart . '_shop';
         // dd($slug);
         $obj->shop_slug = $slug;
         $obj->logo=$imageName;
-        $obj->note=$validated['note'] ?? null;
+        $obj->note=$validated['note'] ?? '';
         $obj->user_id=Auth::user()->businessOwnerId();
-        $obj->address=$validated['address'] ?? null;
+        $obj->address=$validated['address'] ?? '';
         $obj->print_paper_size = $validated['print_paper_size'];
         $obj->print_show_qr = $req->boolean('print_show_qr');
         $obj->save();

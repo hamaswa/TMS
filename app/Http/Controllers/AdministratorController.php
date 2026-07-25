@@ -17,6 +17,7 @@ use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use App\Models\BusinessStatusHistory;
+use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
 
 class AdministratorController extends Controller
@@ -196,7 +197,7 @@ class AdministratorController extends Controller
         ];
         abort_unless(in_array($target, $allowed[$business->status] ?? [], true), 422, 'This status change is not allowed.');
 
-        DB::transaction(function () use ($business, $target, $validated) {
+        DB::transaction(function () use ($business, $user, $target, $validated) {
             $from = $business->status;
             $business->forceFill([
                 'status' => $target,
@@ -214,6 +215,10 @@ class AdministratorController extends Controller
                 'reason' => $validated['reason'] ?? null,
                 'created_at' => now(),
             ]);
+
+            if ($target === Business::STATUS_ACTIVE) {
+                Setting::ensureDefaultFor($user);
+            }
         });
 
         return redirect()->route('administrator.clients.show', $user)->with('success', 'Client status updated to '.ucfirst($target).'.');

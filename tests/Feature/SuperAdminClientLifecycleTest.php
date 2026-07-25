@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Business;
 use App\Models\User;
+use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +51,13 @@ class SuperAdminClientLifecycleTest extends TestCase
         $this->assertTrue($business->isActive());
         $this->assertSame($admin->id, $business->approved_by_user_id);
         $this->assertNotNull($business->approved_at);
+        $this->assertDatabaseHas('settings', [
+            'user_id' => $owner->id,
+            'status' => '1',
+            'name' => 'Rahman Tailors',
+            'logo' => '',
+        ]);
+        $this->assertSame(Setting::PRINT_PAPER_RECEIPT_80, Setting::where('user_id', $owner->id)->value('print_paper_size'));
     }
 
     public function test_suspension_blocks_owner_and_employee_without_deleting_data(): void

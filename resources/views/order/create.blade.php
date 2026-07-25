@@ -9,6 +9,20 @@
                     <ul class="mb-0 mt-2">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
                 </div>
             @endif
+            @if(!$data['hasReadyTailor'])
+                <div class="alert alert-warning m-3 text-right" dir="rtl" role="alert">
+                    <strong>آرڈر بنانے سے پہلے درزی اور اس کی سلائی شرح مکمل کریں۔</strong>
+                    <div class="mt-2">
+                        @if($data['tailors']->isEmpty())
+                            ابھی کوئی درزی موجود نہیں۔
+                            <a class="alert-link" href="{{ route('admin.Tailor.create') }}">نیا درزی شامل کریں</a>
+                        @else
+                            موجودہ درزی کے لیے کم از کم ایک سلائی شرح شامل کریں۔
+                            <a class="alert-link" href="{{ route('admin.Tailor.index') }}">درزیوں کی فہرست کھولیں</a>
+                        @endif
+                    </div>
+                </div>
+            @endif
             <form id="cc-form__addCustomerForm" action="{{ url('admin/order/insert')}}" class="add-customer-form mt-4"
                         method="post">
                 <div class="row justify-content-center">
@@ -104,9 +118,11 @@
                             <label class="col-sm-3 col-form-label">درزی</label>
                             <div class="col-sm-9">
                                 <select id="tailor-selected" class="form-control" name="tailorId" required dir="rtl">
-                                    <option value="0">درزی کو منتخب کریں</option>
+                                    <option value="">درزی کو منتخب کریں</option>
                                     @foreach($data['tailors'] as $tailor)
-                                    <option value="{{$tailor->id}}">{{$tailor->name}}</option>
+                                    <option value="{{$tailor->id}}" @disabled($tailor->tailorsalary->isEmpty())>
+                                        {{$tailor->name}}{{ $tailor->tailorsalary->isEmpty() ? ' — شرح شامل نہیں' : '' }}
+                                    </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -151,7 +167,7 @@
                             </div>
                         </div>
                         <div class="button-group mt-2">
-                            <button type="submit" class="btn btn-blue mr-3">محفوظ کریں</button>
+                            <button type="submit" class="btn btn-blue mr-3" @disabled(!$data['hasReadyTailor'])>محفوظ کریں</button>
                         </div>
                     </div>
                 </div>

@@ -10,6 +10,9 @@
                 @if(Session::has('success'))
                 <div class="alert alert-success">{{Session::get('success')}}</div>
                 @endif
+                @if(Session::has('error'))
+                <div class="alert alert-danger text-right" dir="rtl">{{Session::get('error')}}</div>
+                @endif
 
                 @if($business?->shop_code)
                 <div class="alert alert-info text-right mb-4">
@@ -38,6 +41,12 @@
                         <div class="table-title  mb-4 mt-4">
                             <h5 class="text-right">تمام ترتیب کی تاریخ</h5>
                         </div>
+                        @if($settings->isEmpty())
+                            <div class="alert alert-warning text-right" dir="rtl">
+                                رسید اور آرڈر پرنٹ کے لیے دکان کی ترتیب بنائیں۔
+                                <a href="{{ route('admin.add-setting') }}" class="alert-link">ابھی ترتیب بنائیں</a>
+                            </div>
+                        @endif
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="table-responsive">
