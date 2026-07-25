@@ -54,7 +54,7 @@
                                                                 class="delete-tr"><i class="fa fa-edit" aria-hidden="true"></i></a>
             
                                                             <a href="{{ url('admin/tailors-rates/delete/'.$rate->id)}}"
-                                                                class="delete-tr"><i class="fa fa-trash-alt"
+                                                                class="delete-tr" data-confirm="کیا آپ واقعی یہ اجرت حذف کرنا چاہتے ہیں؟"><i class="fa fa-trash-alt"
                                                                     aria-hidden="true"></i></a>
                                                         </td>
                                                     </tr>

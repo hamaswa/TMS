@@ -65,7 +65,8 @@
                                             <td>
                                                 <a href="{{url('admin/tailor-orders',$tailor->id)}}"><i class="fa fa-eye" aria-hidden="true"></i></a>
                                                 <a href="{{ url('admin/Tailor/'.$tailor->id.'/edit')}}"><i class="fa fa-edit" aria-hidden="true"></i></a>
-                                                <a href="{{ url('admin/Tailor/delete',$tailor->id)}}" class="delete-tr"><i class="fa fa-trash-alt" aria-hidden="true"></i></a>
+                                                <a href="{{ url('admin/Tailor/delete',$tailor->id)}}" class="delete-tr"
+                                                    data-confirm="کیا آپ واقعی یہ درزی حذف کرنا چاہتے ہیں؟"><i class="fa fa-trash-alt" aria-hidden="true"></i></a>
                                             </td>
                                         </tr>
                                         <div class="modal" tabindex="-1" id="addRecordModal_{{$tailor->id}}" tabindex="-1" role="dialog" aria-labelledby="addRecordModalLabel" aria-hidden="true">

@@ -27,7 +27,7 @@
                                     </td>
                                     <td>
                                         <!-- Edit button -->
-                                        <form action="{{ route('administrator.role.delete', ['id' => $role->id]) }}" method="POST" onsubmit="return confirm('Delete this role?')">
+                                        <form action="{{ route('administrator.role.delete', ['id' => $role->id]) }}" method="POST" data-confirm="Delete this role?">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-danger">Delete</button>
@@ -64,7 +64,7 @@
                                     </td>
                                     <td>
                                         <!-- Edit button -->
-                                        <form action="{{ route('administrator.perm.delete', ['id' => $permission->id]) }}" method="POST" onsubmit="return confirm('Delete this permission?')">
+                                        <form action="{{ route('administrator.perm.delete', ['id' => $permission->id]) }}" method="POST" data-confirm="Delete this permission?">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-danger">Delete</button>

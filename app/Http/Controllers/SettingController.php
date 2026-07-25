@@ -53,7 +53,7 @@ class SettingController extends Controller
         $obj->print_paper_size = $validated['print_paper_size'];
         $obj->print_show_qr = $req->boolean('print_show_qr');
         $obj->save();
-        return redirect('admin/setting')->with('success','Setting Added');
+        return redirect('admin/setting')->with('success','دکان کی ترتیب شامل ہو گئی ہے۔');
     }
     public function update(Request $req, $id)
     {
@@ -89,7 +89,7 @@ class SettingController extends Controller
         $obj->print_paper_size = $validated['print_paper_size'];
         $obj->print_show_qr = $req->boolean('print_show_qr');
         $obj->save();
-        return redirect('admin/setting')->with('update','Setting Updated');
+        return redirect('admin/setting')->with('update','دکان کی ترتیب اپ ڈیٹ ہو گئی ہے۔');
     }
     public function edit($id)
     {
@@ -100,21 +100,21 @@ class SettingController extends Controller
     {
         Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id)->delete();
 
-        return back()->with('delete', 'Setting deleted');
+        return back()->with('delete', 'دکان کی ترتیب حذف ہو گئی ہے۔');
     }
     public function active($id)
     {
         $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $setting->status = 1;
         $setting->save();
-        return back()->with('success','Setting Activated');
+        return back()->with('success','دکان کی ترتیب فعال ہو گئی ہے۔');
     }
     public function deactive($id)
     {
         $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $setting->status = 0;
         $setting->save();
-        return back()->with('delete','Setting Deactivated');
+        return back()->with('delete','دکان کی ترتیب غیر فعال ہو گئی ہے۔');
     }
 
     public function langChange(Request $request)

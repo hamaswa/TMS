@@ -63,7 +63,7 @@
                                                             <a href="{{route('admin.expense.edit',['id'=>$expense->id])}}">
                                                                 <i class="fas fa-edit"></i>
                                                             </a>
-                                                            <form action="{{ route('admin.expense.delete', ['id' => $expense->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this expense?')">
+                                                            <form action="{{ route('admin.expense.delete', ['id' => $expense->id]) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ خرچ حذف کرنا چاہتے ہیں؟">
                                                                 @csrf
                                                                 @method('DELETE')
                                                                 <button type="submit" class="btn btn-link p-0"><i class="fas fa-trash-alt" style="font-size: 16px;"></i></button>
@@ -106,7 +106,7 @@
                                                             <a href="{{route('admin.worker.edit',['id'=>$worker->id])}}">
                                                                 <i class="fas fa-edit"></i>
                                                             </a>
-                                                            <form action="{{ route('admin.worker.delete', ['id' => $worker->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this worker?')">
+                                                            <form action="{{ route('admin.worker.delete', ['id' => $worker->id]) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ کاریگر حذف کرنا چاہتے ہیں؟">
                                                                 @csrf
                                                                 @method('DELETE')
                                                                 <button type="submit" class="btn btn-link p-0"><i class="fas fa-trash-alt" style="font-size: 16px;"></i></button>

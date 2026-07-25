@@ -24,7 +24,7 @@
                         @include('measurement-templates.partials.fields', ['prefix' => 'template-'.$template->id, 'selectedSystem' => $template->system_fields ?? [], 'selectedCustom' => $template->custom_field_ids ?? []])
                         <button class="btn btn-success mt-3">تبدیلی محفوظ کریں</button>
                     </form></details>
-                    <form method="POST" action="{{ route('admin.measurement-templates.destroy', $template) }}" class="text-left mt-2" onsubmit="return confirm('کیا اس ٹیمپلیٹ کو غیر فعال کرنا ہے؟')">@csrf @method('DELETE')<button class="btn btn-sm btn-link text-danger">غیر فعال کریں</button></form>
+                    <form method="POST" action="{{ route('admin.measurement-templates.destroy', $template) }}" class="text-left mt-2" data-confirm="کیا اس ٹیمپلیٹ کو غیر فعال کرنا ہے؟">@csrf @method('DELETE')<button class="btn btn-sm btn-link text-danger">غیر فعال کریں</button></form>
                 @endif
             </div></div></div>
         @empty<div class="col-12"><div class="card template-card"><div class="card-body empty-state">ابھی کوئی ٹیمپلیٹ نہیں بنایا گیا۔ اوپر پہلے ٹیمپلیٹ سے آغاز کریں۔</div></div></div>@endforelse

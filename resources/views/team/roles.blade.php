@@ -19,7 +19,7 @@
     <div class="row">
         @forelse($business->roles as $role)
             <div class="col-xl-6 mb-3"><div class="card team-card h-100"><div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start"><div><h3 class="h5 font-weight-bold mb-1">{{ $role->name }}</h3><span class="text-muted small">{{ $role->users_count }} ملازم · {{ count($role->permissions ?? []) }} اجازتیں</span></div><div class="d-flex"><a class="btn btn-sm btn-outline-primary ml-2" href="{{ route('admin.team.roles.edit', $role) }}">ترمیم</a><form method="POST" action="{{ route('admin.team.roles.destroy', $role) }}" onsubmit="return confirm('کیا آپ یہ رول حذف کرنا چاہتے ہیں؟')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger" {{ $role->users_count ? 'disabled' : '' }}>حذف</button></form></div></div>
+                <div class="d-flex justify-content-between align-items-start"><div><h3 class="h5 font-weight-bold mb-1">{{ $role->name }}</h3><span class="text-muted small">{{ $role->users_count }} ملازم · {{ count($role->permissions ?? []) }} اجازتیں</span></div><div class="d-flex"><a class="btn btn-sm btn-outline-primary ml-2" href="{{ route('admin.team.roles.edit', $role) }}">ترمیم</a><form method="POST" action="{{ route('admin.team.roles.destroy', $role) }}" data-confirm="کیا آپ یہ رول حذف کرنا چاہتے ہیں؟">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger" {{ $role->users_count ? 'disabled' : '' }}>حذف</button></form></div></div>
                 <div class="mt-3">@foreach($role->permissions as $permission)<span class="badge badge-light border mb-1">{{ \App\Models\BusinessRole::PERMISSIONS[$permission] ?? $permission }}</span>@endforeach</div>
             </div></div></div>
         @empty

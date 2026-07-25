@@ -57,7 +57,7 @@
                                             <td>
                                                 <a class="btn btn-secondary btn-sm mb-1" href="{{url('admin/tailor-orders',$tailor->id)}}">آرڈرز</a>
                                                 <a class="btn btn-warning btn-sm mb-1 text-dark" href="{{ url('admin/Tailor/'.$tailor->id.'/edit')}}">ترمیم</a>
-                                                <form action="{{ route('admin.Tailor.destroy', $tailor->id) }}" method="POST" class="d-inline" onsubmit="return confirm('کیا آپ واقعی یہ درزی حذف کرنا چاہتے ہیں؟')">
+                                                <form action="{{ route('admin.Tailor.destroy', $tailor->id) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ درزی حذف کرنا چاہتے ہیں؟">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-danger btn-sm mb-1" aria-label="درزی حذف کریں">حذف کریں</button>

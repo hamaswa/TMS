@@ -65,7 +65,7 @@
                                                         <td>{{ $ex->Expense_payment }}</td>
                                                         <td><a href="{{ route('admin.dailyexpense.edit', ['id' => $ex->id]) }}"
                                                                 class="btn btn-primary btn-sm">تبدیلی</a></td>
-                                                        <td><form action="{{ route('admin.dailyexpense.delete', ['id' => $ex->id]) }}" method="POST" onsubmit="return confirm('Delete this expense?')">
+                                                        <td><form action="{{ route('admin.dailyexpense.delete', ['id' => $ex->id]) }}" method="POST" data-confirm="کیا آپ واقعی یہ روزانہ خرچ حذف کرنا چاہتے ہیں؟">
                                                                 @csrf
                                                                 @method('DELETE')
                                                                 <button type="submit" class="btn btn-danger btn-sm">حذف کریں</button>

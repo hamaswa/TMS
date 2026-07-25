@@ -56,7 +56,8 @@
                                 <tbody>
                                     @if($options)
                                     <tr>
-                                        <form action="{{ url('admin/Options',$options->id)}}" method="post">
+                                        <form action="{{ url('admin/Options',$options->id)}}" method="post"
+                                            data-confirm="کیا آپ واقعی یہ آپشن حذف کرنا چاہتے ہیں؟">
                                             <td>{{$options->Name}}</td>
                                             <td class="text-left">
                                                 <a href="{{ url('admin/Options/'.$options->id.'/edit')}}">

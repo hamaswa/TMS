@@ -111,7 +111,8 @@
                                     @if($returnableQuantity > 0)
                                         <details class="border rounded p-2 mb-2">
                                             <summary class="font-weight-bold" style="cursor:pointer">{{ $item->item_name }} — جزوی واپسی یا رنگ تبدیل کریں <small class="text-muted">(دستیاب {{ number_format($returnableQuantity, 2) }} میٹر)</small></summary>
-                                            <form method="POST" action="{{ route('admin.storefront.orders.returns.store', $order) }}" class="mt-3">
+                                            <form method="POST" action="{{ route('admin.storefront.orders.returns.store', $order) }}" class="mt-3"
+                                                data-confirm="مقدار، رقم اور اسٹاک کی تفصیل دوبارہ دیکھ لی ہے؟" data-confirm-variant="warning">
                                                 @csrf
                                                 <input type="hidden" name="order_item_id" value="{{ $item->id }}">
                                                 <div class="form-row">
@@ -126,7 +127,7 @@
                                                 <div class="form-row align-items-end">
                                                     <div class="col-md-7 mb-2"><label for="return_notes_{{ $item->id }}">اندرونی نوٹ <small class="text-muted">(اختیاری)</small></label><input id="return_notes_{{ $item->id }}" name="return_notes" class="form-control" maxlength="1000"></div>
                                                     <div class="col-md-3 mb-2"><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="restock_{{ $item->id }}" name="restock" value="1" checked><label class="custom-control-label" for="restock_{{ $item->id }}">کپڑا قابلِ فروخت ہے، اسٹاک میں واپس کریں</label></div></div>
-                                                    <div class="col-md-2 mb-2"><button class="btn btn-warning btn-block" onclick="return confirm('مقدار، رقم اور اسٹاک کی تفصیل دوبارہ دیکھ لی ہے؟')">درج کریں</button></div>
+                                                    <div class="col-md-2 mb-2"><button class="btn btn-warning btn-block">درج کریں</button></div>
                                                 </div>
                                             </form>
                                         </details>
@@ -151,12 +152,12 @@
                                 @if($order->returns->isNotEmpty())
                                     <div class="alert alert-light mt-2 mb-0">اس آرڈر پر جزوی واپسی یا تبدیلی موجود ہے، اس لیے مکمل منسوخی دستیاب نہیں۔ باقی مقدار الگ واپسی یا تبدیلی سے درج کریں۔</div>
                                 @elseif((float) $order->paid_amount <= 0)
-                                    <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block" onsubmit="return confirm('آرڈر منسوخ کرنے سے اسٹاک اور گاہک کا بقایا واپس ہوگا۔ جاری رکھیں؟')">@csrf @method('PATCH')<input type="hidden" name="status" value="cancelled"><button class="btn btn-outline-danger">منسوخ کریں</button></form>
+                                    <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block" data-confirm="آرڈر منسوخ کرنے سے اسٹاک اور گاہک کا بقایا واپس ہوگا۔ جاری رکھیں؟">@csrf @method('PATCH')<input type="hidden" name="status" value="cancelled"><button class="btn btn-outline-danger">منسوخ کریں</button></form>
                                 @else
                                     <div class="border border-danger rounded p-3 mt-3">
                                         <h2 class="h5">مکمل رقم واپس کر کے آرڈر منسوخ کریں</h2>
                                         <p class="mb-3">واپس کی جانے والی رقم: <strong>{{ \App\Support\PakistanCurrency::format($order->paid_amount) }}</strong>۔ یہ کارروائی اسٹاک واپس کرے گی اور ایک قابلِ جانچ مالی اندراج بنائے گی۔</p>
-                                        <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" onsubmit="return confirm('کیا رقم واقعی گاہک کو واپس کر دی گئی ہے؟ یہ کارروائی دوبارہ نہیں کی جا سکے گی۔')">
+                                        <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" data-confirm="کیا رقم واقعی گاہک کو واپس کر دی گئی ہے؟ یہ کارروائی دوبارہ نہیں کی جا سکے گی۔">
                                             @csrf @method('PATCH')
                                             <input type="hidden" name="status" value="cancelled">
                                             <div class="form-row">

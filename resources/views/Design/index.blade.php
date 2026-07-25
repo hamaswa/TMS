@@ -38,7 +38,7 @@
                                                     <td>{{$design->design_price}}</td>
                                                     <td><a href="{{ route('admin.design.edit', ['id' => $design->id]) }}"
                                                         class="btn btn-primary btn-sm">تبدیلی</a></td>
-                                                <td><form action="{{ route('admin.design.delete', ['id' => $design->id]) }}" method="POST" onsubmit="return confirm('Delete this design?')">
+                                                <td><form action="{{ route('admin.design.delete', ['id' => $design->id]) }}" method="POST" data-confirm="کیا آپ واقعی یہ ڈیزائن حذف کرنا چاہتے ہیں؟">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" class="btn btn-danger btn-sm">حذف کریں</button>

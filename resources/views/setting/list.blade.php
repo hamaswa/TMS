@@ -84,13 +84,15 @@
 
                                                 <td class="text-right">
                                                     @if($setting->status ==0)
-                                                    <form action="{{ route('admin.active-setting', $setting->id) }}" method="POST" class="d-inline">
+                                                    <form action="{{ route('admin.active-setting', $setting->id) }}" method="POST" class="d-inline"
+                                                        data-confirm="کیا یہ دکان ترتیب فعال کرنا ہے؟" data-confirm-variant="success">
                                                         @csrf
                                                         @method('PATCH')
                                                         <button type="submit" class="btn btn-link p-0 delete-tr">Active</button>
                                                     </form>
                                                     @else
-                                                    <form action="{{ route('admin.deactive-setting', $setting->id) }}" method="POST" class="d-inline">
+                                                    <form action="{{ route('admin.deactive-setting', $setting->id) }}" method="POST" class="d-inline"
+                                                        data-confirm="کیا یہ دکان ترتیب غیر فعال کرنا ہے؟" data-confirm-variant="warning">
                                                         @csrf
                                                         @method('PATCH')
                                                         <button type="submit" class="btn btn-link p-0 delete-tr">Deactive</button>
@@ -101,7 +103,7 @@
                                                     <a href="{{ url('admin/setting/edit',$setting->id)}}">
                                                         <i class="fa fa-edit" aria-hidden="true"></i>
                                                         </a>
-                                                    <form action="{{ route('admin.delete-setting', $setting->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this setting?')">
+                                                    <form action="{{ route('admin.delete-setting', $setting->id) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ دکان ترتیب حذف کرنا چاہتے ہیں؟">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" class="btn btn-link p-0 delete-tr" aria-label="Delete setting"><i class="fa fa-trash" aria-hidden="true"></i></button>

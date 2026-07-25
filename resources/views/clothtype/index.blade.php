@@ -47,7 +47,7 @@
                                                                     aria-hidden="true"></i></a>
                                                             <form
                                                                 action="{{ route('admin.clothtype.destroy', $cloth_type->id) }}"
-                                                                method="POST">
+                                                                method="POST" data-confirm="کیا آپ واقعی یہ کپڑے کی قسم حذف کرنا چاہتے ہیں؟">
                                                                 @csrf
                                                                 @method('delete')
                                                                 <button class="delete-tr btn btn-sm" type="submit"><i

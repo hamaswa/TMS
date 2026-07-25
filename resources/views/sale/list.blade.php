@@ -39,7 +39,7 @@
                                                 <a href="{{ url('admin/sale/'.$sale->id.'/edit')}}"
                                                     class="btn btn-primary" style="font-size: 12px;">فروخت+</a>
 
-                                                <form action="{{ route('admin.sale.destroy', $sale->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this sale?')">
+                                                <form action="{{ route('admin.sale.destroy', $sale->id) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ فروخت حذف کرنا چاہتے ہیں؟">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-link p-0 delete-tr" aria-label="Delete sale"><i class="fa fa-trash-alt" aria-hidden="true"></i></button>

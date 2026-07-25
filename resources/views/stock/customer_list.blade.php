@@ -47,7 +47,7 @@
                                                         <td>
 
 
-                                                            <form action="{{ route('admin.dlt', $customer->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this record?')">
+                                                            <form action="{{ route('admin.dlt', $customer->id) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ ریکارڈ حذف کرنا چاہتے ہیں؟">
                                                                 @csrf
                                                                 @method('DELETE')
                                                                 <button type="submit" class="btn btn-link p-0 delete-tr" aria-label="Delete record"><i class="fa fa-trash-alt" aria-hidden="true"></i></button>

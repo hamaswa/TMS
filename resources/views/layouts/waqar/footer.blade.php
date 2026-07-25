@@ -24,7 +24,9 @@
 <!-- Popper.js -->
 <script src="{{ asset('public/assets/js/popper.min.js') }}"></script>
 <!-- Bootstrap JS -->
+@include('components.confirmation-modal')
 <script src="{{ asset('public/assets/js/bootstrap.min.js') }}"></script>
+<script src="{{ asset('assets/js/confirm-modal.js') }}"></script>
 <script>
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {

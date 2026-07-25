@@ -50,7 +50,7 @@
                                                         <td>{{ $rate->options->Name }}</td>
                                                         <td>{{ date('d-m-Y', strtotime($rate->created_at)) }}</td>
                                                         <td>
-                                                            <form action="{{ route('admin.tailor-rates.delete', $rate->id) }}" method="POST" class="d-inline" onsubmit="return confirm('کیا آپ واقعی یہ اجرت حذف کرنا چاہتے ہیں؟')">
+                                                            <form action="{{ route('admin.tailor-rates.delete', $rate->id) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ اجرت حذف کرنا چاہتے ہیں؟">
                                                                 @csrf
                                                                 @method('DELETE')
                                                                 <button type="submit" class="btn btn-outline-danger btn-sm" aria-label="اجرت حذف کریں">حذف کریں</button>

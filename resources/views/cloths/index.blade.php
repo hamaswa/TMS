@@ -345,11 +345,13 @@
 
     <script>
         document.querySelectorAll('.delete-selected').forEach(function(button) {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', async function() {
                 let clothId = this.getAttribute('data-id');
                 let clothColor = this.getAttribute('data-color');
                 var row = $(this).closest('tr');
-                if (confirm('Are you sure you want to delete this record?')) {
+                if (await window.TmsConfirm.ask('کیا آپ واقعی یہ کپڑے کا ریکارڈ حذف کرنا چاہتے ہیں؟', {
+                    trigger: this
+                })) {
                     // console.log('clothId',clothId);
                     // console.log('clothColor',clothColor);
 
@@ -379,8 +381,8 @@
                         error: function(xhr, status, error) {
                             console.log('AJAX request failed:', xhr
                                 .responseText); // Log the response error message
-                        }
-                    });
+                }
+            });
 
                 }
 

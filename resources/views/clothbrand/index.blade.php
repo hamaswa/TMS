@@ -52,7 +52,7 @@
                                                                     aria-hidden="true"></i></a>
                                                             <form
                                                                 action="{{ route('admin.clothbrand.destroy', $cloth_brand->id) }}"
-                                                                method="POST">
+                                                                method="POST" data-confirm="کیا آپ واقعی یہ برانڈ حذف کرنا چاہتے ہیں؟">
                                                                 @csrf
                                                                 @method('delete')
                                                                 <button class="delete-tr btn btn-sm" type="submit"><i

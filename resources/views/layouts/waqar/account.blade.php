@@ -71,12 +71,15 @@
 </div>
 <script>
     $(document).ready(function() {
-        $('.btn-danger').on('click', function(e) {
+        $('.btn-danger').on('click', async function(e) {
             e.preventDefault(); // Prevent the default action of the link
 
-            // Show confirmation box
-            if (confirm(
-                'Are you sure you want to delete your account? You will lose all your data.')) {
+            if (await window.TmsConfirm.ask(
+                'Are you sure you want to delete your account? You will lose all your data.', {
+                    title: 'Delete account',
+                    acceptLabel: 'Delete account',
+                    trigger: this
+                })) {
                 $.ajax({
                     url: "{{ route('user.customers.delete', ['slug' => $slug, 'id' => $user->id]) }}",
                     type: 'DELETE',

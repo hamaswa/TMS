@@ -15,11 +15,13 @@
 
 <!-- JavaScript
 ================================================== -->
+@include('components.confirmation-modal')
 <script src="{{ asset('assets/js/popper.min.js')}}"></script>
 <script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>
 <script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>
 <script src="{{ asset('assets/js/main.js')}}"></script>
 <script src="{{asset('assets/js/custom.js')}}"></script>
+<script src="{{asset('assets/js/confirm-modal.js')}}"></script>
 <!--<script src="{{ asset('assets/js/popper.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>-->

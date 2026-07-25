@@ -18,14 +18,6 @@ if (document.documentElement.lang === 'ur' && jQuery.fn.dataTable) {
 
 jQuery(document).ready(function ($) {
 
-    $(".delete-tr").on("click", function (e) {
-
-        if (confirm("کیا آپ یہ ریکارڈ حذف کرنا چاہتے ہیں؟")) { }
-        else
-            e.preventDefault();
-
-    });
-
     $('#cc-table-data-customer-list').DataTable({
         dom: 'Bfrtip',
         buttons: [

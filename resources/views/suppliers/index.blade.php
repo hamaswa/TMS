@@ -24,7 +24,7 @@
                 <td>Rs {{ number_format($supplier->opening_balance, 2) }}</td>
                 <td>Rs {{ number_format(($supplier->purchase_balance ?? 0) + $supplier->opening_balance - ($supplier->unallocated_payments ?? 0), 2) }}</td>
                 <td><a href="{{ route('admin.suppliers.edit', $supplier) }}" class="btn btn-sm btn-outline-primary">ترمیم</a>
-                    <form method="POST" action="{{ route('admin.suppliers.destroy', $supplier) }}" class="d-inline" onsubmit="return confirm('کیا آپ یہ سپلائر حذف کرنا چاہتے ہیں؟')">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">حذف کریں</button></form></td>
+                    <form method="POST" action="{{ route('admin.suppliers.destroy', $supplier) }}" class="d-inline" data-confirm="کیا آپ یہ سپلائر حذف کرنا چاہتے ہیں؟">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">حذف کریں</button></form></td>
             </tr>@empty<tr><td colspan="5" class="text-center text-muted py-5">ابھی کوئی سپلائر شامل نہیں کیا گیا۔</td></tr>@endforelse</tbody>
         </table></div></div></div>
     </div>

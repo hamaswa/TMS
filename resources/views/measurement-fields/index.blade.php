@@ -48,7 +48,7 @@
                     <button class="btn btn-sm btn-success ml-2">محفوظ کریں</button>
                 </div>
             </form>
-            <form method="post" action="{{ route('admin.measurement-fields.destroy', $field) }}" class="text-left mb-3" onsubmit="return confirm('کیا اس خانے کو غیر فعال کرنا ہے؟')">@csrf @method('DELETE')<button class="btn btn-sm btn-link text-danger">غیر فعال کریں</button></form>
+            <form method="post" action="{{ route('admin.measurement-fields.destroy', $field) }}" class="text-left mb-3" data-confirm="کیا اس خانے کو غیر فعال کرنا ہے؟">@csrf @method('DELETE')<button class="btn btn-sm btn-link text-danger">غیر فعال کریں</button></form>
         @empty<div class="text-center text-muted py-4">ابھی کوئی اضافی خانہ نہیں بنایا گیا۔</div>@endforelse
     </div></div>
 </div>
