@@ -1,7 +1,7 @@
 # TMS Recommendation Implementation Roadmap
 
 Last updated: 25 July 2026
-Branch: `feature/client-public-storefronts`
+Branch: `master`
 
 This file is the durable continuation point for the QA recommendations. When work resumes with “go next”, start at the first unchecked phase and preserve existing production data through additive migrations and backward-compatible defaults.
 
