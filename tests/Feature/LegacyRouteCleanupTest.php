@@ -26,25 +26,32 @@ class LegacyRouteCleanupTest extends TestCase
         $this->get('/new-tab')->assertNotFound();
     }
 
-    public function test_order_print_redirects_with_an_urdu_message_when_shop_setup_is_inactive(): void
+    public function test_order_print_uses_a_safe_default_when_shop_setup_is_missing(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();
 
-        $this->actingAs($owner)->from(route('admin.tailor-jobs.index'))
+        $this->actingAs($owner)
             ->get(route('admin.order-print', $order))
-            ->assertRedirect(route('admin.tailor-jobs.index'))
-            ->assertSessionHas('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
+            ->assertOk()
+            ->assertViewIs('order.print')
+            ->assertSeeText($owner->name);
+
+        $this->assertDatabaseHas('settings', [
+            'user_id' => $owner->id,
+            'status' => 1,
+        ]);
     }
 
-    public function test_sale_print_redirects_with_an_urdu_message_when_shop_setup_is_inactive(): void
+    public function test_sale_print_uses_a_safe_default_when_shop_setup_is_missing(): void
     {
         [$owner] = $this->orderWithoutActiveSetting();
         $sale = Sale::create(['user_id' => $owner->id, 'customer_name' => 'Walk-in customer']);
 
-        $this->actingAs($owner)->from(route('admin.sale.index'))
+        $this->actingAs($owner)
             ->get(route('admin.sale-print', $sale))
-            ->assertRedirect(route('admin.sale.index'))
-            ->assertSessionHas('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
+            ->assertOk()
+            ->assertViewIs('sale.print')
+            ->assertSeeText($owner->name);
     }
 
     public function test_active_order_print_routes_render_decoded_serials_and_their_intended_views(): void

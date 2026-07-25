@@ -168,17 +168,12 @@ class SaleController extends Controller
 
         // $setting = Setting::where('user_id',auth()->user()->businessOwnerId())->where('status',1)->first();
 
-        $setting = Setting::where('user_id', auth()->user()->businessOwnerId())->where('status', 1)->first();
-        if (!$setting) {
-            return back()->with('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
-        } else {
+        $setting = Setting::ensureDefaultFor(Auth::user());
+        $status = "default";
+        $printConfig = app(\App\Services\PrintDocumentService::class)
+            ->make($setting, request(), 'sale-invoice', $sale->id);
 
-            $status = "default";
-            $printConfig = app(\App\Services\PrintDocumentService::class)
-                ->make($setting, request(), 'sale-invoice', $sale->id);
-
-            return view('sale.print', compact('sale', 'setting', 'status', 'transaction', 'latestBalance', 'previousBalance', 'printConfig'));
-        }
+        return view('sale.print', compact('sale', 'setting', 'status', 'transaction', 'latestBalance', 'previousBalance', 'printConfig'));
     }
 
     private function ownedSale($id): Sale

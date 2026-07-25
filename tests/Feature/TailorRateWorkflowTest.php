@@ -81,7 +81,7 @@ class TailorRateWorkflowTest extends TestCase
             'name' => 'Rashid Mahmood', 'phone_number1' => '03001230002',
             'password' => bcrypt('QaTailor@2026'), 'user_id' => $owner->id,
         ]);
-        DB::table('tailorsalaries')->insert([
+        $rateId = DB::table('tailorsalaries')->insertGetId([
             'tailor_id' => $tailor->id,
             'options_id' => null,
             'type' => 'Mens suit',
@@ -93,7 +93,8 @@ class TailorRateWorkflowTest extends TestCase
         $this->actingAs($owner)
             ->get(route('admin.tailor.salary', $tailor))
             ->assertOk()
-            ->assertSee('900 -- Mens suit', false);
+            ->assertSee('900 -- Mens suit', false)
+            ->assertSee('value="'.$rateId.'-900" selected', false);
     }
 
     public function test_order_balance_is_calculated_on_the_server_and_overpayment_is_rejected(): void

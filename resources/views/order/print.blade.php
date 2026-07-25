@@ -288,7 +288,7 @@
                     <!--//recieved payment-->
                     <div class="mb-3" style="text-align: right;padding:0px 0px;">
                         <div style="width: 100%; display: inline-block; font-size:18px; ">
-                            <p style="font-size:18px; font-weight:900; position:absolute;left:40px;">{{ $orderDetail->transactions[0]->recivedPayment }}</p>
+                            <p style="font-size:18px; font-weight:900; position:absolute;left:40px;">{{ $orderDetail->transactions->first()?->recivedPayment ?? 0 }}</p>
                             <p style="font-weight:900; font-size:18px;margin:0px">:موجودہ رقم کی
                             ادائیگی</p>
                         </div>

@@ -397,7 +397,7 @@ class ClothStockController extends Controller
     public function printStock($id, $customerId)
     {
         $sale_id = $id;
-        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->where('status', 1)->first();
+        $setting = Setting::ensureDefaultFor(Auth::user());
         $latestSaleStock = SaleStock::where('user_id', Auth::user()->businessOwnerId())->findOrFail($sale_id);
 
         $customers = Customers::where('user_id', auth()->user()->businessOwnerId())
@@ -464,7 +464,7 @@ class ClothStockController extends Controller
     {
         $sale_id = $id;
         // dd($id);
-        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->where('status', 1)->first();
+        $setting = Setting::ensureDefaultFor(Auth::user());
 
         $customers = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->findOrFail($customerId);

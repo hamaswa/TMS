@@ -12,6 +12,7 @@ class Tailorsalary extends Model
     protected $fillable=[
         'tailor_id',
         'options_id',
+        'type',
         'price'
     ];
 

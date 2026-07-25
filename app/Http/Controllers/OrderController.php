@@ -334,17 +334,12 @@ class OrderController extends Controller
             $previousBalance = $customerTransactions->where('id', '<', $latestTransaction->id)->sum('remainingBalance');
         }
 
-        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->where('status', 1)->first();
+        $setting = Setting::ensureDefaultFor(Auth::user());
+        $status = "default";
+        $printConfig = app(\App\Services\PrintDocumentService::class)
+            ->make($setting, request(), 'tailor-order', $order->id);
 
-        if (!$setting) {
-            return back()->with('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
-        } else {
-            $status = "default";
-            $printConfig = app(\App\Services\PrintDocumentService::class)
-                ->make($setting, request(), 'tailor-order', $order->id);
-
-            return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor', 'printConfig'));
-        }
+        return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor', 'printConfig'));
     }
 
 
@@ -397,17 +392,12 @@ class OrderController extends Controller
             $previousBalance = $customerTransactions->where('id', '<', $latestTransaction->id)->sum('remainingBalance');
         }
 
-        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->where('status', 1)->first();
+        $setting = Setting::ensureDefaultFor(Auth::user());
+        $status = "default";
+        $printConfig = app(\App\Services\PrintDocumentService::class)
+            ->make($setting, request(), 'tailor-order-copy', $order->id);
 
-        if (!$setting) {
-            return back()->with('error', 'پرنٹ کرنے سے پہلے دکان کی فعال ترتیب منتخب کریں۔');
-        } else {
-            $status = "default";
-            $printConfig = app(\App\Services\PrintDocumentService::class)
-                ->make($setting, request(), 'tailor-order-copy', $order->id);
-
-            return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor', 'printConfig'));
-        }
+        return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor', 'printConfig'));
     }
 
     public function search(Request $req)

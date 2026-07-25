@@ -46,11 +46,18 @@ class TenantSecurityTest extends TestCase
             'name' => 'Secure Tailor',
             'contact' => '03001234567',
             'password' => 'secret123',
+            'initial_rate_label' => 'Standard stitching',
+            'initial_rate_price' => 500,
         ])->assertRedirect('admin/Tailor');
 
         $tailor = Tailor::where('user_id', $owner->id)->firstOrFail();
         $this->assertNotSame('secret123', $tailor->password);
         $this->assertTrue(Hash::check('secret123', $tailor->password));
+        $this->assertDatabaseHas('tailorsalaries', [
+            'tailor_id' => $tailor->id,
+            'type' => 'Standard stitching',
+            'price' => 500,
+        ]);
 
         $this->actingAs($owner)
             ->get(route('admin.Tailor.index'))

@@ -190,13 +190,13 @@
                 <div class="mb-1">
                     <div style="width: 100%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold; position:relative;left:70%;"> : موصول رقم</span>
-                        <b style="position:absolute;left:7%;font-size:15px;">{{ $transaction->recivedPayment }}</b>
+                        <b style="position:absolute;left:7%;font-size:15px;">{{ $transaction?->recivedPayment ?? 0 }}</b>
                     </div>
 
                     <div class="mb-1">
                     <div style="width: 60%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold; position:relative;left:70%;"> : موجودہ واجب الادا ادائیگی</span>
-                        <b style="position:absolute;left:7%;font-size:15px;">{{ $transaction->remainingBalance }}</b>
+                        <b style="position:absolute;left:7%;font-size:15px;">{{ $transaction?->remainingBalance ?? 0 }}</b>
                     </div>
                     <div style="width: 100%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold; position:relative;left:53%;"> : گزشتہ واجب ادائیگی</span>

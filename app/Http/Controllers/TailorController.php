@@ -135,6 +135,8 @@ class TailorController extends Controller
             'contact' => ['required', 'string', 'max:50', Rule::unique('tailors', 'phone_number1')->where('user_id', $ownerId)],
             'password' => ['required', 'string', 'min:6', 'max:255'],
             'tailor_rates' => ['nullable', 'string'],
+            'initial_rate_label' => ['nullable', 'required_with:initial_rate_price', 'string', 'max:100'],
+            'initial_rate_price' => ['nullable', 'required_with:initial_rate_label', 'numeric', 'min:0.01', 'max:9999999.99'],
         ], [
             'contact.unique' => 'اس دکان میں یہ فون نمبر پہلے سے کسی درزی کے نام پر موجود ہے۔',
         ]);
@@ -152,6 +154,14 @@ class TailorController extends Controller
                     $obj->tailorsalary()->create(['price' => trim($rate)]);
                 }
             }
+
+            if (! empty($validated['initial_rate_price'])) {
+                $obj->tailorsalary()->create([
+                    'type' => $validated['initial_rate_label'],
+                    'price' => $validated['initial_rate_price'],
+                ]);
+            }
+
             app(ProductionWorkforceService::class)->syncTailor($obj->fresh());
         });
 
@@ -548,13 +558,15 @@ class TailorController extends Controller
 
             $this->ownedTailor($tailor_id);
             $rates = Tailorsalary::where("tailor_id", $tailor_id)->get();
+            $autoSelect = $rates->count() === 1;
 
             $html .= '<select class="form-control" name="tailor_price" required dir="rtl">
             <option value="">درزی کی رقم منتخب کریں۔</option>';
 
             foreach ($rates as $rate) {
                 $label = $rate->options?->Name ?: $rate->type ?: 'سلائی';
-                $html .= '<option value="' . $rate->id . '-' . $rate->price . '">' . $rate->price . ' -- ' . e($label) . '</option>';
+                $selected = $autoSelect ? ' selected' : '';
+                $html .= '<option value="' . $rate->id . '-' . $rate->price . '"' . $selected . '>' . $rate->price . ' -- ' . e($label) . '</option>';
             }
 
             $html .= '</select>';
