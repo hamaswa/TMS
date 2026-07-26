@@ -17,12 +17,26 @@ class StorefrontClothingListing extends Model
         'description',
         'is_featured',
         'is_published',
+        'is_available',
+        'online_order_enabled',
+        'minimum_order_quantity',
+        'maximum_order_quantity',
+        'order_increment',
+        'preorder_enabled',
+        'preorder_lead_days',
         'sort_order',
     ];
 
     protected $casts = [
         'is_featured' => 'boolean',
         'is_published' => 'boolean',
+        'is_available' => 'boolean',
+        'online_order_enabled' => 'boolean',
+        'minimum_order_quantity' => 'decimal:2',
+        'maximum_order_quantity' => 'decimal:2',
+        'order_increment' => 'decimal:2',
+        'preorder_enabled' => 'boolean',
+        'preorder_lead_days' => 'integer',
         'sort_order' => 'integer',
     ];
 
@@ -61,5 +75,36 @@ class StorefrontClothingListing extends Model
         return $this->public_name
             ?: collect([$this->cloth?->brand?->name, $this->cloth?->type?->name])->filter()->implode(' — ')
             ?: 'کپڑا';
+    }
+
+    public function minimumOrderQuantity(): float
+    {
+        return max(0.01, (float) ($this->minimum_order_quantity ?? 0.25));
+    }
+
+    public function maximumOrderQuantity(): float
+    {
+        return min(1000, max($this->minimumOrderQuantity(), (float) ($this->maximum_order_quantity ?? 1000)));
+    }
+
+    public function orderIncrement(): float
+    {
+        return max(0.01, (float) ($this->order_increment ?? 0.25));
+    }
+
+    public function acceptsOnlineOrders(): bool
+    {
+        return (bool) $this->is_available && (bool) $this->online_order_enabled;
+    }
+
+    public function acceptsQuantity(float $quantity): bool
+    {
+        $quantityUnits = (int) round($quantity * 100);
+        $minimumUnits = (int) round($this->minimumOrderQuantity() * 100);
+        $incrementUnits = max(1, (int) round($this->orderIncrement() * 100));
+
+        return $quantity >= $this->minimumOrderQuantity()
+            && $quantity <= $this->maximumOrderQuantity()
+            && ($quantityUnits - $minimumUnits) % $incrementUnits === 0;
     }
 }

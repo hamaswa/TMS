@@ -867,6 +867,20 @@ class StorefrontCheckoutTest extends TestCase
         $this->assertSame($owner->id, $order->storefront->business->owner_user_id);
     }
 
+    public function test_checkout_rejects_a_listing_disabled_after_reservation(): void
+    {
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+        $listing->update(['online_order_enabled' => false]);
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'pickup',
+        ])->assertSessionHasErrors('checkout');
+
+        $this->assertDatabaseCount('storefront_orders', 0);
+        $this->assertSame(10.0, (float) $color->fresh()->length);
+    }
+
     private function reservedLinkedCart(
         Storefront $storefront,
         StorefrontClothingListing $listing,

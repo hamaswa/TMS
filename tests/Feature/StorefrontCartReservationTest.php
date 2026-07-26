@@ -63,6 +63,34 @@ class StorefrontCartReservationTest extends TestCase
         $this->assertSame(4.0, $color->fresh()->reservableLength());
     }
 
+    public function test_product_order_controls_are_enforced_before_stock_is_reserved(): void
+    {
+        [, $storefront, $listing, $color] = $this->catalog();
+        $listing->update([
+            'minimum_order_quantity' => 1.25,
+            'maximum_order_quantity' => 5,
+            'order_increment' => 0.5,
+        ]);
+
+        $this->post(route('storefront.cart.store', [$storefront, $listing]), [
+            'cloth_color_id' => $color->id,
+            'quantity' => 1.5,
+        ])->assertSessionHasErrors('quantity');
+        $this->assertDatabaseCount('storefront_cart_items', 0);
+
+        $this->post(route('storefront.cart.store', [$storefront, $listing]), [
+            'cloth_color_id' => $color->id,
+            'quantity' => 1.75,
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('storefront_cart_items', ['quantity' => 1.75]);
+
+        $listing->update(['online_order_enabled' => false]);
+        $this->post(route('storefront.cart.store', [$storefront, $listing]), [
+            'cloth_color_id' => $color->id,
+            'quantity' => 2,
+        ])->assertNotFound();
+    }
+
     public function test_expired_and_removed_items_release_reservable_quantity(): void
     {
         [, $storefront, $listing, $color] = $this->catalog();

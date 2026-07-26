@@ -68,6 +68,37 @@ class StorefrontClothingCatalogTest extends TestCase
         $this->assertDatabaseCount('storefront_clothing_listings', 0);
     }
 
+    public function test_client_can_configure_catalogue_only_quantity_and_preorder_controls(): void
+    {
+        [$owner, , $storefront] = $this->business();
+        [$cloth] = $this->cloth($owner->id, 'سبز', 0);
+
+        $this->actingAs($owner)->put(route('admin.storefront.clothing.update', $cloth), [
+            'product_controls_present' => '1',
+            'public_name' => 'سبز پریمیم کپڑا',
+            'is_published' => '1',
+            'is_available' => '1',
+            'minimum_order_quantity' => '1.50',
+            'maximum_order_quantity' => '8',
+            'order_increment' => '0.50',
+            'preorder_enabled' => '1',
+            'preorder_lead_days' => '7',
+        ])->assertRedirect(route('admin.storefront.clothing.index'));
+
+        $listing = StorefrontClothingListing::firstOrFail();
+        $this->assertFalse($listing->online_order_enabled);
+        $this->assertSame('1.50', $listing->minimum_order_quantity);
+        $this->assertSame('8.00', $listing->maximum_order_quantity);
+        $this->assertSame('0.50', $listing->order_increment);
+        $this->assertTrue($listing->preorder_enabled);
+        $this->assertSame(7, $listing->preorder_lead_days);
+
+        $this->get(route('storefront.clothing.show', [$storefront, $listing]))
+            ->assertOk()
+            ->assertSeeText('یہ کپڑا صرف نمائش کے لیے درج ہے')
+            ->assertSeeText('متوقع دستیابی تقریباً 7 دن');
+    }
+
     public function test_unpublished_and_cross_storefront_listings_are_not_public(): void
     {
         [, , $storefront] = $this->business();

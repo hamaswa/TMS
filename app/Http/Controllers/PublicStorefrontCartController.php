@@ -37,13 +37,15 @@ class PublicStorefrontCartController extends Controller
         abort_unless(
             $listing->storefront_id === $storefront->id
             && $listing->is_published
+            && $listing->acceptsOnlineOrders()
             && (int) $listing->cloth?->user_id === (int) $storefront->business->owner_user_id,
             404
         );
         $validated = $request->validate([
             'cloth_color_id' => ['required', 'integer'],
-            'quantity' => ['required', 'numeric', 'min:0.25', 'max:1000'],
+            'quantity' => ['required', 'numeric', 'min:0.01', 'max:1000'],
         ]);
+        $this->ensureValidQuantity($listing, (float) $validated['quantity']);
         $color = $listing->cloth->colors()->findOrFail($validated['cloth_color_id']);
         [$cart, $plainToken] = $cartService->getOrCreate(
             $storefront,
@@ -66,8 +68,10 @@ class PublicStorefrontCartController extends Controller
         $cart = $this->cartOrFail($request, $storefront, $cartService);
         $cartItem = $cart->items()->with(['listing.cloth', 'color'])->findOrFail($item);
         $validated = $request->validate([
-            'quantity' => ['required', 'numeric', 'min:0.25', 'max:1000'],
+            'quantity' => ['required', 'numeric', 'min:0.01', 'max:1000'],
         ]);
+        abort_unless($cartItem->listing?->acceptsOnlineOrders(), 404);
+        $this->ensureValidQuantity($cartItem->listing, (float) $validated['quantity']);
         $cartService->reserve(
             $cart,
             $cartItem->listing,
@@ -77,6 +81,19 @@ class PublicStorefrontCartController extends Controller
 
         return redirect()->route('storefront.cart.show', $storefront)
             ->with('success', __('storefront.messages.cart_updated'));
+    }
+
+    private function ensureValidQuantity(StorefrontClothingListing $listing, float $quantity): void
+    {
+        if (! $listing->acceptsQuantity($quantity)) {
+            throw ValidationException::withMessages([
+                'quantity' => __('storefront.messages.invalid_product_quantity', [
+                    'min' => number_format($listing->minimumOrderQuantity(), 2),
+                    'max' => number_format($listing->maximumOrderQuantity(), 2),
+                    'step' => number_format($listing->orderIncrement(), 2),
+                ]),
+            ]);
+        }
     }
 
     public function destroy(

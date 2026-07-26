@@ -77,6 +77,8 @@ class StorefrontCheckoutService
                 $validListing = $item->listing
                     && $item->listing->storefront_id === $storefront->id
                     && $item->listing->is_published
+                    && $item->listing->acceptsOnlineOrders()
+                    && $item->listing->acceptsQuantity((float) $item->quantity)
                     && (int) $item->listing->cloth?->user_id === $ownerId
                     && $color
                     && (int) $color->cloth_id === (int) $item->listing->cloth_id;

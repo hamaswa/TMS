@@ -39,6 +39,13 @@ class AdminStorefrontClothingController extends Controller
             'is_featured' => ['nullable', 'boolean'],
             'is_published' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'is_available' => ['nullable', 'boolean'],
+            'online_order_enabled' => ['nullable', 'boolean'],
+            'minimum_order_quantity' => ['nullable', 'numeric', 'min:0.01', 'max:1000'],
+            'maximum_order_quantity' => ['nullable', 'numeric', 'min:0.01', 'max:1000', 'gte:minimum_order_quantity'],
+            'order_increment' => ['nullable', 'numeric', 'min:0.01', 'max:1000'],
+            'preorder_enabled' => ['nullable', 'boolean'],
+            'preorder_lead_days' => ['nullable', 'required_if:preorder_enabled,1', 'integer', 'min:1', 'max:365'],
         ]);
 
         if ($request->boolean('is_published') && ! $storefront->show_clothing) {
@@ -47,16 +54,30 @@ class AdminStorefrontClothingController extends Controller
             ]);
         }
 
-        StorefrontClothingListing::updateOrCreate(
+        $listing = StorefrontClothingListing::firstOrNew(
             ['storefront_id' => $storefront->id, 'cloth_id' => $cloth->id],
-            [
-                'public_name' => $validated['public_name'] ?? null,
-                'description' => $validated['description'] ?? null,
-                'is_featured' => $request->boolean('is_featured'),
-                'is_published' => $request->boolean('is_published'),
-                'sort_order' => $validated['sort_order'] ?? 0,
-            ]
         );
+        $listing->fill([
+            'public_name' => $validated['public_name'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'is_featured' => $request->boolean('is_featured'),
+            'is_published' => $request->boolean('is_published'),
+            'sort_order' => $validated['sort_order'] ?? 0,
+        ]);
+        if ($request->boolean('product_controls_present')) {
+            $listing->fill([
+                'is_available' => $request->boolean('is_available'),
+                'online_order_enabled' => $request->boolean('online_order_enabled'),
+                'minimum_order_quantity' => $validated['minimum_order_quantity'] ?? 0.25,
+                'maximum_order_quantity' => $validated['maximum_order_quantity'] ?? null,
+                'order_increment' => $validated['order_increment'] ?? 0.25,
+                'preorder_enabled' => $request->boolean('preorder_enabled'),
+                'preorder_lead_days' => $request->boolean('preorder_enabled')
+                    ? ($validated['preorder_lead_days'] ?? null)
+                    : null,
+            ]);
+        }
+        $listing->save();
 
         return redirect()->route('admin.storefront.clothing.index')
             ->with('success', 'کپڑے کی عوامی فہرست محفوظ ہو گئی ہے۔');

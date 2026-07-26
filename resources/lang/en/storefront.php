@@ -106,6 +106,12 @@ return [
         'reservation_note' => 'The selected quantity is reserved for 30 minutes. No payment is taken and no final order is created yet.',
         'live_stock_note' => 'Prices and availability reflect current inventory after active cart reservations.',
         'catalog_only' => 'This shop currently uses its public page as a catalogue. Contact the shop to ask about this fabric or place an order.',
+        'product_catalog_only' => 'This fabric is displayed as catalogue-only. Contact the shop to ask about availability or place an order.',
+        'catalogue_badge' => 'Catalogue only — contact the shop',
+        'temporarily_unavailable' => 'This fabric is temporarily unavailable.',
+        'preorder_available' => 'Available by advance enquiry',
+        'preorder_contact' => 'Advance enquiries are welcome. Expected availability is about :days days; contact the shop to confirm. No stock is reserved until the shop confirms an order.',
+        'order_limits' => 'Order between :min and :max metres, in increments of :step metre.',
     ],
     'cart' => [
         'title' => 'My cart',
@@ -286,5 +292,6 @@ return [
         'reservation_expired' => 'The reservation has expired. Refresh the quantity.',
         'stock_changed' => 'A selected fabric quantity is no longer available. Refresh the cart.',
         'available_quantity' => 'Only :amount metres of this colour are currently available.',
+        'invalid_product_quantity' => 'Choose between :min and :max metres in increments of :step metre.',
     ],
 ];
