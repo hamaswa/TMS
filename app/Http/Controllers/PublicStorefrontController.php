@@ -39,7 +39,29 @@ class PublicStorefrontController extends Controller
                 });
             })
             ->when($filters['city'] ?? null, fn ($query, $city) => $query->where('city', $city))
-            ->when($filters['delivery'] ?? null, fn ($query) => $query->where('delivery_enabled', true))
+            ->when($filters['delivery'] ?? null, function ($query) {
+                $query->where(function ($delivery) {
+                    $delivery->where(function ($tailoring) {
+                        $tailoring->where('show_tailoring', true)
+                            ->where(function ($enabled) {
+                                $enabled->where('tailoring_delivery_enabled', true)
+                                    ->orWhere(function ($legacy) {
+                                        $legacy->whereNull('tailoring_delivery_enabled')
+                                            ->where('delivery_enabled', true);
+                                    });
+                            });
+                    })->orWhere(function ($clothing) {
+                        $clothing->where('show_clothing', true)
+                            ->where(function ($enabled) {
+                                $enabled->where('clothing_delivery_enabled', true)
+                                    ->orWhere(function ($legacy) {
+                                        $legacy->whereNull('clothing_delivery_enabled')
+                                            ->where('delivery_enabled', true);
+                                    });
+                            });
+                    });
+                });
+            })
             ->when($filters['category'] ?? null, function ($query, $category) {
                 if (in_array($category, ['clothing', 'both'], true)) {
                     $query->where('show_clothing', true)
@@ -217,7 +239,7 @@ class PublicStorefrontController extends Controller
     )
     {
         $this->ensureTailoringVisible($storefront);
-        abort_unless($storefront->inquiries_enabled, 404);
+        abort_unless($storefront->tailoringInquiriesEnabled(), 404);
         $request->mergeIfMissing(['payment_method' => StorefrontInquiry::PAYMENT_UNPAID]);
         $paymentMethod = $request->input('payment_method');
         $manualPayment = StorefrontInquiry::requiresManualVerification($paymentMethod);

@@ -4,6 +4,7 @@ use App\Events\NotificationEvent;
 use App\Http\Controllers\AdministratorController;
 use App\Http\Controllers\AdminStorefrontClothingController;
 use App\Http\Controllers\AdminStorefrontController;
+use App\Http\Controllers\AdminStorefrontModuleSettingsController;
 use App\Http\Controllers\AdminStorefrontOrderController;
 use App\Http\Controllers\AdminStorefrontTailoringController;
 use App\Http\Controllers\BusinessActivityController;
@@ -147,6 +148,10 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::middleware('business.permission:storefront.manage')->group(function () {
         Route::get('/storefront', [AdminStorefrontController::class, 'edit'])->name('storefront.edit');
         Route::put('/storefront', [AdminStorefrontController::class, 'update'])->name('storefront.update');
+        Route::get('/storefront/settings/{module}', [AdminStorefrontModuleSettingsController::class, 'edit'])
+            ->whereIn('module', ['tailoring', 'clothing'])->name('storefront.module-settings.edit');
+        Route::put('/storefront/settings/{module}', [AdminStorefrontModuleSettingsController::class, 'update'])
+            ->whereIn('module', ['tailoring', 'clothing'])->name('storefront.module-settings.update');
         Route::patch('/storefront/publication', [AdminStorefrontController::class, 'publish'])->name('storefront.publish');
         Route::get('/storefront/preview', [AdminStorefrontController::class, 'preview'])->name('storefront.preview');
         Route::get('/storefront/clothing', [AdminStorefrontClothingController::class, 'index'])->name('storefront.clothing.index');

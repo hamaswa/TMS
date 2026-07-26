@@ -26,10 +26,10 @@ class PublicStorefrontCheckoutController extends Controller
         StorefrontPaymentEvidenceService $evidenceService,
     ) {
         $this->ensureVisible($storefront);
-        abort_unless($storefront->online_ordering_enabled, 404);
+        abort_unless($storefront->clothingOrderingEnabled(), 404);
         $methods = array_values(array_filter([
-            $storefront->pickup_enabled ? 'pickup' : null,
-            $storefront->delivery_enabled ? 'delivery' : null,
+            $storefront->clothingPickupEnabled() ? 'pickup' : null,
+            $storefront->clothingDeliveryEnabled() ? 'delivery' : null,
         ]));
         $request->mergeIfMissing(['payment_method' => StorefrontOrder::PAYMENT_UNPAID]);
         $paymentMethod = $request->input('payment_method');

@@ -56,6 +56,32 @@
                     </div>
 
                     @if($business->clothing_enabled || $business->tailoring_enabled)
+                    <div class="card storefront-card mb-4">
+                        <div class="card-header">
+                            <h2 class="h5 mb-1">ہر شعبے کی الگ ترتیب</h2>
+                            <p class="small text-muted mb-0">آرڈر، درخواست، ادائیگی اور فراہمی متعلقہ شعبے میں الگ کنٹرول کریں۔</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                @if($business->tailoring_enabled)
+                                <div class="col-md-6 mb-2">
+                                    <a class="module-choice d-flex text-decoration-none h-100" href="{{ route('admin.storefront.module-settings.edit', 'tailoring') }}">
+                                        <i class="fas fa-cut text-primary ml-3 mt-1"></i>
+                                        <span><strong class="d-block text-dark">ٹیلرنگ کی ترتیب</strong><small class="text-muted">درخواستیں، ادائیگی، پیمائش/وصولی اور فراہمی</small></span>
+                                    </a>
+                                </div>
+                                @endif
+                                @if($business->clothing_enabled)
+                                <div class="col-md-6 mb-2">
+                                    <a class="module-choice d-flex text-decoration-none h-100" href="{{ route('admin.storefront.module-settings.edit', 'clothing') }}">
+                                        <i class="fas fa-shopping-bag text-success ml-3 mt-1"></i>
+                                        <span><strong class="d-block text-dark">کپڑوں کی دکان کی ترتیب</strong><small class="text-muted">کیٹلاگ/آرڈر، ادائیگی، وصولی اور فراہمی</small></span>
+                                    </a>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
                     @php
                         $easypaisaSelected = (bool) ($errors->any() ? old('easypaisa_enabled') : old('easypaisa_enabled', $storefront->easypaisa_enabled));
                         $jazzcashSelected = (bool) ($errors->any() ? old('jazzcash_enabled') : old('jazzcash_enabled', $storefront->jazzcash_enabled));
@@ -66,7 +92,7 @@
                         $showPaymentMethods = $paymentCollectionMode === 'methods';
                         $hasReceivingMethod = $easypaisaSelected || $jazzcashSelected || $bankTransferSelected || $raastSelected;
                     @endphp
-                    <div class="card storefront-card mb-4">
+                    <div class="card storefront-card mb-4 d-none" aria-hidden="true">
                         <div class="card-header">
                             <h2 class="h5 mb-1">آن لائن ادائیگی کے طریقے</h2>
                             <p class="small text-muted mb-0">کپڑوں کے آرڈر اور ٹیلرنگ درخواستوں کے لیے قبول شدہ طریقے الگ الگ کنٹرول کریں۔</p>
@@ -85,7 +111,7 @@
                             </label>
                             @endif
                             <h3 class="h6 mb-3">کیا آپ آرڈر یا درخواست کے ساتھ ادائیگی کا طریقہ دینا چاہتے ہیں؟</h3>
-                            <div class="row">
+                            <div class="row d-none" aria-hidden="true">
                                 <div class="col-md-6 mb-2">
                                     <label class="module-choice d-flex align-items-start">
                                         <input type="radio" name="payment_collection_mode" value="none" data-payment-mode @checked($paymentCollectionMode === 'none') required>
@@ -174,7 +200,7 @@
                                 </select>
                                 <small class="text-muted">گاہک زبان تبدیل کر سکتے ہیں؛ ان کا انتخاب اگلی بار بھی محفوظ رہے گا۔</small>
                             </div>
-                            <div class="row">
+                            <div class="row d-none" aria-hidden="true">
                                 <div class="col-md-4 mb-2"><label><input type="checkbox" name="inquiries_enabled" value="1" @checked(old('inquiries_enabled',$storefront->inquiries_enabled))> گاہک کے سوالات قبول کریں</label></div>
                                 <div class="col-md-4 mb-2"><label><input type="checkbox" name="pickup_enabled" value="1" @checked(old('pickup_enabled',$storefront->pickup_enabled))> دکان سے وصولی</label></div>
                                 <div class="col-md-4 mb-2"><label><input type="checkbox" name="delivery_enabled" value="1" @checked(old('delivery_enabled',$storefront->delivery_enabled))> گھر تک فراہمی</label></div>

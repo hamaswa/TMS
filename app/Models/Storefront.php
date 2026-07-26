@@ -32,7 +32,25 @@ class Storefront extends Model
         'show_clothing',
         'show_tailoring',
         'inquiries_enabled',
+        'tailoring_inquiries_enabled',
+        'tailoring_unpaid_enabled',
+        'tailoring_cod_enabled',
+        'tailoring_easypaisa_enabled',
+        'tailoring_jazzcash_enabled',
+        'tailoring_bank_transfer_enabled',
+        'tailoring_raast_enabled',
+        'tailoring_pickup_enabled',
+        'tailoring_delivery_enabled',
         'online_ordering_enabled',
+        'clothing_online_ordering_enabled',
+        'clothing_unpaid_enabled',
+        'clothing_cod_enabled',
+        'clothing_easypaisa_enabled',
+        'clothing_jazzcash_enabled',
+        'clothing_bank_transfer_enabled',
+        'clothing_raast_enabled',
+        'clothing_pickup_enabled',
+        'clothing_delivery_enabled',
         'unpaid_orders_enabled',
         'cod_enabled',
         'easypaisa_enabled',
@@ -62,7 +80,25 @@ class Storefront extends Model
             'show_clothing' => 'boolean',
             'show_tailoring' => 'boolean',
             'inquiries_enabled' => 'boolean',
+            'tailoring_inquiries_enabled' => 'boolean',
+            'tailoring_unpaid_enabled' => 'boolean',
+            'tailoring_cod_enabled' => 'boolean',
+            'tailoring_easypaisa_enabled' => 'boolean',
+            'tailoring_jazzcash_enabled' => 'boolean',
+            'tailoring_bank_transfer_enabled' => 'boolean',
+            'tailoring_raast_enabled' => 'boolean',
+            'tailoring_pickup_enabled' => 'boolean',
+            'tailoring_delivery_enabled' => 'boolean',
             'online_ordering_enabled' => 'boolean',
+            'clothing_online_ordering_enabled' => 'boolean',
+            'clothing_unpaid_enabled' => 'boolean',
+            'clothing_cod_enabled' => 'boolean',
+            'clothing_easypaisa_enabled' => 'boolean',
+            'clothing_jazzcash_enabled' => 'boolean',
+            'clothing_bank_transfer_enabled' => 'boolean',
+            'clothing_raast_enabled' => 'boolean',
+            'clothing_pickup_enabled' => 'boolean',
+            'clothing_delivery_enabled' => 'boolean',
             'unpaid_orders_enabled' => 'boolean',
             'cod_enabled' => 'boolean',
             'easypaisa_enabled' => 'boolean',
@@ -137,35 +173,86 @@ class Storefront extends Model
 
     public function acceptedPaymentMethods(): array
     {
-        if (! $this->online_ordering_enabled) {
+        if (! $this->clothingOrderingEnabled()) {
             return [];
         }
 
         return array_intersect_key(StorefrontOrder::publicPaymentMethods(), array_filter([
-            StorefrontOrder::PAYMENT_UNPAID => $this->unpaid_orders_enabled,
-            StorefrontOrder::PAYMENT_COD => $this->cod_enabled && $this->delivery_enabled,
-            StorefrontOrder::PAYMENT_EASYPAISA => $this->easypaisa_enabled,
-            StorefrontOrder::PAYMENT_JAZZCASH => $this->jazzcash_enabled,
-            StorefrontOrder::PAYMENT_BANK_TRANSFER => $this->bank_transfer_enabled,
-            StorefrontOrder::PAYMENT_RAAST => $this->raast_enabled,
+            StorefrontOrder::PAYMENT_UNPAID => $this->moduleSetting('clothing_unpaid_enabled', 'unpaid_orders_enabled'),
+            StorefrontOrder::PAYMENT_COD => $this->moduleSetting('clothing_cod_enabled', 'cod_enabled')
+                && $this->clothingDeliveryEnabled(),
+            StorefrontOrder::PAYMENT_EASYPAISA => $this->moduleSetting('clothing_easypaisa_enabled', 'easypaisa_enabled'),
+            StorefrontOrder::PAYMENT_JAZZCASH => $this->moduleSetting('clothing_jazzcash_enabled', 'jazzcash_enabled'),
+            StorefrontOrder::PAYMENT_BANK_TRANSFER => $this->moduleSetting('clothing_bank_transfer_enabled', 'bank_transfer_enabled'),
+            StorefrontOrder::PAYMENT_RAAST => $this->moduleSetting('clothing_raast_enabled', 'raast_enabled'),
         ]));
     }
 
     public function acceptedInquiryPaymentMethods(): array
     {
         return array_intersect_key(StorefrontInquiry::publicPaymentMethods(), array_filter([
-            StorefrontInquiry::PAYMENT_UNPAID => $this->unpaid_orders_enabled,
-            StorefrontInquiry::PAYMENT_COD => $this->cod_enabled && $this->delivery_enabled,
-            StorefrontInquiry::PAYMENT_EASYPAISA => $this->easypaisa_enabled,
-            StorefrontInquiry::PAYMENT_JAZZCASH => $this->jazzcash_enabled,
-            StorefrontInquiry::PAYMENT_BANK_TRANSFER => $this->bank_transfer_enabled,
-            StorefrontInquiry::PAYMENT_RAAST => $this->raast_enabled,
+            StorefrontInquiry::PAYMENT_UNPAID => $this->moduleSetting('tailoring_unpaid_enabled', 'unpaid_orders_enabled'),
+            StorefrontInquiry::PAYMENT_COD => $this->moduleSetting('tailoring_cod_enabled', 'cod_enabled')
+                && $this->tailoringDeliveryEnabled(),
+            StorefrontInquiry::PAYMENT_EASYPAISA => $this->moduleSetting('tailoring_easypaisa_enabled', 'easypaisa_enabled'),
+            StorefrontInquiry::PAYMENT_JAZZCASH => $this->moduleSetting('tailoring_jazzcash_enabled', 'jazzcash_enabled'),
+            StorefrontInquiry::PAYMENT_BANK_TRANSFER => $this->moduleSetting('tailoring_bank_transfer_enabled', 'bank_transfer_enabled'),
+            StorefrontInquiry::PAYMENT_RAAST => $this->moduleSetting('tailoring_raast_enabled', 'raast_enabled'),
         ]));
+    }
+
+    public function tailoringInquiriesEnabled(): bool
+    {
+        return $this->moduleSetting('tailoring_inquiries_enabled', 'inquiries_enabled');
+    }
+
+    public function clothingOrderingEnabled(): bool
+    {
+        return $this->moduleSetting('clothing_online_ordering_enabled', 'online_ordering_enabled');
+    }
+
+    public function tailoringPickupEnabled(): bool
+    {
+        return $this->moduleSetting('tailoring_pickup_enabled', 'pickup_enabled');
+    }
+
+    public function tailoringDeliveryEnabled(): bool
+    {
+        return $this->moduleSetting('tailoring_delivery_enabled', 'delivery_enabled');
+    }
+
+    public function clothingPickupEnabled(): bool
+    {
+        return $this->moduleSetting('clothing_pickup_enabled', 'pickup_enabled');
+    }
+
+    public function clothingDeliveryEnabled(): bool
+    {
+        return $this->moduleSetting('clothing_delivery_enabled', 'delivery_enabled');
+    }
+
+    public function offersPickup(): bool
+    {
+        return ($this->show_tailoring && $this->tailoringPickupEnabled())
+            || ($this->show_clothing && $this->clothingPickupEnabled());
+    }
+
+    public function offersDelivery(): bool
+    {
+        return ($this->show_tailoring && $this->tailoringDeliveryEnabled())
+            || ($this->show_clothing && $this->clothingDeliveryEnabled());
     }
 
     public function acceptsPaymentMethod(string $method): bool
     {
         return array_key_exists($method, $this->acceptedPaymentMethods());
+    }
+
+    private function moduleSetting(string $specific, string $legacy): bool
+    {
+        return $this->getAttribute($specific) === null
+            ? (bool) $this->getAttribute($legacy)
+            : (bool) $this->getAttribute($specific);
     }
 
     public function getLogoUrlAttribute(): ?string
