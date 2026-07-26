@@ -59,7 +59,12 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Auth::routes();
+Auth::routes(['register' => false]);
+
+// Business accounts are provisioned by the super administrator and public
+// customers register inside a specific storefront. Keep the old URL useful
+// without allowing it to create an unscoped user account.
+Route::redirect('/register', '/', 301);
 
 Route::get('/language/{locale}', [PublicLocaleController::class, 'update'])
     ->whereIn('locale', ['ur', 'en'])->name('public.locale.update');

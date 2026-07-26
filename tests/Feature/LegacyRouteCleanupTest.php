@@ -26,6 +26,20 @@ class LegacyRouteCleanupTest extends TestCase
         $this->get('/new-tab')->assertNotFound();
     }
 
+    public function test_legacy_public_registration_cannot_create_an_unscoped_user(): void
+    {
+        $this->get('/register')->assertRedirect('/', 301);
+
+        $this->post('/register', [
+            'name' => 'Unscoped customer',
+            'email' => 'unscoped@example.test',
+            'password' => 'Password@2026',
+            'password_confirmation' => 'Password@2026',
+        ])->assertRedirect('/', 301);
+
+        $this->assertDatabaseMissing('users', ['email' => 'unscoped@example.test']);
+    }
+
     public function test_order_print_uses_a_safe_default_when_shop_setup_is_missing(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();

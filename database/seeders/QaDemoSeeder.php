@@ -83,6 +83,10 @@ class QaDemoSeeder extends Seeder
             'owner_user_id' => $owner->id,
             'tailoring_enabled' => $tailoring,
             'clothing_enabled' => $clothing,
+            'status' => Business::STATUS_ACTIVE,
+            'approved_at' => now(),
+            'status_changed_at' => now(),
+            'status_reason' => 'QA demo business provisioned as active.',
             'password_expiry_days' => 90,
             'password_policy_updated_at' => now(),
         ]);
