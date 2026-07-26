@@ -209,6 +209,107 @@ class StorefrontFoundationTest extends TestCase
         $this->assertFalse($storefront->easypaisa_enabled);
     }
 
+    public function test_storefront_only_shows_receiving_fields_for_selected_payment_methods(): void
+    {
+        [$owner, $business] = $this->business(true, false);
+        $storefront = Storefront::create([
+            'business_id' => $business->id,
+            'display_name' => 'Tailoring Payments UI',
+            'slug' => 'tailoring-payments-ui',
+            'show_tailoring' => true,
+            'unpaid_orders_enabled' => true,
+            'easypaisa_enabled' => false,
+            'jazzcash_enabled' => false,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('admin.storefront.edit'));
+        $response->assertOk()
+            ->assertSeeText('ابھی ادائیگی نہیں یا کیش آن ڈیلیوری کے لیے وصولی کی تفصیلات درکار نہیں ہیں۔');
+        $this->assertMatchesRegularExpression(
+            '/data-payment-details-for="easypaisa" hidden/',
+            $response->getContent(),
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="easypaisa_account_number"[^>]*disabled/',
+            $response->getContent(),
+        );
+
+        $storefront->update([
+            'easypaisa_enabled' => true,
+            'easypaisa_account_title' => 'Tailoring Payments UI',
+            'easypaisa_account_number' => '03001234567',
+        ]);
+        $response = $this->actingAs($owner)->get(route('admin.storefront.edit'));
+        $response->assertOk();
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-payment-details-for="easypaisa" hidden/',
+            $response->getContent(),
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="easypaisa_account_number"[^>]*disabled/',
+            $response->getContent(),
+        );
+        $this->assertMatchesRegularExpression(
+            '/data-payment-details-for="jazzcash" hidden/',
+            $response->getContent(),
+        );
+    }
+
+    public function test_unselected_payment_details_cannot_be_changed_by_the_request(): void
+    {
+        [$owner, $business] = $this->business(true, false);
+        $storefront = Storefront::create([
+            'business_id' => $business->id,
+            'display_name' => 'Protected Payment Details',
+            'slug' => 'protected-payment-details',
+            'show_tailoring' => true,
+            'unpaid_orders_enabled' => true,
+            'easypaisa_enabled' => false,
+            'easypaisa_account_title' => 'Saved Account',
+            'easypaisa_account_number' => '03001111111',
+        ]);
+
+        $this->actingAs($owner)->put(route('admin.storefront.update'), [
+            'display_name' => 'Protected Payment Details',
+            'slug' => 'protected-payment-details',
+            'default_locale' => 'ur',
+            'show_tailoring' => '1',
+            'commerce_settings_present' => '1',
+            'unpaid_orders_enabled' => '1',
+            'easypaisa_account_title' => 'Injected Account',
+            'easypaisa_account_number' => '03009999999',
+        ])->assertRedirect(route('admin.storefront.edit'));
+
+        $storefront->refresh();
+        $this->assertFalse($storefront->easypaisa_enabled);
+        $this->assertSame('Saved Account', $storefront->easypaisa_account_title);
+        $this->assertSame('03001111111', $storefront->easypaisa_account_number);
+    }
+
+    public function test_selected_easypaisa_requires_receiving_details(): void
+    {
+        [$owner, $business] = $this->business(true, false);
+        Storefront::create([
+            'business_id' => $business->id,
+            'display_name' => 'Incomplete Easypaisa',
+            'slug' => 'incomplete-easypaisa',
+            'show_tailoring' => true,
+        ]);
+
+        $this->actingAs($owner)
+            ->from(route('admin.storefront.edit'))
+            ->put(route('admin.storefront.update'), [
+                'display_name' => 'Incomplete Easypaisa',
+                'slug' => 'incomplete-easypaisa',
+                'default_locale' => 'ur',
+                'show_tailoring' => '1',
+                'commerce_settings_present' => '1',
+                'easypaisa_enabled' => '1',
+            ])
+            ->assertRedirect(route('admin.storefront.edit'))
+            ->assertSessionHasErrors('easypaisa_account_number');
+    }
+
     public function test_client_can_configure_pakistan_manual_payment_receiving_details(): void
     {
         [$owner, $business] = $this->business(true, true);

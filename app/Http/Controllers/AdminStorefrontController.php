@@ -143,6 +143,13 @@ class AdminStorefrontController extends Controller
                 'jazzcash_account_number' => 'جاز کیش فعال کرنے کے لیے اکاؤنٹ کا عنوان اور نمبر درج کریں۔',
             ]);
         }
+        if ($commerceSettingsPresent && $easypaisaEnabled
+            && (blank($validated['easypaisa_account_title'] ?? null)
+                || blank($validated['easypaisa_account_number'] ?? null))) {
+            throw ValidationException::withMessages([
+                'easypaisa_account_number' => 'ایزی پیسہ فعال کرنے کے لیے اکاؤنٹ کا عنوان اور نمبر درج کریں۔',
+            ]);
+        }
         if ($commerceSettingsPresent && $bankTransferEnabled
             && (blank($validated['bank_name'] ?? null)
                 || blank($validated['bank_account_title'] ?? null)
@@ -160,6 +167,33 @@ class AdminStorefrontController extends Controller
             ]);
         }
 
+        $paymentDetailFields = [
+            'easypaisa_account_title',
+            'easypaisa_account_number',
+            'jazzcash_account_title',
+            'jazzcash_account_number',
+            'bank_name',
+            'bank_account_title',
+            'bank_account_number',
+            'bank_iban',
+            'raast_account_title',
+            'raast_id',
+        ];
+        $selectedPaymentDetails = collect()
+            ->when($easypaisaEnabled, fn ($details) => $details->merge(
+                collect($validated)->only(['easypaisa_account_title', 'easypaisa_account_number'])
+            ))
+            ->when($jazzcashEnabled, fn ($details) => $details->merge(
+                collect($validated)->only(['jazzcash_account_title', 'jazzcash_account_number'])
+            ))
+            ->when($bankTransferEnabled, fn ($details) => $details->merge(
+                collect($validated)->only(['bank_name', 'bank_account_title', 'bank_account_number', 'bank_iban'])
+            ))
+            ->when($raastEnabled, fn ($details) => $details->merge(
+                collect($validated)->only(['raast_account_title', 'raast_id'])
+            ))
+            ->all();
+
         $storefront->fill([
             ...collect($validated)->except([
                 'logo',
@@ -173,7 +207,9 @@ class AdminStorefrontController extends Controller
                 'bank_transfer_enabled',
                 'raast_enabled',
                 'raast_qr',
+                ...$paymentDetailFields,
             ])->all(),
+            ...$selectedPaymentDetails,
             'business_id' => $business->id,
             'slug' => Str::lower($validated['slug']),
             'show_clothing' => $showClothing,
@@ -196,7 +232,7 @@ class AdminStorefrontController extends Controller
         if ($request->hasFile('cover')) {
             $storefront->cover_path = $this->storeImage($request->file('cover'));
         }
-        if ($request->hasFile('raast_qr')) {
+        if ($raastEnabled && $request->hasFile('raast_qr')) {
             $storefront->raast_qr_path = $this->storeImage($request->file('raast_qr'));
         }
         $storefront->save();

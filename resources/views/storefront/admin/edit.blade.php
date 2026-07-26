@@ -56,6 +56,13 @@
                     </div>
 
                     @if($business->clothing_enabled || $business->tailoring_enabled)
+                    @php
+                        $easypaisaSelected = (bool) ($errors->any() ? old('easypaisa_enabled') : old('easypaisa_enabled', $storefront->easypaisa_enabled));
+                        $jazzcashSelected = (bool) ($errors->any() ? old('jazzcash_enabled') : old('jazzcash_enabled', $storefront->jazzcash_enabled));
+                        $bankTransferSelected = (bool) ($errors->any() ? old('bank_transfer_enabled') : old('bank_transfer_enabled', $storefront->bank_transfer_enabled));
+                        $raastSelected = (bool) ($errors->any() ? old('raast_enabled') : old('raast_enabled', $storefront->raast_enabled));
+                        $hasReceivingMethod = $easypaisaSelected || $jazzcashSelected || $bankTransferSelected || $raastSelected;
+                    @endphp
                     <div class="card storefront-card mb-4">
                         <div class="card-header">
                             <h2 class="h5 mb-1">آن لائن ادائیگی کے طریقے</h2>
@@ -78,29 +85,40 @@
                             <div class="row">
                                 <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="unpaid_orders_enabled" value="1" @checked(old('unpaid_orders_enabled',$storefront->unpaid_orders_enabled))> ابھی ادائیگی نہیں</label></div>
                                 <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="cod_enabled" value="1" @checked(old('cod_enabled',$storefront->cod_enabled))> کیش آن ڈیلیوری</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="easypaisa_enabled" value="1" @checked(old('easypaisa_enabled',$storefront->easypaisa_enabled))> ایزی پیسہ — دستی تصدیق</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="jazzcash_enabled" value="1" @checked(old('jazzcash_enabled',$storefront->jazzcash_enabled))> جاز کیش — دستی تصدیق</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="bank_transfer_enabled" value="1" @checked(old('bank_transfer_enabled',$storefront->bank_transfer_enabled))> بینک ٹرانسفر — دستی تصدیق</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="raast_enabled" value="1" @checked(old('raast_enabled',$storefront->raast_enabled))> راست / Raast QR — دستی تصدیق</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="easypaisa_enabled" value="1" data-payment-method="easypaisa" @checked($easypaisaSelected)> ایزی پیسہ — دستی تصدیق</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="jazzcash_enabled" value="1" data-payment-method="jazzcash" @checked($jazzcashSelected)> جاز کیش — دستی تصدیق</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="bank_transfer_enabled" value="1" data-payment-method="bank" @checked($bankTransferSelected)> بینک ٹرانسفر — دستی تصدیق</label></div>
+                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="raast_enabled" value="1" data-payment-method="raast" @checked($raastSelected)> راست / Raast QR — دستی تصدیق</label></div>
                             </div>
-                            <div class="border rounded p-3 mt-3">
+                            <div id="payment-details-empty" class="alert alert-light border mt-3 mb-0" {{ $hasReceivingMethod ? 'hidden' : '' }}>
+                                <i class="fas fa-info-circle ml-1"></i> ابھی ادائیگی نہیں یا کیش آن ڈیلیوری کے لیے وصولی کی تفصیلات درکار نہیں ہیں۔
+                            </div>
+                            <div id="payment-receiving-details" class="border rounded p-3 mt-3" {{ ! $hasReceivingMethod ? 'hidden' : '' }}>
                                 <h3 class="h6">عوام کو دکھائی جانے والی وصولی کی معلومات</h3>
                                 <p class="small text-muted">صرف فعال ادائیگی کے طریقے کی معلومات چیک آؤٹ پر دکھائی جائیں گی۔ خفیہ PIN، OTP یا پاس ورڈ کبھی درج نہ کریں۔</p>
                                 <div class="form-row">
-                                    <div class="form-group col-md-6"><label for="easypaisa_account_title">ایزی پیسہ اکاؤنٹ عنوان</label><input id="easypaisa_account_title" name="easypaisa_account_title" class="form-control" maxlength="150" value="{{ old('easypaisa_account_title',$storefront->easypaisa_account_title) }}"></div>
-                                    <div class="form-group col-md-6"><label for="easypaisa_account_number">ایزی پیسہ نمبر</label><input id="easypaisa_account_number" name="easypaisa_account_number" dir="ltr" class="form-control text-left" maxlength="50" value="{{ old('easypaisa_account_number',$storefront->easypaisa_account_number) }}"></div>
-                                    <div class="form-group col-md-6"><label for="jazzcash_account_title">جاز کیش اکاؤنٹ عنوان</label><input id="jazzcash_account_title" name="jazzcash_account_title" class="form-control" maxlength="150" value="{{ old('jazzcash_account_title',$storefront->jazzcash_account_title) }}"></div>
-                                    <div class="form-group col-md-6"><label for="jazzcash_account_number">جاز کیش نمبر</label><input id="jazzcash_account_number" name="jazzcash_account_number" dir="ltr" class="form-control text-left" maxlength="50" value="{{ old('jazzcash_account_number',$storefront->jazzcash_account_number) }}"></div>
-                                    <div class="form-group col-md-4"><label for="bank_name">بینک کا نام</label><input id="bank_name" name="bank_name" class="form-control" maxlength="150" value="{{ old('bank_name',$storefront->bank_name) }}"></div>
-                                    <div class="form-group col-md-4"><label for="bank_account_title">بینک اکاؤنٹ عنوان</label><input id="bank_account_title" name="bank_account_title" class="form-control" maxlength="150" value="{{ old('bank_account_title',$storefront->bank_account_title) }}"></div>
-                                    <div class="form-group col-md-4"><label for="bank_account_number">اکاؤنٹ نمبر</label><input id="bank_account_number" name="bank_account_number" dir="ltr" class="form-control text-left" maxlength="100" value="{{ old('bank_account_number',$storefront->bank_account_number) }}"></div>
-                                    <div class="form-group col-md-12"><label for="bank_iban">IBAN <small class="text-muted">(PK سے شروع ہونے والے 24 حروف)</small></label><input id="bank_iban" name="bank_iban" dir="ltr" class="form-control text-left text-uppercase" maxlength="24" value="{{ old('bank_iban',$storefront->bank_iban) }}"></div>
-                                    <div class="form-group col-md-6"><label for="raast_account_title">راست اکاؤنٹ عنوان</label><input id="raast_account_title" name="raast_account_title" class="form-control" maxlength="150" value="{{ old('raast_account_title',$storefront->raast_account_title) }}"></div>
-                                    <div class="form-group col-md-6"><label for="raast_id">راست ID / مرچنٹ Alias</label><input id="raast_id" name="raast_id" dir="ltr" class="form-control text-left" maxlength="100" value="{{ old('raast_id',$storefront->raast_id) }}"></div>
-                                    <div class="form-group col-md-12"><label for="raast_qr">بینک یا والٹ کا جاری کردہ Raast QR <small class="text-muted">(اختیاری، زیادہ سے زیادہ 2 MB)</small></label><input id="raast_qr" type="file" name="raast_qr" class="form-control-file" accept="image/*">@if($storefront->raast_qr_url)<img src="{{ $storefront->raast_qr_url }}" alt="موجودہ Raast QR" style="display:block;max-width:180px;max-height:180px;margin-top:10px">@endif</div>
+                                    <div class="col-12 payment-detail-panel" data-payment-details-for="easypaisa" {{ ! $easypaisaSelected ? 'hidden' : '' }}><div class="form-row">
+                                        <div class="form-group col-md-6"><label for="easypaisa_account_title">ایزی پیسہ اکاؤنٹ عنوان</label><input id="easypaisa_account_title" name="easypaisa_account_title" class="form-control" maxlength="150" value="{{ old('easypaisa_account_title',$storefront->easypaisa_account_title) }}" @disabled(! $easypaisaSelected) required></div>
+                                        <div class="form-group col-md-6"><label for="easypaisa_account_number">ایزی پیسہ نمبر</label><input id="easypaisa_account_number" name="easypaisa_account_number" dir="ltr" class="form-control text-left" maxlength="50" value="{{ old('easypaisa_account_number',$storefront->easypaisa_account_number) }}" @disabled(! $easypaisaSelected) required></div>
+                                    </div></div>
+                                    <div class="col-12 payment-detail-panel" data-payment-details-for="jazzcash" {{ ! $jazzcashSelected ? 'hidden' : '' }}><div class="form-row">
+                                        <div class="form-group col-md-6"><label for="jazzcash_account_title">جاز کیش اکاؤنٹ عنوان</label><input id="jazzcash_account_title" name="jazzcash_account_title" class="form-control" maxlength="150" value="{{ old('jazzcash_account_title',$storefront->jazzcash_account_title) }}" @disabled(! $jazzcashSelected) required></div>
+                                        <div class="form-group col-md-6"><label for="jazzcash_account_number">جاز کیش نمبر</label><input id="jazzcash_account_number" name="jazzcash_account_number" dir="ltr" class="form-control text-left" maxlength="50" value="{{ old('jazzcash_account_number',$storefront->jazzcash_account_number) }}" @disabled(! $jazzcashSelected) required></div>
+                                    </div></div>
+                                    <div class="col-12 payment-detail-panel" data-payment-details-for="bank" {{ ! $bankTransferSelected ? 'hidden' : '' }}><div class="form-row">
+                                        <div class="form-group col-md-4"><label for="bank_name">بینک کا نام</label><input id="bank_name" name="bank_name" class="form-control" maxlength="150" value="{{ old('bank_name',$storefront->bank_name) }}" @disabled(! $bankTransferSelected) required></div>
+                                        <div class="form-group col-md-4"><label for="bank_account_title">بینک اکاؤنٹ عنوان</label><input id="bank_account_title" name="bank_account_title" class="form-control" maxlength="150" value="{{ old('bank_account_title',$storefront->bank_account_title) }}" @disabled(! $bankTransferSelected) required></div>
+                                        <div class="form-group col-md-4"><label for="bank_account_number">اکاؤنٹ نمبر</label><input id="bank_account_number" name="bank_account_number" dir="ltr" class="form-control text-left" maxlength="100" value="{{ old('bank_account_number',$storefront->bank_account_number) }}" @disabled(! $bankTransferSelected)></div>
+                                        <div class="form-group col-md-12"><label for="bank_iban">IBAN <small class="text-muted">(PK سے شروع ہونے والے 24 حروف)</small></label><input id="bank_iban" name="bank_iban" dir="ltr" class="form-control text-left text-uppercase" maxlength="24" value="{{ old('bank_iban',$storefront->bank_iban) }}" @disabled(! $bankTransferSelected)></div>
+                                    </div></div>
+                                    <div class="col-12 payment-detail-panel" data-payment-details-for="raast" {{ ! $raastSelected ? 'hidden' : '' }}><div class="form-row">
+                                        <div class="form-group col-md-6"><label for="raast_account_title">راست اکاؤنٹ عنوان</label><input id="raast_account_title" name="raast_account_title" class="form-control" maxlength="150" value="{{ old('raast_account_title',$storefront->raast_account_title) }}" @disabled(! $raastSelected)></div>
+                                        <div class="form-group col-md-6"><label for="raast_id">راست ID / مرچنٹ Alias</label><input id="raast_id" name="raast_id" dir="ltr" class="form-control text-left" maxlength="100" value="{{ old('raast_id',$storefront->raast_id) }}" @disabled(! $raastSelected)></div>
+                                        <div class="form-group col-md-12"><label for="raast_qr">بینک یا والٹ کا جاری کردہ Raast QR <small class="text-muted">(اختیاری، زیادہ سے زیادہ 2 MB)</small></label><input id="raast_qr" type="file" name="raast_qr" class="form-control-file" accept="image/*" @disabled(! $raastSelected)>@if($storefront->raast_qr_url)<img src="{{ $storefront->raast_qr_url }}" alt="موجودہ Raast QR" style="display:block;max-width:180px;max-height:180px;margin-top:10px">@endif</div>
+                                    </div></div>
                                 </div>
                             </div>
-                            <div class="alert alert-info mb-0 mt-2">
+                            <div id="manual-payment-help" class="alert alert-info mb-0 mt-2" {{ ! $hasReceivingMethod ? 'hidden' : '' }}>
                                 <strong>اہم:</strong> یہ لائیو گیٹ وے نہیں ہیں۔ گاہک ادائیگی کر کے حوالہ درج کرتا ہے، اور دکان رقم اپنے والٹ یا بینک میں دیکھ کر دستی طور پر تصدیق کرتی ہے۔ صرف اپنے مالی ادارے کا جاری کردہ Raast QR اپ لوڈ کریں۔
                             </div>
                         </div>
@@ -177,4 +195,35 @@
         @endif
     </div>
 </section>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var methodInputs = Array.from(document.querySelectorAll('[data-payment-method]'));
+    var detailsContainer = document.getElementById('payment-receiving-details');
+    var emptyState = document.getElementById('payment-details-empty');
+    var manualHelp = document.getElementById('manual-payment-help');
+
+    function refreshPaymentDetails() {
+        var anySelected = methodInputs.some(function (input) { return input.checked; });
+        if (detailsContainer) detailsContainer.hidden = !anySelected;
+        if (emptyState) emptyState.hidden = anySelected;
+        if (manualHelp) manualHelp.hidden = !anySelected;
+
+        document.querySelectorAll('[data-payment-details-for]').forEach(function (panel) {
+            var input = methodInputs.find(function (method) {
+                return method.dataset.paymentMethod === panel.dataset.paymentDetailsFor;
+            });
+            var selected = Boolean(input && input.checked);
+            panel.hidden = !selected;
+            panel.querySelectorAll('input, select, textarea').forEach(function (field) {
+                field.disabled = !selected;
+            });
+        });
+    }
+
+    methodInputs.forEach(function (input) {
+        input.addEventListener('change', refreshPaymentDetails);
+    });
+    refreshPaymentDetails();
+});
+</script>
 @endsection
