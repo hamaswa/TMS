@@ -47,6 +47,7 @@ class StorefrontTailoringInquiryTest extends TestCase
             'email' => 'hamza@example.test',
             'city' => 'راولپنڈی',
             'preferred_date' => now()->addDays(10)->toDateString(),
+            'measurement_method' => StorefrontTailoringService::MEASUREMENT_SHOP_VISIT,
             'message' => 'عید سے پہلے دو سوٹ تیار کروانے ہیں۔',
             'payment_method' => StorefrontInquiry::PAYMENT_EASYPAISA,
             'payment_sender_phone' => '03001234567',
@@ -227,6 +228,118 @@ class StorefrontTailoringInquiryTest extends TestCase
         $this->assertNotNull($inquiry->fresh()->closed_at);
         $this->assertDatabaseCount('storefront_inquiries', 1);
         $this->assertDatabaseMissing('storefront_inquiries', ['storefront_id' => $otherStorefront->id]);
+    }
+
+    public function test_client_can_pause_one_service_without_hiding_its_public_details_or_history(): void
+    {
+        [$owner, , $storefront] = $this->business();
+        $service = $storefront->tailoringServices()->create([
+            'name' => 'Premium Waistcoat',
+            'price_unit' => 'فی لباس',
+            'is_published' => true,
+            'is_available' => true,
+            'accepts_inquiries' => true,
+        ]);
+        $inquiry = $storefront->inquiries()->create([
+            'tailoring_service_id' => $service->id,
+            'customer_name' => 'Existing Customer',
+            'phone' => '03001234567',
+            'status' => StorefrontInquiry::STATUS_NEW,
+        ]);
+
+        $this->actingAs($owner)->put(route('admin.storefront.tailoring.update', $service), [
+            'service_controls_present' => '1',
+            'name' => 'Premium Waistcoat',
+            'price_unit' => 'فی لباس',
+            'is_published' => '1',
+            'measurement_methods' => [StorefrontTailoringService::MEASUREMENT_SHOP_VISIT],
+        ])->assertRedirect(route('admin.storefront.tailoring.services'));
+
+        $service->refresh();
+        $this->assertFalse($service->is_available);
+        $this->assertFalse($service->accepts_inquiries);
+        $this->get(route('storefront.tailoring.show', [$storefront, $service]))
+            ->assertOk()
+            ->assertSeeText('عارضی طور پر دستیاب نہیں')
+            ->assertDontSeeText('اس خدمت کے لیے درخواست بھیجیں');
+        $this->post(route('storefront.inquiries.store', $storefront), [
+            'tailoring_service_id' => $service->id,
+            'customer_name' => 'New Customer',
+            'phone' => '03009999999',
+            'measurement_method' => StorefrontTailoringService::MEASUREMENT_SHOP_VISIT,
+            'payment_method' => StorefrontInquiry::PAYMENT_UNPAID,
+        ])->assertSessionHasErrors('tailoring_service_id');
+        $this->assertDatabaseHas('storefront_inquiries', ['id' => $inquiry->id]);
+    }
+
+    public function test_service_deposit_and_measurement_policy_are_snapshotted_on_inquiry(): void
+    {
+        [, , $storefront] = $this->business();
+        $service = $storefront->tailoringServices()->create([
+            'name' => 'Wedding Sherwani',
+            'price_from' => 25000,
+            'price_unit' => 'فی لباس',
+            'deposit_type' => StorefrontTailoringService::DEPOSIT_FIXED,
+            'deposit_value' => 5000,
+            'measurement_methods' => [StorefrontTailoringService::MEASUREMENT_HOME_VISIT],
+            'is_published' => true,
+            'is_available' => true,
+            'accepts_inquiries' => true,
+        ]);
+
+        $this->post(route('storefront.inquiries.store', $storefront), [
+            'tailoring_service_id' => $service->id,
+            'customer_name' => 'Usman Tariq',
+            'phone' => '03005556666',
+            'measurement_method' => StorefrontTailoringService::MEASUREMENT_HOME_VISIT,
+            'payment_method' => StorefrontInquiry::PAYMENT_EASYPAISA,
+            'payment_sender_phone' => '03005556666',
+            'payment_reference' => 'EP-SHERWANI-1',
+        ])->assertRedirect(route('storefront.tailoring.index', $storefront));
+
+        $inquiry = StorefrontInquiry::firstOrFail();
+        $this->assertSame(StorefrontTailoringService::MEASUREMENT_HOME_VISIT, $inquiry->measurement_method);
+        $this->assertSame(StorefrontTailoringService::DEPOSIT_FIXED, $inquiry->service_deposit_type);
+        $this->assertSame('5000.00', $inquiry->service_deposit_value);
+        $this->assertSame('5000.00', $inquiry->service_deposit_amount);
+
+        $service->update(['deposit_value' => 7000]);
+        $this->assertSame('5000.00', $inquiry->fresh()->service_deposit_amount);
+    }
+
+    public function test_weekly_service_capacity_rejects_overbooking_without_closing_existing_records(): void
+    {
+        [, , $storefront] = $this->business();
+        $preferredDate = now()->addWeek()->startOfWeek()->addDay();
+        $service = $storefront->tailoringServices()->create([
+            'name' => 'Express Stitching',
+            'price_unit' => 'فی سوٹ',
+            'measurement_methods' => [StorefrontTailoringService::MEASUREMENT_SHOP_VISIT],
+            'weekly_booking_limit' => 1,
+            'is_published' => true,
+            'is_available' => true,
+            'accepts_inquiries' => true,
+        ]);
+        $storefront->inquiries()->create([
+            'tailoring_service_id' => $service->id,
+            'customer_name' => 'First Booking',
+            'phone' => '03001112222',
+            'preferred_date' => $preferredDate,
+            'measurement_method' => StorefrontTailoringService::MEASUREMENT_SHOP_VISIT,
+            'payment_method' => StorefrontInquiry::PAYMENT_UNPAID,
+            'status' => StorefrontInquiry::STATUS_NEW,
+        ]);
+
+        $this->post(route('storefront.inquiries.store', $storefront), [
+            'tailoring_service_id' => $service->id,
+            'customer_name' => 'Second Booking',
+            'phone' => '03003334444',
+            'preferred_date' => $preferredDate->copy()->addDay()->toDateString(),
+            'measurement_method' => StorefrontTailoringService::MEASUREMENT_SHOP_VISIT,
+            'payment_method' => StorefrontInquiry::PAYMENT_UNPAID,
+        ])->assertSessionHasErrors('preferred_date');
+
+        $this->assertDatabaseCount('storefront_inquiries', 1);
     }
 
     private function business(string $slug = 'tailor-market'): array

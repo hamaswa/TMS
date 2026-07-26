@@ -9,7 +9,10 @@ use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
 use App\Services\StorefrontPaymentEvidenceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\File;
 
 class PublicStorefrontController extends Controller
@@ -254,6 +257,10 @@ class PublicStorefrontController extends Controller
             'email' => ['nullable', 'email', 'max:150'],
             'city' => ['nullable', 'string', 'max:100'],
             'preferred_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'measurement_method' => [
+                'nullable',
+                Rule::in(array_keys(StorefrontTailoringService::measurementMethodLabels())),
+            ],
             'message' => ['nullable', 'string', 'max:3000'],
             'payment_method' => ['required', Rule::in(array_keys($storefront->acceptedInquiryPaymentMethods()))],
             'payment_sender_phone' => [
@@ -283,20 +290,78 @@ class PublicStorefrontController extends Controller
             $service = $storefront->tailoringServices()
                 ->where('is_published', true)
                 ->findOrFail($validated['tailoring_service_id']);
+            if (! $service->is_available || ! $service->accepts_inquiries) {
+                throw ValidationException::withMessages([
+                    'tailoring_service_id' => __('storefront.messages.service_not_accepting'),
+                ]);
+            }
+            if (blank($validated['measurement_method'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'measurement_method' => __('storefront.messages.measurement_method_required'),
+                ]);
+            }
+            if (! in_array($validated['measurement_method'], $service->availableMeasurementMethods(), true)) {
+                throw ValidationException::withMessages([
+                    'measurement_method' => __('storefront.messages.measurement_method_unavailable'),
+                ]);
+            }
+            if ($service->deposit_type !== StorefrontTailoringService::DEPOSIT_NONE
+                && $validated['payment_method'] === StorefrontInquiry::PAYMENT_UNPAID) {
+                throw ValidationException::withMessages([
+                    'payment_method' => __('storefront.messages.deposit_payment_required'),
+                ]);
+            }
+            if ($service->weekly_booking_limit) {
+                if (blank($validated['preferred_date'] ?? null)) {
+                    throw ValidationException::withMessages([
+                        'preferred_date' => __('storefront.messages.preferred_date_for_capacity'),
+                    ]);
+                }
+            }
         }
         $evidence = $request->hasFile('payment_evidence')
             ? $evidenceService->store($request->file('payment_evidence'), $storefront)
             : [];
         try {
-            $inquiry = $storefront->inquiries()->create([
-                ...collect($validated)->except(['website', 'tailoring_service_id', 'payment_evidence'])->all(),
-                ...$evidence,
-                'tailoring_service_id' => $service?->id,
-                'status' => StorefrontInquiry::STATUS_NEW,
-                'payment_verification_status' => StorefrontInquiry::requiresManualVerification($validated['payment_method'])
-                    ? StorefrontInquiry::VERIFICATION_PENDING
-                    : StorefrontInquiry::VERIFICATION_NOT_REQUIRED,
-            ]);
+            $inquiry = DB::transaction(function () use ($storefront, $service, $validated, $evidence) {
+                $lockedService = $service
+                    ? $storefront->tailoringServices()->lockForUpdate()->findOrFail($service->id)
+                    : null;
+                if ($lockedService && (! $lockedService->is_published
+                    || ! $lockedService->is_available || ! $lockedService->accepts_inquiries)) {
+                    throw ValidationException::withMessages([
+                        'tailoring_service_id' => __('storefront.messages.service_not_accepting'),
+                    ]);
+                }
+                if ($lockedService?->weekly_booking_limit) {
+                    $preferredDate = Carbon::parse($validated['preferred_date']);
+                    $booked = $lockedService->inquiries()
+                        ->where('status', '!=', StorefrontInquiry::STATUS_CLOSED)
+                        ->whereBetween('preferred_date', [
+                            $preferredDate->copy()->startOfWeek(),
+                            $preferredDate->copy()->endOfWeek(),
+                        ])
+                        ->count();
+                    if ($booked >= $lockedService->weekly_booking_limit) {
+                        throw ValidationException::withMessages([
+                            'preferred_date' => __('storefront.messages.week_capacity_reached'),
+                        ]);
+                    }
+                }
+
+                return $storefront->inquiries()->create([
+                    ...collect($validated)->except(['website', 'tailoring_service_id', 'payment_evidence'])->all(),
+                    ...$evidence,
+                    'tailoring_service_id' => $lockedService?->id,
+                    'service_deposit_type' => $lockedService?->deposit_type,
+                    'service_deposit_value' => $lockedService?->deposit_value,
+                    'service_deposit_amount' => $lockedService?->depositAmount(),
+                    'status' => StorefrontInquiry::STATUS_NEW,
+                    'payment_verification_status' => StorefrontInquiry::requiresManualVerification($validated['payment_method'])
+                        ? StorefrontInquiry::VERIFICATION_PENDING
+                        : StorefrontInquiry::VERIFICATION_NOT_REQUIRED,
+                ]);
+            });
         } catch (\Throwable $exception) {
             $evidenceService->delete($evidence);
             throw $exception;

@@ -51,6 +51,12 @@ class AdminStorefrontTailoringController extends Controller
             ...$validated,
             'is_featured' => $request->boolean('is_featured'),
             'is_published' => $request->boolean('is_published'),
+            'is_available' => $request->boolean('service_controls_present')
+                ? $request->boolean('is_available') : true,
+            'accepts_inquiries' => $request->boolean('service_controls_present')
+                ? $request->boolean('accepts_inquiries') : true,
+            'measurement_methods' => $request->boolean('service_controls_present')
+                ? ($validated['measurement_methods'] ?? []) : null,
         ]);
 
         return redirect()->route('admin.storefront.tailoring.services')
@@ -66,6 +72,12 @@ class AdminStorefrontTailoringController extends Controller
             ...$validated,
             'is_featured' => $request->boolean('is_featured'),
             'is_published' => $request->boolean('is_published'),
+            'is_available' => $request->boolean('service_controls_present')
+                ? $request->boolean('is_available') : $service->is_available,
+            'accepts_inquiries' => $request->boolean('service_controls_present')
+                ? $request->boolean('accepts_inquiries') : $service->accepts_inquiries,
+            'measurement_methods' => $request->boolean('service_controls_present')
+                ? ($validated['measurement_methods'] ?? []) : $service->measurement_methods,
         ]);
 
         return redirect()->route('admin.storefront.tailoring.services')
@@ -185,10 +197,51 @@ class AdminStorefrontTailoringController extends Controller
             'price_from' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
             'price_unit' => ['required', Rule::in(['فی سوٹ', 'فی لباس', 'فی کام'])],
             'estimated_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'deposit_type' => ['nullable', Rule::in(array_keys(StorefrontTailoringService::depositTypes()))],
+            'deposit_value' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
+            'measurement_methods' => ['nullable', 'array'],
+            'measurement_methods.*' => [Rule::in(array_keys(StorefrontTailoringService::measurementMethodLabels()))],
+            'weekly_booking_limit' => ['nullable', 'integer', 'min:1', 'max:999'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'is_featured' => ['nullable', 'boolean'],
             'is_published' => ['nullable', 'boolean'],
+            'is_available' => ['nullable', 'boolean'],
+            'accepts_inquiries' => ['nullable', 'boolean'],
+            'service_controls_present' => ['nullable', 'boolean'],
         ]);
+        $depositType = $validated['deposit_type'] ?? StorefrontTailoringService::DEPOSIT_NONE;
+        if ($depositType !== StorefrontTailoringService::DEPOSIT_NONE
+            && blank($validated['deposit_value'] ?? null)) {
+            throw ValidationException::withMessages([
+                'deposit_value' => 'پیشگی رقم یا فیصد درج کریں۔',
+            ]);
+        }
+        if ($depositType === StorefrontTailoringService::DEPOSIT_PERCENTAGE
+            && (float) ($validated['deposit_value'] ?? 0) > 100) {
+            throw ValidationException::withMessages([
+                'deposit_value' => 'پیشگی فیصد 100 سے زیادہ نہیں ہو سکتا۔',
+            ]);
+        }
+        if ($depositType === StorefrontTailoringService::DEPOSIT_PERCENTAGE
+            && blank($validated['price_from'] ?? null)) {
+            throw ValidationException::withMessages([
+                'price_from' => 'فیصدی پیشگی رقم کے لیے ابتدائی قیمت درج کریں۔',
+            ]);
+        }
+        if ($depositType !== StorefrontTailoringService::DEPOSIT_NONE
+            && collect(array_keys(Auth::user()->business->storefront->acceptedInquiryPaymentMethods()))
+                ->every(fn ($method) => $method === StorefrontInquiry::PAYMENT_UNPAID)) {
+            throw ValidationException::withMessages([
+                'deposit_type' => 'پیشگی رقم مقرر کرنے سے پہلے ٹیلرنگ کی بنیادی ترتیب میں کم از کم ایک ادائیگی کا طریقہ فعال کریں۔',
+            ]);
+        }
+        if ($request->boolean('service_controls_present')
+            && $request->boolean('accepts_inquiries')
+            && empty($validated['measurement_methods'] ?? [])) {
+            throw ValidationException::withMessages([
+                'measurement_methods' => 'درخواست قبول کرنے کے لیے کم از کم ایک پیمائش کا طریقہ منتخب کریں۔',
+            ]);
+        }
         if ($request->boolean('is_published') && ! Auth::user()->business->storefront->show_tailoring) {
             throw ValidationException::withMessages([
                 'is_published' => 'پہلے آن لائن دکان کی ترتیب میں ٹیلرنگ شعبہ فعال کریں۔',

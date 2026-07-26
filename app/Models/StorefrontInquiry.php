@@ -33,6 +33,10 @@ class StorefrontInquiry extends Model
         'email',
         'city',
         'preferred_date',
+        'measurement_method',
+        'service_deposit_type',
+        'service_deposit_value',
+        'service_deposit_amount',
         'message',
         'payment_method',
         'payment_sender_phone',
@@ -95,6 +99,8 @@ class StorefrontInquiry extends Model
         'payment_rejected_at' => 'datetime',
         'payment_evidence_size' => 'integer',
         'payment_evidence_submitted_at' => 'datetime',
+        'service_deposit_value' => 'decimal:2',
+        'service_deposit_amount' => 'decimal:2',
     ];
 
     public static function statuses(): array

@@ -14,6 +14,19 @@
     <div class="card inquiry-card mb-4"><div class="card-body">
         <div class="d-flex flex-wrap justify-content-between"><div><span class="ref">{{ $inquiry->reference }}</span><h2 class="h5 mt-2 mb-1">{{ $inquiry->customer_name }}</h2><div dir="ltr" class="text-right">{{ $inquiry->phone }} @if($inquiry->email) · {{ $inquiry->email }}@endif</div></div><div class="text-muted">{{ $inquiry->created_at->format('d-m-Y h:i A') }}</div></div>
         <hr><div class="row"><div class="col-md-4"><strong>خدمت:</strong> {{ $inquiry->service->name ?? 'عمومی درخواست' }}</div><div class="col-md-4"><strong>شہر:</strong> {{ $inquiry->city ?: '—' }}</div><div class="col-md-4"><strong>پسندیدہ تاریخ:</strong> {{ $inquiry->preferred_date?->format('d-m-Y') ?: '—' }}</div></div>
+        @if($inquiry->measurement_method || $inquiry->service_deposit_type)
+        <div class="row mt-2">
+            <div class="col-md-6"><strong>پیمائش:</strong> {{ \App\Models\StorefrontTailoringService::measurementMethodLabels()[$inquiry->measurement_method] ?? '—' }}</div>
+            <div class="col-md-6"><strong>درخواست کے وقت پیشگی پالیسی:</strong>
+                @if($inquiry->service_deposit_type === \App\Models\StorefrontTailoringService::DEPOSIT_PERCENTAGE)
+                    {{ rtrim(rtrim(number_format((float)$inquiry->service_deposit_value,2),'0'),'.') }}%
+                @elseif($inquiry->service_deposit_amount !== null)
+                    Rs {{ number_format((float)$inquiry->service_deposit_amount,2) }}
+                @else —
+                @endif
+            </div>
+        </div>
+        @endif
         <div class="mt-2"><strong>ادائیگی کی ترجیح:</strong> {{ \App\Models\StorefrontInquiry::paymentMethods()[$inquiry->payment_method] ?? $inquiry->payment_method }}
             @if(\App\Models\StorefrontInquiry::requiresManualVerification($inquiry->payment_method))
                 @if($inquiry->payment_sender_phone) · <span dir="ltr">{{ $inquiry->payment_sender_phone }}</span>@endif
