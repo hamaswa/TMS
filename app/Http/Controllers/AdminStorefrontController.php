@@ -43,6 +43,7 @@ class AdminStorefrontController extends Controller
             'show_tailoring' => ['nullable', 'boolean'],
             'inquiries_enabled' => ['nullable', 'boolean'],
             'commerce_settings_present' => ['nullable', 'boolean'],
+            'payment_collection_mode' => ['nullable', Rule::in(['none', 'methods'])],
             'online_ordering_enabled' => ['nullable', 'boolean'],
             'unpaid_orders_enabled' => ['nullable', 'boolean'],
             'cod_enabled' => ['nullable', 'boolean'],
@@ -85,23 +86,29 @@ class AdminStorefrontController extends Controller
         $onlineOrderingEnabled = $commerceSettingsPresent
             ? $request->boolean('online_ordering_enabled')
             : (bool) $storefront->online_ordering_enabled;
+        $paymentCollectionMode = $commerceSettingsPresent
+            ? ($validated['payment_collection_mode'] ?? null)
+            : null;
+        $noPaymentNow = $paymentCollectionMode === 'none';
         $unpaidOrdersEnabled = $commerceSettingsPresent
-            ? $request->boolean('unpaid_orders_enabled')
+            ? ($paymentCollectionMode
+                ? $noPaymentNow
+                : $request->boolean('unpaid_orders_enabled'))
             : (bool) $storefront->unpaid_orders_enabled;
         $codEnabled = $commerceSettingsPresent
-            ? $request->boolean('cod_enabled')
+            ? (! $noPaymentNow && $request->boolean('cod_enabled'))
             : (bool) $storefront->cod_enabled;
         $easypaisaEnabled = $commerceSettingsPresent
-            ? $request->boolean('easypaisa_enabled')
+            ? (! $noPaymentNow && $request->boolean('easypaisa_enabled'))
             : (bool) $storefront->easypaisa_enabled;
         $jazzcashEnabled = $commerceSettingsPresent
-            ? $request->boolean('jazzcash_enabled')
+            ? (! $noPaymentNow && $request->boolean('jazzcash_enabled'))
             : (bool) $storefront->jazzcash_enabled;
         $bankTransferEnabled = $commerceSettingsPresent
-            ? $request->boolean('bank_transfer_enabled')
+            ? (! $noPaymentNow && $request->boolean('bank_transfer_enabled'))
             : (bool) $storefront->bank_transfer_enabled;
         $raastEnabled = $commerceSettingsPresent
-            ? $request->boolean('raast_enabled')
+            ? (! $noPaymentNow && $request->boolean('raast_enabled'))
             : (bool) $storefront->raast_enabled;
         if ($commerceSettingsPresent && $onlineOrderingEnabled && ! $showClothing) {
             throw ValidationException::withMessages([
@@ -199,6 +206,7 @@ class AdminStorefrontController extends Controller
                 'logo',
                 'cover',
                 'commerce_settings_present',
+                'payment_collection_mode',
                 'online_ordering_enabled',
                 'unpaid_orders_enabled',
                 'cod_enabled',

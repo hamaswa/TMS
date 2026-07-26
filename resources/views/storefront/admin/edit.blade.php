@@ -61,6 +61,9 @@
                         $jazzcashSelected = (bool) ($errors->any() ? old('jazzcash_enabled') : old('jazzcash_enabled', $storefront->jazzcash_enabled));
                         $bankTransferSelected = (bool) ($errors->any() ? old('bank_transfer_enabled') : old('bank_transfer_enabled', $storefront->bank_transfer_enabled));
                         $raastSelected = (bool) ($errors->any() ? old('raast_enabled') : old('raast_enabled', $storefront->raast_enabled));
+                        $savedPaymentMode = $storefront->unpaid_orders_enabled ? 'none' : 'methods';
+                        $paymentCollectionMode = old('payment_collection_mode', $savedPaymentMode);
+                        $showPaymentMethods = $paymentCollectionMode === 'methods';
                         $hasReceivingMethod = $easypaisaSelected || $jazzcashSelected || $bankTransferSelected || $raastSelected;
                     @endphp
                     <div class="card storefront-card mb-4">
@@ -81,19 +84,38 @@
                                 </div>
                             </label>
                             @endif
-                            <h3 class="h6">قبول شدہ طریقے</h3>
+                            <h3 class="h6 mb-3">کیا آپ آرڈر یا درخواست کے ساتھ ادائیگی کا طریقہ دینا چاہتے ہیں؟</h3>
                             <div class="row">
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="unpaid_orders_enabled" value="1" @checked(old('unpaid_orders_enabled',$storefront->unpaid_orders_enabled))> ابھی ادائیگی نہیں</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="cod_enabled" value="1" @checked(old('cod_enabled',$storefront->cod_enabled))> کیش آن ڈیلیوری</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="easypaisa_enabled" value="1" data-payment-method="easypaisa" @checked($easypaisaSelected)> ایزی پیسہ — دستی تصدیق</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="jazzcash_enabled" value="1" data-payment-method="jazzcash" @checked($jazzcashSelected)> جاز کیش — دستی تصدیق</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="bank_transfer_enabled" value="1" data-payment-method="bank" @checked($bankTransferSelected)> بینک ٹرانسفر — دستی تصدیق</label></div>
-                                <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="raast_enabled" value="1" data-payment-method="raast" @checked($raastSelected)> راست / Raast QR — دستی تصدیق</label></div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="module-choice d-flex align-items-start">
+                                        <input type="radio" name="payment_collection_mode" value="none" data-payment-mode @checked($paymentCollectionMode === 'none') required>
+                                        <span><strong>نہیں — ابھی ادائیگی قبول نہیں کریں گے</strong><small class="d-block text-muted mt-1">گاہک آرڈر یا درخواست بغیر ادائیگی بھیج سکے گا۔</small></span>
+                                    </label>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="module-choice d-flex align-items-start">
+                                        <input type="radio" name="payment_collection_mode" value="methods" data-payment-mode @checked($paymentCollectionMode === 'methods') required>
+                                        <span><strong>ہاں — ادائیگی کے طریقے منتخب کریں</strong><small class="d-block text-muted mt-1">اگلے مرحلے میں COD، والٹ، بینک یا راست منتخب کریں۔</small></span>
+                                    </label>
+                                </div>
                             </div>
-                            <div id="payment-details-empty" class="alert alert-light border mt-3 mb-0" {{ $hasReceivingMethod ? 'hidden' : '' }}>
-                                <i class="fas fa-info-circle ml-1"></i> ابھی ادائیگی نہیں یا کیش آن ڈیلیوری کے لیے وصولی کی تفصیلات درکار نہیں ہیں۔
+                            <div id="no-payment-note" class="alert alert-light border mt-3 mb-0" {{ $showPaymentMethods ? 'hidden' : '' }}>
+                                <i class="fas fa-check-circle text-success ml-1"></i> ادائیگی کے تمام طریقے چھپا دیے گئے ہیں۔ گاہک بغیر آن لائن ادائیگی درخواست یا آرڈر بھیج سکے گا۔
                             </div>
-                            <div id="payment-receiving-details" class="border rounded p-3 mt-3" {{ ! $hasReceivingMethod ? 'hidden' : '' }}>
+                            <div id="payment-method-options" class="mt-3" {{ ! $showPaymentMethods ? 'hidden' : '' }}>
+                                <h3 class="h6">قبول شدہ طریقے منتخب کریں</h3>
+                                <div class="row">
+                                    <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="cod_enabled" value="1" data-payment-option @checked(old('cod_enabled',$storefront->cod_enabled)) @disabled(! $showPaymentMethods)> کیش آن ڈیلیوری</label></div>
+                                    <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="easypaisa_enabled" value="1" data-payment-option data-payment-method="easypaisa" @checked($easypaisaSelected) @disabled(! $showPaymentMethods)> ایزی پیسہ — دستی تصدیق</label></div>
+                                    <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="jazzcash_enabled" value="1" data-payment-option data-payment-method="jazzcash" @checked($jazzcashSelected) @disabled(! $showPaymentMethods)> جاز کیش — دستی تصدیق</label></div>
+                                    <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="bank_transfer_enabled" value="1" data-payment-option data-payment-method="bank" @checked($bankTransferSelected) @disabled(! $showPaymentMethods)> بینک ٹرانسفر — دستی تصدیق</label></div>
+                                    <div class="col-md-4 mb-2"><label class="module-choice d-flex align-items-center"><input type="checkbox" name="raast_enabled" value="1" data-payment-option data-payment-method="raast" @checked($raastSelected) @disabled(! $showPaymentMethods)> راست / Raast QR — دستی تصدیق</label></div>
+                                </div>
+                            </div>
+                            <div id="payment-details-empty" class="alert alert-light border mt-3 mb-0" {{ ! $showPaymentMethods || $hasReceivingMethod ? 'hidden' : '' }}>
+                                <i class="fas fa-info-circle ml-1"></i> کیش آن ڈیلیوری کے لیے اکاؤنٹ کی تفصیلات درکار نہیں۔ والٹ، بینک یا راست منتخب کرنے پر متعلقہ خانے ظاہر ہوں گے۔
+                            </div>
+                            <div id="payment-receiving-details" class="border rounded p-3 mt-3" {{ ! $showPaymentMethods || ! $hasReceivingMethod ? 'hidden' : '' }}>
                                 <h3 class="h6">عوام کو دکھائی جانے والی وصولی کی معلومات</h3>
                                 <p class="small text-muted">صرف فعال ادائیگی کے طریقے کی معلومات چیک آؤٹ پر دکھائی جائیں گی۔ خفیہ PIN، OTP یا پاس ورڈ کبھی درج نہ کریں۔</p>
                                 <div class="form-row">
@@ -118,7 +140,7 @@
                                     </div></div>
                                 </div>
                             </div>
-                            <div id="manual-payment-help" class="alert alert-info mb-0 mt-2" {{ ! $hasReceivingMethod ? 'hidden' : '' }}>
+                            <div id="manual-payment-help" class="alert alert-info mb-0 mt-2" {{ ! $showPaymentMethods || ! $hasReceivingMethod ? 'hidden' : '' }}>
                                 <strong>اہم:</strong> یہ لائیو گیٹ وے نہیں ہیں۔ گاہک ادائیگی کر کے حوالہ درج کرتا ہے، اور دکان رقم اپنے والٹ یا بینک میں دیکھ کر دستی طور پر تصدیق کرتی ہے۔ صرف اپنے مالی ادارے کا جاری کردہ Raast QR اپ لوڈ کریں۔
                             </div>
                         </div>
@@ -197,22 +219,33 @@
 </section>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var modeInputs = Array.from(document.querySelectorAll('[data-payment-mode]'));
+    var optionInputs = Array.from(document.querySelectorAll('[data-payment-option]'));
     var methodInputs = Array.from(document.querySelectorAll('[data-payment-method]'));
+    var methodOptions = document.getElementById('payment-method-options');
+    var noPaymentNote = document.getElementById('no-payment-note');
     var detailsContainer = document.getElementById('payment-receiving-details');
     var emptyState = document.getElementById('payment-details-empty');
     var manualHelp = document.getElementById('manual-payment-help');
 
     function refreshPaymentDetails() {
-        var anySelected = methodInputs.some(function (input) { return input.checked; });
+        var methodsEnabled = modeInputs.some(function (input) {
+            return input.checked && input.value === 'methods';
+        });
+        optionInputs.forEach(function (input) { input.disabled = !methodsEnabled; });
+        if (methodOptions) methodOptions.hidden = !methodsEnabled;
+        if (noPaymentNote) noPaymentNote.hidden = methodsEnabled;
+
+        var anySelected = methodsEnabled && methodInputs.some(function (input) { return input.checked; });
         if (detailsContainer) detailsContainer.hidden = !anySelected;
-        if (emptyState) emptyState.hidden = anySelected;
+        if (emptyState) emptyState.hidden = !methodsEnabled || anySelected;
         if (manualHelp) manualHelp.hidden = !anySelected;
 
         document.querySelectorAll('[data-payment-details-for]').forEach(function (panel) {
             var input = methodInputs.find(function (method) {
                 return method.dataset.paymentMethod === panel.dataset.paymentDetailsFor;
             });
-            var selected = Boolean(input && input.checked);
+            var selected = Boolean(methodsEnabled && input && input.checked);
             panel.hidden = !selected;
             panel.querySelectorAll('input, select, textarea').forEach(function (field) {
                 field.disabled = !selected;
@@ -221,6 +254,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     methodInputs.forEach(function (input) {
+        input.addEventListener('change', refreshPaymentDetails);
+    });
+    modeInputs.forEach(function (input) {
         input.addEventListener('change', refreshPaymentDetails);
     });
     refreshPaymentDetails();

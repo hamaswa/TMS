@@ -224,7 +224,13 @@ class StorefrontFoundationTest extends TestCase
 
         $response = $this->actingAs($owner)->get(route('admin.storefront.edit'));
         $response->assertOk()
-            ->assertSeeText('ابھی ادائیگی نہیں یا کیش آن ڈیلیوری کے لیے وصولی کی تفصیلات درکار نہیں ہیں۔');
+            ->assertSeeText('نہیں — ابھی ادائیگی قبول نہیں کریں گے')
+            ->assertSeeText('ہاں — ادائیگی کے طریقے منتخب کریں')
+            ->assertSeeText('ادائیگی کے تمام طریقے چھپا دیے گئے ہیں۔');
+        $this->assertMatchesRegularExpression(
+            '/id="payment-method-options"[^>]*hidden/',
+            $response->getContent(),
+        );
         $this->assertMatchesRegularExpression(
             '/data-payment-details-for="easypaisa" hidden/',
             $response->getContent(),
@@ -235,12 +241,17 @@ class StorefrontFoundationTest extends TestCase
         );
 
         $storefront->update([
+            'unpaid_orders_enabled' => false,
             'easypaisa_enabled' => true,
             'easypaisa_account_title' => 'Tailoring Payments UI',
             'easypaisa_account_number' => '03001234567',
         ]);
         $response = $this->actingAs($owner)->get(route('admin.storefront.edit'));
         $response->assertOk();
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="payment-method-options"[^>]*hidden/',
+            $response->getContent(),
+        );
         $this->assertDoesNotMatchRegularExpression(
             '/data-payment-details-for="easypaisa" hidden/',
             $response->getContent(),
@@ -275,12 +286,14 @@ class StorefrontFoundationTest extends TestCase
             'default_locale' => 'ur',
             'show_tailoring' => '1',
             'commerce_settings_present' => '1',
-            'unpaid_orders_enabled' => '1',
+            'payment_collection_mode' => 'none',
+            'easypaisa_enabled' => '1',
             'easypaisa_account_title' => 'Injected Account',
             'easypaisa_account_number' => '03009999999',
         ])->assertRedirect(route('admin.storefront.edit'));
 
         $storefront->refresh();
+        $this->assertTrue($storefront->unpaid_orders_enabled);
         $this->assertFalse($storefront->easypaisa_enabled);
         $this->assertSame('Saved Account', $storefront->easypaisa_account_title);
         $this->assertSame('03001111111', $storefront->easypaisa_account_number);
@@ -304,6 +317,7 @@ class StorefrontFoundationTest extends TestCase
                 'default_locale' => 'ur',
                 'show_tailoring' => '1',
                 'commerce_settings_present' => '1',
+                'payment_collection_mode' => 'methods',
                 'easypaisa_enabled' => '1',
             ])
             ->assertRedirect(route('admin.storefront.edit'))
