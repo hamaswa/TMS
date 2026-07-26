@@ -86,7 +86,7 @@ class TailorPortalTest extends TestCase
             ->assertSessionHas('failed', 'دکان کا اکاؤنٹ فعال نہیں ہے۔ دکان کے مالک سے رابطہ کریں۔');
     }
 
-    public function test_tailor_dashboard_uses_worker_earnings_not_customer_order_total(): void
+    public function test_tailor_dashboard_shows_current_month_worker_earnings_and_outstanding_amount(): void
     {
         $owner = User::factory()->create();
         $tailor = $this->tailor($owner, '03001112222');
@@ -107,7 +107,7 @@ class TailorPortalTest extends TestCase
             'userId' => $owner->id,
             'status' => 'assigned',
         ]);
-        $order->forceFill(['created_at' => now()->subWeek()])->save();
+        $order->forceFill(['created_at' => now()])->save();
 
         $this->withSession([
             'tailor-login-success' => $tailor->name,
@@ -115,8 +115,11 @@ class TailorPortalTest extends TestCase
             'tailor_id' => $tailor->id,
         ])->get('/tailor/tailor-dashboard')
             ->assertOk()
+            ->assertSeeText('ماہِ رواں')
             ->assertSeeText('روپے 800.00')
             ->assertSeeText('روپے 300.00')
+            ->assertSeeText('روپے 500.00')
+            ->assertSeeText('1 آرڈرز')
             ->assertDontSeeText('روپے 4,000.00');
     }
 

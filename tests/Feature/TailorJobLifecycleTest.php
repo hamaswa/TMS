@@ -183,6 +183,34 @@ class TailorJobLifecycleTest extends TestCase
         $this->assertEquals(1000, (float) TailorRecord::where('order_id', $order->id)->sum('amount'));
     }
 
+    public function test_tailor_overpayment_shows_a_local_urdu_error_and_preserves_saved_amount(): void
+    {
+        [$owner, , $order] = $this->job([
+            'suitQuantity' => 2,
+            'tailor_price' => 500,
+            'tailor_paid_amount' => 400,
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->from(route('admin.tailor-jobs.index'))
+            ->patch(route('admin.tailor-jobs.payment', $order), ['paid_amount' => 1100]);
+
+        $response->assertRedirect(route('admin.tailor-jobs.index'))
+            ->assertSessionHasErrors(
+                'paid_amount',
+                'ادا شدہ رقم درزی کی کل کمائی سے زیادہ نہیں ہو سکتی۔',
+                'tailorPayment'.$order->id,
+            );
+        $this->assertEquals(400, (float) $order->fresh()->tailor_paid_amount);
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-jobs.index'))
+            ->assertOk()
+            ->assertSeeText('ادا شدہ رقم درزی کی کل کمائی سے زیادہ نہیں ہو سکتی۔')
+            ->assertSeeText('SMS یا واٹس ایپ فراہم کنندہ منسلک نہیں ہے۔')
+            ->assertSeeText('اندرونی اطلاع');
+    }
+
     public function test_shop_owner_cannot_access_another_shops_job(): void
     {
         [$owner] = $this->job();

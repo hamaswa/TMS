@@ -80,12 +80,25 @@ class TailorController extends Controller
     }
     public function tailor_dashboard()
     {
+        $tailorId = (int) session()->get('tailor_id');
+        $monthOrders = Order::where('tailorId', $tailorId)
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->get();
+        $suits = $monthOrders->sum(fn (Order $order) => max(1, (int) $order->suitQuantity));
+        $earnings = $monthOrders->sum(fn (Order $order) => $order->tailorAmountDue());
+        $paid = (float) $monthOrders->sum('tailor_paid_amount');
+        $outstanding = max(0, $earnings - $paid);
+        $activeJobs = Order::where('tailorId', $tailorId)
+            ->where('status', '!=', 'delivered')
+            ->count();
 
-        $val = tailor_pre_week();
-        $suits = $val[0];
-        $earnings = $val[1];
-        $paid = $val[2];
-        return view('tailor-dashboard.tailor-card', compact('suits', 'earnings', 'paid'));
+        return view('tailor-dashboard.tailor-card', compact(
+            'suits',
+            'earnings',
+            'paid',
+            'outstanding',
+            'activeJobs',
+        ));
     }
 
     public function tailor_order_list()

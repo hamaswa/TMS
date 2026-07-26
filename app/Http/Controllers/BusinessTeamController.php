@@ -275,8 +275,23 @@ class BusinessTeamController extends Controller
     private function rolePresets(array $permissions): array
     {
         $allowed = array_keys($permissions);
+        $tailoringEnabled = in_array(BusinessRole::TAILORING_ACCESS, $allowed, true);
+        $clothingEnabled = in_array(BusinessRole::CLOTHING_ACCESS, $allowed, true);
 
         return collect(BusinessRole::ROLE_PRESETS)
+            ->filter(function (array $preset) use ($tailoringEnabled, $clothingEnabled) {
+                if ($preset['permissions'] === ['*']) {
+                    return true;
+                }
+
+                $requiresTailoring = collect($preset['permissions'])
+                    ->contains(fn (string $permission) => str_starts_with($permission, 'tailoring.'));
+                $requiresClothing = collect($preset['permissions'])
+                    ->contains(fn (string $permission) => str_starts_with($permission, 'clothing.'));
+
+                return (! $requiresTailoring || $tailoringEnabled)
+                    && (! $requiresClothing || $clothingEnabled);
+            })
             ->map(function (array $preset) use ($allowed) {
                 $preset['permissions'] = $preset['permissions'] === ['*']
                     ? $allowed

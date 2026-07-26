@@ -6,7 +6,7 @@
         ...\App\Models\Order::STATUS_LABELS,
         'pending' => 'زیرِ انتظار',
         'paid' => 'ادا شدہ', 'partial' => 'جزوی ادائیگی', 'unpaid' => 'غیر ادا شدہ',
-        'sent' => 'بھیجا گیا', 'failed' => 'ناکام', 'skipped' => 'چھوڑا گیا',
+        'sent' => 'اندرونی اطلاع درج', 'failed' => 'ناکام', 'skipped' => 'درج نہیں ہوئی',
     ];
 @endphp
 <section class="main-content">
@@ -14,7 +14,7 @@
         <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
             <div>
                 <h3 class="mb-1">ٹیلرنگ کام کی فہرست</h3>
-                <p class="text-muted mb-0">درزی کی تعیناتی سے گاہک کو حوالگی تک ہر آرڈر کی پیش رفت دیکھیں۔</p>
+                <p class="text-muted mb-0">درزی کی تعیناتی سے گاہک کو حوالگی تک ہر آرڈر کی پیش رفت دیکھیں۔ اطلاع فی الحال گاہک کے اندرونی ریکارڈ میں محفوظ ہوتی ہے؛ SMS یا واٹس ایپ فراہم کنندہ منسلک نہیں ہے۔</p>
             </div>
             @if (! $isTailor)
                 <a href="{{ route('admin.Tailor.index') }}" class="btn btn-outline-primary">درزیوں کا انتظام</a>
@@ -109,7 +109,7 @@
                             <th>سوٹ</th>
                             <th>مقررہ تاریخ</th>
                             <th>مرحلہ</th>
-                            <th style="min-width: 210px">گاہک کو اطلاع</th>
+                            <th style="min-width: 210px">گاہک کی اندرونی اطلاع</th>
                             <th style="min-width: 250px">اگلا عمل</th>
                             @if (! $isTailor)<th style="min-width: 220px">درزی کی ادائیگی</th>@endif
                         </tr>
@@ -123,6 +123,7 @@
                                     ->reject(fn ($status) => $isTailor && $status === 'delivered');
                                 $earned = $order->tailorAmountDue();
                                 $deliveries = $order->notificationDeliveries->keyBy('stage');
+                                $paymentErrors = $errors->getBag('tailorPayment'.$order->id);
                             @endphp
                             <tr class="{{ $overdue ? 'table-danger' : '' }}">
                                 <td><strong>#{{ $order->id }}</strong><br><small class="text-muted">{{ optional($order->created_at)->format('d M Y') }}</small></td>
@@ -152,7 +153,7 @@
                                         @endif
                                     @endforeach
                                     @if ($deliveries->isEmpty())
-                                        <span class="text-muted small">ابھی کوئی اطلاع نہیں بھیجی گئی</span>
+                                        <span class="text-muted small">ابھی کوئی اندرونی اطلاع درج نہیں ہوئی</span>
                                     @endif
                                 </td>
                                 <td>
@@ -189,9 +190,12 @@
                                             @csrf
                                             @method('PATCH')
                                             <div class="input-group input-group-sm">
-                                                <input type="number" name="paid_amount" class="form-control" min="{{ (float) $order->tailor_paid_amount }}" max="{{ $earned }}" step="0.01" value="{{ (float) $order->tailor_paid_amount }}" aria-label="کل ادا شدہ رقم">
+                                                <input type="number" name="paid_amount" class="form-control {{ $paymentErrors->has('paid_amount') ? 'is-invalid' : '' }}" min="{{ (float) $order->tailor_paid_amount }}" max="{{ $earned }}" step="0.01" value="{{ (float) $order->tailor_paid_amount }}" aria-label="کل ادا شدہ رقم" aria-describedby="tailor-payment-error-{{ $order->id }}">
                                                 <div class="input-group-append"><button class="btn btn-outline-success" type="submit">ادائیگی محفوظ کریں</button></div>
                                             </div>
+                                            @if ($paymentErrors->has('paid_amount'))
+                                                <div id="tailor-payment-error-{{ $order->id }}" class="text-danger small mt-1" role="alert">{{ $paymentErrors->first('paid_amount') }}</div>
+                                            @endif
                                         </form>
                                     </td>
                                 @endif

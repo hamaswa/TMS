@@ -92,6 +92,29 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertSeeText('Shop First Customer');
     }
 
+    public function test_tailoring_only_owner_does_not_see_clothing_customer_sections(): void
+    {
+        [$owner, $business] = $this->business();
+        $business->update(['clothing_enabled' => false]);
+        $customer = Customers::create([
+            'name' => 'Tailoring Only Customer',
+            'phone_number1' => '03001112233',
+            'user_id' => $owner->id,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.customers.statement', $customer))
+            ->assertOk()
+            ->assertSeeText('ٹیلرنگ کا مشترکہ گاہک ریکارڈ')
+            ->assertSeeText('ٹیلرنگ کا مجموعہ')
+            ->assertDontSeeText('کپڑے کی خریداری')
+            ->assertDontSee(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'shop']), false);
+
+        $this->actingAs($owner)->get(route('admin.customers.statement', [
+            'id' => $customer->id,
+            'tab' => 'shop',
+        ]))->assertOk()->assertDontSeeText('کپڑے کی خریداری');
+    }
+
     public function test_counter_sale_rejects_customer_from_another_business(): void
     {
         $owner = $this->owner();

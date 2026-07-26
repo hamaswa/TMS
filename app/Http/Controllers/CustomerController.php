@@ -96,10 +96,12 @@ class CustomerController extends Controller
         $customer = $this->ownedCustomer($id);
         $user = Auth::user();
         $ownerId = $user->businessOwnerId();
+        $tailoringEnabled = (bool) ($user->business?->tailoring_enabled ?? $user->tailoring_access);
+        $clothingEnabled = (bool) ($user->business?->clothing_enabled ?? $user->clothing_access);
         $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
-        $canViewTailoring = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
-        $canViewShop = $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
-        $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
+        $canViewTailoring = $tailoringEnabled && $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
+        $canViewShop = $clothingEnabled && $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
+        $canManageMeasurements = $tailoringEnabled && $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
         $baseTransactions = Transaction::where('userId', $user->businessOwnerId())->where('customerId', $customer->id);
         $totalBalance = $canViewBalances ? (float) (clone $baseTransactions)->sum('remainingBalance') : null;
         $totalReceived = $canViewBalances ? (float) (clone $baseTransactions)->sum('recivedPayment') : null;

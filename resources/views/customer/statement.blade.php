@@ -3,6 +3,12 @@
 @php
     $statusLabels = ['assigned' => 'تفویض شدہ', 'cutting' => 'کٹائی', 'stitching' => 'سلائی', 'trial' => 'ٹرائل', 'ready' => 'تیار', 'delivered' => 'حوالے شدہ'];
     $historySourceLabels = ['customer_created' => 'ابتدائی پیمائش', 'baseline' => 'پچھلی محفوظ پیمائش', 'customer_update' => 'تبدیل شدہ پیمائش'];
+    $customerScopeLabel = $canViewTailoring && $canViewShop
+        ? 'ٹیلرنگ اور کپڑے کی دکان کا ایک ریکارڈ'
+        : ($canViewTailoring ? 'ٹیلرنگ کا مشترکہ گاہک ریکارڈ' : ($canViewShop ? 'کپڑے کی دکان کا گاہک ریکارڈ' : 'گاہک کا ریکارڈ'));
+    $balanceScopeLabel = $canViewTailoring && $canViewShop
+        ? 'دکان اور ٹیلرنگ کا مجموعہ'
+        : ($canViewTailoring ? 'ٹیلرنگ کا مجموعہ' : ($canViewShop ? 'دکان کا مجموعہ' : 'تمام مجاز اندراجات کا مجموعہ'));
 @endphp
 <section class="main-content customer-workspace" dir="rtl">
     <div class="container-fluid px-3 px-lg-5 py-4">
@@ -10,7 +16,7 @@
             <div class="row align-items-center">
                 <div class="col-lg-8 d-flex align-items-center">
                     <div class="customer-avatar">{{ \Illuminate\Support\Str::substr($customer->name, 0, 1) }}</div>
-                    <div><span class="badge badge-light text-primary mb-2">مشترکہ گاہک پروفائل</span><h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1><p class="mb-0">{{ $customer->phone_number1 }} · ٹیلرنگ اور کپڑے کی دکان کا ایک ریکارڈ</p></div>
+                    <div><span class="badge badge-light text-primary mb-2">مشترکہ گاہک پروفائل</span><h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1><p class="mb-0">{{ $customer->phone_number1 }} · {{ $customerScopeLabel }}</p></div>
                 </div>
                 <div class="col-lg-4 text-lg-left mt-3 mt-lg-0">
                     @if($canManageMeasurements)<a href="{{ route('admin.Customers.edit', $customer) }}" class="btn btn-light ml-2"><i class="fas fa-edit ml-1"></i> معلومات تبدیل کریں</a>@endif
@@ -32,7 +38,7 @@
         @if($activeTab === 'overview')
             <div class="row mb-2">
                 @if($canViewBalances)
-                    <div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat balance"><span class="stat-icon"><i class="fas fa-wallet"></i></span><small>کل مشترکہ بقایا</small><strong>Rs {{ number_format($totalBalance, 2) }}</strong><span>دکان اور ٹیلرنگ کا مجموعہ</span></div></div>
+                    <div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat balance"><span class="stat-icon"><i class="fas fa-wallet"></i></span><small>کل مشترکہ بقایا</small><strong>Rs {{ number_format($totalBalance, 2) }}</strong><span>{{ $balanceScopeLabel }}</span></div></div>
                     <div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat paid"><span class="stat-icon"><i class="fas fa-hand-holding-usd"></i></span><small>کل وصول شدہ رقم</small><strong>Rs {{ number_format($totalReceived, 2) }}</strong><span>ابتدائی اور بعد کی ادائیگیاں</span></div></div>
                 @endif
                 @if($canViewTailoring)<div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat"><span class="stat-icon"><i class="fas fa-cut"></i></span><small>ٹیلرنگ آرڈرز</small><strong>{{ $orders->count() }}</strong><a href="{{ route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'tailoring']) }}">تمام آرڈرز دیکھیں</a></div></div>@endif
@@ -62,7 +68,7 @@
                     @empty<tr><td colspan="6" class="empty-state">ابھی کوئی لین دین موجود نہیں۔</td></tr>@endforelse
                     </tbody></table></div>@if($transactions->hasPages())<div class="card-footer">{{ $transactions->links() }}</div>@endif</div></div></div>
                 <div class="col-xl-4 mb-4">
-                    <div class="card workspace-card mb-3"><div class="card-body p-4"><small class="text-muted">موجودہ مشترکہ بقایا</small><div class="display-4 font-weight-bold text-primary">Rs {{ number_format($totalBalance, 2) }}</div><p class="text-muted mb-0">یہ رقم ٹیلرنگ اور کپڑے کی دکان دونوں کی مجموعی واجب الادا رقم ہے۔</p></div></div>
+                    <div class="card workspace-card mb-3"><div class="card-body p-4"><small class="text-muted">موجودہ مشترکہ بقایا</small><div class="display-4 font-weight-bold text-primary">Rs {{ number_format($totalBalance, 2) }}</div><p class="text-muted mb-0">یہ {{ $balanceScopeLabel }} واجب الادا رقم ہے۔</p></div></div>
                     @if($paymentRoute && $totalBalance > 0)<div class="card workspace-card"><div class="card-body p-4"><h2 class="h5 font-weight-bold">نئی ادائیگی درج کریں</h2><p class="text-muted small">فی الحال ادائیگی مشترکہ بقایا میں جمع ہوگی۔</p><form method="POST" action="{{ $paymentRoute }}">@csrf<input type="hidden" name="customer_id" value="{{ $customer->id }}"><input type="hidden" name="return_to_statement" value="1"><div class="form-group"><label>وصول شدہ رقم</label><div class="input-group"><div class="input-group-prepend"><span class="input-group-text">Rs</span></div><input type="number" class="form-control" name="DirectPayment" min="0.01" max="{{ $totalBalance }}" step="0.01" required></div></div><div class="form-group"><label>نوٹ <small class="text-muted">(اختیاری)</small></label><textarea class="form-control" name="comment" rows="3" placeholder="مثلاً نقد ادائیگی"></textarea></div><button class="btn btn-primary btn-block">ادائیگی محفوظ کریں</button></form></div></div>@endif
                 </div>
             </div>

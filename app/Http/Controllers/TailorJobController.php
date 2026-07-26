@@ -173,8 +173,13 @@ class TailorJobController extends Controller
     {
         $job = Order::where('userId', Auth::user()->businessOwnerId())->findOrFail($order);
         $earned = $job->tailorAmountDue();
-        $validated = $request->validate([
+        $validated = $request->validateWithBag('tailorPayment'.$job->id, [
             'paid_amount' => ['required', 'numeric', 'min:' . (float) $job->tailor_paid_amount, 'max:' . $earned],
+        ], [
+            'paid_amount.required' => 'ادا شدہ رقم درج کریں۔',
+            'paid_amount.numeric' => 'ادا شدہ رقم درست عدد میں درج کریں۔',
+            'paid_amount.min' => 'ادا شدہ رقم پہلے سے محفوظ رقم سے کم نہیں ہو سکتی۔',
+            'paid_amount.max' => 'ادا شدہ رقم درزی کی کل کمائی سے زیادہ نہیں ہو سکتی۔',
         ]);
 
         DB::transaction(function () use ($job, $validated, $earned) {
@@ -221,7 +226,7 @@ class TailorJobController extends Controller
             ]);
         }
 
-        return back()->with('success', 'گاہک کو اطلاع بھیج دی گئی ہے۔');
+        return back()->with('success', 'گاہک کے ریکارڈ میں اندرونی اطلاع درج کر دی گئی ہے۔');
     }
 
     private function jobQuery(int $userId)

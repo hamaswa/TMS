@@ -125,12 +125,27 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($owner)->get(route('admin.team.roles.index'))
             ->assertOk()
             ->assertDontSee('value="tailoring.orders"', false)
-            ->assertSee('value="clothing.sales"', false);
+            ->assertSee('value="clothing.sales"', false)
+            ->assertSeeText(BusinessRole::ROLE_PRESETS['salesperson']['label'])
+            ->assertDontSeeText(BusinessRole::ROLE_PRESETS['tailor']['label'])
+            ->assertDontSeeText(BusinessRole::ROLE_PRESETS['order_manager']['label']);
 
         $this->actingAs($owner)->post(route('admin.team.roles.store'), [
             'name' => 'Invalid tailoring role',
             'permissions' => [BusinessRole::TAILORING_ORDERS],
         ])->assertSessionHasErrors('permissions.0');
+    }
+
+    public function test_tailoring_only_role_presets_hide_clothing_jobs(): void
+    {
+        [$owner] = $this->business(true, false);
+
+        $this->actingAs($owner)->get(route('admin.team.roles.index'))
+            ->assertOk()
+            ->assertSeeText(BusinessRole::ROLE_PRESETS['tailor']['label'])
+            ->assertSeeText(BusinessRole::ROLE_PRESETS['order_manager']['label'])
+            ->assertDontSeeText(BusinessRole::ROLE_PRESETS['salesperson']['label'])
+            ->assertDontSeeText(BusinessRole::ROLE_PRESETS['stock_keeper']['label']);
     }
 
     public function test_customer_only_tailoring_employee_cannot_open_orders_workshop_or_tailors(): void
