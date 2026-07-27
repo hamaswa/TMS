@@ -40,24 +40,31 @@
                                 </thead>
                                 <tbody>
                                     @foreach($Tailor_records->orders as $record)
-                                   @php $button='';
-                                    if($record->status =='new')
-                                    {
-                                        $button ='New';
-                                        $btn = 'btn btn-primary btn-sm admin-order-status';
-                                    }elseif ($record->status =='start') {
-                                        $button ='Start';
-                                        $btn = 'btn btn-warning btn-sm admin-order-status';
-                                    }else{
-                                        $button ='Complete';
-                                        $btn = 'btn btn-success btn-sm admin-order-status';
-                                    } @endphp
+                                   @php
+                                       $nextStatusOptions = collect($record->nextStatusOptions())
+                                           ->reject(fn ($option) => $option['value'] === 'delivered');
+                                   @endphp
                                     <tr class="f">
                                         <td></td>
                                         <td>{{$record->customers->name}}</td>
                                         <td>{{$record->suitQuantity}}</td>
                                         <td>{{$record->tailor_price}}</td>
-                                        <td><button type="button" class="<?php echo $btn ?>" data-toggle="modal" data-target="#myModal" data-orderid="<?php echo $record->id ?>" data-orderstatus="<?php echo $record->status ?>">{{$button}}</button></td>
+                                        <td>
+                                            <span class="badge badge-info">{{ \App\Models\Order::STATUS_LABELS[$record->status] ?? $record->status }}</span>
+                                            @if($nextStatusOptions->isNotEmpty())
+                                                <form action="{{ route('tailor.jobs.status', $record) }}" method="post" class="mt-2">
+                                                    @csrf @method('PATCH')
+                                                    <div class="input-group input-group-sm">
+                                                        <select name="status" class="form-control" required>
+                                                            @foreach($nextStatusOptions as $option)
+                                                                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        <div class="input-group-append"><button class="btn btn-primary">اپ ڈیٹ کریں</button></div>
+                                                    </div>
+                                                </form>
+                                            @endif
+                                        </td>
                                         <td>{{ date('d-m-Y', strtotime($record->created_at))}}</td>
                                         <td>{{ date('d-m-Y', strtotime($record->returnDate))}}</td>
 
@@ -72,38 +79,4 @@
         </div>
     </div>
 </section>
-<!-- The Modal -->
-<div class="modal" id="myModal">
-  <div class="modal-dialog">
-    <div class="modal-content">
-        <form action="{{url('tailor/order-status')}}" method="post">
-            @csrf
-            <input type="hidden" value="" id="order_id" name="order_id">
-       
-      <!-- Modal Header -->
-      <div class="modal-header">
-        <h4 class="modal-title">آرڈر کی درجہ منتخب کریں۔</h4>
-      </div>
-
-      <!-- Modal body -->
-      <div class="modal-body">
-       <p class="text-right"><label>درجہ منتخب کریں</label></p>
-       <select class="form-control order-status" name="order_status">
-           @foreach (\App\Models\Order::STATUSES as $status)
-               <option value="{{ $status }}">{{ \App\Models\Order::STATUS_LABELS[$status] ?? ucfirst($status) }}</option>
-           @endforeach
-       </select>
-      </div>
-
-      <!-- Modal footer -->
-      <div class="modal-footer">
-        <button type="submit" class="btn btn-primary  ml-2">محفوظ کریں</button>
-        <button type="button" class="btn btn-danger" data-dismiss="modal">بند کریں</button>
-        
-      </div>
-        </form>
-    </div>
-    </div>
-  </div>
-</div>
 @endsection

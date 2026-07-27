@@ -130,6 +130,8 @@ class LegacyRouteCleanupTest extends TestCase
             ->get(route('admin.order-print', $order).'?paper=a4')
             ->assertOk()
             ->assertSee('tms-paper-a4', false)
+            ->assertSee('class="receipt-date"', false)
+            ->assertSee('class="order-summary-row"', false)
             ->assertSee('TMS REF: '.$order->id)
             ->assertSee('<svg', false);
 

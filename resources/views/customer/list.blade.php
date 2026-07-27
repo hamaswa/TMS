@@ -141,11 +141,8 @@
                     <!-- Modal body -->
                     <div class="modal-body">
                         <p class="text-right"><label>درجہ منتخب کریں</label></p>
-                        <select class="form-control order-status" name="order_status">
-                            @foreach (\App\Models\Order::STATUSES as $status)
-                                <option value="{{ $status }}">{{ \App\Models\Order::STATUS_LABELS[$status] ?? ucfirst($status) }}</option>
-                            @endforeach
-                        </select>
+                        <select class="form-control order-status" name="order_status" required></select>
+                        <small class="form-text text-muted">صرف موجودہ مرحلے کے بعد جائز اگلا مرحلہ دکھایا جائے گا۔</small>
                     </div>
 
                     <!-- Modal footer -->

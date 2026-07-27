@@ -63,18 +63,16 @@ jQuery(document).ready(function ($) {
                         '<td>' + order.suitQuantity + '</td>' +
                         '<td>' + order.tailorName + '</td>';
 
-                    // Check if the order status is 'Complete' and disable the button
-                    var buttonClass = 'admin-order-status ' + order.btnClass;
+                    var buttonClass = 'customer-order-status ' + order.btnClass;
                     var buttonStatus = order.button.toLowerCase();
                     var buttonText = order.button;
+                    var nextStatuses = Array.isArray(order.nextStatuses) ? order.nextStatuses : [];
 
-                    // If the status is 'Complete', disable the button
-                    if (buttonStatus === 'complete') {
-                        buttonClass += ' disabled'; // Add 'disabled' class to the button
-                        buttonText = 'Complete'; // Change the text to 'Complete'
+                    if (nextStatuses.length === 0) {
+                        buttonClass += ' disabled';
                         row += '<td><button type="button" class="btn btn-sm ' + buttonClass + '" disabled>' + buttonText + '</button></td>';
                     } else {
-                        row += '<td><button type="button" class="btn btn-sm ' + buttonClass + '" data-toggle="modal" data-target="#myModal" data-orderid="' + order.orderId + '" data-orderstatus="' + buttonStatus + '">' + buttonText + '</button></td>';
+                        row += '<td><button type="button" class="btn btn-sm ' + buttonClass + '" data-toggle="modal" data-target="#myModal" data-orderid="' + order.orderId + '" data-nextstatuses="' + encodeURIComponent(JSON.stringify(nextStatuses)) + '">' + buttonText + '</button></td>';
                     }
 
                     // Adding the select dropdown for rack number
@@ -215,13 +213,22 @@ jQuery(document).ready(function ($) {
     // });
 
     // order status change
-    $(document).on('click', '.admin-order-status', function () {
+    $(document).on('click', '.customer-order-status', function () {
         var order_id = $(this).data('orderid');
-        var order_status = $(this).data('orderstatus');
+        var encodedStatuses = $(this).attr('data-nextstatuses') || '';
+        var nextStatuses = [];
+        try {
+            nextStatuses = JSON.parse(decodeURIComponent(encodedStatuses));
+        } catch (error) {
+            nextStatuses = [];
+        }
         $('#order_id').val(order_id);
-        $('.order-status option[value=' + order_status + ']').attr('selected', 'selected');
-        // status like new, start , complete
-        // console.log(order_status);
+        var select = $('#myModal .order-status');
+        select.empty();
+        $.each(nextStatuses, function (_, status) {
+            select.append($('<option>', { value: status.value, text: status.label }));
+        });
+        $('#submit-button').prop('disabled', nextStatuses.length === 0);
     });
 
     // now send notification for order complete to user

@@ -293,7 +293,8 @@ class OrderController extends Controller
                     'btnClass' => $btn,
                     'orderId' => $order->id,
                     'rack_no' => $order->rack_no,
-                    'racks' => $racks
+                    'racks' => $racks,
+                    'nextStatuses' => Order::nextStatusOptionsFor((string) $order->status),
                 ];
             }
 

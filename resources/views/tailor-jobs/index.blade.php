@@ -119,8 +119,8 @@
                             @php
                                 $deadline = $order->returnDate ? \Carbon\Carbon::parse($order->returnDate) : null;
                                 $overdue = $deadline && $deadline->isBefore(today()) && $order->status !== 'delivered';
-                                $nextStatuses = collect($order->nextStatuses())
-                                    ->reject(fn ($status) => $isTailor && $status === 'delivered');
+                                $nextStatusOptions = collect($order->nextStatusOptions())
+                                    ->reject(fn ($option) => $isTailor && $option['value'] === 'delivered');
                                 $earned = $order->tailorAmountDue();
                                 $deliveries = $order->notificationDeliveries->keyBy('stage');
                                 $paymentErrors = $errors->getBag('tailorPayment'.$order->id);
@@ -160,14 +160,14 @@
                                     @if (! $isTailor)
                                         <a class="btn btn-outline-info btn-sm btn-block mb-1" href="{{ route('admin.orders.workforce.index', $order) }}">کاریگر اور کام</a>
                                     @endif
-                                    @if ($nextStatuses->isNotEmpty())
+                                    @if ($nextStatusOptions->isNotEmpty())
                                         <form method="POST" action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}">
                                             @csrf
                                             @method('PATCH')
                                             <div class="input-group input-group-sm mb-1">
                                                 <select name="status" class="form-control" required>
-                                                    @foreach ($nextStatuses as $nextStatus)
-                                                        <option value="{{ $nextStatus }}">اگلا مرحلہ: {{ $statusLabels[$nextStatus] ?? $nextStatus }}</option>
+                                                    @foreach ($nextStatusOptions as $nextStatus)
+                                                        <option value="{{ $nextStatus['value'] }}">اگلا مرحلہ: {{ $nextStatus['label'] }}</option>
                                                     @endforeach
                                                 </select>
                                                 <div class="input-group-append"><button class="btn btn-primary" type="submit">اپ ڈیٹ کریں</button></div>

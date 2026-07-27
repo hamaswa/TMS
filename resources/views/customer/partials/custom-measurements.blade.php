@@ -1,15 +1,19 @@
 @if($measurementFields->isNotEmpty())
-<div class="card border-primary mb-4" dir="rtl">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <strong>اضافی پیمائش</strong>
+@php($embedded = $embedded ?? false)
+<div class="{{ $embedded ? 'custom-measurements-inline' : 'card border-primary mb-4' }}" dir="rtl">
+    <div class="{{ $embedded ? 'd-flex flex-wrap justify-content-between align-items-center mt-4 mb-3 pt-3 border-top' : 'card-header bg-light d-flex justify-content-between align-items-center' }}">
+        <div>
+            <strong>{{ $embedded ? 'کاروبار کے خصوصی پیمائشی خانے' : 'اضافی پیمائش' }}</strong>
+            @if($embedded)<small class="text-muted d-block">یہ خانے بھی اسی لباس کی پیمائش کا حصہ ہیں۔</small>@endif
+        </div>
         @if(Auth::user()->hasBusinessPermission('tailoring.configuration'))
             <a href="{{ route('admin.measurement-fields.index') }}" class="btn btn-sm btn-outline-primary">خانے ترتیب دیں</a>
         @endif
     </div>
-    <div class="card-body"><div class="form-row">
+    <div class="{{ $embedded ? '' : 'card-body' }}"><div class="{{ $embedded ? 'measurement-grid' : 'form-row' }}">
         @foreach($measurementFields as $field)
             @php($value = old('custom_measurements.'.$field->id, $measurementValues->get($field->id)))
-            <div class="form-group col-md-6">
+            <div class="form-group {{ $embedded ? 'edit-field mb-0' : 'col-md-6' }}" data-measurement-field="custom.{{ $field->id }}">
                 <label for="custom_measurement_{{ $field->id }}">{{ $field->label }} @if($field->unit && $field->unit !== 'none')<small class="text-muted">({{ $field->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }})</small>@endif @if($field->is_required)<span class="text-danger">*</span>@endif</label>
                 @if($field->field_type === 'select')
                     <select class="form-control" id="custom_measurement_{{ $field->id }}" name="custom_measurements[{{ $field->id }}]" @required($field->is_required)>

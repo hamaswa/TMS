@@ -70,6 +70,12 @@ class CustomMeasurementFieldTest extends TestCase
             'measurement_field_id' => $field->id,
             'value' => '3.25',
         ]);
+
+        $this->actingAs($owner)->get(route('admin.Customers.edit', $customer))
+            ->assertOk()
+            ->assertSeeText('کاروبار کے خصوصی پیمائشی خانے')
+            ->assertSee('data-measurement-field="custom.'.$field->id.'"', false)
+            ->assertDontSee('<h2>اضافی پیمائش</h2>', false);
     }
 
     public function test_urdu_commas_create_individual_select_options(): void

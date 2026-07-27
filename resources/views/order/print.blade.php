@@ -178,6 +178,65 @@
             justify-content: space-between;
             /*margin-bottom: 10px;*/
         }
+        .receipt-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+        }
+        .receipt-meta h2,
+        .receipt-meta h3 {
+            margin: 0;
+        }
+        .receipt-date {
+            direction: ltr;
+            unicode-bidi: isolate;
+            white-space: nowrap;
+        }
+        .order-summary {
+            display: grid;
+            gap: 7px;
+            margin-top: 10px;
+        }
+        .order-summary-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(115px, auto);
+            align-items: start;
+            gap: 12px;
+            direction: ltr;
+            border-bottom: 1px dotted #e2e8f0;
+            padding: 2px 0 5px;
+        }
+        .order-summary-label,
+        .order-summary-value {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 900;
+            line-height: 1.75;
+            overflow-wrap: anywhere;
+        }
+        .order-summary-label {
+            direction: rtl;
+            text-align: right;
+        }
+        .order-summary-value {
+            direction: ltr;
+            unicode-bidi: isolate;
+            text-align: left;
+        }
+        html.tms-paper-receipt_80 .receipt-meta h2,
+        html.tms-paper-receipt_80 .receipt-meta h3 {
+            font-size: 16px;
+        }
+        html.tms-paper-receipt_80 .order-summary-row {
+            grid-template-columns: minmax(0, 1fr) minmax(105px, auto);
+            gap: 7px;
+        }
+        html.tms-paper-receipt_80 .order-summary-label,
+        html.tms-paper-receipt_80 .order-summary-value {
+            font-size: 14px;
+            line-height: 1.7;
+        }
         .size .col-6{
             font-weight:300;
         }
@@ -239,98 +298,32 @@
                 <h1 class="text-center" style="text-align: center;margin-top:-10px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3" style="margin-top: 0px">
-                    <div class="d-flex justify-content-between">
+                    <div class="receipt-meta">
                         <div>
                             <h2>رسید نمبر # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div style="font-weight:900;">
-                            <h3>{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
+                            <h3 class="receipt-date">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
                         </div>
                     </div>
                     <hr>
-                    <!--//customer name-->
-                    <div class="" style="text-align: right;">
-                        <div style="width: 50%; display: inline-block; font-size:20px; font-weight:600;">
-                            <p style="font-size:18px; position:absolute;left:40px;">{{ $orderDetail->customers->name }}</p>
-                            <p
-                                style="font-weight: 900; font-size:18px margin:0px">:نام</p>
-                        </div>
-                    </div>
-
-                    <!--//number of suits-->
-                    <div class="" style="text-align: right;">
-                        <div style="width: 50%; display: inline-block; font-size:18px; font-weight:600;">
-                            <p style="font-size:18px;position:absolute;left:60px;">{{ $orderDetail->suitQuantity }}</p>
-                            <p style="font-weight: 900; font-size:18px; margin:0px">:سوٹ کی تعداد</p>
-                        </div>
-                    </div>
-
-
-                    <div class="mb-3" style="text-align: right;">
-                        <div
-                            style="width: 50%; display: inline-block; font-size:18px; font-weight:400; max-width:400px; word-wrap:break-word; word-break:break-all;">
-                            <p style="font-size:18px; font-weight:900; position:absolute; left:60px;">{{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</p>
-                            <p style="font-size:18px; font-weight:900;margin:0px">:سیریل نمبر</p>
-                        </div>
-                    </div>
-
-
-                    <!--//order payment-->
-                    <div class="mb-3" style="text-align: right;">
-                        <div style="width: 100%; display: inline-block; font-size:18px;">
-                            <p style="font-size:18px; font-weight:900; position:absolute; left:40px;">{{ $orderDetail->totalPayment }}</p>
-                            <p style="font-size:18px; font-weight:900;margin:0px">:آرڈر کی رقم
-                                </p>
-                        </div>
-                    </div>
-
-                    <!--//recieved payment-->
-                    <div class="mb-3" style="text-align: right;padding:0px 0px;">
-                        <div style="width: 100%; display: inline-block; font-size:18px; ">
-                            <p style="font-size:18px; font-weight:900; position:absolute;left:40px;">{{ $orderDetail->transactions->first()?->recivedPayment ?? 0 }}</p>
-                            <p style="font-weight:900; font-size:18px;margin:0px">:موجودہ رقم کی
-                            ادائیگی</p>
-                        </div>
-                    </div>
-                    <!-- Current due payments -->
-                    @if ($latestBalance - $previousBalance > 0)
-                        <div class="mb-3" style="text-align: right; padding: 5px 0px;">
-                            <div style="width: 100%; display: inline-block; font-size:18px;">
-                                <p style="font-size:18px; font-weight:900; position:absolute;left:40px;">{{ $latestBalance - $previousBalance }}</p>
-                                <p style="font-weight:900; font-size:18px;margin:0px">:موجودہ ادائیگی واجب
-                                    الادا</p>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Previous payments due -->
-                    @if ($previousBalance > 0)
-                        <div class="mb-3" style="text-align: right; padding: 5px 0px;">
-                            <div style="width: 100%; display: inline-block; font-size:18px; ">
-                                <p style="font-size:18px; font-weight:900; position:absolute;left:40px;">{{ $previousBalance }}</p>
-                                <p style="font-weight:900; font-size:18px;margin:0px">:گزشتہ ادائیگی کے
-                                    واجبات</p>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Latest balance or total balance -->
-                    @if ($latestBalance > 0)
-                        <div class="mb-3" style="text-align: right;">
-                            <div style="width: 100%; display: inline-block; font-size:18px; ">
-                                <p style="font-size:18px; font-weight: 900; position:absolute;left:40px;">{{ $latestBalance }}</p>
-                                <p style="font-weight:900; font-size:18px; margin:0px">:کل ادائیگی واجب
-                                    الادا</p>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!--//return date-->
-                    <div class="mt-3" style="text-align: right; font-size:18px; ">
-                        <p style="font-size:18px; font-weight:900; position:absolute;left:40px;">{{ $orderDetail->returnDate }}</p>
-                        <p style="font-Weight:900; font-size:18px; margin:0px;">:واپسی کی
-                            تاریخ</p>
+                    <div class="order-summary">
+                        <div class="order-summary-row"><p class="order-summary-value">{{ $orderDetail->customers->name }}</p><p class="order-summary-label">نام:</p></div>
+                        <div class="order-summary-row"><p class="order-summary-value">{{ $orderDetail->suitQuantity }}</p><p class="order-summary-label">سوٹ کی تعداد:</p></div>
+                        <div class="order-summary-row"><p class="order-summary-value">{{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</p><p class="order-summary-label">سیریل نمبر:</p></div>
+                        <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $orderDetail->totalPayment, 2) }}</p><p class="order-summary-label">آرڈر کی رقم:</p></div>
+                        <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) ($orderDetail->transactions->first()?->recivedPayment ?? 0), 2) }}</p><p class="order-summary-label">موجودہ رقم کی ادائیگی:</p></div>
+                        @if ($latestBalance - $previousBalance > 0)
+                            <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) ($latestBalance - $previousBalance), 2) }}</p><p class="order-summary-label">موجودہ واجب الادا:</p></div>
+                        @endif
+                        @if ($previousBalance > 0)
+                            <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $previousBalance, 2) }}</p><p class="order-summary-label">گزشتہ واجبات:</p></div>
+                        @endif
+                        @if ($latestBalance > 0)
+                            <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $latestBalance, 2) }}</p><p class="order-summary-label">کل واجب الادا:</p></div>
+                        @endif
+                        <div class="order-summary-row"><p class="order-summary-value">{{ $orderDetail->returnDate }}</p><p class="order-summary-label">واپسی کی تاریخ:</p></div>
                     </div>
                     <div>
                         <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">{{$orderDetail->remarks}}</h3>

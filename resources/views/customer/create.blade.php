@@ -10,7 +10,9 @@
     .customer-progress-item.active{border-color:#1769aa;background:#eaf4fb;color:#1769aa}.customer-progress-item.complete{border-color:#28a745;color:#218838}
     .customer-step{display:none}.customer-step.active{display:block}.customer-section{border:1px solid #e2e8f0;border-radius:16px;padding:1.25rem;background:#fbfdff}
     .measurement-field label{font-weight:700}.step-actions{display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid #edf2f7}
-    @media(max-width:767px){.customer-progress{grid-template-columns:1fr}.customer-form-head{padding:1.3rem}.customer-form-card .card-body{padding:1rem!important}}
+    .measurement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.measurement-grid .form-group{margin-bottom:0}.measurement-grid label{font-weight:700}
+    @media(max-width:767px){.customer-progress{grid-template-columns:1fr}.customer-form-head{padding:1.3rem}.customer-form-card .card-body{padding:1rem!important}.measurement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:420px){.measurement-grid{grid-template-columns:1fr}}
 </style>
 <section class="main-content customer-create-page" dir="rtl"><div class="container-fluid px-3 px-lg-5 py-4"><div class="customer-form-card bg-white mx-auto" style="max-width:1100px">
     <div class="customer-form-head"><h1 class="h3 font-weight-bold mb-2">نیا گاہک شامل کریں</h1><p class="mb-0">بنیادی معلومات، پیمائش اور سلائی کی پسند الگ مراحل میں درج کریں۔</p></div>
@@ -34,12 +36,13 @@
             </section>
 
             <section class="customer-step" data-step="2" aria-labelledby="customer-step-two">
-                <div class="customer-section">@include('customer.partials.measurement-template-selector', ['selectedTemplateId' => $measurementTemplates->firstWhere('is_default', true)?->id])<div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div><h2 id="customer-step-two" class="h5 font-weight-bold mb-1">بنیادی پیمائش</h2><p class="text-muted mb-0">تمام پیمائش ایک ہی اکائی میں درج کریں۔</p></div><span class="badge badge-light px-3 py-2">ضروری خانے *</span></div><div class="row">
+                <div class="customer-section">@include('customer.partials.measurement-template-selector', ['selectedTemplateId' => $measurementTemplates->firstWhere('is_default', true)?->id])<div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div><h2 id="customer-step-two" class="h5 font-weight-bold mb-1">لباس کی پیمائش</h2><p class="text-muted mb-0">بنیادی اور کاروبار کے خصوصی خانے ایک ہی جگہ درج کریں۔</p></div><span class="badge badge-light px-3 py-2">ضروری خانے *</span></div><div class="row">
                     @foreach(['length'=>'لمبائی','arms'=>'بازو','teraa'=>'تیرا','senaChorai'=>'سینہ چوڑائی','damanchorai'=>'دامن چوڑائی','shalwar'=>'شلوار','pancha'=>'پائنچہ','shalwarGheer'=>'شلوار گھیر','monda'=>'مونڈھا','chuta'=>'چوٹا'] as $name => $label)
                         <div class="col-sm-6 col-lg-4 form-group measurement-field"><label for="measurement-{{ $name }}">{{ $label }} <span class="text-danger">*</span></label><input id="measurement-{{ $name }}" type="number" step="0.01" min="0" class="form-control" name="{{ $name }}" value="{{ old($name) }}" required></div>
                     @endforeach
-                </div></div>
-                <div class="mt-4">@include('customer.partials.custom-measurements')</div>
+                </div>
+                @include('customer.partials.custom-measurements', ['embedded' => true])
+                </div>
                 <div class="step-actions"><button type="button" class="btn btn-outline-secondary previous-step"><i class="fas fa-arrow-right ml-1"></i> بنیادی معلومات</button><button type="button" class="btn btn-primary px-4 next-step">سلائی کی پسند <i class="fas fa-arrow-left mr-1"></i></button></div>
             </section>
 

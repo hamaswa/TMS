@@ -90,7 +90,7 @@
                     @endphp
                     <div class="measurement-grid">
                         @foreach($systemMeasurements as $name => [$label, $value])
-                            <div class="form-group edit-field mb-0">
+                            <div class="form-group edit-field mb-0" data-measurement-field="system.{{ $name }}">
                                 <label for="measurement-{{ $name }}">{{ $label }}</label>
                                 <div class="input-group">
                                     <input id="measurement-{{ $name }}" type="number" step="0.01" min="0" class="form-control" name="{{ $name }}" value="{{ old($name, $value) }}" dir="ltr">
@@ -99,17 +99,8 @@
                             </div>
                         @endforeach
                     </div>
+                    @include('customer.partials.custom-measurements', ['embedded' => true])
                 </section>
-
-                @if($measurementFields->isNotEmpty())
-                    <section class="edit-section">
-                        <div class="edit-section-heading mb-3">
-                            <div><h2>اضافی پیمائش</h2><p>آپ کے کاروبار کے بنائے ہوئے خصوصی پیمائشی خانے۔</p></div>
-                            <span class="section-icon"><i class="fas fa-sliders-h"></i></span>
-                        </div>
-                        @include('customer.partials.custom-measurements')
-                    </section>
-                @endif
 
                 <section class="edit-section">
                     <div class="edit-section-heading">

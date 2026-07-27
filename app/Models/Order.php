@@ -82,7 +82,17 @@ class Order extends Model
 
     public function nextStatuses(): array
     {
-        return match ($this->status) {
+        return array_column(self::nextStatusOptionsFor((string) $this->status), 'value');
+    }
+
+    public function nextStatusOptions(): array
+    {
+        return self::nextStatusOptionsFor((string) $this->status);
+    }
+
+    public static function nextStatusOptionsFor(string $status): array
+    {
+        $nextStatuses = match ($status) {
             'assigned' => ['cutting'],
             'cutting' => ['stitching'],
             'stitching' => ['trial'],
@@ -90,6 +100,16 @@ class Order extends Model
             'ready' => ['delivered'],
             default => [],
         };
+
+        return collect($nextStatuses)
+            ->map(fn (string $status) => [
+                'value' => $status,
+                'label' => $status === 'stitching' && in_array('ready', $nextStatuses, true)
+                    ? 'سلائی پر واپس (ترمیم / دوبارہ کام)'
+                    : (self::STATUS_LABELS[$status] ?? ucfirst($status)),
+            ])
+            ->values()
+            ->all();
     }
 
     public function tailorAmountDue(): float

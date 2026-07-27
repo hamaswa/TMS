@@ -101,6 +101,16 @@ class TailorJobLifecycleTest extends TestCase
         $this->assertSame('assigned', $order->fresh()->status);
     }
 
+    public function test_trial_rework_is_labelled_clearly_without_duplicate_status_options(): void
+    {
+        $options = Order::nextStatusOptionsFor('trial');
+
+        $this->assertSame(['stitching', 'ready'], array_column($options, 'value'));
+        $this->assertSame(count($options), count(array_unique(array_column($options, 'value'))));
+        $this->assertSame('سلائی پر واپس (ترمیم / دوبارہ کام)', $options[0]['label']);
+        $this->assertSame('تیار', $options[1]['label']);
+    }
+
     public function test_tailor_can_only_update_their_own_jobs_and_cannot_mark_delivery(): void
     {
         [, $tailor, $order] = $this->job(['status' => 'ready']);
