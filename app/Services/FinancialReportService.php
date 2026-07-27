@@ -13,6 +13,7 @@ use App\Models\StorefrontOrder;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\TailorRecord;
+use App\Models\TailorSecurityDepositTransaction;
 use App\Models\Transaction;
 use App\Models\Workers;
 use Carbon\CarbonInterface;
@@ -113,6 +114,22 @@ class FinancialReportService
         ]));
         $customerReceipts = (float) Transaction::where('userId', $userId)->whereIn('Order_type', $transactionTypes)
             ->whereBetween('created_at', [$from, $to])->sum('recivedPayment');
+        $securityDepositsReceived = $tailoringEnabled ? (float) TailorSecurityDepositTransaction::where('user_id', $userId)
+            ->where('transaction_type', TailorSecurityDepositTransaction::TYPE_RECEIVED)
+            ->whereBetween('transaction_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('amount') : 0;
+        $securityDepositsRefunded = $tailoringEnabled ? (float) TailorSecurityDepositTransaction::where('user_id', $userId)
+            ->where('transaction_type', TailorSecurityDepositTransaction::TYPE_REFUNDED)
+            ->whereBetween('transaction_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('amount') : 0;
+        $securityDepositsHeld = $tailoringEnabled
+            ? (float) TailorSecurityDepositTransaction::where('user_id', $userId)
+                ->where('transaction_date', '<=', $end->toDateString())
+                ->selectRaw("COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) AS balance", [
+                    TailorSecurityDepositTransaction::TYPE_RECEIVED,
+                ])
+                ->value('balance')
+            : 0;
         $supplierPayments = $clothingEnabled ? (float) SupplierPayment::where('user_id', $userId)->whereBetween('payment_date', [$start->toDateString(), $end->toDateString()])->sum('amount') : 0;
         $tailorPayments = $tailoringEnabled ? (float) TailorRecord::whereHas('tailor', fn ($query) => $query->where('user_id', $userId))
             ->whereBetween('created_at', [$from, $to])->sum('amount') : 0;
@@ -123,7 +140,8 @@ class FinancialReportService
             ->where('worker_ledger_entries.entry_type', 'payment')
             ->whereBetween('worker_ledger_entries.entry_date', [$start->toDateString(), $end->toDateString()])
             ->sum(DB::raw('ABS(worker_ledger_entries.amount)')) : 0;
-        $cashOut = $supplierPayments + $tailorPayments + $productionWorkerPayments + $monthlyExpenses + $dailyExpenses + $workerSalaries;
+        $cashIn = $customerReceipts + $securityDepositsReceived;
+        $cashOut = $supplierPayments + $tailorPayments + $productionWorkerPayments + $monthlyExpenses + $dailyExpenses + $workerSalaries + $securityDepositsRefunded;
 
         $receivablesQuery = $this->receivablesQuery($userId, $end, null, $modules);
         $payablesQuery = $this->payablesQuery($userId, $end, null, $modules);
@@ -155,19 +173,27 @@ class FinancialReportService
                 'total_revenue' => $totalRevenue,
                 'gross_profit' => $totalRevenue - $totalDirectCosts,
                 'net_profit' => $totalRevenue - $totalDirectCosts - $totalOperatingExpenses,
-                'cash_in' => $customerReceipts,
+                'cash_in' => $cashIn,
                 'cash_out' => $cashOut,
-                'net_cash_flow' => $customerReceipts - $cashOut,
+                'net_cash_flow' => $cashIn - $cashOut,
                 'receivables' => $receivablesTotal,
                 'payables' => $payablesTotal,
+                'security_deposits_held' => $securityDepositsHeld,
+                'security_deposits_received' => $securityDepositsReceived,
+                'security_deposits_refunded' => $securityDepositsRefunded,
                 'inventory_value' => $inventoryValue,
                 'purchases' => $purchaseValue,
                 'purchase_returns' => $purchaseReturns,
             ],
+            'cash_in_breakdown' => array_filter([
+                'گاہکوں سے وصولی' => $customerReceipts,
+                'درزیوں سے وصول شدہ سیکیورٹی ڈپازٹ' => $tailoringEnabled ? $securityDepositsReceived : null,
+            ], fn ($value) => $value !== null),
             'cash_out_breakdown' => array_filter([
                 'سپلائر ادائیگیاں' => $clothingEnabled ? $supplierPayments : null,
                 'درزی ادائیگیاں' => $tailoringEnabled ? $tailorPayments : null,
                 'پروڈکشن ورکرز کو ادائیگیاں' => $tailoringEnabled ? $productionWorkerPayments : null,
+                'درزیوں کو واپس کی گئی سیکیورٹی' => $tailoringEnabled ? $securityDepositsRefunded : null,
             ], fn ($value) => $value !== null) + $operatingExpenses,
             'receivables' => $receivables,
             'payables' => $payables,

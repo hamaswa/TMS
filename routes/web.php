@@ -303,6 +303,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::get('tailor-rates/{id}', [TailorController::class, 'tailorRates'])->name('tailor-rates');
         Route::post('tailor/addRecord/{id}', [TailorController::class, 'addRecord'])->name('tailor.addRecord');
         Route::post('tailor/addAdvanceRecord/{id}', [TailorController::class, 'addAdnvanceRecord'])->name('tailor.addAdvanceRecord');
+        Route::post('tailor/security-deposit/{id}', [TailorController::class, 'updateSecurityDeposit'])->name('tailor.securityDeposit');
 
         // new route
         Route::post('tailor/cutAdvanceRecord/{id}', [TailorController::class, 'cutAdvanceRecord'])->name('tailor.cutAdvanceRecord');

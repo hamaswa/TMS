@@ -35,7 +35,8 @@
                                         <tr>
                                             <th scope="col" class="no-sort">نام</th>
                                             <th scope="col" class="no-sort">نمبر</th>
-                                            <th scope="col" class="no-sort">ایڈوانس</th>
+                                            <th scope="col" class="no-sort">سیکیورٹی ڈپازٹ</th>
+                                            <th scope="col" class="no-sort">درزی کو دیا گیا ایڈوانس</th>
                                             <th scope="col" class="no-sort">حساب اور لین دین</th>
                                             <th scope="col" class="no-sort">نرخ</th>
                                             <th scope="col" class="no-sort">آرڈرز اور عمل</th>
@@ -46,9 +47,13 @@
                                         <tr>
                                             <td>{{$tailor->name}}</td>
                                             <td>{{$tailor->phone_number1}}</td>
+                                            <td>
+                                                روپے {{ number_format((float) ($tailor->security_deposit ?? 0), 2) }}
+                                                <button type="button" class="btn btn-outline-success btn-sm d-block mt-1" data-toggle="modal" data-target="#securityDepositModal_{{$tailor->id}}">سیکیورٹی کا لین دین</button>
+                                            </td>
                                             <td>روپے {{ number_format((float) ($tailor->advance ?? 0), 2) }}</td>
                                             <td>
-                                                <a type="button" class="btn btn-success btn-sm mb-1" data-toggle="modal" data-target="#addRecordModal_{{$tailor->id}}">ایڈوانس دیں</a>
+                                                <button type="button" class="btn btn-success btn-sm mb-1" data-toggle="modal" data-target="#addRecordModal_{{$tailor->id}}">درزی کو ایڈوانس دیں</button>
                                                 <a class="btn btn-primary btn-sm mb-1" href="{{url('admin/tailor-report',$tailor->id)}}">حساب دیکھیں</a>
                                             </td>
                                             <td>
@@ -80,9 +85,39 @@
                                                 <div class="form-group">
                                                     <label for="advance_amount_{{$tailor->id}}">ایڈوانس رقم</label>
                                                     <input id="advance_amount_{{$tailor->id}}" type="number" min="0.01" step="0.01" name="amount" class="form-control" required>
-                                                    <small class="form-text text-muted">یہ رقم موجودہ ایڈوانس میں جمع ہو جائے گی اور لین دین میں محفوظ ہوگی۔</small>
+                                                    <small class="form-text text-muted">یہ رقم دکان درزی کو دے رہی ہے۔ اسے درزی کے قابلِ وصول ایڈوانس میں شامل کر کے آئندہ اجرت سے واپس لیا جا سکتا ہے۔ یہ سیکیورٹی ڈپازٹ نہیں ہے۔</small>
                                                 </div>
                                                 <button type="submit" class="btn btn-primary">ایڈوانس محفوظ کریں</button>
+                                            </form>
+                                        </div>
+                                    </div></div>
+                                </div>
+                                <div class="modal fade" id="securityDepositModal_{{$tailor->id}}" tabindex="-1" role="dialog" aria-labelledby="securityDepositModalLabel_{{$tailor->id}}" aria-hidden="true">
+                                    <div class="modal-dialog" role="document"><div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="securityDepositModalLabel_{{$tailor->id}}">{{ $tailor->name }} کی سیکیورٹی ڈپازٹ</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں">&times;</button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p class="alert alert-info text-right" dir="rtl">سیکیورٹی ڈپازٹ درزی سے وصول کی گئی امانتی رقم ہے۔ درزی کو دیا گیا ایڈوانس الگ حساب میں رہتا ہے۔</p>
+                                            <form method="post" action="{{ route('admin.tailor.securityDeposit', $tailor->id) }}">
+                                                @csrf
+                                                <div class="form-group">
+                                                    <label for="security_type_{{$tailor->id}}">لین دین</label>
+                                                    <select id="security_type_{{$tailor->id}}" name="transaction_type" class="form-control" required>
+                                                        <option value="received">درزی سے مزید رقم وصول کی</option>
+                                                        <option value="refunded">درزی کو سیکیورٹی واپس کی</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="security_amount_{{$tailor->id}}">رقم</label>
+                                                    <input id="security_amount_{{$tailor->id}}" type="number" min="0.01" step="0.01" name="amount" class="form-control" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="security_note_{{$tailor->id}}">نوٹ</label>
+                                                    <input id="security_note_{{$tailor->id}}" type="text" maxlength="500" name="note" class="form-control" placeholder="مثلاً رسید نمبر یا واپسی کی وجہ">
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">سیکیورٹی ریکارڈ محفوظ کریں</button>
                                             </form>
                                         </div>
                                     </div></div>

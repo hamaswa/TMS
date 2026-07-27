@@ -28,6 +28,26 @@
                                         <label for="tailor_contact">فون نمبر</label>
                                         <input id="tailor_contact" type="tel" inputmode="tel" class="form-control" name="contact" value="{{ old('contact') }}" placeholder="مثلاً 03001234567" required>
                                     </div>
+                                    <div class="col-12 mt-3">
+                                        <div class="card border-success">
+                                            <div class="card-body">
+                                                <h2 class="h6 text-right">ابتدائی سیکیورٹی ڈپازٹ</h2>
+                                                <p class="small text-muted text-right mb-3" dir="rtl">
+                                                    یہ وہ رقم ہے جو دکان درزی سے وصول کر کے بطور امانت اپنے پاس رکھتی ہے۔ یہ درزی کو دیا گیا ایڈوانس نہیں اور اجرت سے منہا نہیں ہوگی۔
+                                                </p>
+                                                <div class="row">
+                                                    <div class="col-sm-6">
+                                                        <label for="security_deposit">وصول شدہ سیکیورٹی رقم</label>
+                                                        <input id="security_deposit" type="number" min="0" step="0.01" class="form-control" name="security_deposit" value="{{ old('security_deposit', 0) }}">
+                                                    </div>
+                                                    <div class="col-sm-6">
+                                                        <label for="security_deposit_note">نوٹ</label>
+                                                        <input id="security_deposit_note" type="text" maxlength="500" class="form-control" name="security_deposit_note" value="{{ old('security_deposit_note') }}" placeholder="مثلاً نقد وصول، رسید نمبر 12">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="col-12 mt-4">
                                         <div class="alert alert-info text-right mb-2" dir="rtl">
                                             <strong>آرڈر فوراً بنانے کے لیے ابھی ایک بنیادی سلائی اجرت بھی درج کریں۔</strong>

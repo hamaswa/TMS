@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Business;
 use App\Models\Tailor;
 use App\Models\TailorRecord;
+use App\Models\TailorSecurityDepositTransaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -22,7 +23,9 @@ class TailorManagementWorkflowTest extends TestCase
         $this->actingAs($owner)->get(route('admin.Tailor.create'))
             ->assertOk()
             ->assertSeeText('پورٹل پاس ورڈ')
-            ->assertSeeText('فون نمبر');
+            ->assertSeeText('فون نمبر')
+            ->assertSeeText('ابتدائی سیکیورٹی ڈپازٹ')
+            ->assertSeeText('یہ درزی کو دیا گیا ایڈوانس نہیں');
 
         $payload = [
             'name' => 'محمد وقاص',
@@ -68,6 +71,76 @@ class TailorManagementWorkflowTest extends TestCase
         $this->actingAs($otherOwner)->post(route('admin.tailor.addAdvanceRecord', $tailor), ['amount' => 100])
             ->assertNotFound();
         $this->assertEquals(700, (float) $tailor->fresh()->advance);
+    }
+
+    public function test_security_deposit_received_from_tailor_is_separate_from_later_advance_paid_to_tailor(): void
+    {
+        $owner = $this->owner();
+
+        $this->actingAs($owner)->post(route('admin.Tailor.store'), [
+            'name' => 'محمد وقاص',
+            'contact' => '03005550123',
+            'password' => 'Waqas@2026',
+            'security_deposit' => 3000,
+            'security_deposit_note' => 'رسید نمبر 12',
+            'initial_rate_label' => 'معیاری سلائی',
+            'initial_rate_price' => 500,
+        ])->assertRedirect('admin/Tailor');
+
+        $tailor = Tailor::where('user_id', $owner->id)->firstOrFail();
+        $this->assertEquals(3000, (float) $tailor->security_deposit);
+        $this->assertEquals(0, (float) $tailor->advance);
+        $this->assertDatabaseHas('tailor_security_deposit_transactions', [
+            'tailor_id' => $tailor->id,
+            'user_id' => $owner->id,
+            'transaction_type' => TailorSecurityDepositTransaction::TYPE_RECEIVED,
+            'amount' => 3000,
+            'note' => 'رسید نمبر 12',
+        ]);
+        $this->assertDatabaseMissing('tailor_records', [
+            'tailor_id' => $tailor->id,
+            'comment' => 'advance',
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.tailor.addAdvanceRecord', $tailor), [
+            'amount' => 800,
+        ])->assertRedirect();
+
+        $tailor->refresh();
+        $this->assertEquals(3000, (float) $tailor->security_deposit);
+        $this->assertEquals(800, (float) $tailor->advance);
+        $this->assertDatabaseHas('tailor_records', [
+            'tailor_id' => $tailor->id,
+            'comment' => 'advance',
+            'amount' => 800,
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.tailor.securityDeposit', $tailor), [
+            'transaction_type' => TailorSecurityDepositTransaction::TYPE_REFUNDED,
+            'amount' => 1000,
+            'note' => 'جزوی واپسی',
+        ])->assertRedirect();
+
+        $tailor->refresh();
+        $this->assertEquals(2000, (float) $tailor->security_deposit);
+        $this->assertEquals(800, (float) $tailor->advance);
+
+        $this->actingAs($owner)->post(route('admin.tailor.securityDeposit', $tailor), [
+            'transaction_type' => TailorSecurityDepositTransaction::TYPE_REFUNDED,
+            'amount' => 2500,
+        ])->assertSessionHasErrors('amount');
+        $this->assertEquals(2000, (float) $tailor->fresh()->security_deposit);
+
+        $this->actingAs($owner)->get(route('admin.Tailor.index'))
+            ->assertOk()
+            ->assertSeeText('سیکیورٹی ڈپازٹ')
+            ->assertSeeText('درزی کو دیا گیا ایڈوانس');
+
+        $this->actingAs($owner)->get(route('admin.tailor-report', $tailor))
+            ->assertOk()
+            ->assertSeeText('دکان کے پاس سیکیورٹی ڈپازٹ')
+            ->assertSeeText('درزی کو دیا گیا قابلِ وصول ایڈوانس')
+            ->assertSeeText('جزوی واپسی');
     }
 
     public function test_report_transactions_update_advance_only_for_advance_type(): void

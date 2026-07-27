@@ -10,6 +10,7 @@ use App\Models\Business;
 use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\TailorRecord;
+use App\Models\TailorSecurityDepositTransaction;
 use App\Models\Tailorsalary;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use App\Services\ProductionWorkforceService;
 
 
@@ -150,6 +152,8 @@ class TailorController extends Controller
             'tailor_rates' => ['nullable', 'string'],
             'initial_rate_label' => ['nullable', 'required_with:initial_rate_price', 'string', 'max:100'],
             'initial_rate_price' => ['nullable', 'required_with:initial_rate_label', 'numeric', 'min:0.01', 'max:9999999.99'],
+            'security_deposit' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'security_deposit_note' => ['nullable', 'string', 'max:500'],
         ], [
             'contact.unique' => 'اس دکان میں یہ فون نمبر پہلے سے کسی درزی کے نام پر موجود ہے۔',
         ]);
@@ -160,7 +164,18 @@ class TailorController extends Controller
                 'user_id' => $ownerId,
                 'phone_number1' => $validated['contact'],
                 'password' => Hash::make($validated['password']),
+                'security_deposit' => $validated['security_deposit'] ?? 0,
             ]);
+
+            if ((float) ($validated['security_deposit'] ?? 0) > 0) {
+                $obj->securityDepositTransactions()->create([
+                    'user_id' => $ownerId,
+                    'transaction_type' => TailorSecurityDepositTransaction::TYPE_RECEIVED,
+                    'amount' => $validated['security_deposit'],
+                    'transaction_date' => now()->toDateString(),
+                    'note' => $validated['security_deposit_note'] ?? 'درزی شامل کرتے وقت وصول شدہ سیکیورٹی رقم',
+                ]);
+            }
 
             if (!empty($validated['tailor_rates'])) {
                 foreach (explode(',', $validated['tailor_rates']) as $rate) {
@@ -283,6 +298,9 @@ class TailorController extends Controller
     public function tailorReport($id, Request $request)
     {
         $tailor = $this->ownedTailor($id);
+        $tailor->load(['securityDepositTransactions' => fn ($query) => $query
+            ->latest('transaction_date')
+            ->latest('id')]);
 
         $filterType = $request->validate([
             'filterType' => ['nullable', 'in:weekly,monthly'],
@@ -383,6 +401,48 @@ class TailorController extends Controller
         });
 
         return redirect()->back()->with('insert', 'درزی کا ایڈوانس محفوظ کر دیا گیا ہے۔');
+    }
+
+    public function updateSecurityDeposit(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'transaction_type' => ['required', Rule::in([
+                TailorSecurityDepositTransaction::TYPE_RECEIVED,
+                TailorSecurityDepositTransaction::TYPE_REFUNDED,
+            ])],
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:999999999999.99'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        DB::transaction(function () use ($validated, $id) {
+            $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())
+                ->lockForUpdate()
+                ->findOrFail($id);
+            $currentDeposit = (float) $tailor->security_deposit;
+            $amount = (float) $validated['amount'];
+
+            if ($validated['transaction_type'] === TailorSecurityDepositTransaction::TYPE_REFUNDED
+                && $amount > $currentDeposit) {
+                throw ValidationException::withMessages([
+                    'amount' => 'واپس کی جانے والی رقم موجودہ سیکیورٹی ڈپازٹ سے زیادہ نہیں ہو سکتی۔',
+                ]);
+            }
+
+            $newDeposit = $validated['transaction_type'] === TailorSecurityDepositTransaction::TYPE_RECEIVED
+                ? $currentDeposit + $amount
+                : $currentDeposit - $amount;
+
+            $tailor->update(['security_deposit' => $newDeposit]);
+            $tailor->securityDepositTransactions()->create([
+                'user_id' => Auth::user()->businessOwnerId(),
+                'transaction_type' => $validated['transaction_type'],
+                'amount' => $amount,
+                'transaction_date' => now()->toDateString(),
+                'note' => $validated['note'] ?? null,
+            ]);
+        });
+
+        return redirect()->back()->with('insert', 'درزی کی سیکیورٹی ڈپازٹ کا ریکارڈ محفوظ کر دیا گیا ہے۔');
     }
 
     public function cutAdvanceRecord(Request $request, $id)

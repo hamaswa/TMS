@@ -14,7 +14,40 @@
                 <div class="row">
                     <div class="col-md-12">
                         <h5 class="text-right">درزی کا نام: {{ $tailor->name }}</h5>
-                        <h5 class="text-right">موجودہ ایڈوانس: روپے {{ number_format((float) $tailor->advance, 2) }}</h5>
+                        <div class="row text-right" dir="rtl">
+                            <div class="col-md-6 mb-2">
+                                <div class="alert alert-success mb-0">
+                                    <strong>دکان کے پاس سیکیورٹی ڈپازٹ:</strong>
+                                    روپے {{ number_format((float) $tailor->security_deposit, 2) }}
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <div class="alert alert-warning mb-0">
+                                    <strong>درزی کو دیا گیا قابلِ وصول ایڈوانس:</strong>
+                                    روپے {{ number_format((float) $tailor->advance, 2) }}
+                                </div>
+                            </div>
+                        </div>
+                        @if($tailor->securityDepositTransactions->isNotEmpty())
+                            <details class="text-right mb-3" dir="rtl">
+                                <summary class="font-weight-bold">سیکیورٹی ڈپازٹ کی تفصیل</summary>
+                                <div class="table-responsive mt-2">
+                                    <table class="table table-sm table-bordered">
+                                        <thead><tr><th>تاریخ</th><th>قسم</th><th>رقم</th><th>نوٹ</th></tr></thead>
+                                        <tbody>
+                                        @foreach($tailor->securityDepositTransactions as $depositTransaction)
+                                            <tr>
+                                                <td>{{ $depositTransaction->transaction_date->format('d-m-Y') }}</td>
+                                                <td>{{ $depositTransaction->transaction_type === 'received' ? 'درزی سے وصولی' : 'درزی کو واپسی' }}</td>
+                                                <td>روپے {{ number_format((float) $depositTransaction->amount, 2) }}</td>
+                                                <td>{{ $depositTransaction->note ?: '—' }}</td>
+                                            </tr>
+                                        @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </details>
+                        @endif
                         <label for="filterType">مدت منتخب کریں:</label>
                         <select id="filterType" name="filterType">
                             <option value="weekly" {{ $filterType == 'weekly' ? 'selected' : '' }}>موجودہ ہفتہ</option>

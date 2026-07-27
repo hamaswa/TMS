@@ -17,9 +17,14 @@ class Tailor extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','phone_number1','updated_at','user_id','email','password','advance'];
+    protected $fillable = ['name','phone_number1','updated_at','user_id','email','password','advance','security_deposit'];
 
     protected $hidden = ['password'];
+
+    protected $casts = [
+        'advance' => 'decimal:2',
+        'security_deposit' => 'decimal:2',
+    ];
 
     public function orders()
     {
@@ -49,6 +54,11 @@ class Tailor extends Model
     public function productionWorker()
     {
         return $this->hasOne(ProductionWorker::class, 'legacy_tailor_id');
+    }
+
+    public function securityDepositTransactions()
+    {
+        return $this->hasMany(TailorSecurityDepositTransaction::class);
     }
 
 }

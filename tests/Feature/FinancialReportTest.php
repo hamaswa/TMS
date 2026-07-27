@@ -20,6 +20,7 @@ use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\Tailor;
 use App\Models\TailorRecord;
+use App\Models\TailorSecurityDepositTransaction;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WorkerLedgerEntry;
@@ -69,6 +70,14 @@ class FinancialReportTest extends TestCase
         DaliyExpenses::create(['user_id' => $owner->id, 'Expense_name' => 'Tea', 'Expense_payment' => 20, 'created_at' => $date]);
         Workers::create(['user_id' => $owner->id, 'Worker_Name' => 'Helper', 'Worker_salary' => 30, 'dateentered' => $date]);
         TailorRecord::create(['tailor_id' => $tailor->id, 'order_id' => $order->id, 'amount' => 100, 'comment' => 'salary', 'created_at' => $date]);
+        TailorSecurityDepositTransaction::create([
+            'tailor_id' => $tailor->id, 'user_id' => $owner->id, 'transaction_type' => 'received',
+            'amount' => 1000, 'transaction_date' => $date, 'created_at' => $date,
+        ]);
+        TailorSecurityDepositTransaction::create([
+            'tailor_id' => $tailor->id, 'user_id' => $owner->id, 'transaction_type' => 'refunded',
+            'amount' => 300, 'transaction_date' => $date, 'created_at' => $date,
+        ]);
 
         $cutter = ProductionWorker::create([
             'user_id' => $owner->id, 'name' => 'Report Cutter', 'relationship_type' => 'contractor', 'active' => true,
@@ -109,9 +118,12 @@ class FinancialReportTest extends TestCase
         $this->assertEquals(1600, $report['summary']['total_revenue']);
         $this->assertEquals(890, $report['summary']['gross_profit']);
         $this->assertEquals(690, $report['summary']['net_profit']);
-        $this->assertEquals(700, $report['summary']['cash_in']);
-        $this->assertEquals(420, $report['summary']['cash_out']);
-        $this->assertEquals(280, $report['summary']['net_cash_flow']);
+        $this->assertEquals(1700, $report['summary']['cash_in']);
+        $this->assertEquals(720, $report['summary']['cash_out']);
+        $this->assertEquals(980, $report['summary']['net_cash_flow']);
+        $this->assertEquals(700, $report['summary']['security_deposits_held']);
+        $this->assertEquals(1000, $report['cash_in_breakdown']['درزیوں سے وصول شدہ سیکیورٹی ڈپازٹ']);
+        $this->assertEquals(300, $report['cash_out_breakdown']['درزیوں کو واپس کی گئی سیکیورٹی']);
         $this->assertEquals(50, $report['direct_costs']['پروڈکشن ورکرز کی اجرت']);
         $this->assertEquals(20, $report['cash_out_breakdown']['پروڈکشن ورکرز کو ادائیگیاں']);
         $this->assertEquals(300, $report['summary']['receivables']);
