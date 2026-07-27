@@ -26,6 +26,8 @@ class TailorPortalTest extends TestCase
             ->assertSeeText('درزی لاگ اِن')
             ->assertSeeText('دکان کا کوڈ')
             ->assertSee('lang="ur"', false)
+            ->assertSee('autocomplete="tel"', false)
+            ->assertDontSee('autocomplete="username"', false)
             ->assertDontSeeText('Tailor Login');
 
         $this->post('/tailor-login', [

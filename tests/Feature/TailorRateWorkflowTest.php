@@ -97,6 +97,33 @@ class TailorRateWorkflowTest extends TestCase
             ->assertSee('value="'.$rateId.'-900" selected', false);
     }
 
+    public function test_legacy_rate_without_an_option_still_renders_on_the_rate_page(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $tailor = Tailor::create([
+            'name' => 'Legacy Rate Tailor',
+            'phone_number1' => '03001230012',
+            'password' => bcrypt('QaTailor@2026'),
+            'user_id' => $owner->id,
+        ]);
+        DB::table('tailorsalaries')->insert([
+            'tailor_id' => $tailor->id,
+            'options_id' => null,
+            'type' => 'Mens suit',
+            'price' => 900,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-rates', $tailor))
+            ->assertOk()
+            ->assertSeeText('Mens suit')
+            ->assertSeeText('900.00');
+    }
+
     public function test_order_balance_is_calculated_on_the_server_and_overpayment_is_rejected(): void
     {
         Notification::fake();

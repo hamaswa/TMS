@@ -47,7 +47,7 @@
                                                     <tr class="f">
                                                         <td>{{ $loop->iteration }}</td>
                                                         <td>روپے {{ number_format((float) $rate->price, 2) }}</td>
-                                                        <td>{{ $rate->options->Name }}</td>
+                                                        <td>{{ $rate->options?->Name ?: ($rate->type ?: 'سلائی') }}</td>
                                                         <td>{{ date('d-m-Y', strtotime($rate->created_at)) }}</td>
                                                         <td>
                                                             <form action="{{ route('admin.tailor-rates.delete', $rate->id) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ اجرت حذف کرنا چاہتے ہیں؟">

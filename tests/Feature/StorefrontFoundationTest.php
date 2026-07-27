@@ -80,6 +80,20 @@ class StorefrontFoundationTest extends TestCase
         $this->get(route('storefront.index'))->assertOk()->assertSeeText('صدیقی ٹیلرز اینڈ فیبرکس');
     }
 
+    public function test_first_time_storefront_disables_module_links_until_basic_details_are_saved(): void
+    {
+        [$owner] = $this->business(true, true);
+
+        $response = $this->actingAs($owner)->get(route('admin.storefront.edit'));
+
+        $response->assertOk()
+            ->assertSeeText('پہلے بنیادی معلومات محفوظ کریں')
+            ->assertSeeText('دکان مکمل کرنے کے مراحل')
+            ->assertSeeText('0 از 4 مراحل مکمل')
+            ->assertDontSee(route('admin.storefront.module-settings.edit', 'tailoring'), false)
+            ->assertDontSee(route('admin.storefront.module-settings.edit', 'clothing'), false);
+    }
+
     public function test_client_cannot_publish_a_module_the_business_does_not_have(): void
     {
         [$owner] = $this->business(true, false);

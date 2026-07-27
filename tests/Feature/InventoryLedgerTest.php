@@ -72,6 +72,23 @@ class InventoryLedgerTest extends TestCase
                 && $sales->first()->items_count === 1);
     }
 
+    public function test_counter_sale_form_uses_responsive_fields_and_one_customer_section(): void
+    {
+        [$owner] = $this->stock(10, 100);
+
+        $response = $this->actingAs($owner)->get(route('admin.sellCloth'));
+
+        $response->assertOk()
+            ->assertSeeText('گاہک کی معلومات')
+            ->assertSeeText('مزید کپڑا شامل کریں')
+            ->assertSee('assets/js/form-accessibility.js', false)
+            ->assertDontSee('width: 120%', false)
+            ->assertDontSee('width: 150%', false);
+
+        $this->assertSame(1, substr_count($response->getContent(), 'name="c_name"'));
+        $this->assertSame(1, substr_count($response->getContent(), 'name="phone"'));
+    }
+
     public function test_counter_sale_derives_balance_server_side_and_receipt_works_without_settings(): void
     {
         [$owner, $cloth, $color] = $this->stock(10, 100);

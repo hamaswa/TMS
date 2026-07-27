@@ -42,7 +42,7 @@
                 </div>
                 <div class="form-group">
                     <label for="contact">فون نمبر</label>
-                    <input id="contact" type="tel" inputmode="tel" class="form-control" name="contact" value="{{ old('contact') }}" maxlength="50" autocomplete="username" placeholder="مثلاً 03001234567" required>
+                    <input id="contact" type="tel" inputmode="tel" class="form-control" name="contact" value="{{ old('contact') }}" maxlength="50" autocomplete="tel" placeholder="مثلاً 03001234567" required>
                 </div>
                 <div class="form-group">
                     <label for="password">پاس ورڈ</label>

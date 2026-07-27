@@ -13,6 +13,8 @@
         .module-choice:hover{border-color:#14805e}.module-choice input{margin-left:.55rem}
         .publish-state{border-radius:999px;padding:.45rem .8rem;font-weight:700}
         .preview-box{background:#eef8f4;border:1px dashed #78b89e;border-radius:14px;padding:1rem;word-break:break-word}
+        .onboarding-step{display:flex;align-items:flex-start;gap:.7rem;padding:.65rem 0;border-bottom:1px solid #edf1f3}
+        .onboarding-step:last-child{border-bottom:0}.onboarding-step i{margin-top:.25rem}
         .sticky-actions{position:sticky;bottom:0;background:rgba(255,255,255,.96);border-top:1px solid #e1e9ed;padding:1rem;z-index:10}
         @media(max-width:767px){.storefront-hero{border-radius:15px;padding:1.25rem}.storefront-card .card-body{padding:1rem}.sticky-actions .btn{width:100%;margin:.25rem 0!important}}
     </style>
@@ -65,18 +67,32 @@
                             <div class="row">
                                 @if($business->tailoring_enabled)
                                 <div class="col-md-6 mb-2">
+                                    @if($storefront->exists)
                                     <a class="module-choice d-flex text-decoration-none h-100" href="{{ route('admin.storefront.module-settings.edit', 'tailoring') }}">
                                         <i class="fas fa-cut text-primary ml-3 mt-1"></i>
                                         <span><strong class="d-block text-dark">ٹیلرنگ کی ترتیب</strong><small class="text-muted">درخواستیں، ادائیگی، پیمائش/وصولی اور فراہمی</small></span>
                                     </a>
+                                    @else
+                                    <div class="module-choice d-flex h-100 text-muted" aria-disabled="true">
+                                        <i class="fas fa-cut ml-3 mt-1"></i>
+                                        <span><strong class="d-block">ٹیلرنگ کی ترتیب</strong><small>پہلے بنیادی معلومات محفوظ کریں، پھر ٹیلرنگ کی ترتیب دستیاب ہوگی۔</small></span>
+                                    </div>
+                                    @endif
                                 </div>
                                 @endif
                                 @if($business->clothing_enabled)
                                 <div class="col-md-6 mb-2">
+                                    @if($storefront->exists)
                                     <a class="module-choice d-flex text-decoration-none h-100" href="{{ route('admin.storefront.module-settings.edit', 'clothing') }}">
                                         <i class="fas fa-shopping-bag text-success ml-3 mt-1"></i>
                                         <span><strong class="d-block text-dark">کپڑوں کی دکان کی ترتیب</strong><small class="text-muted">کیٹلاگ/آرڈر، ادائیگی، وصولی اور فراہمی</small></span>
                                     </a>
+                                    @else
+                                    <div class="module-choice d-flex h-100 text-muted" aria-disabled="true">
+                                        <i class="fas fa-shopping-bag ml-3 mt-1"></i>
+                                        <span><strong class="d-block">کپڑوں کی دکان کی ترتیب</strong><small>پہلے بنیادی معلومات محفوظ کریں، پھر کپڑوں کی دکان کی ترتیب دستیاب ہوگی۔</small></span>
+                                    </div>
+                                    @endif
                                 </div>
                                 @endif
                             </div>
@@ -210,6 +226,32 @@
                 </div>
 
                 <div class="col-lg-4">
+                    @php
+                        $hasPublicContact = filled($storefront->public_phone) || filled($storefront->public_email) || filled($storefront->address);
+                        $hasPublishedContent = ($storefront->published_clothing_listings_count ?? 0) > 0
+                            || ($storefront->published_tailoring_services_count ?? 0) > 0;
+                        $onboardingSteps = [
+                            ['done' => $storefront->exists, 'label' => 'بنیادی معلومات محفوظ کریں'],
+                            ['done' => $hasPublicContact, 'label' => 'رابطہ یا پتہ درج کریں'],
+                            ['done' => $hasPublishedContent, 'label' => 'کم از کم ایک پروڈکٹ یا خدمت شائع کریں'],
+                            ['done' => (bool) $storefront->is_published, 'label' => 'عوامی دکان شائع کریں'],
+                        ];
+                        $completedOnboardingSteps = collect($onboardingSteps)->where('done', true)->count();
+                    @endphp
+                    <div class="card storefront-card mb-4">
+                        <div class="card-header">
+                            <h2 class="h5 mb-1">دکان مکمل کرنے کے مراحل</h2>
+                            <p class="small text-muted mb-0">{{ $completedOnboardingSteps }} از {{ count($onboardingSteps) }} مراحل مکمل</p>
+                        </div>
+                        <div class="card-body py-2">
+                            @foreach($onboardingSteps as $step)
+                                <div class="onboarding-step">
+                                    <i class="fas {{ $step['done'] ? 'fa-check-circle text-success' : 'fa-circle text-muted' }}" aria-hidden="true"></i>
+                                    <span class="{{ $step['done'] ? 'text-dark' : 'text-muted' }}">{{ $step['label'] }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
                     <div class="card storefront-card mb-4">
                         <div class="card-header"><h2 class="h5 mb-0">عوامی لنک</h2></div>
                         <div class="card-body">

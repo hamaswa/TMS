@@ -16,6 +16,12 @@ class AdminStorefrontController extends Controller
     public function edit()
     {
         [$business, $storefront] = $this->storefrontForCurrentBusiness();
+        if ($storefront->exists) {
+            $storefront->loadCount([
+                'clothingListings as published_clothing_listings_count' => fn ($query) => $query->where('is_published', true),
+                'tailoringServices as published_tailoring_services_count' => fn ($query) => $query->where('is_published', true),
+            ]);
+        }
 
         return view('storefront.admin.edit', compact('business', 'storefront'));
     }
