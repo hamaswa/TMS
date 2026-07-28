@@ -71,6 +71,7 @@ class BusinessActivityLog extends Model
             'admin.purchases.return' => 'خریداری کی واپسی درج کی',
             'admin.inventory-ledger.adjust' => 'اسٹاک کی مقدار درست کی',
             'admin.stock.store' => 'نئی فروخت درج کی',
+            'admin.sale.destroy' => 'فروخت منسوخ کر کے کھاتہ واپس کیا',
             'admin.tailor-jobs.status' => 'سلائی کام کی حالت تبدیل کی',
             'admin.tailor-jobs.payment' => 'درزی کی ادائیگی درج کی',
             'admin.tailor-jobs.retry' => 'سلائی کام دوبارہ شروع کیا',

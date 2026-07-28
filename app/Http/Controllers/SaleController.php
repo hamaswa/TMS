@@ -18,7 +18,7 @@ class SaleController extends Controller
 {
     public function index()
     {
-        $sales = Sale::with(['customer', 'detail'])
+        $sales = Sale::with(['customer', 'detail', 'transaction'])
             ->where('user_id', Auth::user()->businessOwnerId())
             ->latest()
             ->get();
@@ -36,7 +36,10 @@ class SaleController extends Controller
     public function show($id)
     {
         $sale = $this->ownedSale($id)->load('detail');
-        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('Order_type', 'Sale')->where('sale_id', $id)->get();
+        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())
+            ->where('sale_id', $id)
+            ->orderBy('id')
+            ->get();
 
         // dd($transaction);
         return view('sale.show', compact('sale', 'transaction'));
@@ -86,6 +89,7 @@ class SaleController extends Controller
     public function edit($id)
     {
         $sales = $this->ownedSale($id)->load('detail');
+        abort_if($sales->status === 'cancelled', 422, 'منسوخ شدہ فروخت تبدیل نہیں کی جا سکتی۔');
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
         $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $id)->get();
 
@@ -104,6 +108,7 @@ class SaleController extends Controller
     {
         $validated = $this->validateSale($request);
         $sale = $this->ownedSale($id);
+        abort_if($sale->status === 'cancelled', 422, 'منسوخ شدہ فروخت تبدیل نہیں کی جا سکتی۔');
         $customer = $this->ownedCustomer($validated['customer_id']);
 
         DB::transaction(function () use ($validated, $sale, $customer) {
@@ -134,16 +139,65 @@ class SaleController extends Controller
         return redirect(url('admin/sale/print', [$id]));
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $sale = $this->ownedSale($id);
+        $validated = $request->validate([
+            'cancellation_reason' => ['required', 'string', 'min:5', 'max:1000'],
+            'refund_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'refund_reference' => ['nullable', 'string', 'max:255'],
+        ]);
+        $ownerId = Auth::user()->businessOwnerId();
 
-        DB::transaction(function () use ($sale) {
-            Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $sale->id)->delete();
-            $sale->delete();
+        DB::transaction(function () use ($validated, $id, $ownerId) {
+            $sale = Sale::where('user_id', $ownerId)->lockForUpdate()->findOrFail($id);
+            if ($sale->status === 'cancelled') {
+                throw ValidationException::withMessages([
+                    'cancellation_reason' => 'یہ فروخت پہلے ہی منسوخ کی جا چکی ہے۔',
+                ]);
+            }
+
+            $original = Transaction::where('userId', $ownerId)
+                ->where('sale_id', $sale->id)
+                ->where('Order_type', 'Sale')
+                ->lockForUpdate()
+                ->first();
+            $received = (float) ($original?->recivedPayment ?? 0);
+            $balance = (float) ($original?->remainingBalance ?? 0);
+            $refundMethod = $validated['refund_method'] ?? null;
+
+            if ($received > 0 && blank($refundMethod)) {
+                throw ValidationException::withMessages([
+                    'refund_method' => 'وصول شدہ رقم واپس کرنے کا طریقہ منتخب کریں۔',
+                ]);
+            }
+            if ($received > 0 && PaymentMethods::requiresReference($refundMethod) && blank($validated['refund_reference'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'refund_reference' => 'منتخب رقم واپسی کے طریقے کا حوالہ نمبر درج کریں۔',
+                ]);
+            }
+
+            Transaction::create([
+                'remainingBalance' => -$balance,
+                'recivedPayment' => -$received,
+                'Order_type' => 'Sale Cancellation',
+                'sale_id' => $sale->id,
+                'customerId' => $sale->customer_id ?? $original?->customerId,
+                'userId' => $ownerId,
+                'payment_method' => $refundMethod ?? $original?->payment_method ?? 'cash',
+                'payment_reference' => $validated['refund_reference'] ?? null,
+                'paid_on' => now()->toDateString(),
+                'comment' => 'فروخت منسوخی: '.$validated['cancellation_reason'],
+            ]);
+
+            $sale->update([
+                'status' => 'cancelled',
+                'cancellation_reason' => $validated['cancellation_reason'],
+                'cancelled_at' => now(),
+                'cancelled_by_user_id' => Auth::id(),
+            ]);
         });
 
-        return back()->with('delete', 'فروخت کو کامیابی کے ساتھ حذف کر دیا گیا ہے۔');
+        return redirect()->route('admin.sale.index')->with('success', 'فروخت منسوخ کر کے کھاتے میں واپسی درج کر دی گئی ہے۔');
     }
 
     public function print($id)
@@ -161,7 +215,11 @@ class SaleController extends Controller
         // Calculate the latest balance
         $latestBalance = $customerTransactions->sum('remainingBalance');
 
-        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $id)->latest()->first();
+        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())
+            ->where('sale_id', $id)
+            ->where('Order_type', 'Sale')
+            ->latest()
+            ->first();
 
         // Calculate the previous balance
         $previousBalance = 0; // Initialize it to zero

@@ -31,7 +31,8 @@ class FinancialReportService
         $tailoringRevenue = $tailoringEnabled ? (float) Order::where('userId', $userId)->whereBetween('created_at', [$from, $to])->sum('totalPayment') : 0;
         $counterRevenue = $clothingEnabled ? (float) SaleStock::where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum(DB::raw('selling_price * length')) : 0;
         $manualSalesRevenue = $clothingEnabled ? (float) DB::table('saledetails')->join('sales', 'saledetails.sale_id', '=', 'sales.id')
-            ->where('sales.user_id', $userId)->whereBetween('sales.created_at', [$from, $to])->sum(DB::raw('saledetails.quantity * saledetails.price'))
+            ->where('sales.user_id', $userId)->where('sales.status', '!=', 'cancelled')
+            ->whereBetween('sales.created_at', [$from, $to])->sum(DB::raw('saledetails.quantity * saledetails.price'))
             : 0;
         $legacyOnlineRevenue = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
             ->whereRaw('LOWER(status) != ?', ['cancelled'])->sum(DB::raw('price * length')) : 0;
@@ -110,6 +111,7 @@ class FinancialReportService
         $transactionTypes = array_values(array_filter([
             $tailoringEnabled ? 'Tailor' : null,
             $clothingEnabled ? 'Sale' : null,
+            $clothingEnabled ? 'Sale Cancellation' : null,
             ($tailoringEnabled || $clothingEnabled) ? 'Payment' : null,
         ]));
         $customerReceipts = (float) Transaction::where('userId', $userId)->whereIn('Order_type', $transactionTypes)
@@ -125,7 +127,7 @@ class FinancialReportService
         $securityDepositsHeld = $tailoringEnabled
             ? (float) TailorSecurityDepositTransaction::where('user_id', $userId)
                 ->where('transaction_date', '<=', $end->toDateString())
-                ->selectRaw("COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) AS balance", [
+                ->selectRaw('COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) AS balance', [
                     TailorSecurityDepositTransaction::TYPE_RECEIVED,
                 ])
                 ->value('balance')
@@ -211,6 +213,7 @@ class FinancialReportService
             $balance->whereIn('Order_type', array_values(array_filter([
                 in_array('tailoring', $modules, true) ? 'Tailor' : null,
                 in_array('clothing', $modules, true) ? 'Sale' : null,
+                in_array('clothing', $modules, true) ? 'Sale Cancellation' : null,
                 count(array_intersect(['tailoring', 'clothing'], $modules)) > 0 ? 'Payment' : null,
             ])));
         }

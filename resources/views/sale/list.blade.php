@@ -38,6 +38,7 @@
                                         <tr>
                                             <th scope="col" class="no-sort">گاہک کا نام</th>
                                             <th scope="col" class="no-sort">فروخت کی رقم</th>
+                                            <th scope="col" class="no-sort">حالت</th>
                                             <th scope="col" class="no-sort">مزید تفصیلات </th>
                                             <th scope="col" class="no-sort">عمل</th>
                                         </tr>
@@ -47,16 +48,15 @@
                                         <tr>
                                             <td data-label="گاہک کا نام">{{ $sale->customer?->name ?? $sale->customer_name }}</td>
                                             <td data-label="فروخت کی رقم">Rs {{ number_format($sale->detail->sum(fn ($detail) => (float) $detail->price * (int) $detail->quantity), 2) }}</td>
+                                            <td data-label="حالت"><span class="badge badge-{{ $sale->status === 'cancelled' ? 'danger' : 'success' }}">{{ $sale->status === 'cancelled' ? 'منسوخ' : 'مکمل' }}</span></td>
                                             <td data-label="مزید تفصیلات"><a href="{{ route('admin.sale.show', $sale) }}" class="btn btn-sm btn-outline-primary">دیکھیں</a></td>
                                             <td class="sale-record-actions" data-label="عمل">
+                                                @if($sale->status !== 'cancelled')
                                                 <a href="{{ url('admin/sale/'.$sale->id.'/edit')}}"
                                                     class="btn btn-sm btn-primary">تبدیل کریں</a>
-
-                                                <form action="{{ route('admin.sale.destroy', $sale->id) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ فروخت حذف کرنا چاہتے ہیں؟">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="{{ $sale->customer?->name ?? $sale->customer_name }} کی فروخت حذف کریں">حذف کریں</button>
-                                                </form>
+                                                @else
+                                                <span class="text-muted">صرف ریکارڈ</span>
+                                                @endif
                                             </td>
                                         </tr>
                                         @endforeach

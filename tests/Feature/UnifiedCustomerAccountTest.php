@@ -179,7 +179,8 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertSeeText('تبدیل کریں')
             ->assertSee('sale-record-table', false)
             ->assertSee('data-label="فروخت کی رقم"', false)
-            ->assertSee('aria-label="Calculated Balance Customer کی فروخت حذف کریں"', false);
+            ->assertSee('data-label="حالت"', false)
+            ->assertDontSeeText('حذف کریں');
         $this->actingAs($owner)->get(route('admin.sale.edit', $sale))
             ->assertOk()
             ->assertSee('value="Cotton shirt"', false)
@@ -229,6 +230,90 @@ class UnifiedCustomerAccountTest extends TestCase
         ])->assertSessionHasErrors('received_payment');
 
         $this->assertDatabaseCount('sales', 1);
+    }
+
+    public function test_sale_cancellation_preserves_invoice_and_posts_an_audited_reversal(): void
+    {
+        $owner = $this->owner();
+        $customer = Customers::create([
+            'name' => 'Cancellation Customer',
+            'phone_number1' => '03001110009',
+            'user_id' => $owner->id,
+        ]);
+        $this->actingAs($owner)->post(route('admin.sale.store'), [
+            'customer_id' => $customer->id,
+            'name' => ['Waistcoat'],
+            'quantity' => [1],
+            'price' => [1000],
+            'received_payment' => 400,
+            'payment_method' => 'cash',
+        ])->assertRedirect();
+        $sale = Sale::firstOrFail();
+
+        $this->actingAs($owner)->get(route('admin.sale.show', $sale))
+            ->assertOk()
+            ->assertSeeText('فروخت منسوخ کریں')
+            ->assertSee('data-confirm="کیا آپ یہ فروخت منسوخ کر کے گاہک کا کھاتہ واپس کرنا چاہتے ہیں؟"', false)
+            ->assertSeeText('وصول شدہ روپے 400.00 واپس کرنے کی تفصیل درج کریں');
+
+        $this->actingAs($owner)->delete(route('admin.sale.destroy', $sale), [])
+            ->assertSessionHasErrors('cancellation_reason');
+        $this->actingAs($owner)->delete(route('admin.sale.destroy', $sale), [
+            'cancellation_reason' => 'Duplicate invoice',
+        ])->assertSessionHasErrors('refund_method');
+        $this->actingAs($owner)->delete(route('admin.sale.destroy', $sale), [
+            'cancellation_reason' => 'Duplicate invoice',
+            'refund_method' => 'raast',
+        ])->assertSessionHasErrors('refund_reference');
+
+        $this->actingAs($owner)->delete(route('admin.sale.destroy', $sale), [
+            'cancellation_reason' => 'Duplicate invoice',
+            'refund_method' => 'raast',
+            'refund_reference' => 'RAAST-REFUND-1',
+        ])->assertRedirect(route('admin.sale.index'));
+
+        $sale->refresh();
+        $this->assertSame('cancelled', $sale->status);
+        $this->assertSame('Duplicate invoice', $sale->cancellation_reason);
+        $this->assertSame($owner->id, $sale->cancelled_by_user_id);
+        $this->assertNotNull($sale->cancelled_at);
+        $this->assertDatabaseCount('sales', 1);
+        $this->assertDatabaseCount('saledetails', 1);
+        $this->assertDatabaseHas('transactions', [
+            'sale_id' => $sale->id,
+            'Order_type' => 'Sale Cancellation',
+            'remainingBalance' => -600,
+            'recivedPayment' => -400,
+            'payment_method' => 'raast',
+            'payment_reference' => 'RAAST-REFUND-1',
+        ]);
+        $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+        $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('recivedPayment'));
+
+        $this->actingAs($owner)->get(route('admin.sale.index'))
+            ->assertOk()
+            ->assertSeeText('منسوخ')
+            ->assertDontSee(route('admin.sale.edit', $sale), false);
+        $this->actingAs($owner)->get(route('admin.sale.show', $sale))
+            ->assertOk()
+            ->assertSeeText('یہ فروخت منسوخ ہے')
+            ->assertSeeText('RAAST-REFUND-1')
+            ->assertDontSeeText('فروخت منسوخ اور کھاتہ واپس کریں');
+        $this->actingAs($owner)->get(route('admin.sale-print', $sale))
+            ->assertOk()
+            ->assertSeeText('منسوخ شدہ رسید');
+        $this->actingAs($owner)->get(route('admin.sale.edit', $sale))->assertStatus(422);
+        $this->actingAs($owner)->get(route('admin.customers.statement', [
+            'id' => $customer->id,
+            'tab' => 'transactions',
+        ]))->assertOk()
+            ->assertSeeText('فروخت منسوخی')
+            ->assertSeeText('Duplicate invoice');
+
+        $this->actingAs($owner)->delete(route('admin.sale.destroy', $sale), [
+            'cancellation_reason' => 'Try again',
+        ])->assertSessionHasErrors('cancellation_reason');
+        $this->assertDatabaseCount('transactions', 2);
     }
 
     public function test_employee_balance_visibility_is_explicitly_controlled_by_client_role(): void

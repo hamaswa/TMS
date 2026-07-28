@@ -124,6 +124,7 @@ class CustomerController extends Controller
         $visibleTypes = array_values(array_filter([
             $canViewTailoring ? 'Tailor' : null,
             $canViewShop ? 'Sale' : null,
+            $canViewShop ? 'Sale Cancellation' : null,
             $canViewBalances ? 'Payment' : null,
         ]));
         $transactions = $canViewBalances && $visibleTypes
@@ -152,6 +153,8 @@ class CustomerController extends Controller
                     'amount' => $sale->detail->sum(fn ($detail) => (float) $detail->price * (int) $detail->quantity),
                     'received' => (float) ($sale->transaction?->recivedPayment ?? 0),
                     'balance' => (float) ($sale->transaction?->remainingBalance ?? 0),
+                    'status' => $sale->status,
+                    'cancellation_reason' => $sale->cancellation_reason,
                 ]);
             $stockGroups = SaleStock::where('user_id', $ownerId)
                 ->where('c_id', $customer->id)
@@ -178,6 +181,8 @@ class CustomerController extends Controller
                         'amount' => $items->sum(fn ($item) => (float) $item->selling_price * (float) $item->length),
                         'received' => (float) ($transaction?->recivedPayment ?? 0),
                         'balance' => (float) ($transaction?->remainingBalance ?? 0),
+                        'status' => 'completed',
+                        'cancellation_reason' => null,
                     ];
                 })
                 ->values();

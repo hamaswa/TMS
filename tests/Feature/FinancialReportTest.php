@@ -11,9 +11,9 @@ use App\Models\DaliyExpenses;
 use App\Models\Expenses;
 use App\Models\OnlineOrder;
 use App\Models\Order;
+use App\Models\ProductionWorker;
 use App\Models\Purchase;
 use App\Models\PurchaseReturn;
-use App\Models\ProductionWorker;
 use App\Models\Sale;
 use App\Models\SaleStock;
 use App\Models\Supplier;
@@ -155,6 +155,36 @@ class FinancialReportTest extends TestCase
         $this->actingAs($stockSeller)->get(route('admin.financial-reports.index'))->assertForbidden();
     }
 
+    public function test_cancelled_manual_sale_is_excluded_and_its_reversal_neutralizes_cash_and_receivable(): void
+    {
+        [$owner, $customer] = $this->baseData();
+        $sale = Sale::create([
+            'user_id' => $owner->id,
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->name,
+            'status' => 'cancelled',
+            'cancellation_reason' => 'Duplicate invoice',
+            'cancelled_at' => now(),
+            'cancelled_by_user_id' => $owner->id,
+        ]);
+        $sale->detail()->create(['product_name' => 'Cancelled accessory', 'quantity' => 1, 'price' => 500]);
+        Transaction::create([
+            'userId' => $owner->id, 'customerId' => $customer->id, 'sale_id' => $sale->id,
+            'Order_type' => 'Sale', 'recivedPayment' => 200, 'remainingBalance' => 300,
+        ]);
+        Transaction::create([
+            'userId' => $owner->id, 'customerId' => $customer->id, 'sale_id' => $sale->id,
+            'Order_type' => 'Sale Cancellation', 'recivedPayment' => -200, 'remainingBalance' => -300,
+        ]);
+
+        $report = app(FinancialReportService::class)->build($owner->id, now()->startOfMonth(), now()->endOfMonth());
+
+        $this->assertEquals(0, $report['revenue']['مصنوعات کی فروخت']);
+        $this->assertEquals(0, $report['summary']['total_revenue']);
+        $this->assertEquals(0, $report['summary']['cash_in']);
+        $this->assertEquals(0, $report['summary']['receivables']);
+    }
+
     private function baseData(): array
     {
         $owner = $this->userWithRole('shop_owner');
@@ -164,6 +194,7 @@ class FinancialReportTest extends TestCase
         $brand = ClothBrand::create(['name' => 'Report Brand', 'user_id' => $owner->id]);
         $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => 80, 'sale_price' => 150, 'user_id' => $owner->id]);
         $color = ClothColor::create(['cloth_id' => $cloth->id, 'color' => 'Blue', 'length' => 10, 'average_unit_cost' => 80, 'user_id' => $owner->id]);
+
         return [$owner, $customer, $tailor, $cloth, $color];
     }
 
@@ -172,6 +203,7 @@ class FinancialReportTest extends TestCase
         $role = Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         $user = User::factory()->create();
         $user->assignRole($role);
+
         return $user;
     }
 }

@@ -114,6 +114,14 @@
                         display:none;
                     }
                 }
+                .cancelled-receipt {
+                    border: 2px solid #dc3545;
+                    color: #dc3545;
+                    font-weight: 700;
+                    padding: 8px;
+                    text-align: center;
+                    margin-bottom: 12px;
+                }
      </style>
     @include('print.partials.document-styles')
     </head>
@@ -128,6 +136,10 @@
         <button class="btn btn-primary print">رسید پرنٹ کریں۔</button>
         <button class="btn btn-primary go" type="button">فروخت پر واپس جائیں</button>
     </div>
+
+    @if($sale->status === 'cancelled')
+        <div class="cancelled-receipt">منسوخ شدہ رسید · مالی کھاتے میں واپسی درج ہے</div>
+    @endif
 
   @if($status != 'default')
   <center id="top">

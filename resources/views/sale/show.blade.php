@@ -15,7 +15,8 @@
 
 @section('content')
 @php
-    $currentTransaction = $transaction->first();
+    $currentTransaction = $transaction->firstWhere('Order_type', 'Sale');
+    $cancellationTransaction = $transaction->firstWhere('Order_type', 'Sale Cancellation');
     $saleTotal = $sale->detail->sum(fn ($detail) => (float) $detail->price * (int) $detail->quantity);
 @endphp
 <section class="main-content">
@@ -29,10 +30,19 @@
                     </div>
                     <div class="d-flex flex-wrap" style="gap:.5rem">
                         <a href="{{ route('admin.sale.index') }}" class="btn btn-light">فروخت ریکارڈ</a>
-                        <a href="{{ route('admin.sale.edit', $sale) }}" class="btn btn-outline-primary">تبدیل کریں</a>
+                        @if($sale->status !== 'cancelled')<a href="{{ route('admin.sale.edit', $sale) }}" class="btn btn-outline-primary">تبدیل کریں</a>@endif
                         <a href="{{ route('admin.sale-print', $sale) }}" class="btn btn-primary">رسید پرنٹ کریں</a>
                     </div>
                 </div>
+
+                @if($sale->status === 'cancelled')
+                    <div class="alert alert-danger">
+                        <strong>یہ فروخت منسوخ ہے۔</strong>
+                        {{ $sale->cancelled_at?->format('d-m-Y H:i') }}
+                        @if($sale->cancellation_reason)<br>وجہ: {{ $sale->cancellation_reason }}@endif
+                        <br>اصل رسید محفوظ ہے اور گاہک کے کھاتے میں منسوخی کی واپسی الگ درج کی گئی ہے۔
+                    </div>
+                @endif
 
                 <div class="table-responsive">
                     <table class="table sale-detail-table">
@@ -73,6 +83,30 @@
                         @if($currentTransaction->paid_on)
                             · تاریخ: {{ $currentTransaction->paid_on->format('d-m-Y') }}
                         @endif
+                    </div>
+                @endif
+
+                @if($sale->status !== 'cancelled')
+                    <div class="card border-danger mt-4">
+                        <div class="card-header text-danger">فروخت منسوخ کریں</div>
+                        <div class="card-body">
+                            <p class="text-muted">منسوخی سے رسید حذف نہیں ہو گی۔ اس فروخت کا بقایا اور وصول شدہ رقم کھاتے میں الگ واپسی کے ذریعے صفر کی جائے گی۔</p>
+                            <form action="{{ route('admin.sale.destroy', $sale) }}" method="POST" data-confirm="کیا آپ یہ فروخت منسوخ کر کے گاہک کا کھاتہ واپس کرنا چاہتے ہیں؟">@csrf @method('DELETE')
+                                <div class="form-group"><label for="cancellation_reason">منسوخی کی وجہ</label><textarea id="cancellation_reason" name="cancellation_reason" maxlength="1000" minlength="5" class="form-control" required>{{ old('cancellation_reason') }}</textarea></div>
+                                @if((float)($currentTransaction?->recivedPayment ?? 0) > 0)
+                                    <div class="alert alert-warning">وصول شدہ روپے {{ number_format((float)$currentTransaction->recivedPayment,2) }} واپس کرنے کی تفصیل درج کریں۔</div>
+                                    <div class="form-row">
+                                        <x-payment-method-fields prefix="sale_refund" method-name="refund_method" reference-name="refund_reference" method-group-class="form-group col-md-6" reference-group-class="form-group col-md-6" />
+                                    </div>
+                                @endif
+                                <button class="btn btn-danger">فروخت منسوخ اور کھاتہ واپس کریں</button>
+                            </form>
+                        </div>
+                    </div>
+                @elseif($cancellationTransaction)
+                    <div class="border rounded p-3 mt-3">
+                        <strong>رقم واپسی:</strong> {{ \App\Support\PaymentMethods::label($cancellationTransaction->payment_method) }}
+                        @if($cancellationTransaction->payment_reference) · حوالہ: <span dir="ltr">{{ $cancellationTransaction->payment_reference }}</span>@endif
                     </div>
                 @endif
             </div>
