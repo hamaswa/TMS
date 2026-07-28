@@ -29,7 +29,10 @@ class AdministratorController extends Controller
             'status' => ['nullable', Rule::in(Business::STATUSES)],
             'module' => ['nullable', Rule::in(['tailoring', 'clothing', 'both'])],
         ]);
-        $users = User::role('shop_owner')->with(['roles', 'ownedBusiness'])
+        $users = User::role('shop_owner')->with([
+            'roles',
+            'ownedBusiness.latestSubscription' => fn ($query) => $query->withSum('activePayments', 'amount'),
+        ])
             ->when($filters['search'] ?? null, function ($query, $search) {
                 $query->where(fn ($inner) => $inner->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%"));
@@ -176,8 +179,20 @@ class AdministratorController extends Controller
             'storefront_inquiries' => $business->storefront?->inquiries()->count() ?? 0,
             'storefront_orders' => $business->storefront?->orders()->count() ?? 0,
         ];
+        $subscriptions = $business->subscriptions()
+            ->with(['payments.recordedBy', 'payments.reversedBy', 'createdBy', 'cancelledBy'])
+            ->withSum('activePayments', 'amount')
+            ->latest('ends_on')
+            ->get();
+        $currentSubscription = $subscriptions->first(fn ($subscription) => ! $subscription->cancelled_at);
 
-        return view('Administrator.show', compact('user', 'business', 'metrics'));
+        return view('Administrator.show', compact(
+            'user',
+            'business',
+            'metrics',
+            'subscriptions',
+            'currentSubscription'
+        ));
     }
 
     public function updateStatus(Request $request, $id)

@@ -78,6 +78,23 @@ class Business extends Model
         return $this->hasOne(Storefront::class);
     }
 
+    public function subscriptions()
+    {
+        return $this->hasMany(BusinessSubscription::class);
+    }
+
+    public function latestSubscription()
+    {
+        return $this->hasOne(BusinessSubscription::class)
+            ->whereNull('cancelled_at')
+            ->ofMany('ends_on', 'max');
+    }
+
+    public function subscriptionPayments()
+    {
+        return $this->hasMany(SubscriptionPayment::class);
+    }
+
     public function hasModule(string $module): bool
     {
         return match ($module) {

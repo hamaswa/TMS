@@ -1,4 +1,5 @@
 @include('inc/header')
+@include('components.subscription-alert')
 @if(session('error'))
     <div class="main-content px-3 px-md-4 pt-3" role="alert" aria-live="polite">
         <div class="alert alert-danger mb-0">{{ session('error') }}</div>

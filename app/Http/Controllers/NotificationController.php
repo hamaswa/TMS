@@ -10,11 +10,8 @@ class NotificationController extends Controller
 {
     public function showNotifications()
     {
-        // Fetch notifications for the authenticated user
-        $notifications = Auth::user()->notifications;
-
-        // Mark all notifications as read
-        Auth::user()->unreadNotifications->markAsRead();
+        $notifications = Auth::user()->notifications()->latest()->paginate(30);
+        Auth::user()->unreadNotifications()->update(['read_at' => now()]);
 
         return view('notifications.index', compact('notifications'));
     }

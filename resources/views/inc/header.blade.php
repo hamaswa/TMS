@@ -11,6 +11,7 @@
 @php($canTailorOrders = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.orders'))
 @php($canTailorTailors = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.tailors'))
 @php($canTailorConfiguration = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.configuration'))
+@php($unreadNotificationCount = Auth::check() && Auth::user()->isBusinessOwner() ? Auth::user()->unreadNotifications()->count() : 0)
 <!doctype html>
 <html lang="{{ $isSuperAdmin ? 'en' : 'ur' }}" dir="{{ $isSuperAdmin ? 'ltr' : 'rtl' }}">
 <head>
@@ -80,11 +81,11 @@
                 @if(Auth::user()->hasBusinessPermission('storefront.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.storefront.edit') }}"><i class="fas fa-globe-asia fa-fw ml-2 text-info"></i>آن لائن دکان</a>@endif
             </div></li>
         @elseif(Auth::check() && Auth::user()->hasRole('administrative'))
-            <li class="nav-item"><a class="nav-link" href="{{ route('administrator.index') }}">Clients</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.marketplace.index') }}">Marketplace</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.create') }}">Create client</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ route('administrator.index') }}">Clients</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.subscriptions.index') }}">Subscriptions</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.marketplace.index') }}">Marketplace</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.create') }}">Create client</a></li>
         @endif
     </ul>
-    @auth<ul class="navbar-nav ml-auto"><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="accountMenu" data-toggle="dropdown"><i class="fas fa-user-circle mr-1"></i>{{ Auth::user()->name }}</a><div class="dropdown-menu dropdown-menu-right" aria-labelledby="accountMenu">
-        @if($isSuperAdmin)<a class="dropdown-item" href="{{ route('employee.password.edit') }}">Change password</a><div class="dropdown-divider"></div>@elseif(Auth::user()->isBusinessOwner())<a class="dropdown-item" href="{{ route('admin.setting.index') }}">دکان کی ترتیبات</a><a class="dropdown-item" href="{{ route('admin.users') }}">اکاؤنٹ کی تفصیل</a><div class="dropdown-divider"></div>@else<a class="dropdown-item" href="{{ route('employee.password.edit') }}">پاس ورڈ تبدیل کریں</a><div class="dropdown-divider"></div>@endif
+    @auth<ul class="navbar-nav ml-auto">@if(Auth::user()->isBusinessOwner())<li class="nav-item"><a class="nav-link" href="{{ route('admin.notifications.index') }}" aria-label="اطلاعات"><i class="fas fa-bell"></i>@if($unreadNotificationCount)<span class="badge badge-danger">{{ min($unreadNotificationCount,99) }}</span>@endif</a></li>@endif<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="accountMenu" data-toggle="dropdown"><i class="fas fa-user-circle mr-1"></i>{{ Auth::user()->name }}</a><div class="dropdown-menu dropdown-menu-right" aria-labelledby="accountMenu">
+        @if($isSuperAdmin)<a class="dropdown-item" href="{{ route('employee.password.edit') }}">Change password</a><div class="dropdown-divider"></div>@elseif(Auth::user()->isBusinessOwner())<a class="dropdown-item" href="{{ route('admin.subscription.index') }}">سبسکرپشن اور ادائیگی</a><a class="dropdown-item" href="{{ route('admin.setting.index') }}">دکان کی ترتیبات</a><a class="dropdown-item" href="{{ route('admin.users') }}">اکاؤنٹ کی تفصیل</a><div class="dropdown-divider"></div>@else<a class="dropdown-item" href="{{ route('employee.password.edit') }}">پاس ورڈ تبدیل کریں</a><div class="dropdown-divider"></div>@endif
         <a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault();document.getElementById('logout-form').submit();">{{ $isSuperAdmin ? 'Logout' : 'لاگ آؤٹ' }}</a><form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">@csrf</form>
     </div></li></ul>@endauth
     </div>

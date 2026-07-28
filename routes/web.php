@@ -2,6 +2,7 @@
 
 use App\Events\NotificationEvent;
 use App\Http\Controllers\AdministratorController;
+use App\Http\Controllers\AdministratorSubscriptionController;
 use App\Http\Controllers\AdminStorefrontClothingController;
 use App\Http\Controllers\AdminStorefrontController;
 use App\Http\Controllers\AdminStorefrontModuleSettingsController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\ClothStockController;
 use App\Http\Controllers\ClothTypeController;
 use App\Http\Controllers\CsvController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ClientSubscriptionController;
 use App\Http\Controllers\DesignController;
 use App\Http\Controllers\EmployeePasswordController;
 use App\Http\Controllers\ExpensesController;
@@ -105,6 +107,11 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
 
     Route::get('/', [AdministratorController::class, 'showData'])->name('index');
     Route::get('/marketplace', [AdministratorController::class, 'marketplace'])->name('marketplace.index');
+    Route::get('/subscriptions', [AdministratorSubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::post('/clients/{id}/subscriptions', [AdministratorSubscriptionController::class, 'storeSubscription'])->name('subscriptions.store');
+    Route::post('/clients/{id}/subscriptions/{subscription}/payments', [AdministratorSubscriptionController::class, 'storePayment'])->name('subscription-payments.store');
+    Route::patch('/clients/{id}/subscription-payments/{payment}/reverse', [AdministratorSubscriptionController::class, 'reversePayment'])->name('subscription-payments.reverse');
+    Route::patch('/clients/{id}/subscriptions/{subscription}/cancel', [AdministratorSubscriptionController::class, 'cancelSubscription'])->name('subscriptions.cancel');
     Route::patch('/marketplace/{storefront}/moderation', [AdministratorController::class, 'updateMarketplaceModeration'])
         ->name('marketplace.moderation');
     Route::get('/create', [AdministratorController::class, 'index'])->name('create');
@@ -136,6 +143,7 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
 });
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'business.activity'], 'as' => 'admin.'], function () {
+    Route::get('/subscription', [ClientSubscriptionController::class, 'index'])->name('subscription.index');
     Route::get('/customers/{id}/statement', [CustomerController::class, 'statement'])
         ->middleware('business.permission:tailoring.customers|clothing.sales|customers.balances')
         ->name('customers.statement');
