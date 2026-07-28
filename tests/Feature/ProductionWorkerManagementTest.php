@@ -68,18 +68,46 @@ class ProductionWorkerManagementTest extends TestCase
             'method' => 'per_piece', 'rate' => 50, 'active' => true,
         ]);
 
+        $this->actingAs($owner)->get(route('admin.production-workers.show', $worker))
+            ->assertOk()
+            ->assertSee('<h1', false)
+            ->assertSeeText('اس ورکر کی کوئی واجب الادا رقم نہیں')
+            ->assertSeeText('ہر تیار شدہ عدد کی اجرت درج کریں')
+            ->assertSee('data-compensation-field="rate"', false)
+            ->assertDontSeeText('ادائیگی محفوظ کریں');
+
         WorkerLedgerEntry::create([
             'user_id' => $owner->id, 'production_worker_id' => $worker->id,
             'entry_type' => 'earning', 'amount' => 100, 'entry_date' => now()->toDateString(),
         ]);
+        $this->actingAs($owner)->get(route('admin.production-workers.show', $worker))
+            ->assertOk()
+            ->assertSeeText('ادائیگی محفوظ کریں');
+
         $this->actingAs($owner)->from(route('admin.production-workers.show', $worker))
             ->post(route('admin.production-workers.payments.store', $worker), [
                 'amount' => 120, 'entry_date' => now()->toDateString(),
             ])->assertRedirect(route('admin.production-workers.show', $worker))->assertSessionHasErrors('amount');
 
+        $this->actingAs($owner)->from(route('admin.production-workers.show', $worker))
+            ->post(route('admin.production-workers.payments.store', $worker), [
+                'amount' => 10,
+                'entry_date' => now()->toDateString(),
+                'payment_method' => 'easypaisa',
+            ])->assertRedirect(route('admin.production-workers.show', $worker))
+            ->assertSessionHasErrors('payment_reference');
+
         $this->actingAs($owner)->post(route('admin.production-workers.payments.store', $worker), [
-            'amount' => 60, 'entry_date' => now()->toDateString(), 'notes' => 'نقد ادائیگی',
+            'amount' => 60, 'entry_date' => now()->toDateString(),
+            'payment_method' => 'easypaisa', 'payment_reference' => 'EP-WORKER-60',
+            'notes' => 'نقد ادائیگی',
         ])->assertRedirect();
+        $this->assertDatabaseHas('worker_ledger_entries', [
+            'production_worker_id' => $worker->id,
+            'entry_type' => 'payment',
+            'payment_method' => 'easypaisa',
+            'payment_reference' => 'EP-WORKER-60',
+        ]);
         $this->actingAs($owner)->from(route('admin.production-workers.show', $worker))
             ->post(route('admin.production-workers.payments.store', $worker), [
                 'amount' => 50, 'entry_date' => now()->toDateString(),

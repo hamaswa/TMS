@@ -1,4 +1,5 @@
-@php($isSuperAdmin = Auth::check() && Auth::user()->hasRole('administrative'))
+@php($isSuperAdminSurface = request()->is('administrator') || request()->is('administrator/*'))
+@php($isSuperAdmin = $isSuperAdminSurface || (Auth::check() && Auth::user()->hasRole('administrative')))
 @php($enabledWorkspaces = Auth::check() && Auth::user()->isBusinessMember() ? Auth::user()->enabledModules() : [])
 @php($hasMultipleWorkspaces = count($enabledWorkspaces) > 1)
 @php($activeWorkspace = session('active_workspace'))
@@ -11,6 +12,7 @@
 @php($canTailorOrders = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.orders'))
 @php($canTailorTailors = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.tailors'))
 @php($canTailorConfiguration = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.configuration'))
+@php($canCustomerBalances = Auth::check() && Auth::user()->hasBusinessPermission('customers.balances'))
 @php($unreadNotificationCount = Auth::check() && Auth::user()->isBusinessOwner() ? Auth::user()->unreadNotifications()->count() : 0)
 <!doctype html>
 <html lang="{{ $isSuperAdmin ? 'en' : 'ur' }}" dir="{{ $isSuperAdmin ? 'ltr' : 'rtl' }}">
@@ -35,7 +37,7 @@
     @if(Session::get('tailor'))
         <a class="navbar-brand" href="{{ url('tailor/tailor-dashboard') }}"><i class="fas fa-cut mr-2"></i>TMS</a>
     @else
-        <a class="navbar-brand" href="{{ Auth::check() && Auth::user()->hasRole('administrative') ? route('administrator.index') : route('admin.home') }}"><i class="fas fa-cut mr-2"></i>TMS</a>
+        <a class="navbar-brand" href="{{ $isSuperAdmin ? route('administrator.index') : route('admin.home') }}"><i class="fas fa-cut mr-2"></i>TMS</a>
     @endif
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#tmsNavigation" aria-controls="tmsNavigation" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="tmsNavigation"><ul class="navbar-nav mr-auto align-items-xl-center">
@@ -60,6 +62,8 @@
                     @if($canShopInventory)
                     <a class="dropdown-item" href="{{ route('admin.stock.index') }}"><i class="fas fa-layer-group fa-fw ml-2 text-info"></i>اسٹاک</a>
                     <a class="dropdown-item" href="{{ route('admin.cloth.index') }}"><i class="fas fa-swatchbook fa-fw ml-2 text-info"></i>کپڑے کی فہرست</a>
+                    <a class="dropdown-item" href="{{ route('admin.clothtype.index') }}"><i class="fas fa-tags fa-fw ml-2 text-info"></i>کپڑے کی اقسام</a>
+                    <a class="dropdown-item" href="{{ route('admin.clothbrand.index') }}"><i class="fas fa-copyright fa-fw ml-2 text-info"></i>کپڑے کے برانڈز</a>
                     <a class="dropdown-item" href="{{ route('admin.inventory-ledger.index') }}"><i class="fas fa-exchange-alt fa-fw ml-2 text-info"></i>اسٹاک کھاتہ</a>
                     <a class="dropdown-item" href="{{ route('admin.inventory-valuation.index') }}"><i class="fas fa-balance-scale fa-fw ml-2 text-info"></i>اسٹاک کی مالیت</a>
                     @endif
@@ -74,6 +78,7 @@
             @endif
             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="businessMenu" data-toggle="dropdown">کاروبار</a><div class="dropdown-menu" aria-labelledby="businessMenu">
                 @if(Auth::user()->hasBusinessPermission('finance.view'))<a class="dropdown-item" href="{{ route('admin.financial-reports.index') }}"><i class="fas fa-chart-line fa-fw ml-2 text-success"></i>مالیاتی ڈیش بورڈ</a>@endif
+                @if($canCustomerBalances)<a class="dropdown-item" href="{{ route('admin.customer-accounts.index') }}"><i class="fas fa-address-book fa-fw ml-2 text-success"></i>گاہکوں کے کھاتے</a>@endif
                 @if(Auth::user()->hasBusinessPermission('expenses.manage'))<a class="dropdown-item" href="{{ route('admin.dailyexpense.index') }}"><i class="fas fa-receipt fa-fw ml-2 text-warning"></i>روزانہ اخراجات</a>
                 <a class="dropdown-item" href="{{ route('admin.expense.index') }}"><i class="fas fa-calendar-alt fa-fw ml-2 text-warning"></i>ماہانہ اخراجات</a>@endif
                 @if(Auth::user()->hasBusinessPermission('team.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.team.index') }}"><i class="fas fa-users-cog fa-fw ml-2 text-primary"></i>ملازمین اور اجازتیں</a>@endif

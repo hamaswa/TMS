@@ -154,6 +154,12 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 });
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'subscription.active', 'business.activity'], 'as' => 'admin.'], function () {
+    Route::get('/customer-accounts', [CustomerController::class, 'accounts'])
+        ->middleware('business.permission:customers.balances')
+        ->name('customer-accounts.index');
+    Route::post('/customer-payments', [CustomerController::class, 'DirectPayment'])
+        ->middleware('business.permission:customers.balances')
+        ->name('customer-payments.store');
     Route::get('/customers/{id}/statement', [CustomerController::class, 'statement'])
         ->middleware('business.permission:tailoring.customers|clothing.sales|customers.balances')
         ->name('customers.statement');

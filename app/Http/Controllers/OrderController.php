@@ -28,6 +28,7 @@ use App\Services\MeasurementService;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\ProductionWorkforceService;
+use App\Support\PaymentMethods;
 
 
 class OrderController extends Controller
@@ -64,6 +65,14 @@ class OrderController extends Controller
             'suitQuantity' => ['required', 'integer', 'min:1'],
             'totalPayment' => ['required', 'numeric', 'min:0'],
             'recivedPayment' => ['required', 'numeric', 'min:0', 'lte:totalPayment'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'payment_reference' => [
+                Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'paid_on' => ['nullable', 'date'],
             'tailorId' => ['required', 'integer'],
             'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
             'returnDate' => ['required', 'date'],
@@ -226,6 +235,9 @@ class OrderController extends Controller
                 'customerId' => $validated['customerId'],
                 'userId' => Auth::user()->businessOwnerId(),
                 'Order_type' => 'Tailor',
+                'payment_method' => $validated['payment_method'] ?? 'cash',
+                'payment_reference' => $validated['payment_reference'] ?? null,
+                'paid_on' => $validated['paid_on'] ?? now()->toDateString(),
             ]);
 
             $this->measurements->snapshotOrder($obj, $measurementCustomer, $measurementTemplate);
@@ -320,27 +332,14 @@ class OrderController extends Controller
         
         // dd($orderDetail);
 
-        // Filter transactions for the current customer
-        $customerTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $customerId)->where('Order_type', 'Tailor')->get();
-
-        // Calculate the latest balance
-        $latestBalance = $customerTransactions->sum('remainingBalance');
-
-        // Calculate the previous balance
-        $previousBalance = 0; // Initialize it to zero
-        if ($customerTransactions->isNotEmpty()) {
-            $latestTransaction = $customerTransactions->last();
-
-            // Calculate the sum of remaining balances excluding the latest transaction
-            $previousBalance = $customerTransactions->where('id', '<', $latestTransaction->id)->sum('remainingBalance');
-        }
+        [$latestBalance, $previousBalance, $orderBalance] = $this->printBalanceSummary($order);
 
         $setting = Setting::ensureDefaultFor(Auth::user());
         $status = "default";
         $printConfig = app(\App\Services\PrintDocumentService::class)
             ->make($setting, request(), 'tailor-order', $order->id);
 
-        return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor', 'printConfig'));
+        return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig'));
     }
 
 
@@ -378,27 +377,41 @@ class OrderController extends Controller
         // Find the latest order for the customer
         $orderDetail = $order->load(['customers', 'measurementValues']);
         
-        // Filter transactions for the current customer
-        $customerTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $customerId)->where('Order_type', 'Tailor')->get();
-
-        // Calculate the latest balance
-        $latestBalance = $customerTransactions->sum('remainingBalance');
-
-        // Calculate the previous balance
-        $previousBalance = 0; // Initialize it to zero
-        if ($customerTransactions->isNotEmpty()) {
-            $latestTransaction = $customerTransactions->last();
-
-            // Calculate the sum of remaining balances excluding the latest transaction
-            $previousBalance = $customerTransactions->where('id', '<', $latestTransaction->id)->sum('remainingBalance');
-        }
+        [$latestBalance, $previousBalance, $orderBalance] = $this->printBalanceSummary($order);
 
         $setting = Setting::ensureDefaultFor(Auth::user());
         $status = "default";
         $printConfig = app(\App\Services\PrintDocumentService::class)
             ->make($setting, request(), 'tailor-order-copy', $order->id);
 
-        return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance','tailor', 'printConfig'));
+        return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig'));
+    }
+
+    private function printBalanceSummary(Order $order): array
+    {
+        $ownerId = Auth::user()->businessOwnerId();
+        $orderTransaction = Transaction::where('userId', $ownerId)
+            ->where('customerId', $order->customerId)
+            ->where('orderId', $order->id)
+            ->where('Order_type', 'Tailor')
+            ->orderBy('id')
+            ->first();
+
+        $orderBalance = $orderTransaction
+            ? (float) $orderTransaction->remainingBalance
+            : max(0, (float) $order->totalPayment - (float) ($order->transactions()->sum('recivedPayment')));
+        $previousBalance = $orderTransaction
+            ? (float) Transaction::where('userId', $ownerId)
+                ->where('customerId', $order->customerId)
+                ->where('id', '<', $orderTransaction->id)
+                ->sum('remainingBalance')
+            : 0.0;
+
+        return [
+            max(0, round($previousBalance + $orderBalance, 2)),
+            round($previousBalance, 2),
+            max(0, round($orderBalance, 2)),
+        ];
     }
 
     public function search(Request $req)

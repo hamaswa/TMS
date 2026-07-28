@@ -191,6 +191,18 @@
                                 <input type="number" class="form-control" name="remain" id="remain" step="0.01" readonly>
                             </div>
                         </div>
+                        <div class="card card-body bg-light border mb-4">
+                            <h2 class="h6 font-weight-bold">ادائیگی کی تفصیل</h2>
+                            <div class="form-row">
+                                <div class="col-md-4">
+                                    @include('components.payment-method-fields', ['prefix' => 'counter_sale'])
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label for="counter_sale_paid_on">ادائیگی کی تاریخ</label>
+                                    <input id="counter_sale_paid_on" type="date" name="paid_on" value="{{ now()->toDateString() }}" class="form-control" required>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="stock-sale-actions">
                             <button type="submit" class="btn btn-primary px-4">

@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use App\Services\InventoryService;
+use App\Support\PaymentMethods;
 
 class ClothStockController extends Controller
 {
@@ -778,6 +779,14 @@ class ClothStockController extends Controller
             'c_name' => ['required', 'string', 'regex:/^.+\|\d+$/'],
             'payment' => ['required', 'numeric', 'min:0'],
             'remain' => ['nullable', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'payment_reference' => [
+                Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'paid_on' => ['nullable', 'date'],
         ]);
 
         $itemCount = count($validated['brand_name']);
@@ -853,6 +862,9 @@ class ClothStockController extends Controller
                 'Order_type' => 'Sale',
                 'sale_id' => $firstSale->id,
                 'userId' => Auth::user()->businessOwnerId(),
+                'payment_method' => $validated['payment_method'] ?? 'cash',
+                'payment_reference' => $validated['payment_reference'] ?? null,
+                'paid_on' => $validated['paid_on'] ?? now()->toDateString(),
             ]);
 
             return $firstSale;

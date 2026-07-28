@@ -15,7 +15,7 @@ class SubscriptionPlanController extends Controller
         return view('Administrator.subscription-plans', [
             'plans' => SubscriptionPlan::withCount('subscriptions')->orderBy('name')->get(),
             'features' => SubscriptionPlan::FEATURES,
-            'permissions' => BusinessRole::PERMISSIONS,
+            'permissions' => BusinessRole::ENGLISH_PERMISSIONS,
         ]);
     }
 

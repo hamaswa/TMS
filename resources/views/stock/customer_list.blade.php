@@ -39,9 +39,10 @@
                                                             {{ $customer->name }}</td>
                                                         <td style="font-size: 18px;">@if($canViewBalances)<b>Rs: {{ $customerTransactions[$customer->id] }}</b>@else<span class="text-muted">اجازت درکار ہے</span>@endif</td>
                                                         <td>@if($canViewBalances)<button type="button" class="btn btn-blue customer_payment"
+                                                                aria-label="{{ $customer->name }} کی ادائیگی درج کریں"
                                                                 data-customerid="{{ $customer->id }}" data-toggle="modal"
                                                                 data-target="#myModalpayment"><i
-                                                                    class="fa fa-wallet"></i></button>@else — @endif</td>
+                                                                    class="fa fa-wallet" aria-hidden="true"></i></button>@else — @endif</td>
                                                         <td><a href="{{ route('admin.customers.statement', $customer) }}"
                                                                 class="btn btn-sm btn-outline-primary">مشترکہ کھاتہ</a></td>
                                                         <td>

@@ -234,8 +234,9 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertDontSee(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'measurements']), false);
         $this->actingAs($employee)->get(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']))
             ->assertOk()
-            ->assertSee('action="'.route('admin.sale-direct-payment').'"', false)
-            ->assertDontSee('action="'.route('admin.DirectPayment').'"', false);
+            ->assertSee('action="'.route('admin.customer-payments.store').'"', false)
+            ->assertDontSee('action="'.route('admin.DirectPayment').'"', false)
+            ->assertDontSee('action="'.route('admin.sale-direct-payment').'"', false);
     }
 
     public function test_balance_only_employee_can_open_the_shared_customer_statement(): void
@@ -259,10 +260,38 @@ class UnifiedCustomerAccountTest extends TestCase
         ]);
         $employee = $this->employee($business, $role);
 
-        $this->actingAs($employee)->get(route('admin.customers.statement', $customer))
+        $this->actingAs($employee)->get(route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']))
             ->assertOk()
             ->assertSeeText('Accounts Desk Customer')
-            ->assertSeeText('Rs 875.00');
+            ->assertSeeText('Rs 875.00')
+            ->assertSee('action="'.route('admin.customer-payments.store').'"', false);
+
+        $this->actingAs($employee)->get(route('admin.customer-accounts.index'))
+            ->assertOk()
+            ->assertSeeText('Accounts Desk Customer')
+            ->assertSeeText('روپے 875.00')
+            ->assertSeeText('ادائیگی درج کریں');
+
+        $this->actingAs($employee)->post(route('admin.customer-payments.store'), [
+            'customer_id' => $customer->id,
+            'DirectPayment' => 125,
+            'payment_method' => 'easypaisa',
+            'payment_reference' => 'EP-ACCOUNTS-125',
+            'paid_on' => '2026-07-28',
+            'comment' => 'Accounts desk payment',
+            'return_to_accounts' => 1,
+        ])->assertRedirect(route('admin.customer-accounts.index'));
+
+        $this->assertDatabaseHas('transactions', [
+            'customerId' => $customer->id,
+            'Order_type' => 'Payment',
+            'remainingBalance' => -125,
+            'recivedPayment' => 125,
+            'payment_method' => 'easypaisa',
+            'payment_reference' => 'EP-ACCOUNTS-125',
+            'paid_on' => '2026-07-28 00:00:00',
+            'comment' => 'Accounts desk payment',
+        ]);
     }
 
     private function owner(): User

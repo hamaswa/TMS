@@ -2,7 +2,7 @@
 @section('content')
 <section class="main-content"><div class="container-fluid px-3 px-md-4 py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-        <div><h3 class="mb-1">پروڈکشن ورکرز</h3><p class="text-muted mb-0">درزی، کٹنگ ماسٹر اور دوسرے کاریگروں کا کام اور اجرت—ملازم اجازتوں سے الگ۔</p></div>
+        <div><h1 class="h3 mb-1">پروڈکشن ورکرز</h1><p class="text-muted mb-0">درزی، کٹنگ ماسٹر اور دوسرے کاریگروں کا کام اور اجرت—ملازم اجازتوں سے الگ۔</p></div>
         <a class="btn btn-primary" href="{{ route('admin.production-workers.create') }}"><i class="fas fa-plus ml-1"></i>نیا ورکر</a>
     </div>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif

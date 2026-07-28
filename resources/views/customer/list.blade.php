@@ -74,8 +74,9 @@
                                                 @endif
                                             </td>
                                             <td>@if($canViewBalances)<button type="button" class="btn btn-blue customer_payment_paid"
+                                                    aria-label="{{ $customer->name }} کی ادائیگی درج کریں"
                                                     data-customerid="{{ $customer->id }}" data-toggle="modal"
-                                                    data-target="#myModalpayment"><i class="fa fa-wallet"></i></button>@else — @endif</td>
+                                                    data-target="#myModalpayment"><i class="fa fa-wallet" aria-hidden="true"></i></button>@else — @endif</td>
                                             <td>
                                                 <a href="{{ url('admin/Customers/' . $customer->id . '/edit') }}"
                                                     class="btn btn-blue">تبدیل</a>

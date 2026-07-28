@@ -4,7 +4,17 @@
         <div class="container">
 
             <div class="card col-sm-10 mx-auto">
-                <h2 class="mb-4 text-right">کپڑا شامل کریں۔</h2>
+                <h1 class="h2 mb-4 text-right">کپڑا شامل کریں۔</h1>
+                <div class="alert alert-info text-right" dir="rtl">
+                    <strong>کپڑا شامل کرنے سے پہلے:</strong>
+                    قسم اور برانڈ فہرست میں موجود ہونے چاہییں۔
+                    <a class="alert-link mx-1" href="{{ route('admin.clothtype.index') }}">کپڑے کی قسم بنائیں</a>
+                    یا
+                    <a class="alert-link mx-1" href="{{ route('admin.clothbrand.index') }}">برانڈ بنائیں</a>۔
+                    @if($cloth_types->isEmpty() || $cloth_brands->isEmpty())
+                        <div class="mt-2 font-weight-bold">پہلے مطلوبہ قسم یا برانڈ شامل کریں، پھر اس صفحے پر واپس آئیں۔</div>
+                    @endif
+                </div>
                 <form id="cc-form__addCustomerForm" action="{{ route('admin.cloth.store') }}" class="add-customer-form"
                     method="post" enctype="multipart/form-data">
                     @csrf
@@ -58,7 +68,7 @@
 
                     <div id="length-uploads">
                     </div>
-                    <button type="button" id="add-more-length" class="btn btn-secondary">Add Length</button>
+                    <button type="button" id="add-more-length" class="btn btn-secondary">لمبائی شامل کریں</button>
 
                     {{-- <div class="form-group row">
                         <div class="col-md-8">

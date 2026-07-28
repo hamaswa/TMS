@@ -24,8 +24,11 @@ class StorefrontClothingCatalogTest extends TestCase
         [$cloth, $color] = $this->cloth($owner->id, 'نیلا', 18.5);
 
         $this->actingAs($owner)->put(route('admin.storefront.clothing.update', $cloth), [
+            'product_controls_present' => '1',
             'public_name' => 'گرمیوں کا نیلا واش اینڈ ویئر',
             'description' => 'نرم، ہلکا اور روزمرہ استعمال کے لیے موزوں۔',
+            'is_available' => '1',
+            'online_order_enabled' => '1',
             'is_featured' => '1',
             'is_published' => '1',
             'sort_order' => '2',
@@ -39,7 +42,12 @@ class StorefrontClothingCatalogTest extends TestCase
             ->assertSeeText('1,450.00 روپے فی میٹر');
         $this->get(route('storefront.clothing.show', [$storefront, $listing]))
             ->assertOk()
-            ->assertSeeText('نرم، ہلکا اور روزمرہ استعمال کے لیے موزوں۔');
+            ->assertSeeText('نرم، ہلکا اور روزمرہ استعمال کے لیے موزوں۔')
+            ->assertSeeText('آرڈر کے لیے رنگ منتخب کریں')
+            ->assertSee('for="product_color"', false)
+            ->assertSee('id="product_color"', false)
+            ->assertSee('for="product_quantity"', false)
+            ->assertSee('id="product_quantity"', false);
 
         $this->get(route('public.locale.update', [
             'locale' => 'en',

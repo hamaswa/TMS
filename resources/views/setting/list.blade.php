@@ -88,14 +88,14 @@
                                                         data-confirm="کیا یہ دکان ترتیب فعال کرنا ہے؟" data-confirm-variant="success">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <button type="submit" class="btn btn-link p-0 delete-tr">Active</button>
+                                                        <button type="submit" class="btn btn-link p-0 delete-tr">فعال کریں</button>
                                                     </form>
                                                     @else
                                                     <form action="{{ route('admin.deactive-setting', $setting->id) }}" method="POST" class="d-inline"
                                                         data-confirm="کیا یہ دکان ترتیب غیر فعال کرنا ہے؟" data-confirm-variant="warning">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <button type="submit" class="btn btn-link p-0 delete-tr">Deactive</button>
+                                                        <button type="submit" class="btn btn-link p-0 delete-tr">غیر فعال کریں</button>
                                                     </form>
                                                     @endif
                                                 </td>

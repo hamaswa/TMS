@@ -29,9 +29,17 @@ class BusinessEmployeeAccessTest extends TestCase
         $employee = $this->employee($business, $role);
 
         $this->actingAs($employee)->get(route('admin.home'))->assertRedirect(route('admin.dashboard.tailoring'));
+        $this->actingAs($employee)->get(route('admin.dashboard.tailoring'))
+            ->assertOk()
+            ->assertSee('<h1', false)
+            ->assertSee('.workspace-hero h1{color:#fff!important}', false);
         $this->actingAs($employee)->get(route('admin.tailor-jobs.index'))->assertOk();
         $this->actingAs($employee)->get(route('admin.purchases.index'))->assertForbidden();
-        $this->actingAs($employee)->get(route('admin.financial-reports.index'))->assertForbidden();
+        $this->actingAs($employee)->get(route('admin.financial-reports.index'))
+            ->assertForbidden()
+            ->assertSeeText('رسائی کی اجازت نہیں')
+            ->assertSeeText('اپنے کاروباری منتظم سے رابطہ کریں')
+            ->assertSee(route('admin.home'), false);
         $this->actingAs($employee)->get(route('admin.payment-reconciliation.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.team.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.team.employees.index'))->assertForbidden();

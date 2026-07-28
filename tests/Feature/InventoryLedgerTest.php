@@ -55,6 +55,7 @@ class InventoryLedgerTest extends TestCase
             'brand_name' => [$cloth->cloth_brand_id], 'cloth_type' => [$cloth->cloth_type_id],
             'color' => [$color->color], 'per_meter' => [150], 'clothes_rack' => [null], 'length' => [2],
             'c_name' => $customer->name . '|' . $customer->id, 'payment' => 300, 'remain' => 0,
+            'payment_method' => 'raast', 'payment_reference' => 'RAAST-300', 'paid_on' => '2026-07-28',
         ])->assertRedirect();
 
         $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
@@ -64,6 +65,12 @@ class InventoryLedgerTest extends TestCase
         $this->assertDatabaseHas('inventory_movements', [
             'movement_type' => 'counter_sale', 'quantity' => -2, 'balance_after' => 8,
             'reference_id' => $sale->id,
+        ]);
+        $this->assertDatabaseHas('transactions', [
+            'customerId' => $customer->id,
+            'payment_method' => 'raast',
+            'payment_reference' => 'RAAST-300',
+            'paid_on' => '2026-07-28 00:00:00',
         ]);
         $this->actingAs($owner)->get(route('admin.customers.statement', $customer))
             ->assertOk()

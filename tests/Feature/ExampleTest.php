@@ -40,6 +40,18 @@ class ExampleTest extends TestCase
             ->assertSee('.locale-switch a{min-width:44px;min-height:44px', false);
     }
 
+    public function test_password_reset_request_is_clear_and_urdu_for_client_users(): void
+    {
+        $this->get('/password/reset')
+            ->assertOk()
+            ->assertSee('<h1', false)
+            ->assertSeeText('پاس ورڈ دوبارہ بنائیں')
+            ->assertSeeText('اگر دکان کے لیے ای میل سروس فعال ہے')
+            ->assertSeeText('پاس ورڈ تبدیل کرنے کا لنک بھیجیں')
+            ->assertDontSeeText('Reset Password')
+            ->assertDontSeeText('E-Mail Address');
+    }
+
     public function test_core_legacy_workspaces_have_one_semantic_page_heading(): void
     {
         foreach ([

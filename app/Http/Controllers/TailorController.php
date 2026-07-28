@@ -138,8 +138,18 @@ class TailorController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(SubscriptionEntitlementService $entitlements)
     {
+        $business = Auth::user()->business;
+        if ($business) {
+            try {
+                $entitlements->assertCanAddTailor($business);
+            } catch (ValidationException $exception) {
+                return redirect()->route('admin.Tailor.index')
+                    ->withErrors($exception->errors());
+            }
+        }
+
         return view('tailor.add');
     }
 

@@ -64,12 +64,41 @@
         @if($activeTab === 'transactions' && $canViewBalances)
             <div class="row">
                 <div class="col-xl-8 mb-4"><div class="card workspace-card"><div class="card-body p-0"><div class="section-heading p-4 mb-0"><div><h2 class="h5 font-weight-bold">مشترکہ کھاتہ</h2><p>ہر اندراج پر شعبہ درج ہے، لیکن بقایا ایک مجموعی رقم ہے۔</p></div><span class="balance-pill">بقایا: Rs {{ number_format($totalBalance, 2) }}</span></div><div class="table-responsive"><table class="table table-hover mb-0 text-right"><thead><tr><th>تاریخ</th><th>شعبہ</th><th>حوالہ</th><th>وصول شدہ</th><th>بقایا تبدیلی</th><th>تفصیل</th></tr></thead><tbody>
-                    @forelse($transactions as $transaction)<tr><td>{{ $transaction->created_at?->format('d-m-Y') }}</td><td><span class="type-badge type-{{ strtolower($transaction->Order_type) }}">{{ $transaction->Order_type === 'Tailor' ? 'ٹیلرنگ' : ($transaction->Order_type === 'Sale' ? 'دکان' : ($transaction->Order_type === 'Payment' ? 'مشترکہ ادائیگی' : 'دیگر')) }}</span></td><td>{{ $transaction->orderId ? 'آرڈر #'.$transaction->orderId : ($transaction->sale_id ? 'فروخت #'.$transaction->sale_id : 'ادائیگی') }}</td><td>Rs {{ number_format((float) $transaction->recivedPayment, 2) }}</td><td class="{{ (float) $transaction->remainingBalance < 0 ? 'text-success' : 'text-danger' }}">Rs {{ number_format((float) $transaction->remainingBalance, 2) }}</td><td>{{ $transaction->comment ?: '—' }}</td></tr>
+                    @forelse($transactions as $transaction)<tr><td>{{ ($transaction->paid_on ?: $transaction->created_at)?->format('d-m-Y') }}</td><td><span class="type-badge type-{{ strtolower($transaction->Order_type) }}">{{ $transaction->Order_type === 'Tailor' ? 'ٹیلرنگ' : ($transaction->Order_type === 'Sale' ? 'دکان' : ($transaction->Order_type === 'Payment' ? 'مشترکہ ادائیگی' : 'دیگر')) }}</span></td><td>{{ $transaction->orderId ? 'آرڈر #'.$transaction->orderId : ($transaction->sale_id ? 'فروخت #'.$transaction->sale_id : 'ادائیگی') }}</td><td>Rs {{ number_format((float) $transaction->recivedPayment, 2) }}</td><td class="{{ (float) $transaction->remainingBalance < 0 ? 'text-success' : 'text-danger' }}">Rs {{ number_format((float) $transaction->remainingBalance, 2) }}</td><td>@if($transaction->payment_method)<strong>{{ \App\Support\PaymentMethods::LABELS[$transaction->payment_method] ?? $transaction->payment_method }}</strong>@if($transaction->payment_reference)<br><small>{{ $transaction->payment_reference }}</small>@endif @if($transaction->comment)<br>@endif @endif{{ $transaction->comment ?: ($transaction->payment_method ? '' : '—') }}</td></tr>
                     @empty<tr><td colspan="6" class="empty-state">ابھی کوئی لین دین موجود نہیں۔</td></tr>@endforelse
                     </tbody></table></div>@if($transactions->hasPages())<div class="card-footer">{{ $transactions->links() }}</div>@endif</div></div></div>
                 <div class="col-xl-4 mb-4">
                     <div class="card workspace-card mb-3"><div class="card-body p-4"><small class="text-muted">موجودہ مشترکہ بقایا</small><div class="display-4 font-weight-bold text-primary">Rs {{ number_format($totalBalance, 2) }}</div><p class="text-muted mb-0">یہ {{ $balanceScopeLabel }} واجب الادا رقم ہے۔</p></div></div>
-                    @if($paymentRoute && $totalBalance > 0)<div class="card workspace-card"><div class="card-body p-4"><h2 class="h5 font-weight-bold">نئی ادائیگی درج کریں</h2><p class="text-muted small">فی الحال ادائیگی مشترکہ بقایا میں جمع ہوگی۔</p><form method="POST" action="{{ $paymentRoute }}">@csrf<input type="hidden" name="customer_id" value="{{ $customer->id }}"><input type="hidden" name="return_to_statement" value="1"><div class="form-group"><label>وصول شدہ رقم</label><div class="input-group"><div class="input-group-prepend"><span class="input-group-text">Rs</span></div><input type="number" class="form-control" name="DirectPayment" min="0.01" max="{{ $totalBalance }}" step="0.01" required></div></div><div class="form-group"><label>نوٹ <small class="text-muted">(اختیاری)</small></label><textarea class="form-control" name="comment" rows="3" placeholder="مثلاً نقد ادائیگی"></textarea></div><button class="btn btn-primary btn-block">ادائیگی محفوظ کریں</button></form></div></div>@endif
+                    @if($paymentRoute && $totalBalance > 0)
+                        <div class="card workspace-card">
+                            <div class="card-body p-4">
+                                <h2 class="h5 font-weight-bold">نئی ادائیگی درج کریں</h2>
+                                <p class="text-muted small">ادائیگی مشترکہ بقایا میں جمع ہوگی اور اس کا طریقہ و حوالہ محفوظ رہے گا۔</p>
+                                <form method="POST" action="{{ $paymentRoute }}">
+                                    @csrf
+                                    <input type="hidden" name="customer_id" value="{{ $customer->id }}">
+                                    <input type="hidden" name="return_to_statement" value="1">
+                                    <div class="form-group">
+                                        <label for="statement_payment_amount">وصول شدہ رقم</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend"><span class="input-group-text">Rs</span></div>
+                                            <input id="statement_payment_amount" type="number" class="form-control" name="DirectPayment" min="0.01" max="{{ $totalBalance }}" step="0.01" required>
+                                        </div>
+                                    </div>
+                                    @include('components.payment-method-fields', ['prefix' => 'statement_payment'])
+                                    <div class="form-group">
+                                        <label for="statement_payment_date">ادائیگی کی تاریخ</label>
+                                        <input id="statement_payment_date" type="date" name="paid_on" value="{{ now()->toDateString() }}" class="form-control" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="statement_payment_note">نوٹ <small class="text-muted">(اختیاری)</small></label>
+                                        <textarea id="statement_payment_note" class="form-control" name="comment" rows="3" placeholder="مثلاً نقد ادائیگی"></textarea>
+                                    </div>
+                                    <button class="btn btn-primary btn-block">ادائیگی محفوظ کریں</button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         @endif

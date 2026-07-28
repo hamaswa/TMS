@@ -77,10 +77,16 @@ class PurchaseWorkflowTest extends TestCase
         $this->actingAs($owner)->patch(route('admin.purchases.receive', $purchase));
 
         $this->actingAs($owner)->post(route('admin.purchases.payment', $purchase), [
-            'amount' => 200, 'payment_date' => now()->toDateString(), 'reference' => 'BANK-1',
+            'amount' => 200, 'payment_date' => now()->toDateString(),
+            'payment_method' => 'bank_transfer', 'reference' => 'BANK-1',
         ])->assertRedirect();
         $this->assertEquals(200, (float) $purchase->fresh()->paid_amount);
         $this->assertEquals(300, (float) $purchase->fresh()->balance_amount);
+        $this->assertDatabaseHas('supplier_payments', [
+            'purchase_id' => $purchase->id,
+            'payment_method' => 'bank_transfer',
+            'reference' => 'BANK-1',
+        ]);
 
         $this->actingAs($owner)->from(route('admin.purchases.show', $purchase))
             ->post(route('admin.purchases.payment', $purchase), [
@@ -108,11 +114,13 @@ class PurchaseWorkflowTest extends TestCase
         $supplier->update(['opening_balance' => 500]);
 
         $this->actingAs($owner)->post(route('admin.suppliers.payment', $supplier), [
-            'amount' => 200, 'payment_date' => now()->toDateString(), 'reference' => 'OPEN-1',
+            'amount' => 200, 'payment_date' => now()->toDateString(),
+            'payment_method' => 'cheque', 'reference' => 'OPEN-1',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('supplier_payments', [
-            'supplier_id' => $supplier->id, 'purchase_id' => null, 'amount' => 200, 'reference' => 'OPEN-1',
+            'supplier_id' => $supplier->id, 'purchase_id' => null, 'amount' => 200,
+            'payment_method' => 'cheque', 'reference' => 'OPEN-1',
         ]);
         $this->actingAs($owner)->get(route('admin.suppliers.index'))->assertOk()->assertSee('300.00');
     }

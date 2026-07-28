@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\PaymentMethods;
 
 class ProductionWorkerController extends Controller
 {
@@ -174,6 +175,13 @@ class ProductionWorkerController extends Controller
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'entry_date' => ['required', 'date'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'payment_reference' => [
+                Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
         $ownerId = Auth::user()->businessOwnerId();
@@ -194,6 +202,8 @@ class ProductionWorkerController extends Controller
                 'entry_type' => 'payment',
                 'amount' => -abs((float) $validated['amount']),
                 'entry_date' => $validated['entry_date'],
+                'payment_method' => $validated['payment_method'] ?? 'cash',
+                'payment_reference' => $validated['payment_reference'] ?? null,
                 'notes' => $validated['notes'] ?? 'ورکر کو ادائیگی',
             ]);
         });

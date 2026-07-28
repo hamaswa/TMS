@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Support\PaymentMethods;
 use App\Services\InventoryService;
 
 class PurchaseController extends Controller
@@ -62,7 +63,12 @@ class PurchaseController extends Controller
         $validated = $request->validate([
             'supplier_id' => ['required', 'integer'],
             'purchase_date' => ['required', 'date'],
-            'reference' => ['nullable', 'string', 'max:255'],
+            'reference' => [
+                Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'note' => ['nullable', 'string', 'max:1000'],
             'cloth_color_id' => ['required', 'array', 'min:1'],
             'cloth_color_id.*' => ['required', 'integer', 'distinct'],
@@ -140,7 +146,9 @@ class PurchaseController extends Controller
         abort_unless($purchase->status === 'received', 422, 'Payments can only be posted to received purchases.');
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0', 'max:' . max(0, (float) $purchase->balance_amount)],
-            'payment_date' => ['required', 'date'], 'reference' => ['nullable', 'string', 'max:255'],
+            'payment_date' => ['required', 'date'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
         DB::transaction(function () use ($purchase, $validated) {
@@ -152,6 +160,7 @@ class PurchaseController extends Controller
             SupplierPayment::create([
                 'user_id' => Auth::user()->businessOwnerId(), 'supplier_id' => $purchase->supplier_id, 'purchase_id' => $purchase->id,
                 'payment_date' => $validated['payment_date'], 'amount' => $amount,
+                'payment_method' => $validated['payment_method'] ?? 'cash',
                 'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? null,
             ]);
             $purchase->update(['paid_amount' => (float) $purchase->paid_amount + $amount, 'balance_amount' => (float) $purchase->balance_amount - $amount]);

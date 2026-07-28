@@ -11,6 +11,8 @@ use App\Models\Setting;
 use App\Models\Customers;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use App\Support\PaymentMethods;
 
 class SaleController extends Controller
 {
@@ -63,6 +65,9 @@ class SaleController extends Controller
                 'sale_id' => $sale->id,
                 'customerId' => $customer->id,
                 'userId' => Auth::user()->businessOwnerId(),
+                'payment_method' => $validated['payment_method'] ?? 'cash',
+                'payment_reference' => $validated['payment_reference'] ?? null,
+                'paid_on' => $validated['paid_on'] ?? now()->toDateString(),
             ]);
 
             return $sale;
@@ -193,6 +198,14 @@ class SaleController extends Controller
             'price.*' => ['required', 'numeric', 'min:0'],
             'received_payment' => ['required', 'numeric', 'min:0'],
             'remaining_balance' => ['required', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'payment_reference' => [
+                Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'paid_on' => ['nullable', 'date'],
         ]);
 
         abort_unless(

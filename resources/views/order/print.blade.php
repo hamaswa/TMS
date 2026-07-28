@@ -224,6 +224,11 @@
             unicode-bidi: isolate;
             text-align: left;
         }
+        .order-note {
+            unicode-bidi: plaintext;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
         html.tms-paper-receipt_80 .receipt-meta h2,
         html.tms-paper-receipt_80 .receipt-meta h3 {
             font-size: 16px;
@@ -314,8 +319,8 @@
                         <div class="order-summary-row"><p class="order-summary-value">{{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</p><p class="order-summary-label">سیریل نمبر:</p></div>
                         <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $orderDetail->totalPayment, 2) }}</p><p class="order-summary-label">آرڈر کی رقم:</p></div>
                         <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) ($orderDetail->transactions->first()?->recivedPayment ?? 0), 2) }}</p><p class="order-summary-label">موجودہ رقم کی ادائیگی:</p></div>
-                        @if ($latestBalance - $previousBalance > 0)
-                            <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) ($latestBalance - $previousBalance), 2) }}</p><p class="order-summary-label">موجودہ واجب الادا:</p></div>
+                        @if ($orderBalance > 0)
+                            <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $orderBalance, 2) }}</p><p class="order-summary-label">اس آرڈر کا بقایا:</p></div>
                         @endif
                         @if ($previousBalance > 0)
                             <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $previousBalance, 2) }}</p><p class="order-summary-label">گزشتہ واجبات:</p></div>
@@ -326,7 +331,7 @@
                         <div class="order-summary-row"><p class="order-summary-value">{{ $orderDetail->returnDate }}</p><p class="order-summary-label">واپسی کی تاریخ:</p></div>
                     </div>
                     <div>
-                        <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">{{$orderDetail->remarks}}</h3>
+                        <h3 class="text-center font-weight-900 order-note" dir="auto" style="font-size: 18px; margin: 25px 0 0 0;">{{$orderDetail->remarks}}</h3>
                     </div>
                     <hr>
                     <div style="width: 100%;font-weight:900;" align="center">
@@ -583,7 +588,8 @@
                             <div style="display:flex;flex-wrap:wrap;justify-content:space-between">
                                 @foreach($customMeasurements as $measurement)
                                     <div style="width:45%;display:flex;justify-content:space-between;margin-bottom:5px">
-                                        <strong>{{ $measurement->label }}</strong><span>{{ $measurement->value }} @if($measurement->unit){{ $measurement->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }}@endif</span>
+                                        @php($measurementUnit = ['inch' => 'انچ', 'cm' => 'سینٹی میٹر'][$measurement->unit] ?? null)
+                                        <strong>{{ $measurement->label }}</strong><span>{{ $measurement->value }} @if($measurementUnit){{ $measurementUnit }}@endif</span>
                                     </div>
                                 @endforeach
                             </div>
@@ -593,7 +599,7 @@
                     <div>
                         <div align="center">
                             <div>
-                                <h3 class="text-center font-weight-900" style="font-size: 18px; margin-top:-20px; margin-bottom:0px">{{$orderDetail->remarks}}</h3>
+                                <h3 class="text-center font-weight-900 order-note" dir="auto" style="font-size: 18px; margin-top:-20px; margin-bottom:0px">{{$orderDetail->remarks}}</h3>
                             </div>
                             <p><b style="font-size: 14px;">{{ $setting->address }}</b></p>
                             <p><b style="font-size: 14px;">{{ $setting->contact_no }}</b></p>

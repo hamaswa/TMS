@@ -23,6 +23,7 @@
 <script src="{{asset('assets/js/custom.js')}}"></script>
 <script src="{{ asset('assets/js/form-accessibility.js') }}?v=20260728"></script>
 <script src="{{asset('assets/js/confirm-modal.js')}}"></script>
+@stack('scripts')
 <!--<script src="{{ asset('assets/js/popper.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>-->

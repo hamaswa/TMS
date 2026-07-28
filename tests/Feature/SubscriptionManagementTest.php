@@ -50,6 +50,8 @@ class SubscriptionManagementTest extends TestCase
         $this->actingAs($owner)->get(route('admin.subscription.index'))
             ->assertOk()
             ->assertSeeText('سبسکرپشن اور ادائیگی')
+            ->assertSeeText('ایزی پیسہ')
+            ->assertDontSeeText('EasyPaisa')
             ->assertSeeText('24,000.00')
             ->assertSeeText('14,000.00');
     }
@@ -59,7 +61,7 @@ class SubscriptionManagementTest extends TestCase
         [$admin, $owner, $business] = $this->accounts();
         $subscription = $this->subscription($business, 1000, now()->addMonth());
 
-        $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->from(route('administrator.clients.show', $owner))
             ->post(route('administrator.subscription-payments.store', [$owner, $subscription]), [
                 'paid_on' => now()->toDateString(),
@@ -67,8 +69,20 @@ class SubscriptionManagementTest extends TestCase
                 'payment_method' => 'cash',
             ])
             ->assertRedirect(route('administrator.clients.show', $owner))
-            ->assertSessionHasErrors('amount');
+            ->assertSessionHasErrors(
+                ['amount'],
+                null,
+                'subscription_payment_'.$subscription->id
+            );
         $this->assertDatabaseCount('subscription_payments', 0);
+
+        $this->actingAs($admin)
+            ->get(route('administrator.clients.show', $owner))
+            ->assertOk()
+            ->assertSeeText('Payment was not recorded.')
+            ->assertSeeText('Payment cannot exceed the outstanding subscription balance of Rs 1,000.00.')
+            ->assertSeeText('Maximum outstanding balance: Rs 1,000.00')
+            ->assertDontSee('max="1000"', false);
 
         $this->actingAs($admin)->post(route('administrator.subscription-payments.store', [$owner, $subscription]), [
             'paid_on' => now()->toDateString(),

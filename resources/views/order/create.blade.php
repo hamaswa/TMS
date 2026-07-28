@@ -27,14 +27,14 @@
                         method="post">
                 <div class="row justify-content-center">
                     <div class="col-md-8">
-                        <p class="text-right"><b >ناپ</b></p>
+                        <label class="d-block text-right font-weight-bold" for="search">محفوظ ناپ تلاش کریں</label>
                         <div class="input-group">
-                            <input class="form-control border-end-0 border rounded-pill search" type="text" placeholder="search"
+                            <input class="form-control border-end-0 border rounded-pill search" type="text" placeholder="نام یا ناپ تلاش کریں"
                                 id="search" data-url="{{url('admin/search')}}">
                             <span class="input-group-append">
                                 <button class="btn btn-outline-secondary bg-white border-start-0 border rounded-pill ms-n3"
-                                    type="button">
-                                    <i class="fa fa-search" id="SearchData"></i>
+                                    type="button" aria-label="محفوظ ناپ تلاش کریں">
+                                    <i class="fa fa-search" id="SearchData" aria-hidden="true"></i>
                                 </button>
                             </span>
                         </div>
@@ -47,75 +47,89 @@
                     </div>
                 </div>
 
-                <h2 class="mb-4 mt-3 text-right">نیا آرڈر</h2>
+                <h1 class="h2 mb-4 mt-3 text-right">نیا آرڈر</h1>
 
                 <input type="hidden" name="user_id" value="{{$data['customer']->user_id}}">
                 @csrf
                 <div class="row justify-content-center">
                     <div class="col-md-8">
+                        <div class="alert alert-light border text-right" dir="rtl">
+                            <strong>رقم کی وضاحت:</strong>
+                            پہلے گاہک کا پرانا مشترکہ بقایا دکھایا گیا ہے۔ اس آرڈر کی کل قیمت اور ابھی وصول ہونے والی رقم درج کریں؛
+                            موجودہ آرڈر کی باقی رقم خود بخود حساب ہوگی۔
+                        </div>
                         @if($data['measurementTemplates']->isNotEmpty())
                         <div class="alert alert-info text-right" dir="rtl"><div class="form-group mb-2"><label class="font-weight-bold" for="order-measurement-template">لباس کا پیمائش ٹیمپلیٹ</label><select id="order-measurement-template" class="form-control" name="measurement_template_id"><option value="">تمام محفوظ پیمائش</option>@foreach($data['measurementTemplates'] as $template)<option value="{{ $template->id }}" @selected((string) old('measurement_template_id', $data['measurementTemplateId']) === (string) $template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>@endforeach</select><small class="form-text text-muted">آرڈر کے ساتھ صرف منتخب ٹیمپلیٹ کی پیمائش محفوظ ہوگی۔ گاہک کی اصل پیمائش تبدیل نہیں ہوگی۔</small></div></div>
                         @endif
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">کپڑوں کی تعداد</label>
+                            <label class="col-sm-3 col-form-label" for="suitQuantity">سوٹ کی تعداد</label>
                             <div class="col-sm-9">
                                 <input type="number" class="form-control" name="suitQuantity" id="suitQuantity" required>
 
                             </div>
                         </div>
                         <div class="form-row m-0">
-                            <label class="col-sm-3 col-form-label">نام</label>
+                            <label class="col-sm-3 col-form-label" for="order_customer_name">گاہک کا نام</label>
                             <div class="col-sm-9">
-                                <input type="text" class="form-control" name="CustomerName" readonly
+                                <input id="order_customer_name" type="text" class="form-control" name="CustomerName" readonly
                                     value="{{$data['customer']->name}}">
                                 <input type="hidden" class="form-control" name="customerId" value="{{$data['customer']->id}}">
                             </div>
                         </div>
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">ٹوٹل قیمت</label>
+                            <label class="col-sm-3 col-form-label" for="totalPayment">اس آرڈر کی کل قیمت</label>
                             <div class="col-sm-9">
                                 <input type="number" class="form-control" name="totalPayment" id="totalPayment" required>
                             </div>
                         </div>
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">وصول رقم</label>
+                            <label class="col-sm-3 col-form-label" for="recivedPayment">ابھی وصول شدہ رقم</label>
                             <div class="col-sm-9">
                                 <input type="number" class="form-control" name="recivedPayment" id="recivedPayment" required>
                             </div>
                         </div>
+                        <div class="card card-body bg-light border mb-3">
+                            <h3 class="h6 font-weight-bold">وصول شدہ رقم کی تفصیل</h3>
+                            @include('components.payment-method-fields', ['prefix' => 'tailoring_order'])
+                            <div class="form-group mb-0">
+                                <label for="tailoring_order_paid_on">ادائیگی کی تاریخ</label>
+                                <input id="tailoring_order_paid_on" type="date" name="paid_on" value="{{ now()->toDateString() }}" class="form-control" required>
+                            </div>
+                        </div>
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">بقیہ</label>
+                            <label class="col-sm-3 col-form-label" for="customer_previous_balance">گاہک کا پچھلا مشترکہ بقایا</label>
                             <div class="col-sm-9">
                                 @if($data['remainingBalance'] !== null)
-                                    <input type="number" class="form-control" name="totalBalance" readonly
+                                    <input id="customer_previous_balance" type="number" class="form-control" readonly
                                         value="{{$data['remainingBalance']}}">
                                 @else
-                                    <span class="form-control text-muted">بقایا دیکھنے کی اجازت نہیں</span>
+                                    <span id="customer_previous_balance" class="form-control text-muted">بقایا دیکھنے کی اجازت نہیں</span>
                                 @endif
                             </div>
                         </div>
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">بیلنس</label>
+                            <label class="col-sm-3 col-form-label" for="balance">اس آرڈر کی باقی رقم</label>
                             <div class="col-sm-9">
                                 <input type="number" class="form-control" name="balance" readonly id="balance">
+                                <small class="form-text text-muted">کل قیمت میں سے ابھی وصول شدہ رقم منہا کر کے حساب کیا گیا ہے۔</small>
                             </div>
                         </div>
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">واپسی کی تاریخ</label>
+                            <label class="col-sm-3 col-form-label" for="order_return_date">حوالگی کی تاریخ</label>
                             <div class="col-sm-9">
-                                <input type="date" class="form-control" name="returnDate" required>
+                                <input id="order_return_date" type="date" class="form-control" name="returnDate" required>
                             </div>
                         </div>
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">سیریل نمبر</label>
+                            <label class="col-sm-3 col-form-label" for="order_serial_number">سیریل نمبر</label>
                             <div class="col-sm-9" id="suitNumContainer">
-                                <input type="text" class="form-control" name="serail" required value="{{$data['serialNumber'];}}" readonly>
+                                <input id="order_serial_number" type="text" class="form-control" name="serail" required value="{{$data['serialNumber'];}}" readonly>
                             </div>
                         </div>
 
 
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">درزی</label>
+                            <label class="col-sm-3 col-form-label" for="tailor-selected">درزی</label>
                             <div class="col-sm-9">
                                 <select id="tailor-selected" class="form-control" name="tailorId" required dir="rtl">
                                     <option value="">درزی کو منتخب کریں</option>
@@ -129,7 +143,7 @@
                         </div>
 
                         <div class="form-group form-row">
-                            <label class="col-sm-3 col-form-label">درزی رقم</label>
+                            <span class="col-sm-3 col-form-label">درزی رقم</span>
                             {{-- new change --}}
                             <div class="col-sm-9" id="tailor-rates">
                             </div>
@@ -158,10 +172,10 @@
                         </div> --}}
                         <div class="form-group form-row">
                             <div class="col-md-3">
-                                <lable style="font-size:23px; float:right">نوٹ</lable>
+                                <label for="order_remarks" style="font-size:23px; float:right">نوٹ</label>
                             </div>
                             <div class="col-md-9">
-                                <textarea rows="4" cols="" class="form-control" name="remarks" dir="rtl"
+                                <textarea id="order_remarks" rows="4" cols="" class="form-control" name="remarks" dir="auto"
                               
                                 >{{$data['customer']->note}}</textarea>
                             </div>

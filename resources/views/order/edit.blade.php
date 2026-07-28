@@ -146,10 +146,10 @@
                             </div>
                             <div class="form-group form-row">
                                 <div class="col-md-3">
-                                    <label style="font-size:23px; float:right">نوٹ</label>
+                                    <label for="order_remarks" style="font-size:23px; float:right">نوٹ</label>
                                 </div>
                                 <div class="col-md-9">
-                                    <textarea rows="4" cols="" class="form-control" name="remarks" dir="rtl">{{ $data->remarks }}</textarea>
+                                    <textarea id="order_remarks" rows="4" cols="" class="form-control" name="remarks" dir="auto">{{ $data->remarks }}</textarea>
                                 </div>
                             </div>
                             @if($data->measurementValues->isNotEmpty())

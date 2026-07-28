@@ -395,7 +395,7 @@ class AdministratorController extends Controller
             'name' => $permission
         ]);
 
-        return redirect()->route('administrator.index')->with('success', 'رول اور اجازت کامیابی کے ساتھ بنائی گئی۔');
+        return redirect()->route('administrator.index')->with('success', 'Role and permission created successfully.');
     }
 
     public function showRolePermi()

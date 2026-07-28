@@ -49,6 +49,27 @@ class BusinessRole extends Model
         self::STOREFRONT_MANAGE => 'آن لائن دکان کی تشہیر اور معلومات سنبھالیں',
     ];
 
+    public const ENGLISH_PERMISSIONS = [
+        self::TAILORING_ACCESS => 'Use the tailoring workspace',
+        self::TAILORING_CUSTOMERS => 'Customers and measurements',
+        self::TAILORING_ORDERS => 'Tailoring orders and payments',
+        self::TAILORING_WORKSHOP => 'Workshop jobs and stages',
+        self::TAILORING_TAILORS => 'Tailors, wages and rates',
+        self::TAILORING_CONFIGURATION => 'Design and measurement configuration',
+        self::CLOTHING_ACCESS => 'Use clothing sales and purchases',
+        self::CLOTHING_SALES => 'Sales and online orders',
+        self::CLOTHING_INVENTORY => 'Stock, cloth and valuation',
+        self::CLOTHING_PURCHASES => 'Purchases, receiving and returns',
+        self::CLOTHING_SUPPLIERS => 'Suppliers and payments',
+        self::FINANCE_VIEW => 'View financial reports',
+        self::CUSTOMER_BALANCES => 'View unified customer balances and payments',
+        self::EXPENSES_MANAGE => 'Manage business expenses',
+        self::SETTINGS_MANAGE => 'Change shop settings',
+        self::TEAM_MANAGE => 'Manage employees and roles',
+        self::ACTIVITY_VIEW => 'View employee activity',
+        self::STOREFRONT_MANAGE => 'Manage public storefront promotion and information',
+    ];
+
     public const PERMISSION_GROUPS = [
         'tailoring' => [
             'label' => 'ٹیلرنگ',

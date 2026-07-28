@@ -16,13 +16,19 @@ class CustomerCreationTest extends TestCase
     public function test_customer_list_exposes_a_clear_create_customer_action(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
-        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner = User::factory()->create(['tailoring_access' => true, 'is_business_owner' => true]);
         $owner->assignRole($role);
+        $customer = Customers::create([
+            'user_id' => $owner->id,
+            'name' => 'محمد اسلم',
+            'phone_number1' => '03001234567',
+        ]);
 
         $this->actingAs($owner)->get(route('admin.Customers.index'))
             ->assertOk()
             ->assertSee(route('admin.Customers.create'), false)
-            ->assertSeeText('نیا گاہک شامل کریں');
+            ->assertSeeText('نیا گاہک شامل کریں')
+            ->assertSee('aria-label="'.$customer->name.' کی ادائیگی درج کریں"', false);
     }
 
     public function test_tailoring_client_can_create_a_customer_with_default_design_options(): void

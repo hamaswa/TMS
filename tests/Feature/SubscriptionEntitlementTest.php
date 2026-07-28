@@ -145,8 +145,23 @@ class SubscriptionEntitlementTest extends TestCase
             'password' => 'Tailor@2026',
         ])->assertSessionHasErrors('tailor_limit');
 
+        $this->actingAs($owner)
+            ->get(route('admin.Tailor.index'))
+            ->assertOk()
+            ->assertSeeText('مزید درزی کے لیے پلان اپ گریڈ کریں')
+            ->assertDontSee(route('admin.Tailor.create'), false);
+
+        $this->actingAs($owner)
+            ->get(route('admin.Tailor.create'))
+            ->assertRedirect(route('admin.Tailor.index'))
+            ->assertSessionHasErrors('tailor_limit');
+
         $this->assertDatabaseCount('business_roles', 1);
         $this->assertDatabaseCount('tailors', 1);
+        $this->assertDatabaseMissing('business_activity_logs', [
+            'business_id' => $business->id,
+            'route_name' => 'admin.Tailor.store',
+        ]);
     }
 
     public function test_legacy_unconfigured_client_keeps_access_until_first_subscription_is_assigned(): void

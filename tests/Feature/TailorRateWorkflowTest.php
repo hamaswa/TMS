@@ -159,6 +159,18 @@ class TailorRateWorkflowTest extends TestCase
             'serail' => 'QA-001',
         ];
 
+        $this->actingAs($owner)
+            ->get(route('admin.order.create', $customer))
+            ->assertOk()
+            ->assertSeeText('گاہک کا پچھلا مشترکہ بقایا')
+            ->assertSee('<h1', false)
+            ->assertSeeText('اس آرڈر کی کل قیمت')
+            ->assertSeeText('ابھی وصول شدہ رقم')
+            ->assertSeeText('اس آرڈر کی باقی رقم')
+            ->assertSee('for="totalPayment"', false)
+            ->assertSee('for="recivedPayment"', false)
+            ->assertSee('aria-label="محفوظ ناپ تلاش کریں"', false);
+
         $this->actingAs($owner)->post(route('admin.order.insert'), $payload)->assertRedirect();
 
         $this->assertDatabaseHas('transactions', [

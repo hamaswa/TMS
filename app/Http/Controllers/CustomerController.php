@@ -14,12 +14,14 @@ use App\Models\Transaction;
 use App\Rules\PakistanMobileNumber;
 use App\Rules\UniqueCustomerPhone;
 use App\Services\MeasurementService;
+use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
@@ -52,6 +54,20 @@ class CustomerController extends Controller
             ->get();
 
         return view('customer.list', compact('customers', 'canViewBalances'));
+    }
+
+    public function accounts()
+    {
+        $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
+            ->whereNull('parent_id')
+            ->withSum([
+                'transactions as current_balance' => fn ($transactions) => $transactions
+                    ->where('userId', Auth::user()->businessOwnerId()),
+            ], 'remainingBalance')
+            ->orderBy('name')
+            ->get();
+
+        return view('customer.accounts', compact('customers'));
     }
 
     /**
@@ -197,12 +213,7 @@ class CustomerController extends Controller
         ])->filter();
         $activeTab = request()->string('tab')->toString();
         $activeTab = $tabs->has($activeTab) ? $activeTab : 'overview';
-        $paymentRoute = null;
-        if ($canViewBalances) {
-            $paymentRoute = $canManageMeasurements
-                ? route('admin.DirectPayment')
-                : ($canViewShop ? route('admin.sale-direct-payment') : null);
-        }
+        $paymentRoute = $canViewBalances ? route('admin.customer-payments.store') : null;
 
         return view('customer.statement', compact(
             'customer', 'totalBalance', 'transactions', 'orders', 'sales',
@@ -497,8 +508,18 @@ class CustomerController extends Controller
             'customer_id' => ['required', 'integer'],
             'DirectPayment' => ['required', 'numeric', 'gt:0'],
             'comment' => ['nullable', 'string', 'max:1000'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'payment_reference' => ['nullable', 'string', 'max:255'],
+            'paid_on' => ['nullable', 'date'],
             'return_to_statement' => ['nullable', 'boolean'],
+            'return_to_accounts' => ['nullable', 'boolean'],
         ]);
+        $paymentMethod = $validated['payment_method'] ?? 'cash';
+        if (PaymentMethods::requiresReference($paymentMethod) && blank($validated['payment_reference'] ?? null)) {
+            throw ValidationException::withMessages([
+                'payment_reference' => 'منتخب ادائیگی کے طریقے کا حوالہ نمبر درج کریں۔',
+            ]);
+        }
         $customer = $this->ownedCustomer($validated['customer_id']);
         // Retrieve the current remaining balance for the customer
         $currentBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->sum('remainingBalance');
@@ -521,12 +542,17 @@ class CustomerController extends Controller
         $transaction->recivedPayment = $validated['DirectPayment'];
         $transaction->Order_type = 'Payment';
         $transaction->comment = $validated['comment'] ?? null;
+        $transaction->payment_method = $paymentMethod;
+        $transaction->payment_reference = $validated['payment_reference'] ?? null;
+        $transaction->paid_on = $validated['paid_on'] ?? now()->toDateString();
         $transaction->userId = Auth::user()->businessOwnerId();
         $transaction->save();
 
         $response = $req->boolean('return_to_statement')
             ? redirect()->route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions'])
-            : redirect('admin/Customers');
+            : ($req->boolean('return_to_accounts')
+                ? redirect()->route('admin.customer-accounts.index')
+                : redirect('admin/Customers'));
 
         return $response->with('insert', " {$customerName} کے لئے آپ نے Rs{$req->DirectPayment} کی رقم درج کی ہے");
     }
@@ -539,7 +565,7 @@ class CustomerController extends Controller
         $obj->user_id = auth()->user()->businessOwnerId();
         $obj->save();
 
-        return redirect('admin/Customers')->with('insert', 'Rack Number Added');
+        return redirect('admin/Customers')->with('insert', 'ریک نمبر کامیابی سے شامل کر دیا گیا ہے۔');
     }
 
     public function SaleDirectPayment(Request $req)
@@ -548,8 +574,17 @@ class CustomerController extends Controller
             'customer_id' => ['required', 'integer'],
             'DirectPayment' => ['required', 'numeric', 'gt:0'],
             'comment' => ['nullable', 'string', 'max:100'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'payment_reference' => ['nullable', 'string', 'max:255'],
+            'paid_on' => ['nullable', 'date'],
             'return_to_statement' => ['nullable', 'boolean'],
         ]);
+        $paymentMethod = $validated['payment_method'] ?? 'cash';
+        if (PaymentMethods::requiresReference($paymentMethod) && blank($validated['payment_reference'] ?? null)) {
+            throw ValidationException::withMessages([
+                'payment_reference' => 'منتخب ادائیگی کے طریقے کا حوالہ نمبر درج کریں۔',
+            ]);
+        }
         $customer = $this->ownedCustomer($validated['customer_id']);
         // Retrieve the current remaining balance for the customer
         $currentBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->sum('remainingBalance');
@@ -570,6 +605,9 @@ class CustomerController extends Controller
         $obj->recivedPayment = $validated['DirectPayment'];
         $obj->Order_type = 'Payment';
         $obj->comment = $validated['comment'] ?? null;
+        $obj->payment_method = $paymentMethod;
+        $obj->payment_reference = $validated['payment_reference'] ?? null;
+        $obj->paid_on = $validated['paid_on'] ?? now()->toDateString();
         $obj->userId = Auth::user()->businessOwnerId();
         $obj->save();
 

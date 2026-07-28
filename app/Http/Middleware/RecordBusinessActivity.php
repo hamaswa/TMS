@@ -19,6 +19,11 @@ class RecordBusinessActivity
             return $response;
         }
 
+        if ($request->hasSession()
+            && in_array('errors', $request->session()->get('_flash.new', []), true)) {
+            return $response;
+        }
+
         $user = $request->user();
         if (! $user?->isBusinessMember() || ! $user->business_id) {
             return $response;

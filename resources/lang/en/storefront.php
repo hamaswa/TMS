@@ -101,6 +101,7 @@ return [
         'colors_availability' => 'Colours and availability',
         'select_color' => 'Select a colour',
         'stock_out' => 'Out of stock',
+        'product_color_label' => 'Choose a colour for this order',
         'quantity_label' => 'Quantity in metres',
         'reserve' => 'Reserve in cart',
         'reservation_note' => 'The selected quantity is reserved for 30 minutes. No payment is taken and no final order is created yet.',

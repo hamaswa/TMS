@@ -8,7 +8,8 @@ class WorkerLedgerEntry extends Model
 {
     protected $fillable = [
         'user_id', 'production_worker_id', 'assignment_id', 'legacy_key',
-        'entry_type', 'amount', 'entry_date', 'reference_type', 'reference_id', 'notes',
+        'entry_type', 'amount', 'entry_date', 'payment_method', 'payment_reference',
+        'reference_type', 'reference_id', 'notes',
     ];
 
     protected function casts(): array

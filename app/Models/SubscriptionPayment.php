@@ -18,6 +18,15 @@ class SubscriptionPayment extends Model
         'other' => 'Other',
     ];
 
+    public const URDU_METHODS = [
+        'cash' => 'نقد',
+        'bank_transfer' => 'بینک ٹرانسفر',
+        'easypaisa' => 'ایزی پیسہ',
+        'jazzcash' => 'جاز کیش',
+        'raast' => 'راست',
+        'other' => 'دیگر',
+    ];
+
     protected $fillable = [
         'business_id',
         'business_subscription_id',

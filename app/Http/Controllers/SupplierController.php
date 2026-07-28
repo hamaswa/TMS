@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -58,12 +59,19 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0', 'max:' . max(0, $outstanding)],
             'payment_date' => ['required', 'date'],
-            'reference' => ['nullable', 'string', 'max:255'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'reference' => [
+                Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
         SupplierPayment::create([
             'user_id' => Auth::user()->businessOwnerId(), 'supplier_id' => $supplier->id, 'purchase_id' => null,
             'payment_date' => $validated['payment_date'], 'amount' => $validated['amount'],
+            'payment_method' => $validated['payment_method'] ?? 'cash',
             'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? 'General supplier payment',
         ]);
         return back()->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');

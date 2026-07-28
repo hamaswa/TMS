@@ -61,6 +61,15 @@ class ShopCatalogOnboardingTest extends TestCase
         $brand = ClothBrand::create(['name' => 'صدیقی فیبرکس', 'user_id' => $owner->id]);
         $type = ClothType::create(['name' => 'واش اینڈ ویئر', 'user_id' => $owner->id]);
 
+        $this->actingAs($owner->fresh())->get(route('admin.cloth.create'))
+            ->assertOk()
+            ->assertSee(route('admin.clothtype.index'), false)
+            ->assertSee(route('admin.clothbrand.index'), false)
+            ->assertSeeText('کپڑے کی قسم بنائیں')
+            ->assertSeeText('برانڈ بنائیں')
+            ->assertSeeText('لمبائی شامل کریں')
+            ->assertSee('<h1', false);
+
         $this->actingAs($owner->fresh())->post(route('admin.cloth.store'), [
             'cloth_type_id' => $type->id,
             'cloth_brand_id' => $brand->id,

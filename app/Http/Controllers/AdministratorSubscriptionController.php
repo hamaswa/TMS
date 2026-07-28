@@ -120,7 +120,8 @@ class AdministratorSubscriptionController extends Controller
         $user = $this->client($id);
         $business = $user->ownedBusiness()->firstOrFail();
         abort_unless($subscription->business_id === $business->id && ! $subscription->cancelled_at, 404);
-        $validated = $request->validate([
+        $errorBag = 'subscription_payment_'.$subscription->id;
+        $validated = $request->validateWithBag($errorBag, [
             'paid_on' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'gt:0', 'max:999999999999.99'],
             'payment_method' => ['required', Rule::in(array_keys(SubscriptionPayment::METHODS))],
@@ -142,7 +143,7 @@ class AdministratorSubscriptionController extends Controller
             if ((float) $validated['amount'] > $balance) {
                 throw ValidationException::withMessages([
                     'amount' => 'Payment cannot exceed the outstanding subscription balance of Rs '.number_format($balance, 2).'.',
-                ]);
+                ])->errorBag('subscription_payment_'.$subscription->id);
             }
 
             $locked->payments()->create([

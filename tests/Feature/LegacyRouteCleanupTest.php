@@ -71,7 +71,10 @@ class LegacyRouteCleanupTest extends TestCase
     public function test_active_order_print_routes_render_decoded_serials_and_their_intended_views(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();
-        $order->update(['suitNum' => json_encode(['Suit 1'])]);
+        $order->update([
+            'suitNum' => json_encode(['Suit 1']),
+            'remarks' => 'Bring matching buttons - کالر نرم رکھیں',
+        ]);
         Setting::forceCreate([
             'user_id' => $owner->id,
             'name' => 'QA Tailors',
@@ -83,17 +86,34 @@ class LegacyRouteCleanupTest extends TestCase
         ]);
         Transaction::create([
             'customerId' => $order->customerId,
+            'userId' => $owner->id,
+            'Order_type' => 'Sale',
+            'remainingBalance' => 300,
+        ]);
+        Transaction::create([
+            'customerId' => $order->customerId,
             'orderId' => $order->id,
             'userId' => $owner->id,
             'Order_type' => 'Tailor',
             'recivedPayment' => 500,
             'remainingBalance' => 500,
         ]);
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'remainingBalance' => 700,
+        ]);
 
         $this->actingAs($owner)->get(route('admin.order-print', $order))
             ->assertOk()
             ->assertViewIs('order.print')
-            ->assertSeeText('Suit 1');
+            ->assertSeeText('Suit 1')
+            ->assertSeeText('اس آرڈر کا بقایا:')
+            ->assertSeeText('گزشتہ واجبات:')
+            ->assertSeeText('کل واجب الادا:')
+            ->assertSeeText('800.00')
+            ->assertDontSeeText('1,500.00');
 
         $this->actingAs($owner)->get(route('admin.order-prints', $order))
             ->assertOk()
@@ -132,6 +152,9 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSee('tms-paper-a4', false)
             ->assertSee('class="receipt-date"', false)
             ->assertSee('class="order-summary-row"', false)
+            ->assertSee('order-note', false)
+            ->assertSee('dir="auto"', false)
+            ->assertSee('unicode-bidi: plaintext', false)
             ->assertSee('TMS REF: '.$order->id)
             ->assertSee('<svg', false);
 
@@ -146,6 +169,18 @@ class LegacyRouteCleanupTest extends TestCase
             ->get(route('admin.order-print', $order))
             ->assertOk()
             ->assertDontSee('TMS REF: '.$order->id);
+    }
+
+    public function test_order_notes_field_has_an_explicit_accessible_label_and_direction(): void
+    {
+        [$owner, $order] = $this->orderWithoutActiveSetting();
+
+        $this->actingAs($owner)
+            ->get(route('admin.order.create', $order->customerId))
+            ->assertOk()
+            ->assertSee('for="order_remarks"', false)
+            ->assertSee('id="order_remarks"', false)
+            ->assertSee('dir="auto"', false);
     }
 
     private function orderWithoutActiveSetting(): array

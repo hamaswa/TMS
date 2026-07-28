@@ -10,7 +10,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Transaction extends Model
 {
     use HasFactory, SoftDeletes;
-    protected $fillable=['remainingBalance','recivedPayment','customerId','userId','orderId','tailorId','comment','Order_type','sale_id'];
+    protected $fillable = [
+        'remainingBalance', 'recivedPayment', 'customerId', 'userId', 'orderId',
+        'tailorId', 'comment', 'Order_type', 'sale_id', 'payment_method',
+        'payment_reference', 'paid_on',
+    ];
+
+    protected function casts(): array
+    {
+        return ['paid_on' => 'date'];
+    }
 
 
 
