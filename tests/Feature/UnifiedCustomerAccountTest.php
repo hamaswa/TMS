@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Customers;
 use App\Models\Business;
 use App\Models\BusinessRole;
+use App\Models\Customers;
 use App\Models\Sale;
 use App\Models\Transaction;
 use App\Models\User;
@@ -135,6 +135,49 @@ class UnifiedCustomerAccountTest extends TestCase
         ])->assertNotFound();
 
         $this->assertDatabaseCount('sales', 0);
+    }
+
+    public function test_counter_sale_calculates_balance_server_side_and_rejects_overpayment(): void
+    {
+        $owner = $this->owner();
+        $customer = Customers::create([
+            'name' => 'Calculated Balance Customer',
+            'phone_number1' => '03001110001',
+            'user_id' => $owner->id,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.sale.create'))
+            ->assertOk()
+            ->assertSee('aria-label="مصنوعات کی تعداد"', false)
+            ->assertSee('aria-label="فی عدد قیمت"', false)
+            ->assertSee('id="remaining_balance"', false);
+
+        $this->actingAs($owner)->post(route('admin.sale.store'), [
+            'customer_id' => $customer->id,
+            'name' => ['Cotton shirt'],
+            'quantity' => [2],
+            'price' => [750],
+            'received_payment' => 500,
+            'remaining_balance' => 1,
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('transactions', [
+            'customerId' => $customer->id,
+            'Order_type' => 'Sale',
+            'recivedPayment' => 500,
+            'remainingBalance' => 1000,
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.sale.store'), [
+            'customer_id' => $customer->id,
+            'name' => ['Cotton shirt'],
+            'quantity' => [1],
+            'price' => [750],
+            'received_payment' => 751,
+            'remaining_balance' => 0,
+        ])->assertSessionHasErrors('received_payment');
+
+        $this->assertDatabaseCount('sales', 1);
     }
 
     public function test_employee_balance_visibility_is_explicitly_controlled_by_client_role(): void
@@ -270,7 +313,10 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertOk()
             ->assertSeeText('Accounts Desk Customer')
             ->assertSeeText('روپے 875.00')
-            ->assertSeeText('ادائیگی درج کریں');
+            ->assertSeeText('ادائیگی درج کریں')
+            ->assertSee('customer-account-table', false)
+            ->assertSee('data-label="مجموعی بقایا"', false)
+            ->assertSee('customer-account-actions', false);
 
         $this->actingAs($employee)->post(route('admin.customer-payments.store'), [
             'customer_id' => $customer->id,

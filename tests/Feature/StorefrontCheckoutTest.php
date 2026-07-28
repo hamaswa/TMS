@@ -674,6 +674,27 @@ class StorefrontCheckoutTest extends TestCase
         );
     }
 
+    public function test_unpaid_only_checkout_does_not_show_manual_payment_instructions(): void
+    {
+        [, $storefront, $listing, $color, $customer] = $this->catalog();
+        $storefront->update([
+            'unpaid_orders_enabled' => true,
+            'cod_enabled' => false,
+            'easypaisa_enabled' => false,
+            'jazzcash_enabled' => false,
+            'bank_transfer_enabled' => false,
+            'raast_enabled' => false,
+        ]);
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+
+        $this->get(route('storefront.cart.show', $storefront))
+            ->assertOk()
+            ->assertSeeText(__('storefront.cart.payment_method'))
+            ->assertSeeText(__('storefront.payment.methods.unpaid'))
+            ->assertDontSeeText(__('storefront.cart.manual_payment_help'))
+            ->assertDontSee('id="manual-order-fields"', false);
+    }
+
     public function test_jazzcash_checkout_is_pending_until_client_verifies_it(): void
     {
         [$owner, $storefront, $listing, $color, $customer] = $this->catalog();

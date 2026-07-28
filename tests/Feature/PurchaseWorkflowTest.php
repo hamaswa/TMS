@@ -17,6 +17,19 @@ class PurchaseWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_purchase_form_has_a_page_heading_and_accessible_item_fields(): void
+    {
+        [$owner] = $this->draftPurchase();
+
+        $this->actingAs($owner)->get(route('admin.purchases.create'))
+            ->assertOk()
+            ->assertSee('<h1 class="h4 mb-0">', false)
+            ->assertSee('aria-label="کپڑا اور رنگ منتخب کریں"', false)
+            ->assertSee('aria-label="خریداری کی مقدار میٹر میں"', false)
+            ->assertSee('aria-label="فی میٹر لاگت"', false)
+            ->assertSee('aria-label="یہ آئٹم ہٹائیں"', false);
+    }
+
     public function test_receiving_purchase_increases_stock_and_creates_ledger_entry_once(): void
     {
         [$owner, , $color, $purchase] = $this->draftPurchase();
@@ -122,7 +135,13 @@ class PurchaseWorkflowTest extends TestCase
             'supplier_id' => $supplier->id, 'purchase_id' => null, 'amount' => 200,
             'payment_method' => 'cheque', 'reference' => 'OPEN-1',
         ]);
-        $this->actingAs($owner)->get(route('admin.suppliers.index'))->assertOk()->assertSee('300.00');
+        $this->actingAs($owner)->get(route('admin.suppliers.index'))
+            ->assertOk()
+            ->assertSee('300.00')
+            ->assertSee('<h1 class="h3 mb-1">', false)
+            ->assertSee('supplier-table', false)
+            ->assertSee('data-label="خریداری بقایا"', false)
+            ->assertSee('supplier-actions', false);
     }
 
     private function draftPurchase(): array

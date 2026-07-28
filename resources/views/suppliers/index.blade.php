@@ -1,7 +1,22 @@
 @extends('main')
+@push('styles')
+<style>
+@media (max-width: 767.98px) {
+    .supplier-table, .supplier-table tbody, .supplier-table tr, .supplier-table td { display:block; width:100%; }
+    .supplier-table thead { display:none; }
+    .supplier-table tr { border:1px solid #e3e8ee; border-radius:.65rem; margin:.75rem; padding:.35rem .75rem; width:calc(100% - 1.5rem); }
+    .supplier-table td { display:flex; justify-content:space-between; align-items:center; gap:1rem; border-top:1px solid #eef1f4; padding:.7rem 0; }
+    .supplier-table td:first-child { border-top:0; }
+    .supplier-table td::before { content:attr(data-label); flex:0 0 38%; color:#6c757d; font-weight:700; }
+    .supplier-table .supplier-actions { display:grid; grid-template-columns:1fr; gap:.5rem; }
+    .supplier-table .supplier-actions::before { display:none; }
+    .supplier-table .supplier-actions .btn, .supplier-table .supplier-actions form { width:100%; }
+}
+</style>
+@endpush
 @section('content')
 <section class="main-content"><div class="container-fluid px-3 px-md-4">
-    <div class="d-flex justify-content-between align-items-center mb-3"><div><h3 class="mb-1">سپلائرز</h3><p class="text-muted mb-0">سپلائرز، رابطہ معلومات اور واجب الادا رقوم کا انتظام کریں۔</p></div><a href="{{ route('admin.purchases.index') }}" class="btn btn-outline-primary">خریداریاں</a></div>
+    <div class="d-flex justify-content-between align-items-center mb-3"><div><h1 class="h3 mb-1">سپلائرز</h1><p class="text-muted mb-0">سپلائرز، رابطہ معلومات اور واجب الادا رقوم کا انتظام کریں۔</p></div><a href="{{ route('admin.purchases.index') }}" class="btn btn-outline-primary">خریداریاں</a></div>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <div class="row">
@@ -16,14 +31,14 @@
                 <button class="btn btn-primary" type="submit">سپلائر محفوظ کریں</button>
             </form>
         </div></div></div>
-        <div class="col-lg-8"><div class="card"><div class="table-responsive"><table class="table table-hover mb-0">
+        <div class="col-lg-8"><div class="card"><div class="table-responsive"><table class="table table-hover mb-0 supplier-table">
             <thead class="thead-light"><tr><th>سپلائر</th><th>رابطہ</th><th>ابتدائی بقایا</th><th>خریداری بقایا</th><th>عمل</th></tr></thead>
             <tbody>@forelse($suppliers as $supplier)<tr>
-                <td><strong>{{ $supplier->name }}</strong>@unless($supplier->active)<span class="badge badge-secondary ml-1">غیر فعال</span>@endunless<br><small>{{ $supplier->contact_person }}</small></td>
-                <td>{{ $supplier->phone }}<br><small>{{ $supplier->email }}</small></td>
-                <td>Rs {{ number_format($supplier->opening_balance, 2) }}</td>
-                <td>Rs {{ number_format(($supplier->purchase_balance ?? 0) + $supplier->opening_balance - ($supplier->unallocated_payments ?? 0), 2) }}</td>
-                <td><a href="{{ route('admin.suppliers.edit', $supplier) }}" class="btn btn-sm btn-outline-primary">ترمیم</a>
+                <td data-label="سپلائر"><strong>{{ $supplier->name }}</strong>@unless($supplier->active)<span class="badge badge-secondary ml-1">غیر فعال</span>@endunless<br><small>{{ $supplier->contact_person }}</small></td>
+                <td data-label="رابطہ">{{ $supplier->phone }}<br><small>{{ $supplier->email }}</small></td>
+                <td data-label="ابتدائی بقایا">Rs {{ number_format($supplier->opening_balance, 2) }}</td>
+                <td data-label="خریداری بقایا">Rs {{ number_format(($supplier->purchase_balance ?? 0) + $supplier->opening_balance - ($supplier->unallocated_payments ?? 0), 2) }}</td>
+                <td class="supplier-actions" data-label="عمل"><a href="{{ route('admin.suppliers.edit', $supplier) }}" class="btn btn-sm btn-outline-primary">ترمیم</a>
                     <form method="POST" action="{{ route('admin.suppliers.destroy', $supplier) }}" class="d-inline" data-confirm="کیا آپ یہ سپلائر حذف کرنا چاہتے ہیں؟">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">حذف کریں</button></form></td>
             </tr>@empty<tr><td colspan="5" class="text-center text-muted py-5">ابھی کوئی سپلائر شامل نہیں کیا گیا۔</td></tr>@endforelse</tbody>
         </table></div></div></div>

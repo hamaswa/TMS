@@ -1,5 +1,59 @@
 @extends('main')
 
+@push('styles')
+<style>
+    @media (max-width: 767.98px) {
+        .customer-account-table,
+        .customer-account-table tbody,
+        .customer-account-table tr,
+        .customer-account-table td {
+            display: block;
+            width: 100%;
+        }
+        .customer-account-table thead {
+            display: none;
+        }
+        .customer-account-table tr {
+            border: 1px solid #e3e8ee;
+            border-radius: .65rem;
+            margin-bottom: 1rem;
+            padding: .45rem .75rem;
+            background: #fff;
+        }
+        .customer-account-table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            border-top: 1px solid #eef1f4;
+            padding: .7rem 0;
+            text-align: left;
+        }
+        .customer-account-table td:first-child {
+            border-top: 0;
+        }
+        .customer-account-table td::before {
+            content: attr(data-label);
+            flex: 0 0 38%;
+            color: #6c757d;
+            font-weight: 700;
+            text-align: right;
+        }
+        .customer-account-table .customer-account-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: .5rem;
+        }
+        .customer-account-table .customer-account-actions::before {
+            display: none;
+        }
+        .customer-account-table .customer-account-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <section class="main-content">
     <div class="container py-4">
@@ -25,7 +79,7 @@
         <div class="card shadow-sm border-0">
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0 js-sortable-table">
+                    <table class="table table-hover mb-0 js-sortable-table customer-account-table">
                         <thead>
                             <tr>
                                 <th scope="col">گاہک</th>
@@ -37,10 +91,10 @@
                         <tbody>
                             @forelse($customers as $customer)
                                 <tr>
-                                    <td class="font-weight-bold">{{ $customer->name }}</td>
-                                    <td dir="ltr">{{ $customer->phone_number1 }}</td>
-                                    <td>روپے {{ number_format((float) $customer->current_balance, 2) }}</td>
-                                    <td>
+                                    <td class="font-weight-bold" data-label="گاہک">{{ $customer->name }}</td>
+                                    <td dir="ltr" data-label="فون نمبر">{{ $customer->phone_number1 }}</td>
+                                    <td data-label="مجموعی بقایا">روپے {{ number_format((float) $customer->current_balance, 2) }}</td>
+                                    <td class="customer-account-actions" data-label="عمل">
                                         <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.customers.statement', $customer) }}">
                                             پروفائل / کھاتہ
                                         </a>

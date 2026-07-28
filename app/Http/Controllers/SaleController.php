@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-
-use App\Models\Sale;
-use App\Models\Saledetail;
-use App\Models\Transaction;
-use App\Models\Setting;
 use App\Models\Customers;
+use App\Models\Sale;
+use App\Models\Setting;
+use App\Models\Transaction;
+use App\Services\PrintDocumentService;
+use App\Support\PaymentMethods;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use App\Support\PaymentMethods;
+use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
 {
@@ -20,7 +20,7 @@ class SaleController extends Controller
     {
         $sales = Sale::with('customer')->where('user_id', Auth::user()->businessOwnerId())->latest()->get();
 
-        return view("sale.list", compact('sales'));
+        return view('sale.list', compact('sales'));
     }
 
     public function create()
@@ -34,6 +34,7 @@ class SaleController extends Controller
     {
         $sale = $this->ownedSale($id);
         $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('Order_type', 'Sale')->where('sale_id', $id)->get();
+
         // dd($transaction);
         return view('sale.show', compact('sale', 'transaction'));
     }
@@ -83,7 +84,7 @@ class SaleController extends Controller
     {
         $sales = $this->ownedSale($id);
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
-        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where("sale_id", $id)->get();
+        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $id)->get();
 
         // Calculate the latest balance
         $latestBalance = $sales->customer_id
@@ -93,11 +94,8 @@ class SaleController extends Controller
                 ->sum('remainingBalance')
             : $transaction->sum('remainingBalance');
 
-        return view('sale.edit', compact("sales", "transaction", "latestBalance", "customers"));
+        return view('sale.edit', compact('sales', 'transaction', 'latestBalance', 'customers'));
     }
-
-
-
 
     public function update(Request $request, $id)
     {
@@ -123,14 +121,15 @@ class SaleController extends Controller
                     'remainingBalance' => $validated['remaining_balance'],
                     'recivedPayment' => $validated['received_payment'],
                     'customerId' => $customer->id,
+                    'payment_method' => $validated['payment_method'] ?? 'cash',
+                    'payment_reference' => $validated['payment_reference'] ?? null,
+                    'paid_on' => $validated['paid_on'] ?? now()->toDateString(),
                 ]
             );
         });
 
         return redirect(url('admin/sale/print', [$id]));
     }
-
-
 
     public function destroy($id)
     {
@@ -141,7 +140,7 @@ class SaleController extends Controller
             $sale->delete();
         });
 
-        return back()->with("delete", "فروخت کو کامیابی کے ساتھ حذف کر دیا گیا ہے۔");
+        return back()->with('delete', 'فروخت کو کامیابی کے ساتھ حذف کر دیا گیا ہے۔');
     }
 
     public function print($id)
@@ -149,7 +148,6 @@ class SaleController extends Controller
         $sale = $this->ownedSale($id);
 
         $saleid = $sale->id;
-
 
         $customerTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())
             ->when($sale->customer_id,
@@ -162,7 +160,6 @@ class SaleController extends Controller
 
         $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $id)->latest()->first();
 
-
         // Calculate the previous balance
         $previousBalance = 0; // Initialize it to zero
         if ($customerTransactions->isNotEmpty()) {
@@ -174,8 +171,8 @@ class SaleController extends Controller
         // $setting = Setting::where('user_id',auth()->user()->businessOwnerId())->where('status',1)->first();
 
         $setting = Setting::ensureDefaultFor(Auth::user());
-        $status = "default";
-        $printConfig = app(\App\Services\PrintDocumentService::class)
+        $status = 'default';
+        $printConfig = app(PrintDocumentService::class)
             ->make($setting, request(), 'sale-invoice', $sale->id);
 
         return view('sale.print', compact('sale', 'setting', 'status', 'transaction', 'latestBalance', 'previousBalance', 'printConfig'));
@@ -197,7 +194,6 @@ class SaleController extends Controller
             'price' => ['required', 'array'],
             'price.*' => ['required', 'numeric', 'min:0'],
             'received_payment' => ['required', 'numeric', 'min:0'],
-            'remaining_balance' => ['required', 'numeric', 'min:0'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'payment_reference' => [
                 Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
@@ -214,6 +210,18 @@ class SaleController extends Controller
             422,
             'Sale item fields are incomplete.'
         );
+
+        $saleTotal = collect($validated['price'])
+            ->map(fn ($price, $index) => (float) $price * (int) $validated['quantity'][$index])
+            ->sum();
+
+        if ((float) $validated['received_payment'] > $saleTotal) {
+            throw ValidationException::withMessages([
+                'received_payment' => 'موصول شدہ رقم فروخت کی کل قیمت سے زیادہ نہیں ہو سکتی۔',
+            ]);
+        }
+
+        $validated['remaining_balance'] = round($saleTotal - (float) $validated['received_payment'], 2);
 
         return $validated;
     }
