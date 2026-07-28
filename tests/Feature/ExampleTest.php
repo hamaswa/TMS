@@ -74,4 +74,12 @@ class ExampleTest extends TestCase
             $this->assertSame(1, preg_match_all('/<h1\b/i', $contents), $view);
         }
     }
+
+    public function test_client_layout_renders_page_specific_style_stacks(): void
+    {
+        $header = file_get_contents(resource_path('views/inc/header.blade.php'));
+
+        $this->assertStringContainsString("@stack('styles')", $header);
+        $this->assertStringContainsString("@stack('scripts')", file_get_contents(resource_path('views/inc/footer.blade.php')));
+    }
 }

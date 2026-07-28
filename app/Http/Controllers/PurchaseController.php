@@ -8,14 +8,14 @@ use App\Models\PurchaseItem;
 use App\Models\PurchaseReturn;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Services\InventoryService;
+use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\PaymentMethods;
-use App\Services\InventoryService;
 
 class PurchaseController extends Controller
 {
@@ -83,7 +83,7 @@ class PurchaseController extends Controller
         $purchase = DB::transaction(function () use ($validated, $supplier) {
             $purchase = Purchase::create([
                 'user_id' => Auth::user()->businessOwnerId(), 'supplier_id' => $supplier->id,
-                'purchase_number' => 'TMP-' . Str::uuid(), 'purchase_date' => $validated['purchase_date'],
+                'purchase_number' => 'TMP-'.Str::uuid(), 'purchase_date' => $validated['purchase_date'],
                 'status' => 'draft', 'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? null,
             ]);
             $total = 0;
@@ -100,9 +100,10 @@ class PurchaseController extends Controller
                 $total += $lineTotal;
             }
             $purchase->update([
-                'purchase_number' => 'PO-' . now()->format('Ymd') . '-' . str_pad((string) $purchase->id, 6, '0', STR_PAD_LEFT),
+                'purchase_number' => 'PO-'.now()->format('Ymd').'-'.str_pad((string) $purchase->id, 6, '0', STR_PAD_LEFT),
                 'total_amount' => $total, 'balance_amount' => $total,
             ]);
+
             return $purchase;
         });
 
@@ -112,6 +113,7 @@ class PurchaseController extends Controller
     public function show(int $purchase)
     {
         $purchase = $this->ownedPurchase($purchase)->load(['supplier', 'items.cloth.brand', 'items.cloth.type', 'payments', 'returns.items']);
+
         return view('purchases.show', compact('purchase'));
     }
 
@@ -134,9 +136,18 @@ class PurchaseController extends Controller
 
     public function cancel(int $purchase)
     {
-        $purchase = $this->ownedPurchase($purchase);
-        abort_unless($purchase->status === 'draft', 422, 'Only draft purchases can be cancelled.');
-        $purchase->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+        DB::transaction(function () use ($purchase) {
+            $purchase = Purchase::where('user_id', Auth::user()->businessOwnerId())
+                ->lockForUpdate()
+                ->findOrFail($purchase);
+            abort_unless($purchase->status === 'draft', 422, 'Only draft purchases can be cancelled.');
+            $purchase->update([
+                'status' => 'cancelled',
+                'balance_amount' => 0,
+                'cancelled_at' => now(),
+            ]);
+        });
+
         return back()->with('success', 'خریداری منسوخ کر دی گئی ہے۔');
     }
 
@@ -145,7 +156,7 @@ class PurchaseController extends Controller
         $purchase = $this->ownedPurchase($purchase);
         abort_unless($purchase->status === 'received', 422, 'Payments can only be posted to received purchases.');
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0', 'max:' . max(0, (float) $purchase->balance_amount)],
+            'amount' => ['required', 'numeric', 'gt:0', 'max:'.max(0, (float) $purchase->balance_amount)],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'reference' => ['nullable', 'string', 'max:255'],
@@ -165,6 +176,7 @@ class PurchaseController extends Controller
             ]);
             $purchase->update(['paid_amount' => (float) $purchase->paid_amount + $amount, 'balance_amount' => (float) $purchase->balance_amount - $amount]);
         });
+
         return back()->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');
     }
 
@@ -192,10 +204,10 @@ class PurchaseController extends Controller
             $lineTotal = round($quantity * (float) $item->unit_cost, 2);
             $return = PurchaseReturn::create([
                 'user_id' => Auth::user()->businessOwnerId(), 'supplier_id' => $purchase->supplier_id, 'purchase_id' => $purchase->id,
-                'return_number' => 'TMP-' . Str::uuid(), 'return_date' => $validated['return_date'],
+                'return_number' => 'TMP-'.Str::uuid(), 'return_date' => $validated['return_date'],
                 'total_amount' => $lineTotal, 'note' => $validated['note'] ?? null,
             ]);
-            $return->update(['return_number' => 'PR-' . now()->format('Ymd') . '-' . str_pad((string) $return->id, 6, '0', STR_PAD_LEFT)]);
+            $return->update(['return_number' => 'PR-'.now()->format('Ymd').'-'.str_pad((string) $return->id, 6, '0', STR_PAD_LEFT)]);
             $return->items()->create([
                 'purchase_item_id' => $item->id, 'cloth_color_id' => $color->id,
                 'quantity' => $quantity, 'unit_cost' => $item->unit_cost, 'line_total' => $lineTotal,
@@ -205,9 +217,17 @@ class PurchaseController extends Controller
             $newTotal = round((float) $purchase->total_amount - $lineTotal, 2);
             $purchase->update(['total_amount' => $newTotal, 'balance_amount' => $newTotal - (float) $purchase->paid_amount]);
         });
+
         return back()->with('success', 'خریداری واپسی درج ہو گئی اور اسٹاک کم کر دیا گیا ہے۔');
     }
 
-    private function ownedPurchase(int $id): Purchase { return Purchase::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id); }
-    private function ownedSupplier(int $id): Supplier { return Supplier::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id); }
+    private function ownedPurchase(int $id): Purchase
+    {
+        return Purchase::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
+
+    private function ownedSupplier(int $id): Supplier
+    {
+        return Supplier::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
 }

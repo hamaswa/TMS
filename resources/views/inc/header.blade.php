@@ -31,6 +31,7 @@
     </style>
     <script src="{{ asset('assets/js/jquery-3.5.1.min.js') }}"></script>
     <script src="{{ asset('assets/js/bootstrap.min.js') }}"></script>
+    @stack('styles')
 </head>
 <body>
 <header class="tms-nav sticky-top"><div class="container-fluid px-3 px-lg-4"><nav class="navbar navbar-expand-xl navbar-dark p-0">

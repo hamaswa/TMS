@@ -18,7 +18,10 @@ class SaleController extends Controller
 {
     public function index()
     {
-        $sales = Sale::with('customer')->where('user_id', Auth::user()->businessOwnerId())->latest()->get();
+        $sales = Sale::with(['customer', 'detail'])
+            ->where('user_id', Auth::user()->businessOwnerId())
+            ->latest()
+            ->get();
 
         return view('sale.list', compact('sales'));
     }
@@ -32,7 +35,7 @@ class SaleController extends Controller
 
     public function show($id)
     {
-        $sale = $this->ownedSale($id);
+        $sale = $this->ownedSale($id)->load('detail');
         $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('Order_type', 'Sale')->where('sale_id', $id)->get();
 
         // dd($transaction);
@@ -82,7 +85,7 @@ class SaleController extends Controller
 
     public function edit($id)
     {
-        $sales = $this->ownedSale($id);
+        $sales = $this->ownedSale($id)->load('detail');
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
         $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $id)->get();
 

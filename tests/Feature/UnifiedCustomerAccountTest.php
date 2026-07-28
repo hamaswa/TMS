@@ -159,6 +159,9 @@ class UnifiedCustomerAccountTest extends TestCase
             'price' => [750],
             'received_payment' => 500,
             'remaining_balance' => 1,
+            'payment_method' => 'raast',
+            'payment_reference' => 'RAAST-SALE-1',
+            'paid_on' => '2026-07-28',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('transactions', [
@@ -166,6 +169,54 @@ class UnifiedCustomerAccountTest extends TestCase
             'Order_type' => 'Sale',
             'recivedPayment' => 500,
             'remainingBalance' => 1000,
+            'payment_method' => 'raast',
+            'payment_reference' => 'RAAST-SALE-1',
+        ]);
+        $sale = Sale::firstOrFail();
+        $this->actingAs($owner)->get(route('admin.sale.index'))
+            ->assertOk()
+            ->assertSeeText('Rs 1,500.00')
+            ->assertSeeText('تبدیل کریں')
+            ->assertSee('sale-record-table', false)
+            ->assertSee('data-label="فروخت کی رقم"', false)
+            ->assertSee('aria-label="Calculated Balance Customer کی فروخت حذف کریں"', false);
+        $this->actingAs($owner)->get(route('admin.sale.edit', $sale))
+            ->assertOk()
+            ->assertSee('value="Cotton shirt"', false)
+            ->assertSee('value="2"', false)
+            ->assertSee('value="750"', false)
+            ->assertSeeInOrder(['value="raast"', 'selected'], false)
+            ->assertSee('value="RAAST-SALE-1"', false);
+        $this->actingAs($owner)->get(route('admin.sale.show', $sale))
+            ->assertOk()
+            ->assertSeeText('Rs 1,500.00')
+            ->assertSeeText('Rs 750.00')
+            ->assertSeeText('راست')
+            ->assertSeeText('RAAST-SALE-1')
+            ->assertSee(route('admin.sale-print', $sale), false);
+
+        $this->actingAs($owner)->put(route('admin.sale.update', $sale), [
+            'customer_id' => $customer->id,
+            'name' => ['Cotton kurta'],
+            'quantity' => [3],
+            'price' => [800],
+            'received_payment' => 600,
+            'remaining_balance' => 1,
+            'payment_method' => 'bank_transfer',
+            'payment_reference' => 'BANK-SALE-2',
+            'paid_on' => '2026-07-29',
+        ])->assertRedirect();
+
+        $updatedDetail = $sale->fresh()->detail()->sole();
+        $this->assertSame('Cotton kurta', $updatedDetail->product_name);
+        $this->assertSame(3, (int) $updatedDetail->quantity);
+        $this->assertEquals(800, (float) $updatedDetail->price);
+        $this->assertDatabaseHas('transactions', [
+            'sale_id' => $sale->id,
+            'recivedPayment' => 600,
+            'remainingBalance' => 1800,
+            'payment_method' => 'bank_transfer',
+            'payment_reference' => 'BANK-SALE-2',
         ]);
 
         $this->actingAs($owner)->post(route('admin.sale.store'), [

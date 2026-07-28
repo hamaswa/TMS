@@ -3,12 +3,14 @@
     $paymentMethodName = $methodName ?? 'payment_method';
     $paymentReferenceName = $referenceName ?? 'payment_reference';
     $paymentReferenceHintId = $paymentFieldPrefix.'_reference_hint';
+    $selectedPaymentMethod = old($paymentMethodName, $currentMethod ?? 'cash');
+    $paymentReferenceValue = old($paymentReferenceName, $currentReference ?? null);
 @endphp
 <div class="form-group">
     <label for="{{ $paymentFieldPrefix }}_method">ادائیگی کا طریقہ</label>
     <select id="{{ $paymentFieldPrefix }}_method" name="{{ $paymentMethodName }}" class="form-control" required>
         @foreach(\App\Support\PaymentMethods::LABELS as $methodValue => $methodLabel)
-            <option value="{{ $methodValue }}" @selected(old($paymentMethodName, 'cash') === $methodValue)>{{ $methodLabel }}</option>
+            <option value="{{ $methodValue }}" @selected($selectedPaymentMethod === $methodValue)>{{ $methodLabel }}</option>
         @endforeach
     </select>
 </div>
@@ -18,7 +20,7 @@
         id="{{ $paymentFieldPrefix }}_reference"
         type="text"
         name="{{ $paymentReferenceName }}"
-        value="{{ old($paymentReferenceName) }}"
+        value="{{ $paymentReferenceValue }}"
         maxlength="255"
         class="form-control"
         placeholder="بینک، والٹ، راست یا چیک نمبر"

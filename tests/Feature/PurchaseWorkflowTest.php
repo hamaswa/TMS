@@ -28,6 +28,12 @@ class PurchaseWorkflowTest extends TestCase
             ->assertSee('aria-label="خریداری کی مقدار میٹر میں"', false)
             ->assertSee('aria-label="فی میٹر لاگت"', false)
             ->assertSee('aria-label="یہ آئٹم ہٹائیں"', false);
+        $this->actingAs($owner)->get(route('admin.purchases.index'))
+            ->assertOk()
+            ->assertSee('<h1 class="h3 mb-1">', false)
+            ->assertSee('purchase-list-table', false)
+            ->assertSee('data-label="بقایا"', false)
+            ->assertSee('purchase-list-action', false);
     }
 
     public function test_receiving_purchase_increases_stock_and_creates_ledger_entry_once(): void
@@ -42,6 +48,13 @@ class PurchaseWorkflowTest extends TestCase
             'user_id' => $owner->id, 'cloth_color_id' => $color->id,
             'movement_type' => 'purchase_receipt', 'quantity' => 5,
         ]);
+        $this->actingAs($owner)->get(route('admin.purchases.show', $purchase))
+            ->assertOk()
+            ->assertSee('<h1 class="h3 mb-1">', false)
+            ->assertSee('purchase-item-table', false)
+            ->assertSee('data-label="واپسی کے بعد رقم"', false)
+            ->assertSee('aria-label="واپسی کی مقدار میٹر میں"', false)
+            ->assertSee('data-confirm="کیا منتخب مقدار سپلائر کو واپس کر کے اسٹاک اور بقایا کم کرنا ہے؟"', false);
 
         $this->actingAs($owner)->patch(route('admin.purchases.receive', $purchase))->assertStatus(422);
         $this->assertEquals(15, (float) $color->fresh()->length);
@@ -66,6 +79,24 @@ class PurchaseWorkflowTest extends TestCase
             'cloth_color_id' => $color->id, 'movement_type' => 'purchase_return', 'quantity' => -2,
         ]);
         $this->assertDatabaseHas('purchase_return_items', ['purchase_item_id' => $item->id, 'quantity' => 2]);
+        $this->actingAs($owner)->get(route('admin.purchases.show', $purchase))
+            ->assertOk()
+            ->assertSeeText('واپسی کے بعد رقم')
+            ->assertSeeText('روپے 300.00');
+    }
+
+    public function test_cancelling_draft_preserves_audit_total_but_clears_payable_without_moving_stock(): void
+    {
+        [$owner, , $color, $purchase] = $this->draftPurchase();
+
+        $this->actingAs($owner)->patch(route('admin.purchases.cancel', $purchase))->assertRedirect();
+
+        $purchase->refresh();
+        $this->assertSame('cancelled', $purchase->status);
+        $this->assertEquals(500, (float) $purchase->total_amount);
+        $this->assertEquals(0, (float) $purchase->balance_amount);
+        $this->assertEquals(10, (float) $color->fresh()->length);
+        $this->assertDatabaseCount('inventory_movements', 0);
     }
 
     public function test_return_is_rejected_when_current_stock_is_insufficient(): void
