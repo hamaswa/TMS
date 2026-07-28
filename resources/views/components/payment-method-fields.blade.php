@@ -6,7 +6,7 @@
     $selectedPaymentMethod = old($paymentMethodName, $currentMethod ?? 'cash');
     $paymentReferenceValue = old($paymentReferenceName, $currentReference ?? null);
 @endphp
-<div class="form-group">
+<div class="{{ $methodGroupClass ?? 'form-group' }}">
     <label for="{{ $paymentFieldPrefix }}_method">ادائیگی کا طریقہ</label>
     <select id="{{ $paymentFieldPrefix }}_method" name="{{ $paymentMethodName }}" class="form-control" required>
         @foreach(\App\Support\PaymentMethods::LABELS as $methodValue => $methodLabel)
@@ -14,7 +14,7 @@
         @endforeach
     </select>
 </div>
-<div class="form-group">
+<div class="{{ $referenceGroupClass ?? 'form-group' }}">
     <label for="{{ $paymentFieldPrefix }}_reference">حوالہ / ٹرانزیکشن نمبر</label>
     <input
         id="{{ $paymentFieldPrefix }}_reference"

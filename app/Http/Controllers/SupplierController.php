@@ -7,7 +7,9 @@ use App\Models\SupplierPayment;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
@@ -31,7 +33,9 @@ class SupplierController extends Controller
     public function edit(int $supplier)
     {
         $supplier = $this->owned($supplier)->loadSum(['purchases as purchase_balance' => fn ($query) => $query->where('status', 'received')], 'balance_amount')
-            ->loadSum(['payments as unallocated_payments' => fn ($query) => $query->whereNull('purchase_id')], 'amount');
+            ->loadSum(['payments as unallocated_payments' => fn ($query) => $query->whereNull('purchase_id')], 'amount')
+            ->load(['payments' => fn ($query) => $query->with('purchase')->latest('payment_date')->latest('id')]);
+
         return view('suppliers.edit', compact('supplier'));
     }
 
@@ -53,11 +57,8 @@ class SupplierController extends Controller
 
     public function payment(Request $request, int $supplier)
     {
-        $supplier = $this->owned($supplier)->loadSum(['purchases as purchase_balance' => fn ($query) => $query->where('status', 'received')], 'balance_amount')
-            ->loadSum(['payments as unallocated_payments' => fn ($query) => $query->whereNull('purchase_id')], 'amount');
-        $outstanding = (float) $supplier->opening_balance + (float) ($supplier->purchase_balance ?? 0) - (float) ($supplier->unallocated_payments ?? 0);
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0', 'max:' . max(0, $outstanding)],
+            'amount' => ['required', 'numeric', 'gt:0'],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'reference' => [
@@ -68,12 +69,36 @@ class SupplierController extends Controller
             ],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
-        SupplierPayment::create([
-            'user_id' => Auth::user()->businessOwnerId(), 'supplier_id' => $supplier->id, 'purchase_id' => null,
-            'payment_date' => $validated['payment_date'], 'amount' => $validated['amount'],
-            'payment_method' => $validated['payment_method'] ?? 'cash',
-            'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? 'General supplier payment',
-        ]);
+
+        $ownerId = Auth::user()->businessOwnerId();
+        DB::transaction(function () use ($validated, $ownerId, $supplier) {
+            $lockedSupplier = Supplier::where('user_id', $ownerId)->lockForUpdate()->findOrFail($supplier);
+            $purchaseBalance = (float) $lockedSupplier->purchases()
+                ->where('status', 'received')
+                ->lockForUpdate()
+                ->get(['id', 'balance_amount'])
+                ->sum('balance_amount');
+            $unallocatedPayments = (float) $lockedSupplier->payments()
+                ->whereNull('purchase_id')
+                ->lockForUpdate()
+                ->get(['id', 'amount'])
+                ->sum('amount');
+            $outstanding = round((float) $lockedSupplier->opening_balance + $purchaseBalance - $unallocatedPayments, 2);
+
+            if ((float) $validated['amount'] > max(0, $outstanding)) {
+                throw ValidationException::withMessages([
+                    'amount' => 'ادائیگی سپلائر کی موجودہ بقایا رقم سے زیادہ نہیں ہو سکتی۔',
+                ]);
+            }
+
+            SupplierPayment::create([
+                'user_id' => $ownerId, 'supplier_id' => $lockedSupplier->id, 'purchase_id' => null,
+                'payment_date' => $validated['payment_date'], 'amount' => $validated['amount'],
+                'payment_method' => $validated['payment_method'] ?? 'cash',
+                'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? 'General supplier payment',
+            ]);
+        });
+
         return back()->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');
     }
 

@@ -63,12 +63,13 @@ class BusinessActivityLog extends Model
             'admin.suppliers.store' => 'نیا سپلائر شامل کیا',
             'admin.suppliers.update' => 'سپلائر کی تفصیلات تبدیل کیں',
             'admin.suppliers.destroy' => 'سپلائر حذف کیا',
+            'admin.suppliers.payment' => 'سپلائر کی عمومی ادائیگی درج کی',
             'admin.purchases.store' => 'نئی خریداری درج کی',
             'admin.purchases.receive' => 'خریداری کا مال وصول کیا',
             'admin.purchases.cancel' => 'خریداری منسوخ کی',
             'admin.purchases.payment' => 'خریداری کی ادائیگی درج کی',
             'admin.purchases.return' => 'خریداری کی واپسی درج کی',
-            'admin.inventory.adjustment.store' => 'اسٹاک کی مقدار درست کی',
+            'admin.inventory-ledger.adjust' => 'اسٹاک کی مقدار درست کی',
             'admin.stock.store' => 'نئی فروخت درج کی',
             'admin.tailor-jobs.status' => 'سلائی کام کی حالت تبدیل کی',
             'admin.tailor-jobs.payment' => 'درزی کی ادائیگی درج کی',
@@ -90,10 +91,10 @@ class BusinessActivityLog extends Model
         $area = $this->areaLabel();
 
         return match ($this->method) {
-            'POST' => $area . ' میں نیا ریکارڈ یا کارروائی کی',
-            'PUT', 'PATCH' => $area . ' میں تبدیلی کی',
-            'DELETE' => $area . ' سے ریکارڈ حذف کیا',
-            default => $area . ' میں کارروائی کی',
+            'POST' => $area.' میں نیا ریکارڈ یا کارروائی کی',
+            'PUT', 'PATCH' => $area.' میں تبدیلی کی',
+            'DELETE' => $area.' سے ریکارڈ حذف کیا',
+            default => $area.' میں کارروائی کی',
         };
     }
 

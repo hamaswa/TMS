@@ -28,7 +28,7 @@ class InventoryService
     {
         $quantity = round($quantity, 2);
         if ((float) $color->length < $quantity) {
-            throw ValidationException::withMessages(['quantity' => 'Not enough stock is available.']);
+            throw ValidationException::withMessages(['quantity' => 'اتنی مقدار اسٹاک میں موجود نہیں ہے۔']);
         }
         $color->update(['length' => round((float) $color->length - $quantity, 2)]);
 

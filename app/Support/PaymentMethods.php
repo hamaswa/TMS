@@ -18,4 +18,9 @@ final class PaymentMethods
     {
         return $method !== null && ! in_array($method, ['cash', 'other'], true);
     }
+
+    public static function label(?string $method): string
+    {
+        return self::LABELS[$method ?? 'cash'] ?? (string) $method;
+    }
 }

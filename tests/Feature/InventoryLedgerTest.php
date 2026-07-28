@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BusinessActivityLog;
 use App\Models\Cloth;
 use App\Models\ClothBrand;
 use App\Models\ClothColor;
@@ -54,7 +55,7 @@ class InventoryLedgerTest extends TestCase
         $this->actingAs($owner)->post(route('admin.sellStock'), [
             'brand_name' => [$cloth->cloth_brand_id], 'cloth_type' => [$cloth->cloth_type_id],
             'color' => [$color->color], 'per_meter' => [150], 'clothes_rack' => [null], 'length' => [2],
-            'c_name' => $customer->name . '|' . $customer->id, 'payment' => 300, 'remain' => 0,
+            'c_name' => $customer->name.'|'.$customer->id, 'payment' => 300, 'remain' => 0,
             'payment_method' => 'raast', 'payment_reference' => 'RAAST-300', 'paid_on' => '2026-07-28',
         ])->assertRedirect();
 
@@ -105,7 +106,7 @@ class InventoryLedgerTest extends TestCase
         $response = $this->actingAs($owner)->post(route('admin.sellStock'), [
             'brand_name' => [$cloth->cloth_brand_id], 'cloth_type' => [$cloth->cloth_type_id],
             'color' => [$color->color], 'per_meter' => [150], 'clothes_rack' => [null], 'length' => [2],
-            'c_name' => $customer->name . '|' . $customer->id, 'payment' => 100, 'remain' => 9999,
+            'c_name' => $customer->name.'|'.$customer->id, 'payment' => 100, 'remain' => 9999,
         ]);
 
         $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
@@ -122,7 +123,7 @@ class InventoryLedgerTest extends TestCase
         $this->actingAs($owner)->from(route('admin.sellCloth'))->post(route('admin.sellStock'), [
             'brand_name' => [$cloth->cloth_brand_id], 'cloth_type' => [$cloth->cloth_type_id],
             'color' => [$color->color], 'per_meter' => [150], 'clothes_rack' => [null], 'length' => [2],
-            'c_name' => $customer->name . '|' . $customer->id, 'payment' => 301, 'remain' => 0,
+            'c_name' => $customer->name.'|'.$customer->id, 'payment' => 301, 'remain' => 0,
         ])->assertRedirect(route('admin.sellCloth'))->assertSessionHasErrors('payment');
 
         $this->assertEquals(10, (float) $color->fresh()->length);
@@ -137,7 +138,7 @@ class InventoryLedgerTest extends TestCase
         $response = $this->actingAs($owner)->from(route('admin.sellCloth'))->post(route('admin.sellStock'), [
             'brand_name' => [$cloth->cloth_brand_id], 'cloth_type' => [$cloth->cloth_type_id],
             'color' => [$color->color], 'per_meter' => [150], 'clothes_rack' => [null], 'length' => [11],
-            'c_name' => $customer->name . '|' . $customer->id, 'payment' => 0, 'remain' => 1650,
+            'c_name' => $customer->name.'|'.$customer->id, 'payment' => 0, 'remain' => 1650,
         ]);
 
         $response->assertRedirect(route('admin.sellCloth'))
@@ -177,6 +178,19 @@ class InventoryLedgerTest extends TestCase
         [$owner, , $color] = $this->stock(10, 80);
         [$otherOwner, , $otherColor] = $this->stock(5, 20);
 
+        $this->actingAs($owner)->get(route('admin.inventory-ledger.index'))
+            ->assertOk()
+            ->assertSee('<h1 class="h3 mb-1">', false)
+            ->assertSee('inventory-movement-table', false)
+            ->assertSee('data-confirm="کیا آپ اسٹاک کی یہ دستی تبدیلی درج کرنا چاہتے ہیں؟"', false)
+            ->assertSee('id="adjustment_unit_cost"', false)
+            ->assertSee('unitCost.disabled = !increasing', false);
+        $this->actingAs($owner)->get(route('admin.inventory-valuation.index'))
+            ->assertOk()
+            ->assertSee('<h1 class="h3 mb-1">', false)
+            ->assertSee('inventory-valuation-table', false)
+            ->assertSee('data-label="موجودہ مقدار"', false);
+
         $this->actingAs($owner)->post(route('admin.inventory-ledger.adjust'), [
             'cloth_color_id' => $color->id, 'direction' => 'increase', 'quantity' => 10,
             'unit_cost' => 120, 'note' => 'Physical count correction',
@@ -189,6 +203,20 @@ class InventoryLedgerTest extends TestCase
             'note' => 'Forbidden adjustment',
         ])->assertNotFound();
         $this->assertEquals(5, (float) $otherColor->fresh()->length);
+
+        $this->actingAs($owner)->from(route('admin.inventory-ledger.index'))
+            ->post(route('admin.inventory-ledger.adjust'), [
+                'cloth_color_id' => $color->id, 'direction' => 'decrease', 'quantity' => 50,
+                'note' => 'Too much stock',
+            ])->assertRedirect(route('admin.inventory-ledger.index'))
+            ->assertSessionHasErrors(['quantity' => 'اتنی مقدار اسٹاک میں موجود نہیں ہے۔']);
+        $this->assertEquals(20, (float) $color->fresh()->length);
+
+        $activity = new BusinessActivityLog([
+            'route_name' => 'admin.inventory-ledger.adjust',
+            'method' => 'POST',
+        ]);
+        $this->assertSame('اسٹاک کی مقدار درست کی', $activity->actionDescription());
     }
 
     private function stock(float $length, float $cost): array
@@ -198,6 +226,7 @@ class InventoryLedgerTest extends TestCase
         $brand = ClothBrand::create(['name' => fake()->unique()->company(), 'user_id' => $owner->id]);
         $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => $cost, 'sale_price' => $cost + 50, 'user_id' => $owner->id]);
         $color = ClothColor::create(['cloth_id' => $cloth->id, 'color' => fake()->unique()->safeColorName(), 'length' => $length, 'average_unit_cost' => $cost, 'user_id' => $owner->id]);
+
         return [$owner, $cloth, $color];
     }
 
@@ -206,6 +235,7 @@ class InventoryLedgerTest extends TestCase
         $role = Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
         $user = User::factory()->create();
         $user->assignRole($role);
+
         return $user;
     }
 }

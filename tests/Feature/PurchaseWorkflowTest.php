@@ -166,6 +166,14 @@ class PurchaseWorkflowTest extends TestCase
             'supplier_id' => $supplier->id, 'purchase_id' => null, 'amount' => 200,
             'payment_method' => 'cheque', 'reference' => 'OPEN-1',
         ]);
+        $this->actingAs($owner)->get(route('admin.suppliers.edit', $supplier))
+            ->assertOk()
+            ->assertSee('<h1 class="h3 mb-1">', false)
+            ->assertSee('supplier-payment-table', false)
+            ->assertSeeText('OPEN-1')
+            ->assertSeeText('چیک')
+            ->assertSeeText('روپے 200.00')
+            ->assertSee('data-confirm="کیا سپلائر کو یہ ادائیگی درج کرنا چاہتے ہیں؟"', false);
         $this->actingAs($owner)->get(route('admin.suppliers.index'))
             ->assertOk()
             ->assertSee('300.00')
@@ -173,6 +181,13 @@ class PurchaseWorkflowTest extends TestCase
             ->assertSee('supplier-table', false)
             ->assertSee('data-label="خریداری بقایا"', false)
             ->assertSee('supplier-actions', false);
+
+        $this->actingAs($owner)->from(route('admin.suppliers.edit', $supplier))
+            ->post(route('admin.suppliers.payment', $supplier), [
+                'amount' => 301, 'payment_date' => now()->toDateString(),
+            ])->assertRedirect(route('admin.suppliers.edit', $supplier))
+            ->assertSessionHasErrors(['amount' => 'ادائیگی سپلائر کی موجودہ بقایا رقم سے زیادہ نہیں ہو سکتی۔']);
+        $this->assertDatabaseCount('supplier_payments', 1);
     }
 
     private function draftPurchase(): array

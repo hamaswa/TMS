@@ -3,11 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Business;
-use App\Models\BusinessRole;
 use App\Models\BusinessActivityLog;
+use App\Models\BusinessRole;
 use App\Models\Order;
-use App\Models\Supplier;
 use App\Models\Storefront;
+use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -187,7 +187,7 @@ class BusinessEmployeeAccessTest extends TestCase
             'permissions' => [BusinessRole::CLOTHING_ACCESS, BusinessRole::CLOTHING_SUPPLIERS],
         ]);
         $employee = $this->employee($business, $role);
-        Supplier::create(['user_id' => $owner->id, 'name' => 'Owner Supplier', 'active' => true]);
+        $supplier = Supplier::create(['user_id' => $owner->id, 'name' => 'Owner Supplier', 'opening_balance' => 100, 'active' => true]);
         [$otherOwner] = $this->business(false, true);
         Supplier::create(['user_id' => $otherOwner->id, 'name' => 'Other Supplier', 'active' => true]);
 
@@ -195,6 +195,19 @@ class BusinessEmployeeAccessTest extends TestCase
             ->assertOk()
             ->assertSeeText('Owner Supplier')
             ->assertDontSeeText('Other Supplier');
+        $this->actingAs($employee)->post(route('admin.suppliers.payment', $supplier), [
+            'amount' => 40,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('supplier_payments', [
+            'supplier_id' => $supplier->id,
+            'amount' => 40,
+        ]);
+        $this->actingAs($employee)->get(route('admin.suppliers.edit', $supplier))
+            ->assertOk()
+            ->assertSeeText('روپے 60.00');
+        $this->actingAs($employee)->get(route('admin.inventory-ledger.index'))->assertForbidden();
     }
 
     public function test_sales_employee_only_sees_sales_tools_and_direct_urls_are_enforced(): void
