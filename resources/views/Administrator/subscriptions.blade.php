@@ -3,7 +3,7 @@
 <section class="main-content"><div class="container-fluid px-3 px-md-4 py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div><h1 class="h2 mb-1">Subscriptions and payments</h1><p class="text-muted mb-0">Track client terms, upcoming expiry and received subscription payments without deleting financial history.</p></div>
-        <a href="{{ route('administrator.index') }}" class="btn btn-outline-secondary">Client accounts</a>
+        <div><a href="{{ route('administrator.subscription-plans.index') }}" class="btn btn-primary">Manage plans</a> <a href="{{ route('administrator.index') }}" class="btn btn-outline-secondary">Client accounts</a></div>
     </div>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     <div class="row mb-4">

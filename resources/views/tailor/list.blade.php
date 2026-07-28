@@ -19,6 +19,13 @@
                 @if($errors->any())
                 <div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
                 @endif
+                @php($tailorLimit = $business?->subscriptionLimit('max_tailors'))
+                @if($tailorLimit !== null)
+                    <div class="alert {{ $Tailors->count() >= $tailorLimit ? 'alert-warning' : 'alert-light border' }} text-right">
+                        پلان حد: {{ $Tailors->count() }} / {{ $tailorLimit }} درزی
+                        @if($Tailors->count() >= $tailorLimit) — مزید درزی کے لیے پلان اپ گریڈ کریں۔ @endif
+                    </div>
+                @endif
 
                 <div class="bg-white px-3 py-4">
                     <p class="text-right"><a href="{{url('admin/Tailor/create')}}" class="btn btn-primary">نیا درزی شامل کریں</a>

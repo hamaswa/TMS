@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\ProductionWorkforceService;
+use App\Services\SubscriptionEntitlementService;
 
 
 class TailorController extends Controller
@@ -46,6 +47,10 @@ class TailorController extends Controller
             ->where('status', Business::STATUS_ACTIVE)
             ->where('tailoring_enabled', true)
             ->first();
+        if ($business && (! $business->hasActiveSubscriptionAccess()
+            || ! $business->subscriptionAllowsFeature('allow_tailoring'))) {
+            return back()->with('failed', 'دکان کی سبسکرپشن فعال نہیں ہے۔ مالک سے رابطہ کریں۔');
+        }
         $matches = $business
             ? Tailor::where('user_id', $business->owner_user_id)->where('phone_number1', $credentials['contact'])->limit(2)->get()
             : collect();
@@ -123,7 +128,9 @@ class TailorController extends Controller
     public function index()
     {
         $Tailors = Tailor::where('user_id', Auth::user()->businessOwnerId())->orderBy('id', 'DESC')->get();
-        return view('tailor.list', compact('Tailors'));
+        $business = Auth::user()->business;
+
+        return view('tailor.list', compact('Tailors', 'business'));
     }
 
     /**
@@ -142,9 +149,10 @@ class TailorController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(Request $request, SubscriptionEntitlementService $entitlements)
     {
         $ownerId = Auth::user()->businessOwnerId();
+        $businessId = Auth::user()->business_id;
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'contact' => ['required', 'string', 'max:50', Rule::unique('tailors', 'phone_number1')->where('user_id', $ownerId)],
@@ -158,7 +166,11 @@ class TailorController extends Controller
             'contact.unique' => 'اس دکان میں یہ فون نمبر پہلے سے کسی درزی کے نام پر موجود ہے۔',
         ]);
 
-        DB::transaction(function () use ($validated, $ownerId) {
+        DB::transaction(function () use ($validated, $ownerId, $businessId, $entitlements) {
+            if ($businessId) {
+                $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($businessId);
+                $entitlements->assertCanAddTailor($lockedBusiness);
+            }
             $obj = Tailor::create([
                 'name' => $validated['name'],
                 'user_id' => $ownerId,

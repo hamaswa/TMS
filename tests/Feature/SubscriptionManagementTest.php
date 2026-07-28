@@ -103,8 +103,10 @@ class SubscriptionManagementTest extends TestCase
 
         $subscription->update(['ends_on' => now()->subDay()->toDateString()]);
         $this->actingAs($owner)->get(route('admin.home'))
+            ->assertRedirect(route('admin.subscription.required'));
+        $this->actingAs($owner)->get(route('admin.subscription.required'))
             ->assertOk()
-            ->assertSeeText('آپ کی سبسکرپشن کی میعاد ختم ہو چکی ہے');
+            ->assertSeeText('کاروباری سبسکرپشن فعال نہیں ہے');
         $this->assertSame(Business::STATUS_ACTIVE, $business->fresh()->status);
     }
 

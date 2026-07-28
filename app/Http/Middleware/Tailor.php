@@ -19,12 +19,14 @@ class Tailor
     {
         if ($request->session()->get('tailor-login-success')) {
             $tailor = TailorAccount::find($request->session()->get('tailor_id'));
-            $businessIsActive = $tailor && Business::where('owner_user_id', $tailor->user_id)
+            $business = $tailor ? Business::where('owner_user_id', $tailor->user_id)
                 ->where('status', Business::STATUS_ACTIVE)
                 ->where('tailoring_enabled', true)
-                ->exists();
+                ->first() : null;
 
-            if ($businessIsActive) {
+            if ($business
+                && $business->hasActiveSubscriptionAccess()
+                && $business->subscriptionAllowsFeature('allow_tailoring')) {
                 return $next($request);
             }
 

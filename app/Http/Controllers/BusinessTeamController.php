@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\BusinessRole;
+use App\Models\Business;
 use App\Models\User;
 use App\Rules\StrongPassword;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -50,11 +52,15 @@ class BusinessTeamController extends Controller
         ])->firstOrFail();
     }
 
-    public function storeRole(Request $request)
+    public function storeRole(Request $request, SubscriptionEntitlementService $entitlements)
     {
         $business = $request->user()->business;
         $validated = $this->validateRole($request, $business->id);
-        $business->roles()->create($validated);
+        DB::transaction(function () use ($business, $validated, $entitlements) {
+            $locked = Business::query()->lockForUpdate()->findOrFail($business->id);
+            $entitlements->assertCanAddRole($locked);
+            $locked->roles()->create($validated);
+        });
 
         return back()->with('success', 'نیا رول کامیابی سے بنا دیا گیا ہے۔');
     }
@@ -91,14 +97,16 @@ class BusinessTeamController extends Controller
         return back()->with('success', 'رول حذف کر دیا گیا ہے۔');
     }
 
-    public function storeEmployee(Request $request)
+    public function storeEmployee(Request $request, SubscriptionEntitlementService $entitlements)
     {
         $business = $request->user()->business;
         $validated = $this->validateEmployee($request, $business->id);
         $role = $business->roles()->findOrFail($validated['business_role_id']);
         $actorId = $request->user()->id;
 
-        DB::transaction(function () use ($validated, $business, $role, $actorId) {
+        DB::transaction(function () use ($validated, $business, $role, $actorId, $entitlements) {
+            $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
+            $entitlements->assertCanAddEmployee($lockedBusiness);
             $employee = User::create([
                 'name' => $validated['name'],
                 'username' => $validated['username'],
@@ -131,23 +139,31 @@ class BusinessTeamController extends Controller
         ]);
     }
 
-    public function updateEmployee(Request $request, int $employee)
+    public function updateEmployee(Request $request, int $employee, SubscriptionEntitlementService $entitlements)
     {
         $employee = $this->ownedEmployee($request, $employee);
         $validated = $this->validateEmployee($request, $employee->business_id, $employee);
         $this->ownedRole($request, (int) $validated['business_role_id']);
 
-        $employee->fill([
-            'name' => $validated['name'],
-            'username' => $validated['username'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'address' => $validated['address'] ?? null,
-            'business_role_id' => $validated['business_role_id'],
-            'job_title' => $validated['job_title'] ?? null,
-            'employee_active' => $request->boolean('employee_active'),
-        ]);
-        $employee->save();
+        DB::transaction(function () use ($employee, $validated, $request, $entitlements) {
+            $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($employee->business_id);
+            $activating = ! $employee->employee_active && $request->boolean('employee_active');
+            if ($activating) {
+                $entitlements->assertCanAddEmployee($lockedBusiness, $employee->id);
+            }
+
+            $employee->fill([
+                'name' => $validated['name'],
+                'username' => $validated['username'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'business_role_id' => $validated['business_role_id'],
+                'job_title' => $validated['job_title'] ?? null,
+                'employee_active' => $request->boolean('employee_active'),
+            ]);
+            $employee->save();
+        });
 
         return redirect()->route('admin.team.employees.index')->with('success', 'ملازم کی معلومات تبدیل کر دی گئی ہیں۔');
     }
@@ -243,12 +259,18 @@ class BusinessTeamController extends Controller
     private function availablePermissions($business): array
     {
         return array_filter(BusinessRole::PERMISSIONS, function ($label, $permission) use ($business) {
+            if (! $business->subscriptionAllowsPermission($permission)) {
+                return false;
+            }
+
             if (str_starts_with($permission, 'tailoring.')) {
-                return $business->tailoring_enabled;
+                return $business->tailoring_enabled
+                    && $business->subscriptionAllowsFeature('allow_tailoring');
             }
 
             if (str_starts_with($permission, 'clothing.')) {
-                return $business->clothing_enabled;
+                return $business->clothing_enabled
+                    && $business->subscriptionAllowsFeature('allow_clothing');
             }
 
             return true;

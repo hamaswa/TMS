@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use App\Models\BusinessStatusHistory;
 use App\Models\Setting;
+use App\Models\SubscriptionPlan;
 use Illuminate\Support\Facades\DB;
 
 class AdministratorController extends Controller
@@ -185,13 +186,15 @@ class AdministratorController extends Controller
             ->latest('ends_on')
             ->get();
         $currentSubscription = $subscriptions->first(fn ($subscription) => ! $subscription->cancelled_at);
+        $subscriptionPlans = SubscriptionPlan::where('is_active', true)->orderBy('name')->get();
 
         return view('Administrator.show', compact(
             'user',
             'business',
             'metrics',
             'subscriptions',
-            'currentSubscription'
+            'currentSubscription',
+            'subscriptionPlans'
         ));
     }
 

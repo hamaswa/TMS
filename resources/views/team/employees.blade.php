@@ -2,10 +2,18 @@
 @section('content')
 <section class="main-content team-page" dir="rtl"><div class="container-fluid py-4 px-lg-5">
     @include('team.partials.workspace')
+    @php
+        $employeeLimit = $business->subscriptionLimit('max_employees');
+        $activeEmployeeCount = $business->members->where('employee_active', true)->count();
+        $employeeLimitReached = $employeeLimit !== null && $activeEmployeeCount >= $employeeLimit;
+    @endphp
 
     <div class="card team-card mb-4"><div class="card-body p-4"><div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h5 font-weight-bold mb-1">نیا ملازم شامل کریں</h2><p class="text-muted mb-0">ملازم کی لاگ اِن معلومات اور کام کا رول مقرر کریں۔</p></div>@if($business->roles->isNotEmpty())<span class="badge badge-primary px-3 py-2">{{ $business->roles->count() }} رولز دستیاب</span>@endif</div>
+        @if($employeeLimit !== null)<div class="alert alert-light border">پلان حد: {{ $activeEmployeeCount }} / {{ $employeeLimit }} فعال ملازمین</div>@endif
         @if($business->roles->isEmpty())
             <div class="alert alert-info mb-0">ملازم شامل کرنے سے پہلے کم از کم ایک رول بنائیں۔ <a href="{{ route('admin.team.roles.index') }}">رول بنائیں</a></div>
+        @elseif($employeeLimitReached)
+            <div class="alert alert-warning mb-0">موجودہ پلان میں مزید فعال ملازم شامل نہیں کیا جا سکتا۔ پلان اپ گریڈ کے لیے سپر ایڈمن سے رابطہ کریں۔</div>
         @else
             <form method="POST" action="{{ route('admin.team.employees.store') }}">@csrf<div class="row">
                 <div class="col-md-6 form-group"><label>ملازم کا نام</label><input class="form-control" name="name" value="{{ old('name') }}" required></div>

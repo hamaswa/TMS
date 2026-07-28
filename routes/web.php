@@ -42,6 +42,7 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleCustomerController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StorefrontPaymentReconciliationController;
+use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TailorController;
 use App\Http\Controllers\TailorJobController;
@@ -108,6 +109,9 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
     Route::get('/', [AdministratorController::class, 'showData'])->name('index');
     Route::get('/marketplace', [AdministratorController::class, 'marketplace'])->name('marketplace.index');
     Route::get('/subscriptions', [AdministratorSubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::get('/subscription-plans', [SubscriptionPlanController::class, 'index'])->name('subscription-plans.index');
+    Route::post('/subscription-plans', [SubscriptionPlanController::class, 'store'])->name('subscription-plans.store');
+    Route::put('/subscription-plans/{plan}', [SubscriptionPlanController::class, 'update'])->name('subscription-plans.update');
     Route::post('/clients/{id}/subscriptions', [AdministratorSubscriptionController::class, 'storeSubscription'])->name('subscriptions.store');
     Route::post('/clients/{id}/subscriptions/{subscription}/payments', [AdministratorSubscriptionController::class, 'storePayment'])->name('subscription-payments.store');
     Route::patch('/clients/{id}/subscription-payments/{payment}/reverse', [AdministratorSubscriptionController::class, 'reversePayment'])->name('subscription-payments.reverse');
@@ -142,8 +146,14 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
     // Route::get('/sse-update', [AdministratorController::class, 'SSEupdates']);
 });
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'business.activity'], 'as' => 'admin.'], function () {
+Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner'], 'as' => 'admin.'], function () {
     Route::get('/subscription', [ClientSubscriptionController::class, 'index'])->name('subscription.index');
+    Route::get('/subscription-required', [ClientSubscriptionController::class, 'required'])->name('subscription.required');
+    Route::get('/notifications', [NotificationController::class, 'showNotifications'])->name('notifications.index');
+    Route::post('/mark-as-read/{id}', [NotificationController::class, 'readNotifications'])->name('notification.read');
+});
+
+Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'subscription.active', 'business.activity'], 'as' => 'admin.'], function () {
     Route::get('/customers/{id}/statement', [CustomerController::class, 'statement'])
         ->middleware('business.permission:tailoring.customers|clothing.sales|customers.balances')
         ->name('customers.statement');
@@ -241,7 +251,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     });
 });
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'module:tailoring', 'business.activity'], 'as' => 'admin.'], function () {
+Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'subscription.active', 'module:tailoring', 'business.activity'], 'as' => 'admin.'], function () {
     Route::get('/tailoring-dashboard', [HomeController::class, 'tailoring'])->name('dashboard.tailoring');
     // Route::get('/test', function(){
     //     event(new NotificationEvent("Testing Web Socket"));
@@ -345,7 +355,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     // csv import and export route
 });
 
-Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:stock_seller|shop_owner', 'module:clothing', 'business.activity'], 'as' => 'admin.'], function () {
+Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:stock_seller|shop_owner', 'subscription.active', 'module:clothing', 'business.activity'], 'as' => 'admin.'], function () {
     Route::get('/shop-dashboard', [HomeController::class, 'clothing'])->name('dashboard.clothing');
     Route::middleware('business.permission:clothing.suppliers')->group(function () {
         Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
@@ -417,10 +427,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::get('/total_earning', [ClothStockController::class, 'totalEarning'])->name('earning.total');
 
         // notifications route
-        Route::get('/notifications', [NotificationController::class, 'showNotifications'])->name('notifications.index');
         Route::get('/notify-admin', [NotificationController::class, 'AdminNotifications'])->name('notify');
         Route::get('/notify-user', [NotificationController::class, 'UserNotifications'])->name('user');
-        Route::post('/mark-as-read/{id}', [NotificationController::class, 'readNotifications'])->name('notification.read');
         Route::post('/order-complete/{id}', [NotificationController::class, 'orderComplete'])->name('order.complete');
 
         // Online Orders Route

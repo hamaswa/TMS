@@ -4,10 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Business;
 use App\Models\BusinessSubscription;
-use App\Models\SubscriptionNotificationDelivery;
-use App\Notifications\SubscriptionExpiryNotification;
+use App\Services\SubscriptionExpiryNotifier;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class SendSubscriptionExpiryNotices extends Command
 {
@@ -15,7 +13,7 @@ class SendSubscriptionExpiryNotices extends Command
 
     protected $description = 'Send deduplicated database notifications for subscriptions near expiry';
 
-    public function handle(): int
+    public function handle(SubscriptionExpiryNotifier $notifier): int
     {
         $warningDate = now()->addDays(BusinessSubscription::EXPIRY_WARNING_DAYS)->toDateString();
         $sent = 0;
@@ -24,7 +22,7 @@ class SendSubscriptionExpiryNotices extends Command
             ->with(['owner', 'latestSubscription'])
             ->whereHas('latestSubscription', fn ($query) => $query->whereDate('ends_on', '<=', $warningDate))
             ->orderBy('id')
-            ->chunkById(100, function ($businesses) use (&$sent) {
+            ->chunkById(100, function ($businesses) use (&$sent, $notifier) {
                 foreach ($businesses as $business) {
                     $subscription = $business->latestSubscription;
                     $owner = $business->owner;
@@ -33,26 +31,7 @@ class SendSubscriptionExpiryNotices extends Command
                     }
 
                     $threshold = $this->thresholdFor($subscription->daysRemaining());
-                    $delivered = DB::transaction(function () use ($subscription, $owner, $threshold) {
-                        $exists = SubscriptionNotificationDelivery::query()
-                            ->where('business_subscription_id', $subscription->id)
-                            ->where('user_id', $owner->id)
-                            ->where('threshold_days', $threshold)
-                            ->exists();
-                        if ($exists) {
-                            return false;
-                        }
-
-                        $owner->notify(new SubscriptionExpiryNotification($subscription, $threshold));
-                        SubscriptionNotificationDelivery::create([
-                            'business_subscription_id' => $subscription->id,
-                            'user_id' => $owner->id,
-                            'threshold_days' => $threshold,
-                            'delivered_at' => now(),
-                        ]);
-
-                        return true;
-                    });
+                    $delivered = $notifier->deliver($subscription, $owner, $threshold);
                     if ($delivered) {
                         $sent++;
                     }

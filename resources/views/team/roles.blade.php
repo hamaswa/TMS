@@ -2,17 +2,26 @@
 @section('content')
 <section class="main-content team-page" dir="rtl"><div class="container-fluid py-4 px-lg-5">
     @include('team.partials.workspace')
+    @php
+        $roleLimit = $business->subscriptionLimit('max_business_roles');
+        $roleLimitReached = $roleLimit !== null && $business->roles->count() >= $roleLimit;
+    @endphp
 
     <div class="card team-card mb-4"><div class="card-body p-4 p-lg-5">
         <div class="row align-items-center mb-4">
             <div class="col-lg-8"><h2 class="h4 font-weight-bold mb-1">نیا رول بنائیں</h2><p class="text-muted mb-0">تیار رول سے آغاز کریں یا ہر اجازت خود منتخب کریں۔ ملازم کو صرف اس کے کام کی ضروری رسائی دیں۔</p></div>
             <div class="col-lg-4 text-lg-left mt-3 mt-lg-0"><span class="badge badge-info px-3 py-2">کم از کم رسائی زیادہ محفوظ ہے</span></div>
         </div>
+        @if($roleLimit !== null)<div class="alert alert-light border">پلان حد: {{ $business->roles->count() }} / {{ $roleLimit }} رولز</div>@endif
+        @if($roleLimitReached)
+            <div class="alert alert-warning mb-0">موجودہ پلان میں مزید رول نہیں بنایا جا سکتا۔ پلان اپ گریڈ کے لیے سپر ایڈمن سے رابطہ کریں۔</div>
+        @else
         <form method="POST" action="{{ route('admin.team.roles.store') }}">@csrf
             <div class="form-group" style="max-width:520px"><label class="font-weight-bold" for="new-role-name">رول کا نام</label><input id="new-role-name" class="form-control form-control-lg" name="name" value="{{ old('name') }}" placeholder="{{ $business->tailoring_enabled && ! $business->clothing_enabled ? 'مثلاً آرڈر منیجر' : ($business->clothing_enabled && ! $business->tailoring_enabled ? 'مثلاً سیلز پرسن' : 'مثلاً برانچ منیجر') }}" required></div>
             @include('team.partials.permission-selector', ['selectorId' => 'new-role-permissions', 'selectedPermissions' => old('permissions', []), 'roleNameTarget' => '#new-role-name'])
             <div class="d-flex justify-content-end mt-3"><button class="btn btn-primary btn-lg px-5"><i class="fas fa-user-shield ml-1"></i> رول محفوظ کریں</button></div>
         </form>
+        @endif
     </div></div>
 
     <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="h4 font-weight-bold mb-1">کاروباری رولز</h2><p class="text-muted mb-0">ترمیم سے اس رول کے تمام ملازمین کی رسائی تبدیل ہوگی۔</p></div><span class="badge badge-secondary px-3 py-2">{{ $business->roles->count() }} رولز</span></div>

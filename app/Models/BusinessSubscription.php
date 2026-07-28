@@ -13,10 +13,22 @@ class BusinessSubscription extends Model
 
     protected $fillable = [
         'business_id',
+        'subscription_plan_id',
         'plan_name',
+        'plan_code',
         'starts_on',
         'ends_on',
         'fee',
+        'max_employees',
+        'max_business_roles',
+        'max_tailors',
+        'allow_tailoring',
+        'allow_clothing',
+        'allow_storefront',
+        'allow_financial_reports',
+        'allow_team_management',
+        'allow_activity_log',
+        'allowed_permissions',
         'notes',
         'created_by_user_id',
         'cancelled_at',
@@ -30,6 +42,16 @@ class BusinessSubscription extends Model
             'starts_on' => 'date',
             'ends_on' => 'date',
             'fee' => 'decimal:2',
+            'max_employees' => 'integer',
+            'max_business_roles' => 'integer',
+            'max_tailors' => 'integer',
+            'allow_tailoring' => 'boolean',
+            'allow_clothing' => 'boolean',
+            'allow_storefront' => 'boolean',
+            'allow_financial_reports' => 'boolean',
+            'allow_team_management' => 'boolean',
+            'allow_activity_log' => 'boolean',
+            'allowed_permissions' => 'array',
             'cancelled_at' => 'datetime',
         ];
     }
@@ -37,6 +59,11 @@ class BusinessSubscription extends Model
     public function business()
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(SubscriptionPlan::class, 'subscription_plan_id');
     }
 
     public function payments()
@@ -91,5 +118,18 @@ class BusinessSubscription extends Model
         }
 
         return 'active';
+    }
+
+    public function allowsFeature(string $feature): bool
+    {
+        $value = $this->getAttribute($feature);
+
+        return $value === null || (bool) $value;
+    }
+
+    public function allowsPermission(string $permission): bool
+    {
+        return $this->allowed_permissions === null
+            || in_array($permission, $this->allowed_permissions, true);
     }
 }

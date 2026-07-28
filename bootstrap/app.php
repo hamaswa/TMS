@@ -60,6 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'business.permission' => \App\Http\Middleware\EnsureBusinessPermission::class,
             'business.activity' => \App\Http\Middleware\RecordBusinessActivity::class,
             'business.status' => \App\Http\Middleware\EnsureBusinessActive::class,
+            'subscription.active' => \App\Http\Middleware\EnsureSubscriptionActive::class,
             'password.changed' => \App\Http\Middleware\EnsureEmployeePasswordChanged::class,
             'public.locale' => \App\Http\Middleware\SetPublicLocale::class,
         ]);

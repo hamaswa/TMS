@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Business;
 use App\Models\BusinessSubscription;
 use App\Models\SubscriptionPayment;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -70,14 +71,18 @@ class AdministratorSubscriptionController extends Controller
         $user = $this->client($id);
         $business = $user->ownedBusiness()->firstOrFail();
         $validated = $request->validate([
-            'plan_name' => ['required', 'string', 'max:100'],
+            'subscription_plan_id' => ['nullable', Rule::exists('subscription_plans', 'id')->where('is_active', true)],
+            'plan_name' => ['nullable', 'required_without:subscription_plan_id', 'string', 'max:100'],
             'starts_on' => ['required', 'date'],
             'ends_on' => ['required', 'date', 'after_or_equal:starts_on'],
             'fee' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+        $plan = ! empty($validated['subscription_plan_id'])
+            ? SubscriptionPlan::where('is_active', true)->findOrFail($validated['subscription_plan_id'])
+            : null;
 
-        DB::transaction(function () use ($business, $validated) {
+        DB::transaction(function () use ($business, $validated, $plan) {
             $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
             $overlap = $lockedBusiness->subscriptions()
                 ->whereNull('cancelled_at')
@@ -90,10 +95,20 @@ class AdministratorSubscriptionController extends Controller
                 ]);
             }
 
-            $lockedBusiness->subscriptions()->create([
+            $attributes = [
                 ...$validated,
+                'plan_name' => $plan?->name ?? $validated['plan_name'],
                 'created_by_user_id' => Auth::id(),
-            ]);
+            ];
+            if ($plan) {
+                $attributes = [
+                    ...$attributes,
+                    'subscription_plan_id' => $plan->id,
+                    ...$plan->entitlementSnapshot(),
+                ];
+            }
+
+            $lockedBusiness->subscriptions()->create($attributes);
         });
 
         return redirect()->route('administrator.clients.show', $user)

@@ -163,7 +163,19 @@ class Storefront extends Model
         return $query
             ->where('is_published', true)
             ->where('moderation_status', self::MODERATION_ACTIVE)
-            ->whereHas('business', fn (Builder $business) => $business->where('status', Business::STATUS_ACTIVE));
+            ->whereHas('business', fn (Builder $business) => $business
+                ->where('status', Business::STATUS_ACTIVE)
+                ->where(function (Builder $subscriptionAccess) {
+                    $subscriptionAccess
+                        ->whereDoesntHave('subscriptions')
+                        ->orWhereHas('subscriptions', fn (Builder $subscription) => $subscription
+                            ->whereNull('cancelled_at')
+                            ->whereDate('starts_on', '<=', now()->toDateString())
+                            ->whereDate('ends_on', '>=', now()->toDateString())
+                            ->where(fn (Builder $feature) => $feature
+                                ->whereNull('allow_storefront')
+                                ->orWhere('allow_storefront', true)));
+                }));
     }
 
     public function isModerationActive(): bool

@@ -79,6 +79,15 @@ class User extends Authenticatable
                 return false;
             }
 
+            $feature = match ($module) {
+                self::MODULE_TAILORING => 'allow_tailoring',
+                self::MODULE_CLOTHING => 'allow_clothing',
+                default => null,
+            };
+            if (! $feature || ! $this->business->subscriptionAllowsFeature($feature)) {
+                return false;
+            }
+
             if ($this->isBusinessOwner()) {
                 return true;
             }
@@ -141,6 +150,10 @@ class User extends Authenticatable
 
     public function hasBusinessPermission(string $permission): bool
     {
+        if ($this->business && ! $this->business->subscriptionAllowsPermission($permission)) {
+            return false;
+        }
+
         if ($this->isBusinessOwner()) {
             return true;
         }

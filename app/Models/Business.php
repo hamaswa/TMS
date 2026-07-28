@@ -90,9 +90,66 @@ class Business extends Model
             ->ofMany('ends_on', 'max');
     }
 
+    public function activeSubscription()
+    {
+        return $this->hasOne(BusinessSubscription::class)
+            ->whereNull('cancelled_at')
+            ->whereDate('starts_on', '<=', now()->toDateString())
+            ->whereDate('ends_on', '>=', now()->toDateString())
+            ->ofMany('ends_on', 'max');
+    }
+
     public function subscriptionPayments()
     {
         return $this->hasMany(SubscriptionPayment::class);
+    }
+
+    public function subscriptionIsManaged(): bool
+    {
+        return $this->subscriptions()->exists();
+    }
+
+    public function currentSubscription(): ?BusinessSubscription
+    {
+        if ($this->relationLoaded('activeSubscription')) {
+            return $this->getRelation('activeSubscription');
+        }
+
+        return $this->activeSubscription()->first();
+    }
+
+    public function hasActiveSubscriptionAccess(): bool
+    {
+        return ! $this->subscriptionIsManaged() || $this->currentSubscription() !== null;
+    }
+
+    public function subscriptionAllowsFeature(string $feature): bool
+    {
+        if (! $this->subscriptionIsManaged()) {
+            return true;
+        }
+
+        return $this->currentSubscription()?->allowsFeature($feature) ?? false;
+    }
+
+    public function subscriptionAllowsPermission(string $permission): bool
+    {
+        if (! $this->subscriptionIsManaged()) {
+            return true;
+        }
+
+        return $this->currentSubscription()?->allowsPermission($permission) ?? false;
+    }
+
+    public function subscriptionLimit(string $column): ?int
+    {
+        if (! $this->subscriptionIsManaged()) {
+            return null;
+        }
+
+        $value = $this->currentSubscription()?->getAttribute($column);
+
+        return $value === null ? null : (int) $value;
     }
 
     public function hasModule(string $module): bool
