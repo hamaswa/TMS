@@ -29,7 +29,7 @@ class FinancialReportService
         $clothingEnabled = $modules === null || in_array('clothing', $modules, true);
 
         $tailoringRevenue = $tailoringEnabled ? (float) Order::where('userId', $userId)->whereBetween('created_at', [$from, $to])->sum('totalPayment') : 0;
-        $counterRevenue = $clothingEnabled ? (float) SaleStock::where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum(DB::raw('selling_price * length')) : 0;
+        $counterRevenue = $clothingEnabled ? (float) SaleStock::financiallyActive()->where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum(DB::raw('selling_price * length')) : 0;
         $manualSalesRevenue = $clothingEnabled ? (float) DB::table('saledetails')->join('sales', 'saledetails.sale_id', '=', 'sales.id')
             ->where('sales.user_id', $userId)->where('sales.status', '!=', 'cancelled')
             ->whereBetween('sales.created_at', [$from, $to])->sum(DB::raw('saledetails.quantity * saledetails.price'))
@@ -57,7 +57,7 @@ class FinancialReportService
             $revenue += ['کاؤنٹر کپڑا فروخت' => $counterRevenue, 'مصنوعات کی فروخت' => $manualSalesRevenue, 'آن لائن آرڈرز' => $onlineRevenue];
         }
 
-        $counterCogs = $clothingEnabled ? (float) SaleStock::where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum('cost_total') : 0;
+        $counterCogs = $clothingEnabled ? (float) SaleStock::financiallyActive()->where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum('cost_total') : 0;
         $legacyOnlineCogs = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
             ->whereRaw('LOWER(status) != ?', ['cancelled'])->sum('cost_total') : 0;
         $storefrontCogs = $clothingEnabled ? (float) DB::table('storefront_order_items')

@@ -158,11 +158,13 @@ class CustomerController extends Controller
                 ]);
             $stockGroups = SaleStock::where('user_id', $ownerId)
                 ->where('c_id', $customer->id)
-                ->with(['type:id,name', 'brand:id,name'])
+                ->with(['type:id,name', 'brand:id,name', 'receipt'])
                 ->latest()
                 ->limit(200)
                 ->get()
-                ->groupBy(fn ($sale) => $sale->created_at?->format('Y-m-d H:i:s'));
+                ->groupBy(fn ($sale) => $sale->counter_sale_receipt_id
+                    ? 'receipt-'.$sale->counter_sale_receipt_id
+                    : 'legacy-'.$sale->created_at?->format('Y-m-d H:i:s'));
             $stockTransactions = Transaction::where('userId', $ownerId)
                 ->where('Order_type', 'Sale')
                 ->whereIn('sale_id', $stockGroups->map(fn ($items) => $items->first()->id))
@@ -181,8 +183,8 @@ class CustomerController extends Controller
                         'amount' => $items->sum(fn ($item) => (float) $item->selling_price * (float) $item->length),
                         'received' => (float) ($transaction?->recivedPayment ?? 0),
                         'balance' => (float) ($transaction?->remainingBalance ?? 0),
-                        'status' => 'completed',
-                        'cancellation_reason' => null,
+                        'status' => $first->receipt?->status ?? 'completed',
+                        'cancellation_reason' => $first->receipt?->cancellation_reason,
                     ];
                 })
                 ->values();

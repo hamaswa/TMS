@@ -20,7 +20,7 @@ class InventoryLedgerController extends Controller
                 'purchase_receipt', 'purchase_return', 'counter_sale', 'online_order',
                 'online_cancellation', 'online_reorder', 'cart_reservation', 'cart_release',
                 'storefront_order', 'storefront_cancellation', 'storefront_return', 'storefront_exchange_issue',
-                'manual_adjustment_in', 'manual_adjustment_out',
+                'counter_sale_cancellation', 'manual_adjustment_in', 'manual_adjustment_out',
             ])],
             'from_date' => ['nullable', 'date'],
             'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],

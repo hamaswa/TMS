@@ -11,13 +11,13 @@ use App\Http\Controllers\AdminStorefrontTailoringController;
 use App\Http\Controllers\BusinessActivityController;
 use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ClientSubscriptionController;
 use App\Http\Controllers\ClothBrandController;
 use App\Http\Controllers\ClothController;
 use App\Http\Controllers\ClothStockController;
 use App\Http\Controllers\ClothTypeController;
 use App\Http\Controllers\CsvController;
 use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\ClientSubscriptionController;
 use App\Http\Controllers\DesignController;
 use App\Http\Controllers\EmployeePasswordController;
 use App\Http\Controllers\ExpensesController;
@@ -414,6 +414,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         // Define the route for processing the sell form
         Route::post('stock/sell', [ClothStockController::class, 'sellStock'])->name('sellStock');
         Route::get('/print/{id}/{customerId}', [ClothStockController::class, 'printStock'])->name('printStock');
+        Route::patch('/counter-sales/{sale}/cancel', [ClothStockController::class, 'cancelCounterSale'])->name('counter-sales.cancel');
 
         Route::get('/prints/{id}/{customerId}', [ClothStockController::class, 'printStocks'])->name('printStocks');
 

@@ -2,34 +2,39 @@
 
 namespace App\Http\Controllers;
 
-use DateTime;
-use Carbon\Carbon;
+use App\Models\BusinessRole;
 use App\Models\Cloth;
-use App\Models\Stock;
-use App\Models\Setting;
-use App\Models\Workers;
-use App\Models\Expenses;
-use App\Models\ClothType;
-use App\Models\Customers;
-use App\Models\SaleStock;
 use App\Models\ClothBrand;
 use App\Models\ClothColor;
-use App\Models\Transaction;
-use Illuminate\Http\Request;
+use App\Models\ClothType;
+use App\Models\CounterSaleReceipt;
+use App\Models\Customers;
 use App\Models\DaliyExpenses;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
+use App\Models\Expenses;
+use App\Models\SaleStock;
+use App\Models\Setting;
+use App\Models\Stock;
+use App\Models\Transaction;
+use App\Models\Workers;
 use App\Services\InventoryService;
+use App\Services\PrintDocumentService;
 use App\Support\PaymentMethods;
+use Carbon\Carbon;
+use DateTime;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ClothStockController extends Controller
 {
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     //     public function index(Request $request)
     // {
@@ -37,12 +42,10 @@ class ClothStockController extends Controller
     //         $startDate = $request->input('start_date');
     //         $endDate = $request->input('end_date');
 
-
     //         if ($startDate && $endDate) {
 
     //             $startDate = date('Y-m-d', strtotime($startDate));
     //             $endDate = date('Y-m-d', strtotime($endDate));
-
 
     //             if ($startDate <= $endDate) {
 
@@ -63,7 +66,6 @@ class ClothStockController extends Controller
     //     }
     // }
 
-
     public function index(Request $request)
     {
         try {
@@ -71,23 +73,16 @@ class ClothStockController extends Controller
             // New Code
             $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with(['colors', 'images'])->latest()->get();
 
-
             return view('stock.index', compact('cloths'));
         } catch (\Throwable $th) {
             throw $th;
         }
     }
 
-
-
-
-
-
-
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -96,18 +91,17 @@ class ClothStockController extends Controller
             $cloths = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->get();
             $cloth_types = ClothType::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
             $cloth_brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
+
             return view('stock.create', compact('cloths', 'cloth_types', 'cloth_brands'));
         } catch (\Throwable $th) {
             throw $th;
         }
     }
 
-
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(Request $request)
     {
@@ -153,9 +147,9 @@ class ClothStockController extends Controller
             throw $th;
         }
     }
-    public function show($id)
-    {
-    }
+
+    public function show($id) {}
+
     public function sellCloth($id = null)
     {
         try {
@@ -170,6 +164,7 @@ class ClothStockController extends Controller
             $id = auth()->user()->businessOwnerId();
             // dd($id);
             $customers = Customers::where('user_id', $id)->get();
+
             // dd($customers);
             return view('stock.sell', compact('customers', 'cloths'));
         } catch (\Throwable $th) {
@@ -201,9 +196,6 @@ class ClothStockController extends Controller
         }
     }
 
-
-
-
     public function sellStock(Request $request)
     {
         return $this->processStockSale($request);
@@ -234,7 +226,7 @@ class ClothStockController extends Controller
 
         // Loop through each cloth to store sale stocks
         for ($i = 0; $i < count($brandNames); $i++) {
-            $saleStock = new SaleStock();
+            $saleStock = new SaleStock;
 
             $saleStock->cloth_type_id = $clothTypes[$i];
             $saleStock->cloth_brand_id = $brandNames[$i];
@@ -258,7 +250,7 @@ class ClothStockController extends Controller
                 ->where('color', $color[$i]) // Assuming you have an array of colors
                 ->first();
 
-                // dd($clothColor);
+            // dd($clothColor);
 
             // Calculate profit and loss
             if ($cloth) {
@@ -286,9 +278,9 @@ class ClothStockController extends Controller
                     $saleStock->loss = $loss;
                 } else {
                     // Handle the case where there's not enough available length
-                    return redirect()->route('admin.stock.index')->with('update', 
-                        $cloth->brand->name . ' ' . $cloth->type->name . ' کا اسٹاک کم ہے۔ موجودہ اسٹاک میٹر	: ' . 
-                        $clothColor->length . '، مطلوبہ اسٹاک میٹر : ' . $lengths[$i]
+                    return redirect()->route('admin.stock.index')->with('update',
+                        $cloth->brand->name.' '.$cloth->type->name.' کا اسٹاک کم ہے۔ موجودہ اسٹاک میٹر	: '.
+                        $clothColor->length.'، مطلوبہ اسٹاک میٹر : '.$lengths[$i]
                     );
                 }
             } else {
@@ -314,9 +306,8 @@ class ClothStockController extends Controller
             'customerId' => $cust_id,
             'Order_type' => 'Sale',
             'sale_id' => $sellStock->first()->id,
-            'userId' => auth()->user()->businessOwnerId()
+            'userId' => auth()->user()->businessOwnerId(),
         ]);
-
 
         return redirect()->route('admin.printStock', ['id' => $sellStock->first()->id, 'customerId' => $cust_id]);
         // // Array to store unique timestamps for each sale
@@ -340,7 +331,6 @@ class ClothStockController extends Controller
         //         $brandName = $stock->brand_name;
         //         return redirect()->route('admin.stock.index')->with('update', $brandName . ' کے لیے بقیہ لمبائی ' . $remainingLength . ' میٹر ہے ');
         //     }
-
 
         //     $profitPerUnit = max(0, $sellingPrice - $costPrice);
 
@@ -392,9 +382,6 @@ class ClothStockController extends Controller
         // return redirect()->route('admin.printStock', ['id' => $sellStock->first()->id, 'customerId' => $id]);
     }
 
-
-
-
     public function printStock($id, $customerId)
     {
         $sale_id = $id;
@@ -417,21 +404,16 @@ class ClothStockController extends Controller
         $payment = $gettransactions->recivedPayment;
 
         $transactions = Transaction::where('customerId', $id)
-            ->where('Order_type', 'Sale')
+            ->whereIn('Order_type', ['Sale', 'Sale Cancellation'])
             ->where('userId', auth()->user()->businessOwnerId())
+            ->orderBy('id')
             ->get();
         // dd($transactions);
 
         // Calculate the latest balance
         $latestBalance = $transactions->sum('remainingBalance');
 
-        $previousBalance = 0; // Initialize it to zero
-        if ($transactions->isNotEmpty()) {
-            $latestTransaction = $transactions->last();
-
-            // Calculate the sum of remaining balances excluding the latest transaction
-            $previousBalance = $transactions->where('id', '<', $latestTransaction->id)->sum('remainingBalance');
-        }
+        $previousBalance = $transactions->where('id', '<', $gettransactions->id)->sum('remainingBalance');
         // dd($previousBalance);
         // dd($latestBalance);
 
@@ -446,20 +428,28 @@ class ClothStockController extends Controller
 
         // dd($transactions);
 
-
         if ($latestSaleStock) {
             $customerName = $latestSaleStock->c_name;
             $phone = $latestSaleStock->phone;
-            $sellStock = SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('created_at', $latestSaleStock->created_at)->get();
-            $printConfig = app(\App\Services\PrintDocumentService::class)
+            $receipt = $latestSaleStock->receipt;
+            $sellStock = $receipt
+                ? SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('counter_sale_receipt_id', $receipt->id)->orderBy('id')->get()
+                : SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('created_at', $latestSaleStock->created_at)->orderBy('id')->get();
+            $cancellationTransaction = $receipt?->status === 'cancelled'
+                ? Transaction::where('userId', Auth::user()->businessOwnerId())
+                    ->where('sale_id', $receipt->first_sale_stock_id)
+                    ->where('Order_type', 'Sale Cancellation')
+                    ->latest('id')
+                    ->first()
+                : null;
+            $printConfig = app(PrintDocumentService::class)
                 ->make($setting, request(), 'cloth-sale', $sale_id);
 
-            return view('stock.stockPrint', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'tailortransactions', 'previousBalance', 'latestBalance', 'remaining', 'payment', 'id', 'printConfig'));
+            return view('stock.stockPrint', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'tailortransactions', 'previousBalance', 'latestBalance', 'remaining', 'payment', 'id', 'printConfig', 'receipt', 'latestSaleStock', 'cancellationTransaction'));
         } else {
             return view('stock.stockPrint')->with('error', 'No SaleStock records found.');
         }
     }
-
 
     public function printStocks($id, $customerId)
     {
@@ -507,40 +497,126 @@ class ClothStockController extends Controller
             $phone = $customers->phone_number1;
             $sellStock = SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('id', $sale_id)->where('c_id', $id)->firstOrFail();
             // dd($sellStock);
-            $saleStocks = SaleStock::where('created_at', $sellStock->created_at)
-                ->where('user_id', Auth::user()->businessOwnerId())
-                ->where('c_id', $id)
-                ->get();
-            $printConfig = app(\App\Services\PrintDocumentService::class)
+            $receipt = $sellStock->receipt;
+            $saleStocks = $receipt
+                ? SaleStock::where('counter_sale_receipt_id', $receipt->id)->where('user_id', Auth::user()->businessOwnerId())->where('c_id', $id)->orderBy('id')->get()
+                : SaleStock::where('created_at', $sellStock->created_at)->where('user_id', Auth::user()->businessOwnerId())->where('c_id', $id)->orderBy('id')->get();
+            $printConfig = app(PrintDocumentService::class)
                 ->make($setting, request(), 'cloth-sale-copy', $sale_id);
             // dd($saleStock);
 
-            return view('stock.stockPrints', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'id', 'remaining', 'payment', 'latestReceivedPayment', 'previousBalance', 'saleStocks', 'printConfig'));
+            return view('stock.stockPrints', compact('sellStock', 'setting', 'customerName', 'phone', 'transactions', 'id', 'remaining', 'payment', 'latestReceivedPayment', 'previousBalance', 'saleStocks', 'printConfig', 'receipt'));
         } else {
             return view('stock.stockPrints')->with('error', 'No SaleStock records found.');
         }
     }
 
-
-
-
-
-
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Stock  $stock
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy(Stock $stock)
     {
         try {
             abort_unless((int) $stock->user_id === (int) Auth::user()->businessOwnerId(), 404);
             $stock->delete();
-            return back()->with('delete', "اسٹاک کامیابی سے حذف ہو گیا۔");
+
+            return back()->with('delete', 'اسٹاک کامیابی سے حذف ہو گیا۔');
         } catch (\Throwable $th) {
             throw $th;
         }
+    }
+
+    public function cancelCounterSale(Request $request, int $sale)
+    {
+        $validated = $request->validate([
+            'cancellation_reason' => ['required', 'string', 'min:5', 'max:1000'],
+            'refund_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'refund_reference' => ['nullable', 'string', 'max:255'],
+        ]);
+        $ownerId = Auth::user()->businessOwnerId();
+
+        $receipt = DB::transaction(function () use ($validated, $ownerId, $sale) {
+            $saleItem = SaleStock::where('user_id', $ownerId)->findOrFail($sale);
+            $receipt = CounterSaleReceipt::where('user_id', $ownerId)
+                ->lockForUpdate()
+                ->findOrFail($saleItem->counter_sale_receipt_id);
+            if ($receipt->status === 'cancelled') {
+                throw ValidationException::withMessages([
+                    'cancellation_reason' => 'یہ کاؤنٹر فروخت پہلے ہی منسوخ کی جا چکی ہے۔',
+                ]);
+            }
+
+            $items = SaleStock::where('user_id', $ownerId)
+                ->where('counter_sale_receipt_id', $receipt->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            if ($items->isEmpty() || $items->contains(fn (SaleStock $item) => blank($item->cloth_color_id))) {
+                throw ValidationException::withMessages([
+                    'cancellation_reason' => 'اس پرانی فروخت میں مکمل اسٹاک شناخت موجود نہیں، اس لیے خودکار منسوخی دستیاب نہیں ہے۔',
+                ]);
+            }
+            $original = Transaction::where('userId', $ownerId)
+                ->where('sale_id', $receipt->first_sale_stock_id)
+                ->where('Order_type', 'Sale')
+                ->lockForUpdate()
+                ->first();
+            $received = (float) ($original?->recivedPayment ?? 0);
+            $balance = (float) ($original?->remainingBalance ?? 0);
+            $refundMethod = $validated['refund_method'] ?? null;
+
+            if ($received > 0 && blank($refundMethod)) {
+                throw ValidationException::withMessages([
+                    'refund_method' => 'وصول شدہ رقم واپس کرنے کا طریقہ منتخب کریں۔',
+                ]);
+            }
+            if ($received > 0 && PaymentMethods::requiresReference($refundMethod) && blank($validated['refund_reference'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'refund_reference' => 'منتخب رقم واپسی کے طریقے کا حوالہ نمبر درج کریں۔',
+                ]);
+            }
+
+            $inventory = app(InventoryService::class);
+            foreach ($items as $item) {
+                $color = ClothColor::where('user_id', $ownerId)->lockForUpdate()->findOrFail($item->cloth_color_id);
+                $inventory->restore(
+                    $color,
+                    (float) $item->length,
+                    'counter_sale_cancellation',
+                    $receipt,
+                    $receipt->receipt_number.' منسوخی'
+                );
+            }
+
+            Transaction::create([
+                'remainingBalance' => -$balance,
+                'recivedPayment' => -$received,
+                'Order_type' => 'Sale Cancellation',
+                'sale_id' => $receipt->first_sale_stock_id,
+                'customerId' => $receipt->customer_id ?? $original?->customerId,
+                'userId' => $ownerId,
+                'payment_method' => $refundMethod ?? $original?->payment_method ?? 'cash',
+                'payment_reference' => $validated['refund_reference'] ?? null,
+                'paid_on' => now()->toDateString(),
+                'comment' => 'کاؤنٹر فروخت منسوخی: '.$validated['cancellation_reason'],
+            ]);
+
+            $receipt->update([
+                'status' => 'cancelled',
+                'cancellation_reason' => $validated['cancellation_reason'],
+                'cancelled_at' => now(),
+                'cancelled_by_user_id' => Auth::id(),
+            ]);
+
+            return $receipt;
+        });
+
+        return redirect()->route('admin.printStock', [
+            'id' => $receipt->first_sale_stock_id,
+            'customerId' => $receipt->customer_id,
+        ])->with('success', 'کاؤنٹر فروخت منسوخ کر کے اسٹاک اور گاہک کا کھاتہ واپس کر دیا گیا ہے۔');
     }
 
     public function showSpecificSales(Request $request)
@@ -552,7 +628,7 @@ class ClothStockController extends Controller
             $start_date = $date_parts[0];
             $end_date = $date_parts[1];
 
-            $stocks = SaleStock::with('type', 'brand')
+            $stocks = SaleStock::financiallyActive()->with('type', 'brand')
                 ->select(
                     'cloth_brand_id',
                     'cloth_type_id',
@@ -575,7 +651,7 @@ class ClothStockController extends Controller
 
     public function showList()
     {
-        $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
+        $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
         $customers = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->get();
 
@@ -592,14 +668,13 @@ class ClothStockController extends Controller
         return view('stock.customer_list', compact('customers', 'customerTransactions', 'canViewBalances'));
     }
 
-
     public function customersDetail($id)
     {
-        //sale
+        // sale
         $customer = Customers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
         $name = $customer->name;
         $id = $customer->id;
-        $stocks = SaleStock::select(
+        $stocks = SaleStock::financiallyActive()->select(
             'sellDate',
             'c_name',
             'cloth_brand_id',
@@ -629,7 +704,7 @@ class ClothStockController extends Controller
 
         // dd($extransactions);
 
-        //tailor
+        // tailor
         $tailorcustomer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $tailortransactions = Transaction::select(
             'created_at',
@@ -657,6 +732,7 @@ class ClothStockController extends Controller
         $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         if ($customer) {
             $customer->delete();
+
             return redirect()->back();
         }
     }
@@ -691,7 +767,7 @@ class ClothStockController extends Controller
 
         // Loop through each month (assuming 1 for January, 2 for February, etc.)
         for ($month = 1; $month <= 12; $month++) {
-            $sales = SaleStock::where('user_id', auth()->user()->businessOwnerId())->whereMonth('created_at', $month)->sum(DB::raw('selling_price * length'));
+            $sales = SaleStock::financiallyActive()->where('user_id', auth()->user()->businessOwnerId())->whereMonth('created_at', $month)->sum(DB::raw('selling_price * length'));
 
             $extra_expense = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->whereMonth('created_at', $month)->sum('Expense_payment');
 
@@ -717,7 +793,7 @@ class ClothStockController extends Controller
         return view('All_Total.earning', compact('monthly_earnings'));
     }
 
-    //to show sale data
+    // to show sale data
     public function getSale(Request $req)
     {
         try {
@@ -811,6 +887,14 @@ class ClothStockController extends Controller
             $inventory = app(InventoryService::class);
             $firstSale = null;
             $soldAt = now();
+            $receipt = CounterSaleReceipt::create([
+                'receipt_number' => 'TMSC-'.now()->format('Ymd').'-'.Str::upper(Str::random(6)),
+                'user_id' => Auth::user()->businessOwnerId(),
+                'customer_id' => $customer->id,
+                'status' => 'completed',
+                'created_at' => $soldAt,
+                'updated_at' => $soldAt,
+            ]);
 
             for ($i = 0; $i < $itemCount; $i++) {
                 $cloth = Cloth::where('user_id', Auth::user()->businessOwnerId())
@@ -824,13 +908,14 @@ class ClothStockController extends Controller
 
                 if ((float) $clothColor->length < (float) $validated['length'][$i]) {
                     throw ValidationException::withMessages([
-                        'length.' . $i => 'منتخب کپڑے کا مطلوبہ اسٹاک دستیاب نہیں ہے۔',
+                        'length.'.$i => 'منتخب کپڑے کا مطلوبہ اسٹاک دستیاب نہیں ہے۔',
                     ]);
                 }
 
                 $costPrice = (float) $clothColor->average_unit_cost ?: (float) $cloth->price;
                 $salePrice = (float) $validated['per_meter'][$i];
                 $sale = SaleStock::create([
+                    'counter_sale_receipt_id' => $receipt->id,
                     'cloth_type_id' => $validated['cloth_type'][$i],
                     'cloth_brand_id' => $validated['brand_name'][$i],
                     'color' => $validated['color'][$i],
@@ -851,9 +936,11 @@ class ClothStockController extends Controller
                     'created_at' => $soldAt,
                     'updated_at' => $soldAt,
                 ]);
-                $inventory->issue($clothColor, (float) $validated['length'][$i], 'counter_sale', $sale, 'Counter sale #' . $sale->id, $costPrice);
+                $inventory->issue($clothColor, (float) $validated['length'][$i], 'counter_sale', $sale, 'Counter sale #'.$sale->id, $costPrice);
                 $firstSale ??= $sale;
             }
+
+            $receipt->update(['first_sale_stock_id' => $firstSale->id]);
 
             Transaction::create([
                 'remainingBalance' => $remainingBalance,

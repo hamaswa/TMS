@@ -7,6 +7,7 @@ use App\Models\Cloth;
 use App\Models\ClothBrand;
 use App\Models\ClothColor;
 use App\Models\ClothType;
+use App\Models\CounterSaleReceipt;
 use App\Models\Customers;
 use App\Models\OnlineOrder;
 use App\Models\Purchase;
@@ -15,6 +16,7 @@ use App\Models\Setting;
 use App\Models\Supplier;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\FinancialReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -60,7 +62,11 @@ class InventoryLedgerTest extends TestCase
         ])->assertRedirect();
 
         $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
+        $receipt = CounterSaleReceipt::where('user_id', $owner->id)->firstOrFail();
         $this->assertEquals(8, (float) $color->fresh()->length);
+        $this->assertSame($receipt->id, $sale->counter_sale_receipt_id);
+        $this->assertSame($sale->id, $receipt->first_sale_stock_id);
+        $this->assertStringStartsWith('TMSC-', $receipt->receipt_number);
         $this->assertEquals(100, (float) $sale->cost_per_meter);
         $this->assertEquals(200, (float) $sale->cost_total);
         $this->assertDatabaseHas('inventory_movements', [
@@ -78,6 +84,159 @@ class InventoryLedgerTest extends TestCase
             ->assertViewHas('sales', fn ($sales) => $sales->count() === 1
                 && $sales->first()->id === $sale->id
                 && $sales->first()->items_count === 1);
+    }
+
+    public function test_counter_sale_cancellation_restores_every_item_and_reverses_customer_and_financial_totals_once(): void
+    {
+        [$owner, $cloth, $firstColor] = $this->stock(10, 100);
+        $secondColor = ClothColor::create([
+            'cloth_id' => $cloth->id,
+            'color' => 'Navy Blue',
+            'length' => 12,
+            'average_unit_cost' => 90,
+            'user_id' => $owner->id,
+        ]);
+        $customer = Customers::create([
+            'name' => 'Muhammad Hamza',
+            'phone_number1' => '03001234567',
+            'user_id' => $owner->id,
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$cloth->cloth_brand_id, $cloth->cloth_brand_id],
+            'cloth_type' => [$cloth->cloth_type_id, $cloth->cloth_type_id],
+            'color' => [$firstColor->color, $secondColor->color],
+            'per_meter' => [150, 160],
+            'clothes_rack' => ['A-1', 'A-2'],
+            'length' => [2, 3],
+            'c_name' => $customer->name.'|'.$customer->id,
+            'payment' => 300,
+            'remain' => 480,
+            'payment_method' => 'raast',
+            'payment_reference' => 'RAAST-SALE-300',
+            'paid_on' => now()->toDateString(),
+        ]);
+
+        $receipt = CounterSaleReceipt::where('user_id', $owner->id)->firstOrFail();
+        $items = SaleStock::where('counter_sale_receipt_id', $receipt->id)->orderBy('id')->get();
+        $response->assertRedirect(route('admin.printStock', [
+            'id' => $items->first()->id,
+            'customerId' => $customer->id,
+        ]));
+        $this->assertCount(2, $items);
+        $this->assertEquals(8, (float) $firstColor->fresh()->length);
+        $this->assertEquals(9, (float) $secondColor->fresh()->length);
+
+        $this->actingAs($owner)->get($response->headers->get('Location'))
+            ->assertOk()
+            ->assertSeeText($receipt->receipt_number)
+            ->assertSeeText('کاؤنٹر فروخت منسوخ کریں')
+            ->assertSee('name="cancellation_reason"', false)
+            ->assertSee('name="refund_method"', false)
+            ->assertSee('assets/js/confirm-modal.js', false)
+            ->assertSee('data-confirm="کیا آپ یہ کاؤنٹر فروخت منسوخ کر کے تمام کپڑا اسٹاک اور گاہک کا کھاتہ واپس کرنا چاہتے ہیں؟"', false);
+
+        [$otherOwner] = $this->stock(5, 50);
+        $this->actingAs($otherOwner)->patch(route('admin.counter-sales.cancel', $items->first()), [
+            'cancellation_reason' => 'Wrong tenant attempt',
+            'refund_method' => 'cash',
+        ])->assertNotFound();
+        $this->assertSame('completed', $receipt->fresh()->status);
+
+        $this->actingAs($owner)->from($response->headers->get('Location'))
+            ->patch(route('admin.counter-sales.cancel', $items->first()), [])
+            ->assertRedirect($response->headers->get('Location'))
+            ->assertSessionHasErrors('cancellation_reason');
+        $this->actingAs($owner)->from($response->headers->get('Location'))
+            ->patch(route('admin.counter-sales.cancel', $items->first()), [
+                'cancellation_reason' => 'Customer returned all cloth',
+            ])->assertSessionHasErrors('refund_method');
+        $this->actingAs($owner)->from($response->headers->get('Location'))
+            ->patch(route('admin.counter-sales.cancel', $items->first()), [
+                'cancellation_reason' => 'Customer returned all cloth',
+                'refund_method' => 'raast',
+            ])->assertSessionHasErrors('refund_reference');
+
+        $cancel = $this->actingAs($owner)->patch(route('admin.counter-sales.cancel', $items->first()), [
+            'cancellation_reason' => 'Customer returned all cloth before cutting',
+            'refund_method' => 'raast',
+            'refund_reference' => 'RAAST-REFUND-300',
+        ]);
+        $cancel->assertRedirect(route('admin.printStock', [
+            'id' => $items->first()->id,
+            'customerId' => $customer->id,
+        ]));
+
+        $receipt->refresh();
+        $this->assertSame('cancelled', $receipt->status);
+        $this->assertSame('Customer returned all cloth before cutting', $receipt->cancellation_reason);
+        $this->assertSame($owner->id, $receipt->cancelled_by_user_id);
+        $this->assertNotNull($receipt->cancelled_at);
+        $this->assertDatabaseCount('sale_stocks', 2);
+        $this->assertEquals(10, (float) $firstColor->fresh()->length);
+        $this->assertEquals(12, (float) $secondColor->fresh()->length);
+        $this->assertDatabaseCount('inventory_movements', 4);
+        $this->assertDatabaseHas('inventory_movements', [
+            'movement_type' => 'counter_sale_cancellation',
+            'cloth_color_id' => $firstColor->id,
+            'quantity' => 2,
+            'balance_after' => 10,
+        ]);
+        $this->assertDatabaseHas('inventory_movements', [
+            'movement_type' => 'counter_sale_cancellation',
+            'cloth_color_id' => $secondColor->id,
+            'quantity' => 3,
+            'balance_after' => 12,
+        ]);
+        $this->assertDatabaseCount('transactions', 2);
+        $this->assertDatabaseHas('transactions', [
+            'Order_type' => 'Sale Cancellation',
+            'sale_id' => $items->first()->id,
+            'customerId' => $customer->id,
+            'remainingBalance' => -480,
+            'recivedPayment' => -300,
+            'payment_method' => 'raast',
+            'payment_reference' => 'RAAST-REFUND-300',
+        ]);
+        $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+        $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('recivedPayment'));
+
+        $report = app(FinancialReportService::class)->build($owner->id, now()->startOfDay(), now()->endOfDay());
+        $this->assertEquals(0, $report['revenue']['کاؤنٹر کپڑا فروخت']);
+        $this->assertEquals(0, $report['direct_costs']['کاؤنٹر فروخت کی لاگت']);
+        $this->assertEquals(0, $report['summary']['cash_in']);
+        $this->assertEquals(0, $report['summary']['receivables']);
+
+        $this->actingAs($owner)->get(route('admin.printStock', [
+            'id' => $items->first()->id,
+            'customerId' => $customer->id,
+        ]))->assertOk()
+            ->assertSeeText('یہ کاؤنٹر فروخت منسوخ ہو چکی ہے')
+            ->assertSeeText('Customer returned all cloth before cutting')
+            ->assertSeeText('اسٹاک اور گاہک کا کھاتہ واپس کر دیا گیا ہے')
+            ->assertSeeText('RAAST-REFUND-300')
+            ->assertDontSee('name="cancellation_reason"', false);
+        $this->actingAs($owner)->get(route('admin.inventory-ledger.index', [
+            'movement_type' => 'counter_sale_cancellation',
+        ]))->assertOk()->assertSeeText('کاؤنٹر فروخت منسوخی');
+
+        $this->actingAs($owner)->from(route('admin.printStock', [
+            'id' => $items->first()->id,
+            'customerId' => $customer->id,
+        ]))->patch(route('admin.counter-sales.cancel', $items->first()), [
+            'cancellation_reason' => 'Duplicate cancellation attempt',
+            'refund_method' => 'cash',
+        ])->assertSessionHasErrors('cancellation_reason');
+        $this->assertEquals(10, (float) $firstColor->fresh()->length);
+        $this->assertEquals(12, (float) $secondColor->fresh()->length);
+        $this->assertDatabaseCount('inventory_movements', 4);
+        $this->assertDatabaseCount('transactions', 2);
+
+        $activity = new BusinessActivityLog([
+            'route_name' => 'admin.counter-sales.cancel',
+            'method' => 'PATCH',
+        ]);
+        $this->assertSame('کاؤنٹر فروخت منسوخ کر کے اسٹاک اور کھاتہ واپس کیا', $activity->actionDescription());
     }
 
     public function test_counter_sale_form_uses_responsive_fields_and_one_customer_section(): void

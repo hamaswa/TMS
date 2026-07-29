@@ -151,8 +151,9 @@
         }
 
         @media print {
-            .btn {
-                display: none;
+            .btn,
+            .no-print {
+                display: none !important;
             }
         }
 
@@ -173,6 +174,25 @@
         #orderSection {
             margin-top: 0 !important;
         }
+
+        .cancelled-receipt {
+            position: relative;
+        }
+
+        .cancelled-receipt::after {
+            content: 'منسوخ شدہ';
+            position: absolute;
+            top: 42%;
+            right: 8%;
+            left: 8%;
+            z-index: 5;
+            color: rgba(185, 28, 28, .22);
+            font-size: 42px;
+            font-weight: 900;
+            text-align: center;
+            transform: rotate(-18deg);
+            pointer-events: none;
+        }
     </style>
     @include('print.partials.document-styles')
 </head>
@@ -180,7 +200,13 @@
 <body class="tms-stock-print">
     @include('print.partials.toolbar')
 
-    <div id="invoice-POS">
+    @if ($receipt?->status === 'cancelled')
+        <div class="alert alert-danger m-3 no-print" role="status">
+            یہ رسید منسوخ ہو چکی ہے۔ وجہ: {{ $receipt->cancellation_reason }}
+        </div>
+    @endif
+
+    <div id="invoice-POS" @class(['cancelled-receipt' => $receipt?->status === 'cancelled'])>
 
         <!--Print Button-->
         <div class="btn printbtn">
@@ -209,7 +235,7 @@
                     <h1 class="text-center" style="font-size: 16px;font-weight: 600;text-align: center">
                         {{ $setting->name }}</h1>
                     <h5 style="font-size: 16px;font-weight: 600;text-align: center">
-                        رسید نمبر: {{ $id }}</h5>
+                        رسید نمبر: {{ $receipt?->receipt_number ?? $id }}</h5>
                     <table class="table" style="width: 100%; table-layout: fixed;">
                         <h4
                             style="position:relative;text-align: right; margin-bottom: 20px !important;font-size:18px;font-weight:600;">

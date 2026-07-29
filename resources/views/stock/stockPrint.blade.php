@@ -169,9 +169,41 @@
             margin-top: 0 !important;
         }
 
+        .counter-sale-management {
+            max-width: 760px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #d9e2ec;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(15, 45, 70, .08);
+        }
+
+        .cancelled-receipt {
+            position: relative;
+        }
+
+        .cancelled-receipt::after {
+            content: 'منسوخ شدہ';
+            position: absolute;
+            top: 42%;
+            right: 8%;
+            left: 8%;
+            z-index: 5;
+            color: rgba(185, 28, 28, .22);
+            font-size: 42px;
+            font-weight: 900;
+            text-align: center;
+            transform: rotate(-18deg);
+            pointer-events: none;
+        }
+
         @media print {
-            .btn {
-                display: none;
+            .btn,
+            .no-print,
+            .modal,
+            .modal-backdrop {
+                display: none !important;
             }
         }
 
@@ -185,7 +217,82 @@
 <body class="tms-stock-print">
     @include('print.partials.toolbar')
 
-    <div id="invoice-POS">
+    <div class="counter-sale-management no-print">
+        @if (session('success'))
+            <div class="alert alert-success" role="status">{{ session('success') }}</div>
+        @endif
+        @if ($errors->any())
+            <div class="alert alert-danger" role="alert">
+                <strong>فروخت منسوخ نہیں ہو سکی:</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        @if ($receipt?->status === 'cancelled')
+            <div class="alert alert-danger mb-0" role="status">
+                <h2 class="h5">یہ کاؤنٹر فروخت منسوخ ہو چکی ہے</h2>
+                <p class="mb-1">رسید: <strong>{{ $receipt->receipt_number }}</strong></p>
+                <p class="mb-1">وجہ: {{ $receipt->cancellation_reason }}</p>
+                <p class="mb-0">اسٹاک اور گاہک کا کھاتہ واپس کر دیا گیا ہے۔ منسوخی:
+                    {{ optional($receipt->cancelled_at)->format('d-m-Y h:i A') }}</p>
+                @if ($cancellationTransaction && (float) $cancellationTransaction->recivedPayment !== 0.0)
+                    <p class="mb-0">رقم واپسی:
+                        <strong>Rs:{{ number_format(abs((float) $cancellationTransaction->recivedPayment), 2) }}</strong>
+                        — {{ \App\Support\PaymentMethods::label($cancellationTransaction->payment_method) }}
+                        @if ($cancellationTransaction->payment_reference)
+                            ({{ $cancellationTransaction->payment_reference }})
+                        @endif
+                    </p>
+                @endif
+            </div>
+        @elseif ($receipt && $sellStock->every(fn ($item) => filled($item->cloth_color_id)))
+            <h2 class="h5 mb-2">کاؤنٹر فروخت منسوخ کریں</h2>
+            <p class="text-muted">یہ کارروائی رسید کو محفوظ رکھتے ہوئے فروخت، وصول شدہ رقم، بقایا اور تمام کپڑا اسٹاک واپس کرے گی۔</p>
+            <form method="POST" action="{{ route('admin.counter-sales.cancel', $latestSaleStock->id) }}"
+                data-confirm="کیا آپ یہ کاؤنٹر فروخت منسوخ کر کے تمام کپڑا اسٹاک اور گاہک کا کھاتہ واپس کرنا چاہتے ہیں؟">
+                @csrf
+                @method('PATCH')
+                <div class="form-group">
+                    <label for="cancellation_reason">منسوخی کی وجہ</label>
+                    <textarea id="cancellation_reason" name="cancellation_reason" class="form-control" rows="3"
+                        minlength="5" maxlength="1000" required>{{ old('cancellation_reason') }}</textarea>
+                </div>
+                @if ((float) $payment > 0)
+                    <div class="alert alert-warning">
+                        وصول شدہ رقم <strong>Rs:{{ number_format((float) $payment, 2) }}</strong> واپس کرنے کی تفصیل درج کریں۔
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="refund_method">رقم واپسی کا طریقہ</label>
+                            <select id="refund_method" name="refund_method" class="form-control" required>
+                                <option value="">طریقہ منتخب کریں</option>
+                                @foreach (\App\Support\PaymentMethods::LABELS as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('refund_method') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="refund_reference">حوالہ / ٹرانزیکشن نمبر</label>
+                            <input id="refund_reference" name="refund_reference" class="form-control"
+                                value="{{ old('refund_reference') }}" maxlength="255">
+                            <small class="form-text text-muted">نقد یا دیگر کے علاوہ طریقوں کے لیے ضروری ہے۔</small>
+                        </div>
+                    </div>
+                @endif
+                <button type="submit" class="btn btn-danger">فروخت منسوخ کریں</button>
+            </form>
+        @elseif ($receipt)
+            <div class="alert alert-warning mb-0" role="status">
+                اس پرانی فروخت میں مکمل اسٹاک شناخت موجود نہیں، اس لیے خودکار منسوخی دستیاب نہیں ہے۔
+            </div>
+        @endif
+    </div>
+
+    <div id="invoice-POS" @class(['cancelled-receipt' => $receipt?->status === 'cancelled'])>
 
         <!--Print Button-->
         <div class="btn printbtn">
@@ -216,7 +323,7 @@
                     <h1 class="text-center" style="font-size: 16px;font-weight: 600;text-align: center">
                         {{ $setting?->name ?: (auth()->user()->business?->name ?: auth()->user()->name) }}</h1>
                         <h5 style="font-size: 16px;font-weight: 600;text-align: center">
-                            رسید نمبر: {{ $id }}</h5>
+                            رسید نمبر: {{ $receipt?->receipt_number ?? $id }}</h5>
                     <table class="table" style="width: 100%; table-layout: fixed;">
 
                         <h4 style="position:relative; margin-bottom: 20px !important;font-size:20px;font-weight:700;" class="text-right">
@@ -422,6 +529,8 @@
 
 
     @include('print.partials.qr')
+    @include('components.confirmation-modal')
+    <script src="{{ asset('assets/js/confirm-modal.js') }}"></script>
 </body>
 
 </html>
