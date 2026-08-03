@@ -1,6 +1,5 @@
-@php($measurementSnapshot = $orderDetail->measurementValues->keyBy('source_key'))
 <!DOCTYPE html>
-<html lang="ur" dir="rtl">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -13,7 +12,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
-    <title>ٹیلرنگ آرڈر اور پیمائش</title>
+    <title>Tailor Managment Order Recipt</title>
     <style>
      @font-face {
     font-family: 'Noto Nastaliq Urdu';
@@ -23,13 +22,7 @@
     font-display: swap;
 }
         body {
-             margin: 0;
-             background: #f3f5f7;
              font-family: 'Noto Nastaliq Urdu';
-        }
-
-        * {
-            box-sizing: border-box;
         }
 
         /* #invoice-POS {
@@ -41,22 +34,13 @@
 
         } */
         #invoice-POS {
-            position: relative;
-            width: 88mm;
-            margin: 20px auto;
-            padding: 4mm;
-            overflow: hidden;
-            background: #FFF;
-            box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
-        }
-
-        #fullSection,
-        #orderSection,
-        #sizeSection {
-            position: relative;
-            width: 100%;
-            max-width: 100% !important;
-        }
+    box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
+    padding-left: 5mm; /* Remove all padding */
+    padding-right: 0mm;
+    margin-top: 25px;/* Ensure no margin at the top */
+    width: 100mm; /* Increase the width */
+    background: #FFF;
+}
 
         ::selection {
             background: #f31544;
@@ -178,92 +162,13 @@
             justify-content: space-between;
             /*margin-bottom: 10px;*/
         }
-        .receipt-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 12px;
-        }
-        .receipt-meta h2,
-        .receipt-meta h3 {
-            margin: 0;
-        }
-        .receipt-date {
-            direction: ltr;
-            unicode-bidi: isolate;
-            white-space: nowrap;
-        }
-        .order-summary {
-            display: grid;
-            gap: 7px;
-            margin-top: 10px;
-        }
-        .order-summary-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(115px, auto);
-            align-items: start;
-            gap: 12px;
-            direction: ltr;
-            border-bottom: 1px dotted #e2e8f0;
-            padding: 2px 0 5px;
-        }
-        .order-summary-label,
-        .order-summary-value {
-            margin: 0;
-            font-size: 17px;
-            font-weight: 900;
-            line-height: 1.75;
-            overflow-wrap: anywhere;
-        }
-        .order-summary-label {
-            direction: rtl;
-            text-align: right;
-        }
-        .order-summary-value {
-            direction: ltr;
-            unicode-bidi: isolate;
-            text-align: left;
-        }
-        .order-note {
-            unicode-bidi: plaintext;
-            overflow-wrap: anywhere;
-            white-space: pre-wrap;
-        }
-        html.tms-paper-receipt_80 .receipt-meta h2,
-        html.tms-paper-receipt_80 .receipt-meta h3 {
-            font-size: 16px;
-        }
-        html.tms-paper-receipt_80 .order-summary-row {
-            grid-template-columns: minmax(0, 1fr) minmax(105px, auto);
-            gap: 7px;
-        }
-        html.tms-paper-receipt_80 .order-summary-label,
-        html.tms-paper-receipt_80 .order-summary-value {
-            font-size: 14px;
-            line-height: 1.7;
-        }
         .size .col-6{
             font-weight:300;
         }
 
         @media print {
-            body {
-                background: #fff;
-            }
-
-            #invoice-POS {
-                width: 88mm;
-                margin: 0;
-                box-shadow: none;
-            }
-
             .btn {
                 display: none !important;
-            }
-
-            @page {
-                size: 88mm auto;
-                margin: 0;
             }
         }
 
@@ -271,11 +176,10 @@
                 position: relative;
             } */
     </style>
-    @include('print.partials.document-styles')
 </head>
 
 <body>
-    @include('print.partials.toolbar')
+
     <div id="invoice-POS">
         <center id="top">
             <!--Print Button-->
@@ -287,7 +191,7 @@
                     واپس جائیں
                 </button>
                 <button class="btn btn-primary print-length" style="padding: 5px 10px; font-size: 14px;">
-                    پیمائش
+                    پمائیش
                 </button>
                 <button class="btn btn-primary print-full" style="padding: 5px 10px; font-size: 14px;">
                     مکمل
@@ -296,46 +200,110 @@
         </center><!--End InvoiceTop-->
 
         <div id="fullSection">
-            <div id="orderSection" style="max-width: 350px;margin-top:10px;" class="ticket order-section">
-                @if($setting->logo_url)
-                    <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
-                @endif
+            <div id="orderSection" style="max-width: 350px;margin-top:-30px;" class="ticket order-section">
+                <p align="center"><img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
                 <h1 class="text-center" style="text-align: center;margin-top:-10px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3" style="margin-top: 0px">
-                    <div class="receipt-meta">
+                    <div class="d-flex justify-content-between">
                         <div>
-                            <h2>رسید نمبر # {{ $orderDetail->id }}
+                            <h2>invoice No # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div style="font-weight:900;">
-                            <h3 class="receipt-date">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
+                            <h3>{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
                         </div>
                     </div>
                     <hr>
-                    <div class="order-summary">
-                        <div class="order-summary-row"><p class="order-summary-value">{{ $orderDetail->customers->name }}</p><p class="order-summary-label">نام:</p></div>
-                        <div class="order-summary-row"><p class="order-summary-value">{{ $orderDetail->suitQuantity }}</p><p class="order-summary-label">سوٹ کی تعداد:</p></div>
-                        <div class="order-summary-row"><p class="order-summary-value">{{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</p><p class="order-summary-label">سیریل نمبر:</p></div>
-                        <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $orderDetail->totalPayment, 2) }}</p><p class="order-summary-label">آرڈر کی رقم:</p></div>
-                        <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) ($orderDetail->transactions->first()?->recivedPayment ?? 0), 2) }}</p><p class="order-summary-label">موجودہ رقم کی ادائیگی:</p></div>
-                        @if ($orderBalance > 0)
-                            <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $orderBalance, 2) }}</p><p class="order-summary-label">اس آرڈر کا بقایا:</p></div>
-                        @endif
-                        @if ($previousBalance > 0)
-                            <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $previousBalance, 2) }}</p><p class="order-summary-label">گزشتہ واجبات:</p></div>
-                        @endif
-                        @if ($latestBalance > 0)
-                            <div class="order-summary-row"><p class="order-summary-value">{{ number_format((float) $latestBalance, 2) }}</p><p class="order-summary-label">کل واجب الادا:</p></div>
-                        @endif
-                        <div class="order-summary-row"><p class="order-summary-value">{{ $orderDetail->returnDate }}</p><p class="order-summary-label">واپسی کی تاریخ:</p></div>
+                    <!--//customer name-->
+                    <div class="" style="text-align: right;">
+                        <div style="width: 50%; display: inline-block; font-size:20px; font-weight:600;">
+                            {!! '<p style="font-size:18px; position:absolute;left:40px;">' . $orderDetail->customers->name . '</p>' !!}
+                            <p
+                                style="font-weight: 900; font-size:18px margin:0px">:نام</p>
+                        </div>
+                    </div>
+
+                    <!--//number of suits-->
+                    <div class="" style="text-align: right;">
+                        <div style="width: 50%; display: inline-block; font-size:18px; font-weight:600;">
+                            {!! '<p style="font-size:18px;position:absolute;left:60px;">' . $orderDetail->suitQuantity . '</p>' !!}
+                            <p style="font-weight: 900; font-size:18px; margin:0px">:سوٹ کی تعداد</p>
+                        </div>
+                    </div>
+
+
+                    <div class="mb-3" style="text-align: right;">
+                        <div
+                            style="width: 50%; display: inline-block; font-size:18px; font-weight:400; max-width:400px; word-wrap:break-word; word-break:break-all;">
+                            {!! '<p style="font-size:18px; font-weight:900; position:absolute; left:60px;">' . $orderDetail->suitNum . '</p>' !!}
+                            <p style="font-size:18px; font-weight:900;margin:0px">:سیریل نمبر</p>
+                        </div>
+                    </div>
+
+
+                    <!--//order payment-->
+                    <div class="mb-3" style="text-align: right;">
+                        <div style="width: 100%; display: inline-block; font-size:18px;">
+                            {!! '<p style="font-size:18px; font-weight:900; position:absolute; left:40px;">' . $orderDetail->totalPayment .'</p>' !!}
+                            <p style="font-size:18px; font-weight:900;margin:0px">:آرڈر کی رقم
+                                </p>
+                        </div>
+                    </div>
+
+                    <!--//recieved payment-->
+                    <div class="mb-3" style="text-align: right;padding:0px 0px;">
+                        <div style="width: 100%; display: inline-block; font-size:18px; ">
+                            {!! '<p style="font-size:18px; font-weight:900; position:absolute;left:40px;">' . $orderDetail->transactions[0]->recivedPayment .'</p>' !!}
+                            <p style="font-weight:900; font-size:18px;margin:0px">:موجودہ رقم کی
+                            ادائیگی</p>
+                        </div>
+                    </div>
+                    <!-- Current due payments -->
+                    @if ($latestBalance - $previousBalance > 0)
+                        <div class="mb-3" style="text-align: right; padding: 5px 0px;">
+                            <div style="width: 100%; display: inline-block; font-size:18px;">
+                                {!! '<p style="font-size:18px; font-weight:900; position:absolute;left:40px;">' . ($latestBalance - $previousBalance) . '</p>' !!}
+                                <p style="font-weight:900; font-size:18px;margin:0px">:موجودہ ادائیگی واجب
+                                    الادا</p>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Previous payments due -->
+                    @if ($previousBalance > 0)
+                        <div class="mb-3" style="text-align: right; padding: 5px 0px;">
+                            <div style="width: 100%; display: inline-block; font-size:18px; ">
+                                {!! '<p style="font-size:18px; font-weight:900; position:absolute;left:40px;">' . $previousBalance . '</p>' !!}
+                                <p style="font-weight:900; font-size:18px;margin:0px">:گزشتہ ادائیگی کے
+                                    واجبات</p>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Latest balance or total balance -->
+                    @if ($latestBalance > 0)
+                        <div class="mb-3" style="text-align: right;">
+                            <div style="width: 100%; display: inline-block; font-size:18px; ">
+                                {!! '<p style="font-size:18px; font-weight: 900; position:absolute;left:40px;">' . $latestBalance . '</p>' !!}
+                                <p style="font-weight:900; font-size:18px; margin:0px">:کل ادائیگی واجب
+                                    الادا</p>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!--//return date-->
+                    <div class="mt-3" style="text-align: right; font-size:18px; ">
+                        {!! '<p style="font-size:18px; font-weight:900; position:absolute;left:40px;">' . $orderDetail->returnDate . '</p>' !!}
+                        <p style="font-Weight:900; font-size:18px; margin:0px;">:واپسی کی
+                            تاریخ</p>
                     </div>
                     <div>
-                        <h3 class="text-center font-weight-900 order-note" dir="auto" style="font-size: 18px; margin: 25px 0 0 0;">{{$orderDetail->remarks}}</h3>
+                        <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">{{$orderDetail->remarks}}</h3>
                     </div>
                     <hr>
                     <div style="width: 100%;font-weight:900;" align="center">
-                        <p><b style="font-size: 14px;padding:10px;">{{ $setting->address }}</b></p>
+                        <p><b style="font-size: 14px;padding:10px;">{!! $setting->address !!}</b></p>
                         <p><b style="font-size: 14px;padding:10px;">{{ $setting->contact_no }}</b></p>
                         <p style="text-align:center;padding:5px; font-weight-900"><b></b>{{ $setting->note }}</b></p>
                     </div>
@@ -346,15 +314,13 @@
                 <!--<hr>-->
             </div>
             <div id="sizeSection" style="max-width: 350px;margin-top:-10px;" class="ticket size-section">
-                @if($setting->logo_url)
-                    <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
-                @endif
+                <p align="center"> <img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
                 <h1 class="text-center" style="font-weight:800;margin-top:-5px;">{{ $setting->name }}</h1>
                 <div class="pl-3 pr-3">
                     <hr>
                     <div class="desing-flex">
                         <div>
-                            <p style="font-size:18px; font-weight:700;">سیریل نمبر: {{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</p>
+                            <p style="font-size:18px; font-weight:700;">Serial num: {{$orderDetail->suitNum}}</p>
                         </div>
                         <div>
                             <p style="font-size:18px; font-weight:700;">{{$orderDetail->customers->name}}</p>
@@ -393,7 +359,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600; ">
                                 <div>
-                                    <p style="direction: rtl; text-align: right;word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.length'))->value ?? $orderDetail->customers->length }}</p>
+                                    <p style="direction: rtl; text-align: right;word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->length }}</p>
                                 </div>
                                 <div>
                                     <p style="font-weight:900; font-size:20px;">
@@ -419,7 +385,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                   <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;"> {{ optional($measurementSnapshot->get('system.arms'))->value ?? $orderDetail->customers->arms }}</p>
+                                   <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;"> {{ $orderDetail->customers->arms }}</p>
                                 </div>
                                 <div><P style="font-weight:900; font-size:20px;">بازو</P></div>
                             </div>
@@ -439,7 +405,7 @@
                         </div>
                         <div class="col-6" style="width: 45%">
                         <div class="d-flex justify-content-between">
-                                <div><p style="display: flex;justify-content: space-between;font-weight:900;  font-size:18px;">{{ optional($measurementSnapshot->get('system.teraa'))->value ?? $orderDetail->customers->teraa }}</p></div>
+                                <div><p style="display: flex;justify-content: space-between;font-weight:900;  font-size:18px;">{{ $orderDetail->customers->teraa }}</p></div>
                                 <div>
                                 <P style="font-weight:600; font-size:20px;">تیرا</P></div>
                             </div>
@@ -460,7 +426,7 @@
                         <div class="col-6" style="width: 45%">
                             <div class="d-flex justify-content-between" style="display: flex; justify-content: space-between;font-weight:600;">
                                 <div>
-                                   <p style="word-break: break-word; white-space: normal; min-width: 0;font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.senaChorai'))->value ?? $orderDetail->customers->senaChorai }}</p>
+                                   <p style="word-break: break-word; white-space: normal; min-width: 0;font-weight:900; font-size:18px;">{{$orderDetail->customers->senaChorai}}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">سینہ چوڑائی</p></div>
                             </div>
@@ -480,7 +446,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0;font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.damanchorai'))->value ?? $orderDetail->customers->damanchorai }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0;font-weight:900; font-size:18px;">{{ $orderDetail->customers->damanchorai }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">دامن چوڑائی</p></div>
                             </div>
@@ -502,7 +468,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.shalwar'))->value ?? $orderDetail->customers->shalwar }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->shalwar }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">شلوار</p></div>
                             </div>
@@ -523,7 +489,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.pancha'))->value ?? $orderDetail->customers->pancha }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->pancha }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">پانچہ</p></div>
                             </div>
@@ -538,7 +504,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.shalwarGheer'))->value ?? $orderDetail->customers->shalwarGheer }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->shalwarGheer }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">شلوار گھیر</p></div>
                             </div>
@@ -556,7 +522,7 @@
                             <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.shoulder'))->value ?? $orderDetail->customers->shoulder }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->shoulder }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">مونڈا</p></div>
                             </div>
@@ -573,7 +539,7 @@
                         <div class="d-flex justify-content-between"
                                 style="display: flex;justify-content: space-between;font-weight:600;">
                                 <div>
-                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ optional($measurementSnapshot->get('system.chuta'))->value ?? $orderDetail->customers->Chuta }}</p>
+                                    <p style="word-break: break-word; white-space: normal; min-width: 0; font-weight:900; font-size:18px;">{{ $orderDetail->customers->Chuta }}</p>
                                 </div>
                                 <div><p style="font-weight:900; font-size:20px;">چوتا</p></div>
                             </div>
@@ -581,27 +547,13 @@
 
                     </div>
 
-                    @php($customMeasurements = $orderDetail->measurementValues->filter(fn ($measurement) => str_starts_with($measurement->source_key, 'custom.')))
-                    @if($customMeasurements->isNotEmpty())
-                        <div style="border-top:1px solid #333;padding:8px 10px;direction:rtl">
-                            <p style="font-weight:900;font-size:18px;text-align:right;margin-bottom:6px">اضافی پیمائش</p>
-                            <div style="display:flex;flex-wrap:wrap;justify-content:space-between">
-                                @foreach($customMeasurements as $measurement)
-                                    <div style="width:45%;display:flex;justify-content:space-between;margin-bottom:5px">
-                                        @php($measurementUnit = ['inch' => 'انچ', 'cm' => 'سینٹی میٹر'][$measurement->unit] ?? null)
-                                        <strong>{{ $measurement->label }}</strong><span>{{ $measurement->value }} @if($measurementUnit){{ $measurementUnit }}@endif</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
                     <hr>
                     <div>
                         <div align="center">
                             <div>
-                                <h3 class="text-center font-weight-900 order-note" dir="auto" style="font-size: 18px; margin-top:-20px; margin-bottom:0px">{{$orderDetail->remarks}}</h3>
+                                <h3 class="text-center font-weight-900" style="font-size: 18px; margin-top:-20px; margin-bottom:0px">{{$orderDetail->remarks}}</h3>
                             </div>
-                            <p><b style="font-size: 14px;">{{ $setting->address }}</b></p>
+                            <p><b style="font-size: 14px;">{!! $setting->address !!}</b></p>
                             <p><b style="font-size: 14px;">{{ $setting->contact_no }}</b></p>
                         </div>
                     </div>
@@ -758,7 +710,6 @@
 
 
 
-    @include('print.partials.qr')
 </body>
 
 </html>

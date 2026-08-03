@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ur" dir="rtl">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -12,24 +12,19 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
-    <title>ٹیلرنگ آرڈر اور پیمائش کی دو رسیدیں</title>
+    <title>Tailor Managment Order Recipt</title>
     <style>
-    @font-face {
+         @font-face {
     font-family: 'Noto Nastaliq Urdu';
     src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
-    font-weight: normal;
+    font-weight: 100 900;
     font-style: normal;
     font-display: swap;
 }
-        body {
-            margin: 0;
-            background: #f3f5f7;
-            font-family: 'Noto Nastaliq Urdu';
-        }
 
-        * {
-            box-sizing: border-box;
-        }
+body {
+    font-family: 'Noto Nastaliq Urdu', serif;
+}
 
         /* #invoice-POS {
             box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
@@ -40,22 +35,13 @@
 
         } */
         #invoice-POS {
-            position: relative;
             box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
-            padding: 4mm;
-            margin: 20px auto;
-            width: 88mm;
-            overflow: hidden;
+            padding-left: 5mm; /* Remove all padding */
+            padding-right: 0mm;
+            margin: 0; /* Ensure no margin at the top */
+            width: 100mm; /* Increase the width */
             background: #FFF;
-        }
-
-        #fullSection,
-        #orderSection,
-        #sizeSection {
-            position: relative;
-            width: 100%;
-            max-width: 100% !important;
-        }
+}
 
         ::selection {
             background: #f31544;
@@ -103,7 +89,7 @@
         }
 
         #top {
-            min-height: 10px;
+            min-height: 100px;
         }
 
         #mid {
@@ -176,61 +162,9 @@
             margin-bottom: 10px;
         }
 
-        .printbtn {
-            position: static !important;
-            display: flex !important;
-            justify-content: center;
-            gap: 4px;
-            padding: 0 !important;
-            margin: 6px 0 18px;
-        }
-
-        .printbtn .btn {
-            position: static !important;
-            padding: 5px 8px !important;
-        }
-
-        .printbtn span {
-            font-size: 13px !important;
-            line-height: 1.8 !important;
-        }
-
-        .receipt-line {
-            display: flex !important;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 8px;
-            width: 100% !important;
-            font-size: 0 !important;
-        }
-
-        .receipt-line span,
-        .receipt-line b {
-            font-size: 18px !important;
-        }
-
-        #orderSection > h1 {
-            margin-top: 0 !important;
-        }
-
         @media print {
-            body {
-                background: #fff;
-            }
-
-            #invoice-POS {
-                width: 88mm;
-                margin: 0;
-                box-shadow: none;
-            }
-
             .btn {
                 display: none;
-            }
-
-            @page {
-                size: 88mm auto;
-                margin: 0;
             }
         }
 
@@ -238,55 +172,31 @@
                 position: relative;
             } */
     </style>
-    @include('print.partials.document-styles')
 </head>
 
 <body>
-    @include('print.partials.toolbar')
+
     <div id="invoice-POS">
 
         <center id="top">
             <div class="info">
                 <div class="naap-button">
-                    @if ($status != 'default')
-                        <button class="btn btn-primary btn-sm naap">پیمائش</button>
-                        <button class="btn btn-primary btn-sm order">ارڈر تفصیل</button>
+                    <button class="btn btn-primary btn-sm go">آرڈر پر واپس جائیں </button>
+                        <button class="btn btn-primary btn-sm naap">پمائیش</button>
+                        <button class="btn btn-primary btn-sm order">آرڈر تفصیل</button>
                         <button class="btn btn-primary btn-sm full">مکمل </button>
-                    @endif
-                    <hr>
                 </div>
             </div><!--End Info-->
         </center><!--End InvoiceTop-->
-
-        <!--Print Button-->
-        <div class="btn printbtn">
-            <button class="btn btn-primary"
-                style="position: absolute; top: 10%; left: 1%; padding: 0px 10px; text-align: center;">
-                <span style="display: inline-block; vertical-align: middle; line-height: normal;font-size:22px;">رسید
-                    پرنٹ کریں۔</span>
-            </button>
-            <button class="btn btn-primary go"
-                style="position: absolute; top: 10%; left: 12%; padding: 0px 10px; text-align: center;">
-                <span style="display: inline-block; vertical-align: middle; line-height: normal;font-size:18px;"> آرڈر
-                    پر واپس جائیں</span>
-            </button>
-            {{-- <button class="btn btn-primary go" style="position:relative;bottom:80px;right:20px;padding: 10px;">آرڈر
-                پر واپس جائیں</button> --}}
-        </div>
-
-
-
         <div id="fullSection">
-            <div id="orderSection" style="max-width: 350px; margin-top:10px;" class="ticket order-section">
-                @if($setting->logo_url)
-                    <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
-                @endif
+            <div id="orderSection" style="max-width: 350px; margin-top:-60px;" class="ticket order-section">
+                <p align="center"><img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
                 <h1 class="text-center"  style="font-size: 16px;font-weight: 600;text-align: center;margin-top:-20px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3">
                     <div class="d-flex justify-content-between ">
                         <div>
-                            <h2 style="font-size: 16px;font-weight:600;">رسید نمبر # {{ $orderDetail->id }}
+                            <h2 style="font-size: 16px;font-weight:600;">invoice No # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div>
@@ -295,89 +205,82 @@
                     </div>
                     <hr>
                     <!--//customer name-->
-                    <div class="mb-3" style="text-align: right;">
-                        <div style="width: 50%; display: inline-block; font-size:20px; font-weight:600;">
-                            <b style="font-size:18px; position:absolute;left:80px;">{{ $orderDetail->customers->name }}</b>
-                            <span
-                                style="font-weight:600;">:نام</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <div class="mb-1" style="text-align: right; padding:0px 0px;">
+                        <div style="width: 50%; display: inline-block; font-size:20px; font-weight:600; max-width: 400px; word-wrap: break-word; word-break: break-all;">
+                            <span style="font-weight:600;">:نام</span>
+                            {!! '<b style="font-size:18px; position:absolute;left:100px;">' .$orderDetail->customers->name . '</b>' !!}
                         </div>
                     </div>
-                    <br>
-
                     <!--//number of suits-->
-                    <div class="mb-3 mt-2" style="text-align: right;">
-                        <div style="width: 50%; display: inline-block;font-size:20px; font-weight:600;">
+                    <div class="mb-1" style="text-align: right; padding:0px 0px;">
+                        <div style="width: 50%; display: inline-block; font-size:20px; font-weight:600; max-width: 400px; word-wrap: break-word; word-break: break-all;">
                             <span style="font-weight:600;">:سوٹ کی تعداد</span>
-                            <b style="font-size:18px;position:absolute;left:100px;">{{ $orderDetail->suitQuantity }}</b>
+                            {!! '<b style="font-size:18px; position:absolute;left:100px;">' . $orderDetail->suitQuantity . '</b>' !!}
                         </div>
                     </div>
 
 
                     <!--//suits number-->
-                    <div class="mb-3 mt-2" style="text-align: right;">
+                    <div class="mb-1" style="text-align: right; padding:0px 0px;">
                         <div
                             style="width: 50%; display: inline-block; font-size:20px; font-weight:600; max-width: 400px; word-wrap: break-word; word-break: break-all;">
                             <span style="font-size:18px; font-weight:600;">:سیریل نمبر</span>
-                            <b style="font-size:18px;position:absolute;left:100px;">{{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</b>
+                            {!! '<b style="font-size:18px; position:absolute; left:100px;">' . $orderDetail->suitNum . '</b>' !!}
                         </div>
                     </div>
 
 
                     <!--//order payment-->
-                    <div class="mb-3 mt-2" style="text-align: right;padding:0px 0px;">
-                        <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
-                            <span style="font-weight:600; ">آرڈر کی رقم
-                                :</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                            <b style="font-size:18px;">{{ $orderDetail->totalPayment }}</b>
+                    <div class="mb-1" style="text-align: right; padding:0px 0px;">
+                        <div style="width: 50%; display: inline-block; font-size:20px; font-weight:600; max-width: 400px; word-wrap: break-word; word-break: break-all;">
+                            <span style="font-weight:600; ">:آرڈر کی رقم</span>
+                            {!! '<b style="font-size:18px; position:absolute; left:100px;">' . $orderDetail->totalPayment . '</b>' !!}
                         </div>
                     </div>
 
                     <!--//recieved payment-->
-                    <div class="mb-3 mt-2" style="text-align: right;padding:0px 0px;">
-                        <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
-                            <span style="font-weight:600;">موجودہ رقم کی
-                                ادائیگی:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                            <b style="font-size:18px;">{{ $orderDetail->transactions[0]->recivedPayment }}</b>
+                    <div class="mb-1" style="text-align: right;padding:0px 0px;">
+                        <div style="width: 100%; display: inline-block; font-size:20px; font-weight:600;">
+                            <span style="font-weight:600;"> : موجودہ رقم کی ادائیگی</span>
+                            {!! '<b style="font-size:18px; position:absolute; left:100px;">' . $orderDetail->transactions[0]->recivedPayment . '</b>' !!}
                         </div>
                     </div>
                     <!-- Current due payments -->
                     @if ($latestBalance - $previousBalance > 0)
-                        <div class="mb-3 mt-2" style="text-align: right; padding: 5px 0px;">
-                            <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
-                                <span style="font-weight:600;">موجودہ ادائیگی واجب
-                                    الادا:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                <b style="font-size:18px;">{{ $latestBalance - $previousBalance }}</b>
+                        <div class="mb-1" style="text-align: right; padding: 5px 0px;">
+                            <div style="width: 100%; display: inline-block; font-size:20px; font-weight:600;">
+                                <span style="font-weight:600;"> : موجودہ ادائیگی واجب الادا</span>
+                                {!! '<b style="font-size:18px; position:absolute; left:100px;">' . ($latestBalance - $previousBalance) . '</b>' !!}
                             </div>
                         </div>
                     @endif
 
                     <!-- Previous payments due -->
                     @if ($previousBalance > 0)
-                        <div class="mb-3 mt-2" style="text-align: right; padding: 5px 0px;">
-                            <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
-                                <span style="font-weight:600;">گزشتہ ادائیگی کے
-                                    واجبات:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                <b style="font-size:18px;">{{ $previousBalance }}</b>
+                        <div class="mb-1" style="text-align: right; padding: 5px 0px;">
+                            <div style="width: 100%; display: inline-block; font-size:20px; font-weight:600;">
+                                <span style="font-weight:600;"> : گزشتہ ادائیگی کے واجبات</span>
+                                {!! '<b style="font-size:18px; position:absolute; left:100px;">' . $previousBalance . '</b>' !!}
                             </div>
                         </div>
                     @endif
 
                     <!-- Latest balance or total balance -->
                     @if ($latestBalance > 0)
-                        <div class="mb-3 mt-2" style="text-align: right;">
-                            <div class="receipt-line" style="width: 100%; display: inline-block; font-size:18px;">
-                                <span style="font-weight:600;">کل ادائیگی واجب
-                                    الادا:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                <b style="font-size:18px;">{{ $latestBalance }}</b>
+                        <div class="mb-1" style="text-align: right; padding: 5px 0px;">
+                            <div style="width: 100%; display: inline-block; font-size:20px; font-weight:600;">
+                                <span style="font-weight:600;"> : کل ادائیگی واجب الادا</span>
+                                {!! '<b style="font-size:18px; position:absolute; left:100px;">' . $latestBalance . '</b>' !!}
                             </div>
                         </div><br>
                     @endif
 
                     <!--//return date-->
-                    <div class="receipt-line" style="text-align: right; font-size:18px;">
-                        <span style="font-weight:600; ">واپسی کی
-                            تاریخ:</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        <b style="font-size:18px;">{{ $orderDetail->returnDate }}</b>
+                    <div style="text-align: right; font-size:18px;">
+                        <div style="width: 100%; display: inline-block; font-size:20px; font-weight:600;">
+                            <span style="font-weight:600; "> : واپسی کی تاریخ</span>
+                            {!! '<b style="font-size:18px; position:absolute; left:100px;">' . $orderDetail->returnDate . '</b>' !!}
+                        </div>
                     </div>
                     <div>
                         <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;">{{$orderDetail->remarks}}
@@ -385,7 +288,7 @@
                     </div>
                     <hr>
                     <div style="width: 100%;" align="center">
-                        <p><b>{{ $setting->address }}</b></p>
+                        <p><b>{!! $setting->address !!}</b></p>
                         <p>{{ $setting->contact_no }}</p>
                         <p style="text-align:center;padding:5px;"><b></b>{{ $setting->note }}</b></p>
                     </div>
@@ -395,10 +298,8 @@
                 <!--<p style="text-align:center; font-size: 10px">{{ $setting->note }}</p>-->
                 <!--<hr>-->
             </div>
-            <div id="sizeSection" style="max-width: 350px; margin-top:10px;" class="ticket size-section">
-                @if($setting->logo_url)
-                    <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
-                @endif
+            <div id="sizeSection" style="max-width: 350px; margin-top:-30px;" class="ticket size-section">
+                <p align="center"> <img src="{{asset('images/setting/' . $setting->logo)}}" width="100"></p>
                 <h1 class="text-center" style="font-weight:800;margin-top:-20px;">{{$setting->name}}</h1>
                 <div align="center"> <span style="font-weight: bold;font-size: 14px;"></span>
                 </div>
@@ -407,7 +308,7 @@
                     <hr>
                     <div class="desing-flex">
                         <div>
-                            <b>سیریل نمبر: {{ is_array(json_decode((string) $orderDetail->suitNum, true)) ? implode('، ', json_decode((string) $orderDetail->suitNum, true)) : (string) $orderDetail->suitNum }}</b>
+                            <b>Serial num: {{$orderDetail->suitNum}}</b>
                         </div>
                         <div>
                             <b>{{$orderDetail->customers->name}}</b>
@@ -630,7 +531,7 @@
                             <div>
                                 <h3 class="text-center font-weight-400 mt-2" style="font-size: 16px;">{{$orderDetail->remarks}}</h3>
                             </div>
-                            <p>{{ $setting->address }}</p>
+                            <p>{!! $setting->address !!}</p>
                             <p>{{$setting->contact_no}}</p>
                         </div>
                     </div>
@@ -643,12 +544,58 @@
 
     </div><!--End Invoice-->
     <script>
-        document.querySelector('.printbtn button:not(.go)')?.addEventListener('click', function () {
+     $(document).ready(function () {
+
+    var status = $('#status').val();
+
+    if (status == 'default') {
+
+        window.print();
+
+    } else {
+
+        $('.naap').on('click', function () {
+
+            $('.naap-button').hide();
+            $('.order-section').hide();
+
             window.print();
+
+            $('.naap-button').show();
+            $('.order-section').show();
+
         });
-        document.querySelector('.go')?.addEventListener('click', function () {
-            window.history.back();
+
+        $('.order').on('click', function () {
+
+            $('.naap-button').hide();
+            $('.size-section').hide();
+
+            window.print();
+
+            $('.naap-button').show();
+            $('.size-section').show();
+
         });
+
+        $('.full').on('click', function () {
+
+            $('.naap-button').hide();
+
+            window.print();
+
+            $('.naap-button').show();
+
+        });
+
+    }
+
+    // Back Button
+    $('.go').on('click', function () {
+        window.history.back();
+    });
+
+});
 
         //   to open print blade into new tab
         //   var orderId = {{ $order->id }};
@@ -665,10 +612,6 @@
         //     }
         // };
     </script>
-
-
-
-    @include('print.partials.qr')
 </body>
 
 </html>
