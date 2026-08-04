@@ -13,17 +13,24 @@ use Illuminate\Validation\Rule;
 class MeasurementService
 {
     public const SYSTEM_FIELDS = [
-        'length' => ['label' => 'لمبائی', 'unit' => 'inch'],
-        'arms' => ['label' => 'بازو', 'unit' => 'inch'],
-        'teraa' => ['label' => 'تیرا', 'unit' => 'inch'],
-        'senaChorai' => ['label' => 'سینہ چوڑائی', 'unit' => 'inch'],
-        'damanchorai' => ['label' => 'دامن چوڑائی', 'unit' => 'inch'],
-        'shalwar' => ['label' => 'شلوار', 'unit' => 'inch'],
-        'pancha' => ['label' => 'پائنچہ', 'unit' => 'inch'],
-        'shalwarGheer' => ['label' => 'شلوار گھیر', 'unit' => 'inch'],
-        'shoulder' => ['label' => 'مونڈھا', 'unit' => 'inch'],
-        'chuta' => ['label' => 'چوٹا', 'unit' => 'inch'],
-    ];
+    'length' => ['label' => 'لمبائی', 'unit' => 'inch'],
+    'necktype' => ['label' => 'گلہ', 'unit' => ''],
+    'arms' => ['label' => 'بازو', 'unit' => 'inch'],
+    'sleeve' => ['label' => 'کف', 'unit' => ''],
+    'teraa' => ['label' => 'تیرا', 'unit' => 'inch'],
+    'Daaman' => ['label' => 'دامن', 'unit' => ''],
+    'jeab' => ['label' => 'جیب', 'unit' => ''],
+    'senaChorai' => ['label' => 'سینہ چوڑائی', 'unit' => 'inch'],
+    'swingtype' => ['label' => 'سلائی', 'unit' => ''],
+    'damanchorai' => ['label' => 'دامن چوڑائی', 'unit' => 'inch'],
+    'button' => ['label' => 'بٹن', 'unit' => ''],
+    'shalwar' => ['label' => 'شلوار', 'unit' => 'inch'],
+    'plate_type' => ['label' => 'پلیٹ', 'unit' => ''],
+    'pancha' => ['label' => 'پائنچہ', 'unit' => 'inch'],
+    'shalwarGheer' => ['label' => 'شلوار گھیر', 'unit' => 'inch'],
+    'shoulder' => ['label' => 'مونڈھا', 'unit' => 'inch'],
+    'chuta' => ['label' => 'چوٹا', 'unit' => 'inch'],
+];
 
     public function activeFields(int $ownerId): Collection
     {
