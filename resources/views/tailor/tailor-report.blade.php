@@ -13,45 +13,12 @@
             <div class="card">
                 <div class="row">
                     <div class="col-md-12">
-                        <h5 class="text-right">درزی کا نام: {{ $tailor->name }}</h5>
-                        <div class="row text-right" dir="rtl">
-                            <div class="col-md-6 mb-2">
-                                <div class="alert alert-success mb-0">
-                                    <strong>دکان کے پاس سیکیورٹی ڈپازٹ:</strong>
-                                    روپے {{ number_format((float) $tailor->security_deposit, 2) }}
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <div class="alert alert-warning mb-0">
-                                    <strong>درزی کو دیا گیا قابلِ وصول ایڈوانس:</strong>
-                                    روپے {{ number_format((float) $tailor->advance, 2) }}
-                                </div>
-                            </div>
-                        </div>
-                        @if($tailor->securityDepositTransactions->isNotEmpty())
-                            <details class="text-right mb-3" dir="rtl">
-                                <summary class="font-weight-bold">سیکیورٹی ڈپازٹ کی تفصیل</summary>
-                                <div class="table-responsive mt-2">
-                                    <table class="table table-sm table-bordered">
-                                        <thead><tr><th>تاریخ</th><th>قسم</th><th>رقم</th><th>نوٹ</th></tr></thead>
-                                        <tbody>
-                                        @foreach($tailor->securityDepositTransactions as $depositTransaction)
-                                            <tr>
-                                                <td>{{ $depositTransaction->transaction_date->format('d-m-Y') }}</td>
-                                                <td>{{ $depositTransaction->transaction_type === 'received' ? 'درزی سے وصولی' : 'درزی کو واپسی' }}</td>
-                                                <td>روپے {{ number_format((float) $depositTransaction->amount, 2) }}</td>
-                                                <td>{{ $depositTransaction->note ?: '—' }}</td>
-                                            </tr>
-                                        @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </details>
-                        @endif
-                        <label for="filterType">مدت منتخب کریں:</label>
+                        <h5 class="text-right"> درزی کا نام :{{ $tailor->name }} </h5>
+                        <h5 class="text-right"> درزی کا ایڈوانس :{{ $tailor->advance }} </h5>
+                        <label for="filterType">Select Filter Type:</label>
                         <select id="filterType" name="filterType">
-                            <option value="weekly" {{ $filterType == 'weekly' ? 'selected' : '' }}>موجودہ ہفتہ</option>
-                            <option value="monthly" {{ $filterType == 'monthly' ? 'selected' : '' }}>موجودہ مہینہ</option>
+                            <option value="weekly" {{ $filterType == 'weekly' ? 'selected' : '' }}>Weekly</option>
+                            <option value="monthly" {{ $filterType == 'monthly' ? 'selected' : '' }}>Monthly</option>
                         </select>
 
 
@@ -64,7 +31,7 @@
                             <div class="table-title  mb-2">
                                 <h5 class="text-right">درزی ریکارڈ</h5>
                                 <a href="{{ url('admin/tailor-weekly-report-print/' . $tailor->id) }}"
-                                    class="btn btn-primary"><i class="fa fa-print" aria-hidden="true"></i> رپورٹ پرنٹ کریں</a>
+                                    class="btn btn-primary"><i class="fa fa-print"></i></a>
                             </div>
 
 
@@ -119,10 +86,10 @@
             data-week="{{ Carbon\Carbon::parse($item['created_at'])->isoWeek }}">
             <td>{{ $loop->iteration }}</td>
             <td>{{ date('d-m-Y', strtotime($item['created_at'])) }}</td>
-            <td>{{ Carbon\Carbon::parse($item['created_at'])->locale('ur')->translatedFormat('l') }}</td>
+            <td>{{ Carbon\Carbon::parse($item['created_at'])->format('D') }}</td>
             {{-- Display all suit numbers if different, otherwise show only one --}}
             <td>{{ $item['suitNum'] }}</td>
-            <td>روپے {{ number_format((float) $item['totalPayment'], 2) }}</td>
+            <td>Rs:{{ $item['totalPayment'] }}</td>
             <td>{{ $item['quantity'] }}</td>
 
             @if ($item['design'])
@@ -132,7 +99,7 @@
             @endif
 
             {{-- Calculate total amount based on totalPayment and quantity --}}
-            <td>روپے {{ number_format((float) $item['totalPayment'] * (float) $item['quantity'], 2) }}</td>
+            <td>Rs:{{ $item['totalPayment'] * $item['quantity'] }}</td>
         </tr>
     @endforeach
 </tbody>
@@ -152,9 +119,9 @@
                                                         }) }}
                                                     </td>
                                                     <td colspan="2">
-                                                        روپے {{ number_format((float) $tailor_report->sum(function ($order) {
+                                                        Rs:{{ $tailor_report->sum(function ($order) {
                                                             return $order->tailor_price * $order->suitQuantity;
-                                                        }), 2) }}
+                                                        }) }}
                                                     </td>
 
                                                 </tr>
@@ -230,10 +197,10 @@
         <tr class="f"
             data-month="{{ date('m', strtotime($item['date'])) }}"
             data-week="{{ Carbon\Carbon::parse($item['date'])->isoWeek }}">
-            <td>{{ Carbon\Carbon::parse($item['date'])->locale('ur')->translatedFormat('l') }}</td>
+            <td>{{ Carbon\Carbon::parse($item['date'])->format('D') }}</td>
             <td>{{ date('d-m-Y', strtotime($item['date'])) }}</td>
-            <td>روپے {{ number_format((float) $item['amount'], 2) }}</td>
-            <td>{{ ['advance' => 'ایڈوانس', 'salary' => 'اجرت کی ادائیگی', 'chai' => 'چائے کا خرچہ'][$item['comment']] ?? $item['comment'] }}</td>
+            <td>{{ $item['amount'] }}</td>
+            <td>{{ $item['comment'] }}</td>
         </tr>
     @endforeach
 
@@ -246,7 +213,7 @@
                 </button>
             </td>
             <td id="TotalAmount">{{ $totalAmount }}</td>
-            <td>کل رقم</td>
+            <td>Total Amount</td>
         </tr>
     @endif
 
@@ -268,10 +235,10 @@
                                                 <div class="modal-dialog" role="document">
                                                     <div class="modal-content">
                                                         <div class="modal-header">
-                                                            <h5 class="modal-title" id="exampleModalLabel">ایڈوانس منہا کریں
+                                                            <h5 class="modal-title" id="exampleModalLabel">Tailor Record
                                                             </h5>
                                                             <button type="button" class="close" data-dismiss="modal"
-                                                                aria-label="بند کریں">
+                                                                aria-label="Close">
                                                                 <span aria-hidden="true">&times;</span>
                                                             </button>
                                                         </div>
@@ -300,7 +267,7 @@
                                                         </div>
                                                         <div class="modal-footer">
                                                             <button type="button" class="btn btn-secondary"
-                                                                data-dismiss="modal">بند کریں</button>
+                                                                data-dismiss="modal">Close</button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -324,8 +291,8 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">درزی کا لین دین شامل کریں</h5>
-                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="بند کریں">&times;</button>
+                    <h5 class="modal-title">Tailor Record</h5>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">&times;</button>
                 </div>
                 <div class="modal-body">
                     <form method="post" action="{{ route('admin.tailor.addRecord', $tailor->id) }}">
@@ -333,7 +300,7 @@
                         <div class="form-group">
                             <label for="comment">تبصرہ</label>
                             <select name="comment" class="form-control" required>
-                                <option value="advance">ایڈوانس</option>
+                                <option value="advance">ایڈونس</option>
                                 <option value="salary">ہفتہ وار تنخواہ</option>
                                 <option value="chai">چائے کا خرچہ</option>
                             </select>
@@ -353,12 +320,54 @@
         </div>
     </div>
 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var filter = document.getElementById('filterType');
-            if (!filter) return;
-            filter.addEventListener('change', function () {
-                window.location.href = "{{ url('admin/tailor-report', $tailor->id) }}?filterType=" + encodeURIComponent(this.value);
+        $(document).ready(function() {
+            $('#filterType').change(function() {
+                var selectedFilter = $(this).val();
+                var url = "{{ url('admin/tailor-report', $tailor->id) }}?filterType=" + selectedFilter;
+
+                if (selectedFilter === 'weekly') {
+                    var selectedWeek = $('#weekFilter').val();
+                    url += "&weekFilter=" + selectedWeek;
+                } else if (selectedFilter === 'monthly') {
+                    var selectedMonth = $('#monthFilter').val();
+                    url += "&monthFilter=" + selectedMonth;
+                }
+
+
+                if (window.location.href !== url) {
+                    window.location.href = url;
+                }
+            });
+
+
+            var defaultFilter = "{{ $filterType }}";
+            $('#filterType').val(defaultFilter).change();
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Listen for form submission
+            document.getElementById("cutAdvanceForm").addEventListener("submit", function(event) {
+                // Get the entered amount
+                var enteredAmount = parseFloat(document.getElementById("amountInput").value);
+
+                // Get the current total amount
+                var currentTotalAmount = parseFloat(document.getElementById("TotalAmount").textContent);
+
+                // Subtract the entered amount from the total amount
+                var newTotalAmount = currentTotalAmount - enteredAmount;
+
+                // Update the total amount displayed in the td
+                document.getElementById("TotalAmount").textContent = newTotalAmount.toFixed(
+                    2); // Assuming two decimal places
+
+                // Optionally, you can close the modal after form submission
+                // $('#exampleModal').modal('hide');
+
+                // Submit the form
+                this.submit();
             });
         });
     </script>

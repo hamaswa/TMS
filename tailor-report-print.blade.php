@@ -14,6 +14,13 @@
     <!-- Latest compiled JavaScript -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <style>
+     @font-face {
+    font-family: 'Noto Nastaliq Urdu';
+    src: url('/public/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
         body {
             font-family: 'Noto Nastaliq Urdu', serif;
         }
@@ -199,7 +206,7 @@
             </button>
 
         </div>
-        <div class="ticket" style="margin-top: 40px">
+        <div class="ticket" style="margin-top: -10px">
             <p align="center"><img src="{{ asset('public/images/setting/' . $setting->logo) }}"></p>
             <h5 class="text-center" style="font-size: 16px;font-weight: 600;text-align: center">{{ $setting->name }}
                 <br>
@@ -224,69 +231,96 @@
                                     <tr>
                                         <th scope="col" class="no-sort" style=" font-size: 16px; padding:6px">درزی کی
                                             رقم</th>
-                                        <th scope="col" class="no-sort" style=" font-size: 16px; padding:6px">سوٹ
-                                            نمبرز</th>
                                         <th scope="col" class="no-sort" style="font-size: 16px; padding:6px">سوٹ کی
                                             تعداد</th>
-                                        <th scope="col" class="no-sort" style=" font-size: 16px; padding:6px">ڈیزائن
-                                        </th>
                                         <th scope="col" class="no-sort" style=" font-size: 16px; padding:6px">تاریخ
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($tailor_report as $report)
-                                        <tr class="f">
-                                            {{-- Check if there are salary records --}}
                                             @php
-                                                $salaryRecord = $tailor_records->where('comment', 'salary')->first();
+                                                // Group reports by date
+                                                $groupedReports = $tailor_report->groupBy(function ($report) {
+                                                    return date('d-m-Y', strtotime($report->created_at));
+                                                });
+
+                                                // Collect all unique suit numbers for the entire date range
+                                                $allSuitNumbers = $tailor_report->pluck('suitNum')->unique()->values();
+
+                                                // Initialize grand totals
+                                                $grandTotalTailorPrice = 0;
+                                                $grandTotalSuitQuantity = 0;
+                                                $grandTotalDarziRqama = 0;
                                             @endphp
-                                            {{-- If salary record exists, display salary, otherwise display tailor_price --}}
-                                            <td style="font-size: 15px;padding:3px 4px;font-weight:600;">
-                                                @if ($salaryRecord)
-                                                    {{ $salaryRecord->amount }}
-                                                @else
-                                                    {{ $salaryRecord = 0 }}
-                                                @endif
-                                            </td>
-                                            <td style="font-size: 15px; padding: 3px 4px;font-weight:600;">
-                                                {{-- Decode JSON array and implode the values --}}
-                                                {{ $report->suitNum }}
-                                            </td>
-                                            <td style="font-size: 15px;padding:3px 4px;font-weight:600;">
-                                                {{ $report->suitQuantity }}</td>
-                                            <td style="font-size: 15px;padding:3px 4px;font-weight:600;">
-                                                {{ $report->designPrice }}</td>
-                                            <td style="font-size: 15px;padding:3px 4px;font-weight:600;">
-                                                {{ date('d-m-Y', strtotime($report->created_at)) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
+
+                                            @foreach ($groupedReports as $date => $reports)
+                                                {{-- Calculate cumulative totals for each date --}}
+                                                @php
+                                                    $dateTailorPriceTotal = $reports->sum('tailor_price');
+                                                    $dateSuitQuantityTotal = $reports->sum('suitQuantity');
+                                                    $dateDarziRqamaTotal = $reports->sum(function ($report) {
+                                                        return $report->tailor_price * $report->suitQuantity;
+                                                    });
+
+                                                    // Add to grand totals
+                                                    $grandTotalTailorPrice += $dateTailorPriceTotal;
+                                                    $grandTotalSuitQuantity += $dateSuitQuantityTotal;
+                                                    $grandTotalDarziRqama += $dateDarziRqamaTotal;
+                                                @endphp
+
+                                                {{-- Display only one row per date with cumulative totals --}}
+                                                <tr class="f">
+                                                    <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
+                                                        Rs: {{ $dateDarziRqamaTotal }}
+                                                    </td>
+                                                    <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
+                                                        {{ $dateSuitQuantityTotal }}
+                                                    </td>
+                                                    <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
+                                                        {{ $date }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+
+                                            {{-- Display Grand Totals at the end --}}
+                                            <tr>
+                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
+                                                    Rs: {{ $grandTotalDarziRqama }}
+                                                </td>
+                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
+                                                    {{ $grandTotalSuitQuantity }}
+                                                </td>
+                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
+                                                    ٹوٹل
+                                                </td>
+
+                                            </tr>
+
+                                            {{-- Display all unique suit numbers --}}
+                                            <tr>
+                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
+                                                    {{ $allSuitNumbers->join(', ') }}
+                                                </td>
+                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
+                                                    سیریل نمبرز
+                                                </td>
+                                                <td colspan="2"></td>
+                                            </tr>
+                                        </tbody>
                                 <tfoot>
                                     <tr style="position: relative; margin-top: 30px;" class="bg-own mt-2"
                                         id="totalAmount">
                                         <td style="font-size: 15px; padding: 3px 4px;font-weight:600;">
                                             {{-- Calculate the total sum of salary records --}}
                                             @php
-                                                $totalSalary = $tailor_records->where('comment', 'salary')->sum('amount');
+                                                $totalSalary = $tailor_records
+                                                    ->where('comment', 'salary')
+                                                    ->sum('amount');
                                             @endphp
 
                                             {{-- Output the total sum --}}
-                                            {{ $totalSalary }}
+                                            {{-- {{ $totalSalary }} --}}
                                         </td>
-                                        <td></td>
-                                        <td style="font-size: 15px; padding: 3px 4px;font-weight:600;">
-                                            {{ $tailor_report->sum(function ($order) {
-                                                return $order->suitQuantity;
-                                            }) }}
-                                        </td>
-                                        {{-- <td></td> --}}
-                                        <td style="font-size: 15px; padding: 3px 4px;font-weight:600;">
-                                            {{ $tailor_report->sum(function ($order) {
-                                                return $order->designPrice;
-                                            }) }}
-                                        </td>
-                                        <td style="font-size: 13px; padding: 3px 4px;font-weight:600;">ٹوٹل</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -296,21 +330,45 @@
                             <table style="width: 40%">
 
                                 <tbody>
-                                    @foreach ($tailor_records as $tailor_record)
-                                        <tr class="f colspan-6">
-                                            {{-- <td style="font-size: 13px;padding: 1px 67px;"> --}}
-                                            @if ($tailor_record->comment === 'advance')
-                                                <div style="text-align: right;font-weight:600;font-size:16px;">ایڈوانس:
-                                                    {{ (int) $tailor_record->amount }}
-                                                </div>
-                                            @elseif ($tailor_record->comment === 'chai')
-                                                <div style="text-align: right;font-weight:600;font-size:16px;">چائے کا
-                                                    خرچہ :
-                                                    {{ (int) $tailor_record->amount }}</div>
-                                            @endif
-                                            {{-- </td> --}}
-                                        </tr>
-                                    @endforeach
+
+                                    @php
+                                        $totalAdvance = 0;
+                                        $totalChai = 0;
+
+                                        // Calculate the total sums
+                                        foreach ($tailor_records as $tailor_record) {
+                                            if ($tailor_record->comment === 'advance') {
+                                                $totalAdvance += (int) $tailor_record->amount;
+                                            } elseif ($tailor_record->comment === 'chai') {
+                                                $totalChai += (int) $tailor_record->amount;
+                                            }
+                                        }
+                                    @endphp
+                                    @if ($totalAdvance > 0)
+                                        <div
+                                            style="text-align: right; font-weight: 600; font-size: 16px; margin-bottom: 5px;">
+                                            کل ایڈوانس:
+                                            {{ (int) $totalAdvance }}
+                                        </div>
+                                    @endif
+
+
+                                    @if ($totalChai > 0)
+                                        <div
+                                            style="text-align: right;font-weight:600;font-size:16px; margin-bottom:5px;">
+                                            کل چائے کا
+                                            خرچہ :
+                                            {{ (int) $totalChai }}</div>
+                                    @endif
+
+                                    <div style="text-align: right;font-weight:600;font-size:16px;margin-bottom:5px;">ہفتہ وار تنخواہ :
+                                        {{ (int) $totalSalary }}</div>
+
+                                    @if ($transaction)
+                                        <div style="text-align: right;font-weight:600;font-size:16px;">ایڈوانس سے کاٹا
+                                            گیا۔ :
+                                            {{ (int) $transaction->remainingBalance }}</div>
+                                    @endif
                                 </tbody>
 
                                 {{-- <tfoot>
@@ -332,16 +390,28 @@
 
                     </div>
                     <br>
-                    <div style="text-align:right; font-size: 20px;">
-                        <span style="font-size: 10px;font-weight:600;"> &nbsp;&nbsp;(ڈیزائن کے اخراجات شامل کیے گئے
-                            ہیں۔) </span>Total:
-                            {{ $tailor_report->sum(function ($report) use ($tailor_records) {
-                                $totalSalary = $tailor_records->where('comment', 'salary')->sum('amount');
-                                return $report->designPrice + $totalSalary;
-                            }) +
-                            $tailor_records->where('comment', 'chai')->sum('amount') -
-                            $tailor_records->where('comment', 'advance')->sum('amount') }}
-                    </div>
+
+                    @php
+    $Salary = $tailor_records->where('comment', 'salary')->sum('amount');
+    $Chai = $tailor_records->where('comment', 'chai')->sum('amount');
+    $Advance = $tailor_records->where('comment', 'advance')->sum('amount');
+    $RemainingBalance = isset($transaction->remainingBalance) ? $transaction->remainingBalance : 0;
+
+    // Calculate total based on presence of transaction
+    if ($RemainingBalance > 0) {
+        // If there is a transaction, do not subtract Advance
+        $total = $Salary + $Chai;
+    } else {
+        // If no transaction, subtract Advance
+        $total = $Salary + $Chai - $Advance;
+    }
+@endphp
+
+<div style="text-align:right; font-size: 20px;">
+    <span style="font-size: 10px;font-weight:600;"></span>Total:
+    {{ $total }}
+</div>
+
 
                     <br>
                 </div>
@@ -350,11 +420,10 @@
 
             <div style="width: 100%;">
                 <div style="width: 100%;text-align:center;font-weight:600;">
-                    <p style="font-size:13px;margin-bottom:15px;">{{ $setting->address }}</p>
+                    <p style="font-size:13px;margin-bottom:15px;">{!! $setting->address !!}</p>
                     <p style="font-size:14px;letter-spacing:1px;">{{ $setting->contact_no }}</p>
                 </div>
             </div>
-            {{-- <p style="text-align:center;font-weight:600;font-size:14px;">{{ $setting->note }}</p> --}}
         </div>
 
 
