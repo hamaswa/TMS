@@ -331,7 +331,7 @@ body {
                         </div>
                     </div>
                     <hr>
-
+                    @if($order->measurementValues->count())
                     @php
                         $allMeasurements = $orderDetail->measurementValues->keyBy('source_key');
 
@@ -418,6 +418,201 @@ body {
                     </div>
 
                     @endfor
+                     @else
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{$orderDetail->customers->necktype}}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">گلہ</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{$orderDetail->customers->length}}
+                                </div>
+                                <div style="font-weight:600; font-size:22px">لمبائی</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{$orderDetail->customers->sleeve}}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">کف</div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{$orderDetail->customers->arms}}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">بازو</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->Daaman }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">دامن</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div>{{ $orderDetail->customers->teraa }}</div>
+                                <div style="font-weight:600; font-size:20px;">تیرا</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex; justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{$orderDetail->customers->jeab}}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">جیب</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex; justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{$orderDetail->customers->senaChorai}}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">سینہ چوڑائی</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between mb-2" style="display: flex;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->swingtype }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">سلائی</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->damanchorai }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">دامن چوڑائی</div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between mb-1"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->button }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">بٹن</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->shalwar }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">شلوار</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->plate_type }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">پلیٹ</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->pancha }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">پانچہ</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+
+                        </div>
+                        <div class="col-6 mt-2 " style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->shalwarGheer }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">شلوار گھیر</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 " style="width: 45%">
+
+                        </div>
+
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->shoulder }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">مونڈا</div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2" style="width: 45%">
+
+                        </div>
+
+                        <div class="col-6  mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->chuta }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">چوتا</div>
+                            </div>
+                        </div>
+
+                    </div>
+                    @endif
                     <hr>
                     <div>
                         <div align="center">

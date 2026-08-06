@@ -29,7 +29,7 @@ class MeasurementService
     'pancha' => ['label' => 'پائنچہ', 'unit' => 'inch'],
     'shalwarGheer' => ['label' => 'شلوار گھیر', 'unit' => 'inch'],
     'shoulder' => ['label' => 'مونڈھا', 'unit' => 'inch'],
-    'chuta' => ['label' => 'چوٹا', 'unit' => 'inch'],
+    'chuta' => ['label' => 'چوتا', 'unit' => 'inch'],
 ];
 
     public function activeFields(int $ownerId): Collection
