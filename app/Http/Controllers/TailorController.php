@@ -655,7 +655,7 @@ class TailorController extends Controller
             $rates = Tailorsalary::where("tailor_id", $tailor_id)->get();
             $autoSelect = $rates->count() === 1;
 
-            $html .= '<select class="form-control" name="tailor_price" required dir="rtl">
+            $html .= '<select class="form-control" name="tailor_price" required dir="rtl"  style="padding: 0px">
             <option value="">درزی کی رقم منتخب کریں۔</option>';
 
             foreach ($rates as $rate) {

@@ -113,7 +113,7 @@
                                                 @csrf
                                                 <div class="form-group">
                                                     <label for="security_type_{{$tailor->id}}">لین دین</label>
-                                                    <select id="security_type_{{$tailor->id}}" name="transaction_type" class="form-control" required>
+                                                    <select id="security_type_{{$tailor->id}}" name="transaction_type" class="form-control" style="padding: 0px" required>
                                                         <option value="received">درزی سے مزید رقم وصول کی</option>
                                                         <option value="refunded">درزی کو سیکیورٹی واپس کی</option>
                                                     </select>

@@ -142,7 +142,7 @@
                     <!-- Modal body -->
                     <div class="modal-body">
                         <p class="text-right"><label>درجہ منتخب کریں</label></p>
-                        <select class="form-control order-status" name="order_status" required></select>
+                        <select class="form-control order-status" name="order_status" style="padding:0px" required></select>
                         <small class="form-text text-muted">صرف موجودہ مرحلے کے بعد جائز اگلا مرحلہ دکھایا جائے گا۔</small>
                     </div>
 

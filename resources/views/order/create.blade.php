@@ -131,7 +131,7 @@
                         <div class="form-group form-row">
                             <label class="col-sm-3 col-form-label" for="tailor-selected">درزی</label>
                             <div class="col-sm-9">
-                                <select id="tailor-selected" class="form-control" name="tailorId" required dir="rtl">
+                                <select id="tailor-selected" class="form-control" name="tailorId" required dir="rtl" style="padding: 0px!important">
                                     <option value="">درزی کو منتخب کریں</option>
                                     @foreach($data['tailors'] as $tailor)
                                     <option value="{{$tailor->id}}" @disabled($tailor->tailorsalary->isEmpty())>

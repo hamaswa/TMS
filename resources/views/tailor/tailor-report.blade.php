@@ -299,7 +299,7 @@
                         @csrf
                         <div class="form-group">
                             <label for="comment">تبصرہ</label>
-                            <select name="comment" class="form-control" required>
+                            <select name="comment" class="form-control" style="padding: 0px !important" required>
                                 <option value="advance">ایڈونس</option>
                                 <option value="salary">ہفتہ وار تنخواہ</option>
                                 <option value="chai">چائے کا خرچہ</option>

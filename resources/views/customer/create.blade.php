@@ -50,7 +50,7 @@
                 <div class="customer-section"><h2 id="customer-step-three" class="h5 font-weight-bold mb-1">سلائی کی پسند اور نوٹ</h2><p class="text-muted mb-4">گاہک کی مستقل پسند منتخب کریں؛ آرڈر بناتے وقت اسے تبدیل کیا جا سکتا ہے۔</p><div class="row">
                     @foreach($data['optionTypes'] as $type)
                         @php($options = DB::table('options')->where('option_id', $type->option_id)->where('user_id', Auth::user()->businessOwnerId())->get())
-                        <div class="col-md-6 form-group"><label>{{ $type->otn }}</label><select class="form-control" name="{{ $type->slug }}"><option value="0">{{ $type->otn }} منتخب کریں</option>@foreach($options as $option)<option value="{{ $option->id.' - '.$option->Name }}" @selected(old($type->slug) === $option->id.' - '.$option->Name)>{{ $option->Name }}</option>@endforeach</select></div>
+                        <div class="col-md-6 form-group"><label>{{ $type->otn }}</label><select class="form-control" style="padding: 0px" name="{{ $type->slug }}"><option value="0">{{ $type->otn }} منتخب کریں</option>@foreach($options as $option)<option value="{{ $option->id.' - '.$option->Name }}" @selected(old($type->slug) === $option->id.' - '.$option->Name)>{{ $option->Name }}</option>@endforeach</select></div>
                     @endforeach
                     <div class="col-12 form-group"><label>خصوصی نوٹ</label><textarea class="form-control" name="note" rows="5" maxlength="2000" placeholder="مثلاً فٹنگ، کپڑے یا سلائی سے متعلق ہدایات">{{ old('note') }}</textarea></div>
                 </div></div>
