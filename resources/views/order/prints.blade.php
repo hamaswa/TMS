@@ -360,7 +360,23 @@ body {
                             'system.chuta',
                         ];
 
-                        $rows = max(count($leftFields), count($rightFields));
+                        
+        /*
+         * Add custom measurements after the system measurements.
+         * Example:
+         * custom.6 => پائنچہ لمبائی
+         */
+        $customFields = $orderDetail->measurementValues
+            ->filter(fn($item) => str_starts_with($item->source_key, 'custom.'))
+            ->sortBy('sort_order')
+            ->pluck('source_key')
+            ->values()
+            ->toArray();
+
+        // Add custom fields to the RIGHT column
+        $rightFields = array_merge($rightFields, $customFields);
+
+        $rows = max(count($leftFields), count($rightFields));
                     @endphp
 
                     <hr>
