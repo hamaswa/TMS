@@ -18,7 +18,7 @@
                 @endif
 
                 <div class="bg-white px-3 py-4">
-                    <p class="text-right"><a href="{{url('admin/Tailor/create')}}" class="btn btn-primary">درزی +</a>
+                    <p class="text-right"><a href="{{url('admin/Tailor/create')}}" class="btn btn-primary">نیا درزی  +</a>
                     </p>
                     <div class="table-title  mb-4 mt-2">
                         <h5 class="text-right">درزی ریکارڈ</h5>

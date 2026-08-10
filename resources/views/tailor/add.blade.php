@@ -28,7 +28,7 @@
                                         <label for="tailor_contact">فون نمبر</label>
                                         <input id="tailor_contact" type="tel" inputmode="tel" class="form-control" name="contact" value="{{ old('contact') }}" placeholder="مثلاً 03001234567" required>
                                     </div>
-                                    <div class="col-12 mt-3">
+                                    {{-- <div class="col-12 mt-3">
                                         <div class="card border-success">
                                             <div class="card-body">
                                                 <h2 class="h6 text-right">ابتدائی سیکیورٹی ڈپازٹ</h2>
@@ -47,7 +47,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> --}}
                                     <div class="col-12 mt-4">
                                         <div class="alert alert-info text-right mb-2" dir="rtl">
                                             <strong>آرڈر فوراً بنانے کے لیے ابھی ایک بنیادی سلائی اجرت بھی درج کریں۔</strong>
