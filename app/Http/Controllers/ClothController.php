@@ -76,28 +76,61 @@ class ClothController extends Controller
                 'videos' => ['nullable', 'array'],
                 'videos.*' => ['nullable', 'mimes:mp4,mov,ogg,qt', 'max:20000'],
             ]);
+            // dd($validated);
             ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
             ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
-            $colors = array_values(array_filter(array_map('trim', preg_split('/[,،]/u', $validated['colors'])), fn ($color) => $color !== ''));
-            $lengths = $validated['length'];
-            if (! empty($validated['length_colors'])) {
-                if (count($validated['length_colors']) !== count($lengths)) {
-                    throw ValidationException::withMessages(['length' => 'ہر رنگ کے لیے ایک لمبائی درج کریں۔']);
-                }
-                $lengthByColor = [];
-                foreach ($validated['length_colors'] as $index => $color) {
-                    if (! in_array($color, $colors, true) || array_key_exists($color, $lengthByColor)) {
-                        throw ValidationException::withMessages(['length_colors' => 'ہر منتخب رنگ صرف ایک مرتبہ استعمال کریں۔']);
-                    }
-                    $lengthByColor[$color] = $lengths[$index];
-                }
-                if (count($lengthByColor) !== count($colors)) {
-                    throw ValidationException::withMessages(['length' => 'تمام رنگوں کی لمبائی درج کریں۔']);
-                }
-                $lengths = array_map(fn ($color) => $lengthByColor[$color], $colors);
-            } elseif (count($colors) !== count($lengths)) {
-                throw ValidationException::withMessages(['length' => 'ہر رنگ کے لیے ایک لمبائی درج کریں۔']);
-            }
+            $colors = array_values(
+                                array_filter(
+                                    array_map(
+                                        'trim',
+                                        preg_split('/[,،]/u', $validated['colors'])
+                                    ),
+                                    fn ($color) => $color !== ''
+                                )
+                            );
+
+                            $lengths = $validated['length'] ?? [];
+
+                            if (!empty($validated['length_colors'])) {
+
+                                if (count($validated['length_colors']) !== count($lengths)) {
+                                    throw ValidationException::withMessages([
+                                        'length' => 'ہر رنگ کے لیے ایک لمبائی درج کریں۔'
+                                    ]);
+                                }
+
+                                $lengthByColor = [];
+
+                                foreach ($validated['length_colors'] as $index => $color) {
+                                    if (
+                                        !in_array($color, $colors, true) ||
+                                        array_key_exists($color, $lengthByColor)
+                                    ) {
+                                        throw ValidationException::withMessages([
+                                            'length_colors' => 'ہر منتخب رنگ صرف ایک مرتبہ استعمال کریں۔'
+                                        ]);
+                                    }
+
+                                    $lengthByColor[$color] = $lengths[$index];
+                                }
+
+                                if (count($lengthByColor) !== count($colors)) {
+                                    throw ValidationException::withMessages([
+                                        'length' => 'تمام رنگوں کی لمبائی درج کریں۔'
+                                    ]);
+                                }
+
+                                $lengths = array_map(
+                                    fn ($color) => $lengthByColor[$color],
+                                    $colors
+                                );
+
+                            } elseif (count($colors) !== count($lengths)) {
+
+                                throw ValidationException::withMessages([
+                                    'length' => 'ہر رنگ کے لیے ایک لمبائی درج کریں۔'
+                                ]);
+                            }
             // $formData = $request->validate([
             //     'cloth_type_id' => 'required|string',
             //     'cloth_brand_id' => 'required',
@@ -173,8 +206,9 @@ class ClothController extends Controller
             });
 
             return redirect()->route('admin.cloth.index')->with('insert', 'کپڑا کامیابی کے ساتھ شامل کیا گیا۔');
-        } catch (\Throwable $th) {
-            throw $th;
+        } catch (\Exception $e) {
+            return response()->json($e->getMessage());
+            // dd($e->getMessage(), $e->getFile(), $e->getLine());
         }
     }
 

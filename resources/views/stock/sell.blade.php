@@ -114,7 +114,7 @@
                                         <div class="form-group col-md-6">
                                             <label>
                                                 <span class="d-block mb-2">برانڈ کا نام</span>
-                                                <select class="form-control js-brand" name="brand_name[]" required>
+                                                <select class="form-control js-brand" name="brand_name[]" required style="padding: 0px">
                                                     <option value="" disabled selected>برانڈ منتخب کریں</option>
                                                     @foreach ($cloths->unique('cloth_brand_id') as $cloth)
                                                         <option value="{{ $cloth->cloth_brand_id }}" data-cloth-id="{{ $cloth->id }}">

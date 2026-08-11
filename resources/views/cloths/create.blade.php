@@ -24,7 +24,7 @@
                             <div class="form-row m-0">
                                 <label class="col-sm-3 col-form-label f"><span class="english">کپڑے کی قسم</span> </label>
                                 <div class="col-sm-9">
-                                    <select name="cloth_type_id" class="form-control" required>
+                                    <select name="cloth_type_id" class="form-control" required style="padding: 0px">
                                         <option value="">کپڑے کی قسم منتخب کریں۔</option>
                                         @foreach ($cloth_types as $cloth_type)
                                             <option value="{{ $cloth_type->id }}">{{ $cloth_type->name }}</option>
@@ -40,7 +40,7 @@
                             <div class="form-row m-0">
                                 <label class="col-sm-3 col-form-label f"><span class="english">کپڑے کی کمپنی</span> </label>
                                 <div class="col-sm-9">
-                                    <select name="cloth_brand_id" class="form-control" required>
+                                    <select name="cloth_brand_id" class="form-control" required style="padding: 0px">
                                         <option value="">کپڑے کی کمپنی منتخب کریں۔</option>
                                         @foreach ($cloth_brands as $cloth_brand)
                                             <option value="{{ $cloth_brand->id }}">{{ $cloth_brand->name }}</option>
@@ -191,7 +191,7 @@
                 <label class="col-sm-3 col-form-label f"><span class="english">کپڑے کی تصویر</span></label>
                 <div class="col-sm-9">
                     <input type="file" class="form-control" name="images[]" style="margin-bottom: 5px;">
-                    <select name="image_colors[]" class="form-control" style="margin-bottom: 5px;">
+                    <select name="image_colors[]" class="form-control" style="margin-bottom: 5px; padding: 0px">
                         <option value="">رنگ منتخب کریں</option>
                         ${colorOptions}
                     </select>
@@ -227,7 +227,7 @@
                 <label class="col-sm-3 col-form-label f"><span class="english">کپڑے کی ویڈیو</span></label>
                 <div class="col-sm-9">
                     <input type="file" class="form-control" name="videos[]" style="margin-bottom: 5px;">
-                    <select name="video_colors[]" class="form-control" style="margin-bottom: 5px;">
+                    <select name="video_colors[]" class="form-control" style="margin-bottom: 5px; padding: 0px">
                         <option value="">رنگ منتخب کریں</option>
                         ${colorOptions}
                     </select>
@@ -261,7 +261,7 @@
                 <label class="col-sm-3 col-form-label f"><span class="english">لمبائی (میٹر) میں</span> </label>
                 <div class="col-sm-9">
                     <input type="text" class="form-control" name="length[]" required style="margin-bottom: 5px;">
-                    <select name="length_colors[]" class="form-control" required style="margin-bottom: 5px;">
+                    <select name="length_colors[]" class="form-control" required style="margin-bottom: 5px; padding: 0px">
                         <option value="">رنگ منتخب کریں</option>
                         ${colorOptions}
                     </select>

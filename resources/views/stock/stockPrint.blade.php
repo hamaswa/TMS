@@ -217,7 +217,6 @@
 <body class="tms-stock-print">
     @include('print.partials.toolbar')
 
-    <div class="counter-sale-management no-print">
         @if (session('success'))
             <div class="alert alert-success" role="status">{{ session('success') }}</div>
         @endif
@@ -249,48 +248,7 @@
                     </p>
                 @endif
             </div>
-        @elseif ($receipt && $sellStock->every(fn ($item) => filled($item->cloth_color_id)))
-            <h2 class="h5 mb-2">کاؤنٹر فروخت منسوخ کریں</h2>
-            <p class="text-muted">یہ کارروائی رسید کو محفوظ رکھتے ہوئے فروخت، وصول شدہ رقم، بقایا اور تمام کپڑا اسٹاک واپس کرے گی۔</p>
-            <form method="POST" action="{{ route('admin.counter-sales.cancel', $latestSaleStock->id) }}"
-                data-confirm="کیا آپ یہ کاؤنٹر فروخت منسوخ کر کے تمام کپڑا اسٹاک اور گاہک کا کھاتہ واپس کرنا چاہتے ہیں؟">
-                @csrf
-                @method('PATCH')
-                <div class="form-group">
-                    <label for="cancellation_reason">منسوخی کی وجہ</label>
-                    <textarea id="cancellation_reason" name="cancellation_reason" class="form-control" rows="3"
-                        minlength="5" maxlength="1000" required>{{ old('cancellation_reason') }}</textarea>
-                </div>
-                @if ((float) $payment > 0)
-                    <div class="alert alert-warning">
-                        وصول شدہ رقم <strong>Rs:{{ number_format((float) $payment, 2) }}</strong> واپس کرنے کی تفصیل درج کریں۔
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="refund_method">رقم واپسی کا طریقہ</label>
-                            <select id="refund_method" name="refund_method" class="form-control" required>
-                                <option value="">طریقہ منتخب کریں</option>
-                                @foreach (\App\Support\PaymentMethods::LABELS as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('refund_method') === $value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="refund_reference">حوالہ / ٹرانزیکشن نمبر</label>
-                            <input id="refund_reference" name="refund_reference" class="form-control"
-                                value="{{ old('refund_reference') }}" maxlength="255">
-                            <small class="form-text text-muted">نقد یا دیگر کے علاوہ طریقوں کے لیے ضروری ہے۔</small>
-                        </div>
-                    </div>
-                @endif
-                <button type="submit" class="btn btn-danger">فروخت منسوخ کریں</button>
-            </form>
-        @elseif ($receipt)
-            <div class="alert alert-warning mb-0" role="status">
-                اس پرانی فروخت میں مکمل اسٹاک شناخت موجود نہیں، اس لیے خودکار منسوخی دستیاب نہیں ہے۔
-            </div>
-        @endif
-    </div>
+            @endif
 
     <div id="invoice-POS" @class(['cancelled-receipt' => $receipt?->status === 'cancelled'])>
 

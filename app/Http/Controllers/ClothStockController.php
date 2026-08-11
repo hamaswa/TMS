@@ -143,8 +143,8 @@ class ClothStockController extends Controller
             });
 
             return redirect()->route('admin.stock.index')->with('insert', 'اسٹاک کامیابی کے ساتھ شامل ہو گیا۔');
-        } catch (\Throwable $th) {
-            throw $th;
+        } catch (\Exception $e) {
+            return response()->json($e->getMessage());
         }
     }
 
@@ -888,7 +888,7 @@ class ClothStockController extends Controller
             $firstSale = null;
             $soldAt = now();
             $receipt = CounterSaleReceipt::create([
-                'receipt_number' => 'TMSC-'.now()->format('Ymd').'-'.Str::upper(Str::random(6)),
+                'receipt_number' => 'TMSC-'.Str::upper(Str::random(6)),
                 'user_id' => Auth::user()->businessOwnerId(),
                 'customer_id' => $customer->id,
                 'status' => 'completed',

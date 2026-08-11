@@ -114,7 +114,7 @@
                             <p class="text-right">رقم</p>
                             <input type="number" name="DirectPayment" value="" class="form-control">
                             <br>
-                            <select name="comment" id="" class="form-control">
+                            <select name="comment" id="" class="form-control" style="padding: 0px">
                                 <option value="Sale">Sale</option>
                                 <option value="Tailor" class="form-control">Tailor</option>
                             </select>
