@@ -23,6 +23,18 @@ class ClothColor extends Model
         return $this->hasMany(StorefrontCartItem::class, 'cloth_color_id');
     }
 
+    public function latestPurchaseReceipt()
+    {
+        return $this->hasOne(InventoryMovement::class, 'cloth_color_id')->where('movement_type', 'purchase_receipt')->latestOfMany();
+    }
+
+    public function latestCostedStockAddition()
+    {
+        return $this->hasOne(InventoryMovement::class, 'cloth_color_id')
+        ->whereIn('movement_type', ['purchase_receipt', 'manual_adjustment_in'])
+        ->latestOfMany();
+    }
+
     public function reservableLength(): float
     {
         $reserved = $this->storefrontCartItems()

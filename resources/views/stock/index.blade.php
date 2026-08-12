@@ -6,58 +6,122 @@
             /* Change the background color as desired */
             color: #ccc;
         }
+
+        .stock-page-container {
+            width: 100%;
+            max-width: 1600px;
+            padding-right: 24px;
+            padding-left: 24px;
+        }
+
+        .stock-page-card {
+            width: 100%;
+        }
+
+        .stock-toolbar {
+            direction: rtl;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 20px;
+            margin-bottom: 20px;
+        }
+
+        .stock-toolbar-actions,
+        .stock-date-filter {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+
+        .stock-toolbar .btn,
+        .stock-toolbar .form-control,
+        .stock-toolbar .input-group-text {
+            min-height: 43px;
+        }
+
+        .stock-toolbar .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .stock-list-table {
+            min-width: 1050px;
+        }
+
+        .stock-list-table th,
+        .stock-list-table td {
+            vertical-align: middle;
+        }
+
+        .stock-list-table th,
+        .stock-list-table td:nth-child(5),
+        .stock-list-table td:nth-child(6),
+        .stock-list-table td:nth-child(7),
+        .stock-list-table td:nth-child(8) {
+            white-space: nowrap;
+        }
+
+        @media (max-width: 767.98px) {
+            .stock-page-container {
+                padding-right: 10px;
+                padding-left: 10px;
+            }
+
+            .stock-toolbar,
+            .stock-toolbar-actions,
+            .stock-date-filter {
+                width: 100%;
+            }
+
+            .stock-toolbar-actions .btn,
+            .stock-date-filter .form-group,
+            .stock-date-filter .input-group,
+            .stock-date-filter .btn {
+                width: 100%;
+            }
+        }
     </style>
     <section class="main-content">
-        <div class="container">
-            <div class="card col-sm-10 mx-auto">
+        <div class="container-fluid stock-page-container">
+            <div class="card stock-page-card mx-auto">
                 <div class="row">
                     <div class="col-md-12">
 
                         @include('inc.message')
 
                         <div class="bg-white px-3 py-4">
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <!--<p class="text-right">-->
-                                    <!--    <a href="{{ route('admin.stock.create') }}" class="btn btn-primary"> نیا اسٹاک شامل-->
-                                    <!--        کریں۔ +</a>-->
-                                    <!--</p>-->
-                                </div>
-                                <div class="col-md-3">
-                                    <p class="text-right">
-                                        <a href="{{ route('admin.customers.sale') }}" class="btn btn-primary"> نیا گاہک شامل
-                                            کریں۔ +</a>
-                                    </p>
+                            <div class="stock-toolbar">
+                                <div class="stock-toolbar-actions">
+                                    <a href="{{ route('admin.sellCloth') }}" class="btn btn-primary">فروخت +</a>
+                                    <a href="{{ route('admin.customers.sale') }}" class="btn btn-primary">نیا گاہک شامل کریں +</a>
+                                    <a href="{{ route('admin.record') }}" class="btn btn-primary">گاہک کی فہرست +</a>
                                 </div>
 
-                                <div class="col-md-3">
-                                    <p class="text-right">
-                                        <a href="{{ route('admin.record') }}" class="btn btn-primary"> گاہک کی فہرست۔ +</a>
-                                    </p>
-                                </div>
-                            </div>
-
-
-                            <form class="form-inline reversed-flex-direction mb-2" method="POST"
-                                action="{{ route('admin.sales.specific') }}" id="date">
-                                @csrf
-                                <!-- Date range picker input field -->
-                                <div class="form-group mr-2">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" name="date_range" id="date_range" required
-                                            placeholder="تاریخ کی حد منتخب کریں۔" autocomplete="off">
-                                        <div class="input-group-append">
-                                            <span class="input-group-text">
-                                                <i class="fa fa-calendar"></i>
-                                            </span>
+                                <form class="stock-date-filter" method="POST"
+                                    action="{{ route('admin.sales.specific') }}" id="date">
+                                    @csrf
+                                    <div class="form-group mb-0">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" name="date_range" id="date_range" required
+                                                placeholder="تاریخ کی حد منتخب کریں۔" autocomplete="off">
+                                            <div class="input-group-append">
+                                                <span class="input-group-text">
+                                                    <i class="fa fa-calendar"></i>
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="form-group mr-2">
-                                    <button type="submit" class="btn btn-primary"> فروخت چیک کریں۔</button>
-                                </div>
-                            </form>
-                            <a href="{{ route('admin.sellCloth') }}" class="btn btn-primary">فروخت +</a>
+                                    <div class="form-group mb-0">
+                                        <button type="submit" class="btn btn-primary">فروخت چیک کریں</button>
+                                    </div>
+                                </form>
+                            </div>
 
 
                             <div class="table-title  mb-4 mt-2">
@@ -66,7 +130,7 @@
                             <div class="row">
                                 <div class="col-md-12">
                                     <div class="table-responsive">
-                                        <table class="table js-sortable-table"
+                                        <table class="table js-sortable-table stock-list-table"
                                             id="cc-table-data-customer-list">
                                             <thead>
                                                 <tr>
@@ -76,8 +140,9 @@
                                                     <th scope="col" class="no-sort">کپڑے کی کمپنی</th>
                                                     <th scope="col" class="no-sort">کپڑے کا رنگ</th>
                                                     <th scope="col" class="no-sort">کپڑے کی لمبائی</th>
-                                                    <th scope="col" class="no-sort">ریٹ فی میٹر</th>
-                                                    <th scope="col" class="no-sort">کپڑے کی قیمت</th>
+                                                    <th scope="col" class="no-sort">نیا ریٹ</th>
+                                                    <th scope="col" class="no-sort">فروختی ریٹ</th>
+                                                    <th scope="col" class="no-sort">آخری اسٹاک اضافہ</th>
                                                     <th scope="col" class="no-sort">کپڑے کی تصویر</th>
                                                     {{-- <th scope="col" class="no-sort">عمل</th> --}}
                                                 </tr>
@@ -92,6 +157,14 @@
                                                         $clothRowCount = $cloth->colors->count(); // Count the number of colors for the current cloth
                                                     @endphp
                                                     @foreach ($cloth->colors as $color)
+                                                        @php
+                                                            $latestStockAddition = $color->latestCostedStockAddition;
+                                                            $latestCost = $latestStockAddition
+                                                                ? (float) $latestStockAddition->unit_cost
+                                                                : (float) $cloth->price;
+                                                            $latestStockAdditionDate = $latestStockAddition?->occurred_at
+                                                                ?? $color->created_at;
+                                                        @endphp
                                                         <tr>
                                                             <td style="font-size: 18px;font-weight:600;">
                                                                 {{ $counter++ }}
@@ -114,11 +187,16 @@
                                                                 میٹر</td>
 
                                                             <td style="font-size: 18px;font-weight:600;">
-                                                                Rs:{{ number_format((float) ($color->average_unit_cost ?: $cloth->price), 2) }}
+                                                                Rs:{{ number_format($latestCost, 2) }}
                                                             </td>
 
                                                             <td style="font-size: 18px;font-weight:600;">
-                                                                Rs:{{ number_format((float) ($color->average_unit_cost ?: $cloth->price) * (float) $color->length, 2) }}</td>
+                                                                Rs:{{ number_format((float) ($cloth->sale_price ?: $cloth->price), 2) }}
+                                                            </td>
+
+                                                            <td style="font-size: 18px;font-weight:600;">
+                                                                {{ $latestStockAdditionDate?->format('d-m-Y') ?: '—' }}
+                                                            </td>
 
                                                             <td>
                                                                 @php
@@ -210,7 +288,8 @@
                     </div>
                 </div>
             </div>
-            @include('stock.modal')
+        </div>
+        @include('stock.modal')
     </section>
     <script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.min.js"></script>

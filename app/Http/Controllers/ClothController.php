@@ -21,14 +21,17 @@ class ClothController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
-    {
-        try {
-            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with(['colors', 'images', 'videos'])->latest()->get();
-            return view('cloths.index', compact('cloths'));
+   public function index()
+   {
+    try {
+        $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
+        ->with(['colors.latestCostedStockAddition', 'images', 'videos'])
+        ->latest()
+        ->get();
+        return view('cloths.index', compact('cloths'));
         } catch (\Throwable $th) {
             throw $th;
-        }
+            }
     }
 
     /**

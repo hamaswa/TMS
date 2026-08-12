@@ -171,7 +171,7 @@
                                                     <th scope="col" class="no-sort">کپڑے کی کمپنی</th>
                                                     <th scope="col" class="no-sort">کپڑے کا رنگ</th>
                                                     <th scope="col" class="no-sort">کپڑے کی لمبائی</th>
-                                                    <th scope="col" class="no-sort">ریٹ فی میٹر</th>
+                                                    <th scope="col" class="no-sort">نیا ریٹ</th>
                                                     <th scope="col" class="no-sort">کپڑے کی قیمت</th>
                                                     <th scope="col" class="no-sort">کپڑے کی تصویر</th>
                                                     {{-- <th scope="col" class="no-sort">کپڑے کی ویڈیو</th> --}}
@@ -188,6 +188,12 @@
                                                         $clothRowCount = $cloth->colors->count(); // Count the number of colors for the current cloth
                                                     @endphp
                                                     @foreach ($cloth->colors as $color)
+                                                        @php
+                                                            $latestStockAddition = $color->latestCostedStockAddition;
+                                                            $latestCost = $latestStockAddition
+                                                                ? (float) $latestStockAddition->unit_cost
+                                                                : (float) $cloth->price;
+                                                        @endphp
                                                         <tr>
                                                             <td style="font-size: 18px;font-weight:600;">
                                                                 {{ $counter++ }}
@@ -210,12 +216,12 @@
                                                                 میٹر</td>
 
                                                             <td style="font-size: 18px;font-weight:600;">
-                                                                Rs: {{ number_format((float) $cloth->price, 2) }}
+                                                                Rs: {{ number_format($latestCost, 2) }}
                                                             </td>
 
                                                             <td style="font-size: 18px;font-weight:600;">
                                                                 Rs:
-                                                                {{ number_format((float) $cloth->price * (float) $color->length, 2) }}
+                                                                {{ number_format($latestCost * (float) $color->length, 2) }}
                                                             </td>
 
 
