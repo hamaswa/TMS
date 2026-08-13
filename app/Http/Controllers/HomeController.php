@@ -77,7 +77,18 @@ class HomeController extends Controller
             'month_suits' => $canOrders ? (int) (clone $orders)->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->sum('suitQuantity') : null,
         ];
 
-        return view('dashboard.tailoring', compact('tailoring', 'canWorkshop', 'canOrders'));
+        $operationalOrders = ($canWorkshop || $canOrders)
+            ? Order::where('userId', $ownerId)
+                ->where('status', '!=', 'delivered')
+                ->with(['customers:id,name', 'tailor:id,name'])
+                ->orderByRaw('CASE WHEN returnDate IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('returnDate')
+                ->latest('id')
+                ->limit(5)
+                ->get()
+            : collect();
+
+        return view('dashboard.tailoring', compact('tailoring', 'canWorkshop', 'canOrders', 'operationalOrders'));
     }
 
     public function clothing()

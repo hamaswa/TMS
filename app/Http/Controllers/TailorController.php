@@ -67,8 +67,25 @@ class TailorController extends Controller
      */
     public function index()
     {
-        $Tailors = Tailor::where('user_id', Auth::user()->id)->orderBy('id', 'DESC')->get();
-        return view('tailor.list', compact('Tailors'));
+        $user = Auth::user()->loadMissing(['business', 'ownedBusiness']);
+        $ownerId = $user->businessOwnerId();
+        $weekStart = now()->startOfWeek()->startOfDay();
+        $weekEnd = now()->endOfWeek()->endOfDay();
+
+        $Tailors = Tailor::where('user_id', $ownerId)
+            ->withCount('orders')
+            ->with([
+                'orders' => fn ($query) => $query
+                    ->select('id', 'tailorId', 'tailor_price', 'suitQuantity', 'created_at')
+                    ->whereBetween('created_at', [$weekStart, $weekEnd]),
+                'tailorsalary:id,tailor_id,options_id,type,price',
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        $business = $user->business ?? $user->ownedBusiness;
+
+        return view('tailor.list', compact('Tailors', 'business', 'weekStart', 'weekEnd'));
     }
 
     /**
@@ -166,14 +183,15 @@ class TailorController extends Controller
 
     public function tailorRecord($id)
     {
+        $ownerId = Auth::user()->businessOwnerId();
+        $tailor = Tailor::where('user_id', $ownerId)->findOrFail($id);
         $data = [];
-        $tailor = Tailor::find($id);
         $data['tailor-name'] = $tailor->name;
         $data['tailor-id'] = $tailor->id;
-        $Tailor_records = Tailor::with(['orders' => function ($query) {
-            $query->orderBy('created_at', 'desc');  // Order by 'created_at' in descending order
-        }, 'orders.customers'])->find($id);
-        // dd($Tailor_records);
+        $Tailor_records = Tailor::where('user_id', $ownerId)
+            ->with(['orders' => fn ($query) => $query->with(['customers', 'rate.options'])->latest('created_at')])
+            ->findOrFail($id);
+
         return view('tailor.tailor-record', compact('data', 'Tailor_records'));
     }
 
@@ -473,36 +491,36 @@ class TailorController extends Controller
 
     public function showSpecificRecord(Request $request, $id)
     {
-        // Get date range from request
-        $data_range = $request->input('date_range');
+        $ownerId = Auth::user()->businessOwnerId();
+        Tailor::where('user_id', $ownerId)->findOrFail($id);
 
-        // Check if date range is valid and contains 'to'
-        if (strpos($data_range, 'to ') === false) {
-            return response()->json(['error' => 'Invalid date range format.'], 400);
+        $validated = $request->validate([
+            'date_range' => ['required', 'string', 'max:50'],
+        ]);
+        $dateParts = preg_split('/\s*(?:to|تا)\s*/u', trim($validated['date_range']));
+
+        if (count($dateParts) !== 2) {
+            return response()->json(['message' => 'درست تاریخ کی حد منتخب کریں۔'], 422);
         }
 
-        $date_parts = explode('to ', $data_range);
-
-        // Check if the explosion resulted in exactly two parts
-        if (count($date_parts) !== 2) {
-            return response()->json(['error' => 'Invalid date range format.'], 400);
-        }
-
-        // Parse start and end dates using Carbon
         try {
-            $start_date = Carbon::createFromFormat('Y-m-d', trim($date_parts[0]))->startOfDay(); // Start of the day
-            $end_date = Carbon::createFromFormat('Y-m-d', trim($date_parts[1]))->endOfDay(); // End of the day
+            $startDate = Carbon::createFromFormat('Y-m-d', trim($dateParts[0]))->startOfDay();
+            $endDate = Carbon::createFromFormat('Y-m-d', trim($dateParts[1]))->endOfDay();
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Invalid date format.'], 400);
+            return response()->json(['message' => 'درست تاریخ منتخب کریں۔'], 422);
         }
 
-        // Query to fetch tailor records within the date range
-        $tailor_records = Order::where('tailorId', $id) // Filter by Tailor id
-            ->whereBetween('created_at', [$start_date, $end_date])
-            ->where('userId', Auth::user()->id)
+        if ($startDate->greaterThan($endDate)) {
+            return response()->json(['message' => 'ابتدائی تاریخ آخری تاریخ سے پہلے ہونی چاہیے۔'], 422);
+        }
+
+        $tailor_records = Order::with(['customers', 'rate.options'])
+            ->where('tailorId', $id)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->where('userId', $ownerId)
+            ->latest('created_at')
             ->get();
 
-        // Return the data as JSON
         return response()->json([
             'tailors' => $tailor_records,
         ]);
