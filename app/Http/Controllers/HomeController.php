@@ -89,17 +89,48 @@ class HomeController extends Controller
         $canPurchases = $user->hasBusinessPermission('clothing.purchases');
         $canSales = $user->hasBusinessPermission('clothing.sales');
         $colors = ClothColor::where('user_id', $ownerId);
+        $monthSalesQuery = SaleStock::where('user_id', $ownerId)
+            ->financiallyActive()
+            ->whereBetween('sellDate', [now()->startOfMonth(), now()->endOfMonth()]);
         $clothing = [
             'meters' => $canInventory ? (float) (clone $colors)->sum('length') : null,
             'inventory_value' => $canInventory ? (float) (clone $colors)->sum(DB::raw('length * average_unit_cost')) : null,
             'low_stock' => $canInventory ? (clone $colors)->where('length', '<=', 5)->count() : null,
             'draft_purchases' => $canPurchases ? Purchase::where('user_id', $ownerId)->where('status', 'draft')->count() : null,
-            'month_sales' => $canSales ? (float) SaleStock::where('user_id', $ownerId)
-                ->whereBetween('sellDate', [now()->startOfMonth(), now()->endOfMonth()])
-                ->sum(DB::raw('selling_price * length')) : null,
+            'month_sales' => $canSales ? (float) (clone $monthSalesQuery)->sum(DB::raw('selling_price * length')) : null,
+            'today_sales' => $canSales ? (float) SaleStock::where('user_id', $ownerId)
+                ->financiallyActive()->whereDate('sellDate', today())->sum(DB::raw('selling_price * length')) : null,
         ];
 
-        return view('dashboard.clothing', compact('clothing', 'canInventory', 'canPurchases', 'canSales'));
+        $salesTrend = collect();
+        $recentSales = collect();
+        if ($canSales) {
+            $trendStart = today()->subDays(6);
+            $salesByDate = SaleStock::where('user_id', $ownerId)->financiallyActive()
+                ->whereBetween('sellDate', [$trendStart->copy()->startOfDay(), now()->endOfDay()])
+                ->get(['sellDate', 'selling_price', 'length'])
+                ->groupBy(fn (SaleStock $sale) => \Illuminate\Support\Carbon::parse($sale->sellDate)->toDateString())
+                ->map(fn ($sales) => (float) $sales->sum(fn (SaleStock $sale) => (float) $sale->selling_price * (float) $sale->length));
+            $salesTrend = collect(range(0, 6))->map(function (int $offset) use ($trendStart, $salesByDate) {
+                $date = $trendStart->copy()->addDays($offset);
+                return ['date' => $date, 'total' => (float) ($salesByDate[$date->toDateString()] ?? 0)];
+            });
+            $recentSales = SaleStock::where('user_id', $ownerId)->financiallyActive()
+                ->with(['brand', 'type'])->latest('sellDate')->latest('id')->limit(5)->get();
+        }
+
+        $recentPurchases = $canPurchases
+            ? Purchase::where('user_id', $ownerId)->with('supplier')->latest('purchase_date')->latest('id')->limit(5)->get()
+            : collect();
+        $lowStockItems = $canInventory
+            ? ClothColor::where('user_id', $ownerId)->where('length', '<=', 5)
+                ->with(['cloth.type', 'cloth.brand'])->orderBy('length')->limit(6)->get()
+            : collect();
+
+        return view('dashboard.clothing', compact(
+            'clothing', 'canInventory', 'canPurchases', 'canSales',
+            'salesTrend', 'recentSales', 'recentPurchases', 'lowStockItems'
+        ));
     }
 
     private function managementLandingRoute(User $user): ?string

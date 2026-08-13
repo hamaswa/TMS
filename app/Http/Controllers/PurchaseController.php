@@ -32,7 +32,15 @@ class PurchaseController extends Controller
         if (! empty($filters['supplier_id'])) {
             $this->ownedSupplier((int) $filters['supplier_id']);
         }
-        $purchases = Purchase::where('user_id', Auth::user()->businessOwnerId())->with('supplier')
+        $ownerId = Auth::user()->businessOwnerId();
+        $summaryQuery = Purchase::where('user_id', $ownerId);
+        $summary = [
+            'count' => (clone $summaryQuery)->count(),
+            'total' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('total_amount'),
+            'paid' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('paid_amount'),
+            'balance' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('balance_amount'),
+        ];
+        $purchases = Purchase::where('user_id', $ownerId)->with('supplier')
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->when($filters['supplier_id'] ?? null, fn ($q, $supplier) => $q->where('supplier_id', $supplier))
             ->when($filters['q'] ?? null, fn ($q, $search) => $q->where(function ($nested) use ($search) {
@@ -46,7 +54,7 @@ class PurchaseController extends Controller
             ->paginate((int) ($filters['per_page'] ?? 25))->withQueryString();
         $suppliers = Supplier::where('user_id', Auth::user()->businessOwnerId())->where('active', true)->orderBy('name')->get();
 
-        return view('purchases.index', compact('purchases', 'suppliers', 'filters'));
+        return view('purchases.index', compact('purchases', 'suppliers', 'filters', 'summary'));
     }
 
     public function create()

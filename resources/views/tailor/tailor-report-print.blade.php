@@ -1,447 +1,116 @@
-<!DOCTYPE html>
-<html lang="en">
-
+<!doctype html>
+<html lang="ur" dir="rtl">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link rel="stylesheet" href="style.css">
-    <title>Tailor Managment Order Recipt</title>
-    <!-- jQuery library -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-
-    <!-- Latest compiled JavaScript -->
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <title>{{ $tailor->name }} — ہفتہ وار حساب</title>
     <style>
-     @font-face {
-    font-family: 'Noto Nastaliq Urdu';
-    src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
-}
-        body {
-            font-family: 'Noto Nastaliq Urdu', serif;
-        }
-
-        #invoice-POS {
-            box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
-            padding: 2mm;
-            margin-left: 10px !important;
-            width: 88mm;
-            background: #FFF;
-            margin-top: 20px;
-
-        }
-
-        ::selection {
-            background: #f31544;
-            color: #FFF;
-        }
-
-        ::moz-selection {
-            background: #f31544;
-            color: #FFF;
-        }
-
-        h1 {
-            font-size: 18px;
-            color: #222;
-        }
-
-        h2 {
-            font-size: 12px;
-        }
-
-        h3 {
-            font-size: 12px;
-            font-weight: 300;
-            line-height: 2em;
-        }
-
-        p {
-            font-size: 10px;
-            color: #666;
-            line-height: 1px;
-        }
-
-        #top,
-        #mid,
-        #bot {
-            /* Targets all id with 'col-' */
-            border-bottom: 1px solid #EEE;
-        }
-
-        #top {
-            min-height: 100px;
-        }
-
-        #mid {
-            min-height: 80px;
-        }
-
-        #bot {
-            min-height: 50px;
-        }
-
-        #top .logo {
-            //float: left;
-            height: 60px;
-            width: 60px;
-            background: url(http://michaeltruong.ca/images/logo1.png) no-repeat;
-            background-size: 60px 60px;
-        }
-
-        .clientlogo {
-            float: left;
-            height: 60px;
-            width: 60px;
-            background: url(http://michaeltruong.ca/images/client.jpg) no-repeat;
-            background-size: 60px 60px;
-            border-radius: 50px;
-        }
-
-        .side {
-            position: relative;
-            margin-right: 49px;
-        }
-
-        .side-top {
-            margin-top: 14px;
-        }
-
-        .ticket {
-            width: 240px;
-
-        }
-
-        img {
-            max-width: inherit;
-            width: 100px;
-        }
-
-        @media print {
-
-            .hidden-print,
-            .hidden-print * {
-                display: none !important;
-            }
-
-            body {
-                -webkit-print-color-adjust: exact;
-                width: 40%;
-            }
-
-            td,
-            th,
-            tr,
-            table {
-                font-size: 14px;
-                /* Adjust font size as needed */
-                border-collapse: collapse;
-                border-top: 1px solid #b6a7a7;
-            }
-
-            .ticket {
-                width: auto;
-                /* Adjust width as needed */
-            }
-
-            .col-md-10,
-            .col-md-2 {
-                width: 50%;
-                /* Adjust column widths */
-                float: left;
-            }
-
-            .row::after {
-                content: "";
-                clear: both;
-                display: table;
-            }
-
-            .table-title {
-                margin-bottom: 10px;
-                /* Adjust margin for better spacing */
-            }
-
-            .table-title h5 {
-                margin: 0;
-                /* Remove margin for better spacing */
-            }
-        }
-
-
-        td,
-        th,
-        tr,
-        table {
-            border-top: 1px solid #b6a7a7;
-            border-collapse: collapse;
-            font-size: 11px;
-        }
-
-        @media print {
-            .btn {
-                display: none;
-            }
+        @font-face{font-family:'Noto Nastaliq Urdu';src:url('{{ asset('assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') }}') format('woff2');font-display:swap}
+        *{box-sizing:border-box}
+        html,body{margin:0;padding:0;background:#eef1f5;color:#000;font-family:'Noto Nastaliq Urdu',Tahoma,Arial,sans-serif}
+        body{direction:rtl;text-align:right}
+        .screen-actions{display:flex;direction:rtl;justify-content:center;gap:8px;padding:14px}
+        .screen-actions button{min-height:42px;padding:8px 15px;border:1px solid #cfd8e4;border-radius:8px;color:#243b53;background:#fff;font:700 14px 'Noto Nastaliq Urdu',Tahoma,sans-serif;cursor:pointer}
+        .screen-actions .print{color:#fff;border-color:#1769e0;background:#1769e0}
+        .receipt{width:80mm;min-height:80mm;margin:0 auto 30px;padding:3mm 4mm;background:#fff;box-shadow:0 12px 36px rgba(18,42,70,.16)}
+        .receipt-header{text-align:center;border-bottom:1px dashed #000;padding-bottom:2.5mm}
+        .receipt-logo{display:block;max-width:24mm;max-height:16mm;margin:0 auto 1.5mm;object-fit:contain;filter:grayscale(1)}
+        .shop-name{margin:0;font-size:16px;font-weight:900;line-height:1.8}
+        .receipt-kind{margin-top:1mm;font-size:10px;font-weight:700}
+        .receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:1mm 3mm;padding:2.5mm 0;border-bottom:1px dashed #000;font-size:10px;line-height:1.9}
+        .receipt-meta div:nth-child(even){text-align:left}.receipt-meta strong{font-weight:900}.ltr{direction:ltr;display:inline-block}
+        .section-title{display:flex;align-items:center;justify-content:space-between;gap:2mm;margin:2.8mm 0 1.5mm;font-size:11px;font-weight:900}.section-title span:last-child{font-size:8px;font-weight:600}
+        .work-head{display:grid;grid-template-columns:1.25fr .7fr .7fr;padding:1.5mm 1mm;border-top:1px solid #000;border-bottom:1px solid #000;font-size:8px;font-weight:900}.work-head span:nth-child(2),.work-head span:nth-child(3){text-align:left}
+        .work-item{padding:1.7mm 1mm;border-bottom:1px dotted #777;break-inside:avoid;page-break-inside:avoid}
+        .work-main{display:grid;grid-template-columns:1.25fr .7fr .7fr;align-items:center;font-size:10px;font-weight:800;line-height:1.9}.work-main span:nth-child(2),.work-main span:nth-child(3){direction:ltr;text-align:left}
+        .work-sub{display:flex;justify-content:space-between;gap:2mm;margin-top:.5mm;color:#222;font:700 8px/1.7 Tahoma,Arial,sans-serif;direction:rtl}.work-sub .serial{direction:ltr}
+        .money-lines{padding:1mm 0;border-top:1px solid #000;border-bottom:1px solid #000}
+        .money-line{display:flex;align-items:center;justify-content:space-between;gap:3mm;padding:1.1mm 1mm;font-size:10px;line-height:1.8}.money-line strong{direction:ltr;white-space:nowrap}.money-line.muted{font-size:9px}.money-line.deduction strong:before{content:'− '}.money-line.covered{border:1px solid #777;border-radius:2px;margin:1mm 0;padding:1.5mm 1mm}.money-line.final{margin-top:1mm;padding:2mm 1mm;border-top:2px solid #000;font-size:13px;font-weight:900}.money-line.final strong{font-size:14px}
+        .advance-note{margin-top:1.5mm;padding:1.5mm 1mm;border:1px dashed #555;border-radius:2px;font-size:8px;font-weight:800;line-height:1.9;text-align:center}.advance-note strong{direction:ltr;display:inline-block;font-size:9px}
+        .receipt-footer{padding-top:2.5mm;text-align:center;font-size:8px;line-height:2}.receipt-footer .contact{direction:ltr;font-weight:900}.receipt-footer .thank-you{margin-top:1mm;font-size:10px;font-weight:900}
+        .empty{padding:5mm 1mm;border:1px dashed #777;text-align:center;font-size:9px}
+        @media print{
+            @page{size:80mm auto;margin:0}
+            html,body{width:80mm!important;min-width:80mm!important;background:#fff!important}
+            .screen-actions{display:none!important}
+            .receipt{width:80mm!important;min-height:0;margin:0!important;padding:3mm 4mm!important;box-shadow:none!important}
+            *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
         }
     </style>
 </head>
-
 <body>
-    <div id="invoice-POS">
-        <!--Print Button-->
-        <div class="btn printbtn">
-            <button class="btn btn-primary"
-                style="position: absolute; top: 5%; left: 1.5%; padding: 5px 10px; text-align: center;">
-                <span style="display: inline-block; vertical-align: middle; line-height: normal;font-size:18px;">رسید
-                    پرنٹ کریں۔</span>
-            </button>
-            <button class="btn btn-primary go"
-                style="position: absolute; top: 5%; left: 11%; padding: 5px 10px; text-align: center;">
-                <span style="display: inline-block; vertical-align: middle; line-height: normal;font-size:18px;"> آرڈر
-                    پر واپس جائیں</span>
-            </button>
-
-        </div>
-        <div class="ticket" style="margin-top: -10px">
-            <p align="center"><img src="{{ asset('/images/setting/' . $setting->logo) }}"></p>
-            <h5 class="text-center" style="font-size: 16px;font-weight: 600;text-align: center">{{ $setting->name }}
-                <br>
-                <br>
-                <div style="width: 100%; margin-bottom: 6px">
-                    <div style="width: 100%;display: inline-block;font-size: 14px"> <span
-                            style="font-weight: bold;font-size: 16px;float: right;">{{ $tailor->name }} : درزی کا نام
-                        </span>
-                    </div>
-                </div>
-        </div>
-
-        <!-- naap print desing -->
-        <div class="ticket" style="margin-top: 10px">
-
-            <div style="width: 100%; margin-bottom: 6px">
-                <div style="width: 100%; display: inline-block; font-size: 14px">
-                    <div class="row">
-                        <div class="col-md-12 mr-1" style="margin-bottom: 20px;">
-                            <table style="width: 100%;position: relative;left:10%;">
-                                <thead>
-                                    <tr>
-                                        <th scope="col" class="no-sort" style=" font-size: 16px; padding:6px">درزی کی
-                                            رقم</th>
-                                        <th scope="col" class="no-sort" style="font-size: 16px; padding:6px">سوٹ کی
-                                            تعداد</th>
-                                        <th scope="col" class="no-sort" style=" font-size: 16px; padding:6px">تاریخ
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                            @php
-                                                // Group reports by date
-                                                $groupedReports = $tailor_report->groupBy(function ($report) {
-                                                    return date('d-m-Y', strtotime($report->created_at));
-                                                });
-
-                                                // Collect all unique suit numbers for the entire date range
-                                                $allSuitNumbers = $tailor_report->pluck('suitNum')->unique()->values();
-
-                                                // Initialize grand totals
-                                                $grandTotalTailorPrice = 0;
-                                                $grandTotalSuitQuantity = 0;
-                                                $grandTotalDarziRqama = 0;
-                                            @endphp
-
-                                            @foreach ($groupedReports as $date => $reports)
-                                                {{-- Calculate cumulative totals for each date --}}
-                                                @php
-                                                    $dateTailorPriceTotal = $reports->sum('tailor_price');
-                                                    $dateSuitQuantityTotal = $reports->sum('suitQuantity');
-                                                    $dateDarziRqamaTotal = $reports->sum(function ($report) {
-                                                        return $report->tailor_price * $report->suitQuantity;
-                                                    });
-
-                                                    // Add to grand totals
-                                                    $grandTotalTailorPrice += $dateTailorPriceTotal;
-                                                    $grandTotalSuitQuantity += $dateSuitQuantityTotal;
-                                                    $grandTotalDarziRqama += $dateDarziRqamaTotal;
-                                                @endphp
-
-                                                {{-- Display only one row per date with cumulative totals --}}
-                                                <tr class="f">
-                                                    <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
-                                                        Rs: {{ $dateDarziRqamaTotal }}
-                                                    </td>
-                                                    <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
-                                                        {{ $dateSuitQuantityTotal }}
-                                                    </td>
-                                                    <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
-                                                        {{ $date }}
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-
-                                            {{-- Display Grand Totals at the end --}}
-                                            <tr>
-                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
-                                                    Rs: {{ $grandTotalDarziRqama }}
-                                                </td>
-                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
-                                                    {{ $grandTotalSuitQuantity }}
-                                                </td>
-                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
-                                                    ٹوٹل
-                                                </td>
-
-                                            </tr>
-
-                                            {{-- Display all unique suit numbers --}}
-                                            <tr>
-                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
-                                                    {{ $allSuitNumbers->join(', ') }}
-                                                </td>
-                                                <td style="font-size: 15px; padding: 3px 4px; font-weight: 600;">
-                                                    سیریل نمبرز
-                                                </td>
-                                                <td colspan="2"></td>
-                                            </tr>
-                                        </tbody>
-                                <tfoot>
-                                    <tr style="position: relative; margin-top: 30px;" class="bg-own mt-2"
-                                        id="totalAmount">
-                                        <td style="font-size: 15px; padding: 3px 4px;font-weight:600;">
-                                            {{-- Calculate the total sum of salary records --}}
-                                            @php
-                                                $totalSalary = $tailor_records
-                                                    ->where('comment', 'salary')
-                                                    ->sum('amount');
-                                            @endphp
-
-                                            {{-- Output the total sum --}}
-                                            {{-- {{ $totalSalary }} --}}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-
-                        <div class="col-md-12 ">
-                            <table style="width: 40%">
-
-                                <tbody>
-
-                                    @php
-                                        $totalAdvance = 0;
-                                        $totalChai = 0;
-
-                                        // Calculate the total sums
-                                        foreach ($tailor_records as $tailor_record) {
-                                            if ($tailor_record->comment === 'advance') {
-                                                $totalAdvance += (int) $tailor_record->amount;
-                                            } elseif ($tailor_record->comment === 'chai') {
-                                                $totalChai += (int) $tailor_record->amount;
-                                            }
-                                        }
-                                    @endphp
-                                    @if ($totalAdvance > 0)
-                                        <div
-                                            style="text-align: right; font-weight: 600; font-size: 16px; margin-bottom: 5px;">
-                                            کل ایڈوانس:
-                                            {{ (int) $totalAdvance }}
-                                        </div>
-                                    @endif
-
-
-                                    @if ($totalChai > 0)
-                                        <div
-                                            style="text-align: right;font-weight:600;font-size:16px; margin-bottom:5px;">
-                                            کل چائے کا
-                                            خرچہ :
-                                            {{ (int) $totalChai }}</div>
-                                    @endif
-
-                                    <div style="text-align: right;font-weight:600;font-size:16px;margin-bottom:5px;">ہفتہ وار تنخواہ :
-                                        {{ (int) $totalSalary }}</div>
-
-                                    @if ($transaction)
-                                        <div style="text-align: right;font-weight:600;font-size:16px;">ایڈوانس سے کاٹا
-                                            گیا۔ :
-                                            {{ (int) $transaction->remainingBalance }}</div>
-                                    @endif
-                                </tbody>
-
-                                {{-- <tfoot>
-                                <tr class="bg-own mt-2" id="totalAmount">
-                                    <td style="border: 1px solid #808080; font-size: 13px; padding: 3px 4px">
-                                        {{ $tailor_records->where('comment', 'advance')->sum('amount') }}-ٹوٹل
-                                    </td>
-                                    <td style="border: 1px solid #808080; font-size: 13px; padding: 3px 4px">
-                                        {{ $tailor_records->where('comment', 'salary')->sum('amount') }}-ٹوٹل
-                                    </td>
-                                    <td style="border: 1px solid #808080; font-size: 13px; padding: 3px 4px">
-                                        {{ $tailor_records->where('comment', 'chai')->sum('amount') }}-ٹوٹل
-                                    </td>
-                                </tr>
-                            </tfoot> --}}
-                            </table>
-                        </div>
-
-
-                    </div>
-                    <br>
-
-                    @php
-    $Salary = $tailor_records->where('comment', 'salary')->sum('amount');
-    $Chai = $tailor_records->where('comment', 'chai')->sum('amount');
-    $Advance = $tailor_records->where('comment', 'advance')->sum('amount');
-    $RemainingBalance = isset($transaction->remainingBalance) ? $transaction->remainingBalance : 0;
-
-    // Calculate total based on presence of transaction
-    if ($RemainingBalance > 0) {
-        // If there is a transaction, do not subtract Advance
-        $total = $Salary + $Chai;
-    } else {
-        // If no transaction, subtract Advance
-        $total = $Salary + $Chai - $Advance;
-    }
+@php
+    $salaryAmount = (float) $tailor_records->where('comment', 'salary')->sum('amount');
+    $otherExpenseAmount = (float) $tailor_records->where('comment', 'chai')->sum('amount');
+    $weeklyAdvance = (float) $tailor_records->where('comment', 'advance')->sum('amount');
+    $salaryAndOtherPayments = $salaryAmount + $otherExpenseAmount;
+    $advanceCoveredFromMain = min($weeklyAdvance, (float) $advanceCutAmount);
+    $advanceToDeductFromWeeklyPayment = max(0, $weeklyAdvance - $advanceCoveredFromMain);
+    $weeklySettlementTotal = $salaryAndOtherPayments - $advanceToDeductFromWeeklyPayment;
+    $totalSuits = $tailor_report->sum(fn ($order) => max(1, (int) $order->suitQuantity));
+    $shopName = $setting?->name ?: auth()->user()->name;
 @endphp
 
-<div style="text-align:right; font-size: 20px;">
-    <span style="font-size: 10px;font-weight:600;"></span>Total:
-    {{ $total }}
+<div class="screen-actions">
+    <button type="button" class="print" id="printReceipt">رسید پرنٹ کریں</button>
+    <button type="button" id="goBack">رپورٹ پر واپس جائیں</button>
 </div>
 
+<main class="receipt" aria-label="درزی کا ہفتہ وار حساب">
+    <header class="receipt-header">
+        @if($setting?->logo_url)<img class="receipt-logo" src="{{ $setting->logo_url }}" alt="{{ $shopName }}">@endif
+        <h1 class="shop-name">{{ $shopName }}</h1>
+        <div class="receipt-kind">درزی کا ہفتہ وار حساب</div>
+    </header>
 
-                    <br>
+    <section class="receipt-meta">
+        <div>درزی: <strong>{{ $tailor->name }}</strong></div>
+        <div>فون: <strong class="ltr">{{ $tailor->phone_number1 ?: '—' }}</strong></div>
+        <div>مدت: <strong>{{ $startDate->format('d-m-Y') }}</strong></div>
+        <div>تا: <strong>{{ $endDate->format('d-m-Y') }}</strong></div>
+        <div>پرنٹ: <strong>{{ now()->format('d-m-Y') }}</strong></div>
+        <div>وقت: <strong class="ltr">{{ now()->format('h:i A') }}</strong></div>
+    </section>
+
+    <div class="section-title"><span>سلائی کا ریکارڈ</span><span>{{ $tailor_report->count() }} آرڈرز · {{ $totalSuits }} سوٹ</span></div>
+    @if($tailor_report->isNotEmpty())
+        <div class="work-head"><span>سلائی کی قسم</span><span>سوٹ × شرح</span><span>کل اجرت</span></div>
+        @foreach($tailor_report as $order)
+            @php($sewingName = $order->rate?->options?->Name ?: $order->rate?->type ?: $order->design ?: '—')
+            <article class="work-item">
+                <div class="work-main">
+                    <span>{{ $sewingName }}</span>
+                    <span>{{ max(1,(int)$order->suitQuantity) }} × {{ number_format((float)$order->tailor_price,0) }}</span>
+                    <span>Rs. {{ number_format($order->tailorAmountDue(),0) }}</span>
                 </div>
-            </div>
+                <div class="work-sub"><span>{{ $order->created_at?->format('d-m-Y') }}</span><span class="serial">سیریل: {{ $order->suitNum ?: '—' }}</span></div>
+            </article>
+        @endforeach
+    @else
+        <div class="empty">اس ہفتے کوئی سلائی ریکارڈ موجود نہیں۔</div>
+    @endif
 
+    <div class="section-title"><span>ہفتہ وار ادائیگی کا حساب</span><span>رقم روپے میں</span></div>
+    <section class="money-lines">
+        <div class="money-line"><span>اجرت</span><strong>Rs. {{ number_format($salaryAmount,2) }}</strong></div>
+        <div class="money-line"><span>دیگر ادائیگی</span><strong>Rs. {{ number_format($otherExpenseAmount,2) }}</strong></div>
+        <div class="money-line"><span>ایڈوانس</span><strong>Rs. {{ number_format($weeklyAdvance,2) }}</strong></div>
+        <div class="money-line final"><span>کل</span><strong>Rs. {{ number_format($weeklySettlementTotal,2) }}</strong></div>
+    </section>
+    @if($advanceCoveredFromMain > 0)
+        <div class="advance-note"><strong>Rs. {{ number_format($advanceCoveredFromMain,2) }}</strong> مرکزی ایڈوانس سے کاٹا جا چکا ہے۔</div>
+    @endif
 
-            <div style="width: 100%;">
-                <div style="width: 100%;text-align:center;font-weight:600;">
-                    <p style="font-size:13px;margin-bottom:15px;">{!! $setting->address !!}</p>
-                    <p style="font-size:14px;letter-spacing:1px;">{{ $setting->contact_no }}</p>
-                </div>
-            </div>
-        </div>
+    <footer class="receipt-footer">
+        @if($setting?->address)<div>{{ strip_tags($setting->address) }}</div>@endif
+        @if($setting?->contact_no)<div class="contact">{{ $setting->contact_no }}</div>@endif
+        <div class="thank-you">شکریہ</div>
+    </footer>
+</main>
 
-
-    </div>
-
-    <!-- end nap print design -->
-    </div><!--End Invoice-->
-    <script>
-        //to print reciept
-        var printpage = document.querySelector(".btn button");
-        printpage.addEventListener('click', function() {
-            window.print();
-        });
-        //to go back to order
-        document.querySelector('.go').addEventListener('click', function() {
-            window.history.back();
-        });
-    </script>
+<script>
+    document.getElementById('printReceipt').addEventListener('click',function(){window.print();});
+    document.getElementById('goBack').addEventListener('click',function(){window.history.back();});
+</script>
 </body>
-
 </html>

@@ -6,6 +6,7 @@ use session;
 use Carbon\Carbon;
 use App\Models\Order;
 use App\Models\Tailor;
+use App\Models\Setting;
 use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\TailorRecord;
@@ -13,6 +14,7 @@ use App\Models\Tailorsalary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 
 class TailorController extends Controller
@@ -196,70 +198,66 @@ class TailorController extends Controller
 
     public function tailorReport($id, Request $request)
     {
-        $tailor = Tailor::find($id);
+        $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
 
-        $filterType = $request->input('filterType', 'weekly');
+        $filterType = $request->input('filterType') === 'monthly' ? 'monthly' : 'weekly';
         $startDate = Carbon::now()->startOfWeek(Carbon::SATURDAY)->startOfDay();
         $endDate = Carbon::now()->endOfWeek(Carbon::THURSDAY)->endOfDay();
-        // $startDate = Carbon::now()->startOfWeek()->startOfDay();
-        // $endDate = Carbon::now()->endOfDay();
 
-        if ($filterType == 'monthly') {
+        if ($filterType === 'monthly') {
             $startDate = Carbon::now()->startOfMonth()->startOfDay();
+            $endDate = Carbon::now()->endOfMonth()->endOfDay();
         }
 
-        $result = DB::table('orders')
-            ->leftJoin('tailor_records', 'orders.tailorId', '=', 'tailor_records.tailor_id')
-            ->select(
-                DB::raw("IF('$filterType' = 'monthly', SUM(tailor_records.amount), tailor_records.amount) as total_received"),
-                'tailor_records.comment as comments',
-                'orders.suitQuantity as quantity',
-                'orders.suitNum as suitNum',
-                'orders.design as design',
-                'orders.designPrice as designPrice',
-                DB::raw('SUM(orders.tailor_price) as totalPayment'),
-                'orders.created_at'
-            )
-            ->where('orders.tailorId', $id)
+        $result = Order::query()
+            ->with('rate.options')
+            ->where('tailorId', $tailor->id)
+            ->where('userId', Auth::user()->businessOwnerId())
             ->whereBetween('orders.created_at', [$startDate, $endDate])
-            ->groupBy(
-                'orders.created_at',
-                'tailor_records.amount',
-                'tailor_records.comment',
-                'orders.suitQuantity',
-                'orders.suitNum',
-                'orders.design',
-                'orders.designPrice'
-            )
+            ->latest('created_at')
             ->get();
 
-        // dd($result);
+        $tailor_report = $result;
+        $advanceCutQuery = Transaction::where('tailorId', $tailor->id)
+            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('Order_type', 'Tailor_Advance_Cut')
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $advanceCutAmount = (float) (clone $advanceCutQuery)->sum('remainingBalance');
+        $transaction = $advanceCutQuery->latest('created_at')->first();
 
-
-        $tailor_report = $tailor->orders()->whereBetween('created_at', [$startDate, $endDate])->get();
-        $transaction = Transaction::where('tailorId', $id)->whereBetween('created_at', [$startDate, $endDate])->first();
-
-        $tailor_records = TailorRecord::where('tailor_id', $id)
+        $tailor_records = TailorRecord::where('tailor_id', $tailor->id)
             ->whereBetween('created_at', [$startDate, $endDate])
+            ->latest('created_at')
             ->get();
 
-        $total_amount = $tailor->orders()->sum('tailor_price');
+        $total_amount = $tailor_report->sum(fn ($order) => (float) $order->tailor_price * max(1, (int) $order->suitQuantity));
 
-
-        return view('tailor.tailor-report', compact('tailor_report', 'result', 'total_amount', 'tailor', 'filterType', 'tailor_records', 'transaction'));
+        return view('tailor.tailor-report', compact('tailor_report', 'result', 'total_amount', 'tailor', 'filterType', 'tailor_records', 'transaction', 'advanceCutAmount', 'startDate', 'endDate'));
     }
 
 
 
     public function addRecord(Request $request, $id)
     {
-        $tailorRecord = new TailorRecord();
-        $tailorRecord->tailor_id = $id;
-        $tailorRecord->amount = $request->input('amount');
-        $tailorRecord->comment = $request->input('comment');
-        $tailorRecord->save();
+        $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $validated = $request->validate([
+            'comment' => ['required', Rule::in(['advance', 'salary', 'chai'])],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+        ]);
 
-        return redirect(url('admin/tailor-report', $id))->with('success', 'Record added successfully!');
+        DB::transaction(function () use ($tailor, $validated) {
+            TailorRecord::create([
+                'tailor_id' => $tailor->id,
+                'amount' => $validated['amount'],
+                'comment' => $validated['comment'],
+            ]);
+
+            if ($validated['comment'] === 'advance') {
+                $tailor->increment('advance', $validated['amount']);
+            }
+        });
+
+        return redirect()->route('admin.tailor-report', $tailor)->with('success', 'درزی کا لین دین محفوظ کر دیا گیا ہے۔');
     }
 
     public function addAdnvanceRecord(Request $request, $id)
@@ -306,54 +304,36 @@ class TailorController extends Controller
 
     public function tailorReportPrint($id)
     {
-        try {
-            $tailor = Tailor::find($id);
+        $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->first();
+        $startDate = Carbon::now()->startOfWeek(Carbon::SATURDAY)->startOfDay();
+        $endDate = Carbon::now()->endOfWeek(Carbon::THURSDAY)->endOfDay();
 
-            $user_id = $tailor->user_id;
+        $tailor_records = TailorRecord::where('tailor_id', $tailor->id)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('comment', ['advance', 'salary', 'chai'])
+            ->latest('created_at')
+            ->get();
 
-            $setting = DB::table('settings')->where('user_id', $user_id)->first();
+        $tailor_report = $tailor->orders()
+            ->with('rate.options')
+            ->where('userId', Auth::user()->businessOwnerId())
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->latest('created_at')
+            ->get();
 
-            $details = [];
+        $advanceCutQuery = Transaction::where('tailorId', $tailor->id)
+            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('Order_type', 'Tailor_Advance_Cut')
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $advanceCutAmount = (float) (clone $advanceCutQuery)->sum('remainingBalance');
+        $transaction = $advanceCutQuery->latest('created_at')->first();
+        $total_amount = $tailor_report->sum(fn ($order) => $order->tailorAmountDue());
 
-            $startDate = Carbon::today()->startOfWeek(Carbon::SATURDAY)->subDays(1)->endOfDay();
-            $endDate = Carbon::today()->endOfDay();
-            // dd($startDate,$endDate);
-            $tailor_records = TailorRecord::where('tailor_id', $id)
-                ->whereBetween('created_at', [$startDate, $endDate])
-                ->whereIn('comment', ['advance', 'salary', 'chai'])
-                ->get();
-
-            $tailor_report = $tailor->orders()->whereBetween(
-                'created_at',
-                [$startDate, $endDate]
-            )->get();
-
-            $transaction = Transaction::where('tailorId', $id)->whereBetween('created_at', [$startDate, $endDate])->first();
-
-            $tailor_record = null;
-            if ($tailor_report->isNotEmpty()) {
-                $tailor_record = $tailor_records
-                    ->where('order_id', $tailor_report->first()->id)
-                    ->first();
-            }
-
-            // dd($tailor_report, $tailor_records, $tailor_record);
-
-            // $tailor_record = $tailor_records
-            //     ->where('order_id', $tailor_report->first()->id)
-            //     ->first();
-            //     dd($tailor_records);
-
-            $total_amount = $tailor->orders()
-                ->whereBetween('created_at', [$startDate, $endDate])
-                ->sum('tailor_price');
-
-            // dd($total_amount);
-
-            return view('tailor.tailor-report-print', compact('tailor_report', 'total_amount', 'tailor', 'setting', 'tailor_record', 'tailor_records', 'transaction'));
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        return view('tailor.tailor-report-print', compact(
+            'tailor_report', 'total_amount', 'tailor', 'setting', 'tailor_records',
+            'transaction', 'advanceCutAmount', 'startDate', 'endDate'
+        ));
     }
 
 
@@ -472,11 +452,16 @@ class TailorController extends Controller
 
             $rates = Tailorsalary::where("tailor_id", $tailor_id)->get();
 
-            $html .= '<select class="form-control" name="tailor_price" required dir="rtl">
+            $html .= '<select class="form-control tailor-rate-select" name="tailor_price" required dir="rtl" aria-label="درزی کی فی سوٹ اجرت منتخب کریں">
             <option value="">درزی کی رقم منتخب کریں۔</option>';
 
-            foreach ($rates as $rate)
-                $html .= '<option value="' . $rate->id . '-' . $rate->price . '">' . $rate->price . ' -- ' . $rate->options->Name . '</option>';
+            foreach ($rates as $index => $rate) {
+                $rateLabel = $rate->options?->Name ?: $rate->type ?: 'عام سلائی';
+                $value = e($rate->id . '-' . $rate->price);
+                $label = e($rate->price . ' -- ' . $rateLabel);
+                $selected = $index === 0 ? ' selected' : '';
+                $html .= '<option value="' . $value . '"' . $selected . '>' . $label . '</option>';
+            }
 
             $html .= '</select>';
 

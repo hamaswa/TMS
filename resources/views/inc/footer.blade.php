@@ -23,6 +23,70 @@
 <script src="{{asset('assets/js/custom.js')}}"></script>
 <script src="{{ asset('assets/js/form-accessibility.js') }}?v=20260728"></script>
 <script src="{{asset('assets/js/confirm-modal.js')}}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    const isUrdu = document.documentElement.lang === 'ur';
+    const urduLocale = {
+        weekdays: {
+            shorthand: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'],
+            longhand: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ']
+        },
+        months: {
+            shorthand: ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'],
+            longhand: ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر']
+        },
+        firstDayOfWeek: 0,
+        rangeSeparator: ' سے ',
+        weekAbbreviation: 'ہفتہ',
+        scrollTitle: 'تبدیل کرنے کے لیے اسکرول کریں',
+        toggleTitle: 'کیلنڈر تبدیل کریں',
+        time_24hr: false
+    };
+
+    const datePickerSelector = 'input[type="date"], input#myflatpickr, input[data-flatpickr]';
+
+    const initializeDatePicker = function (input) {
+        if (!window.flatpickr || input._flatpickr || input.hasAttribute('data-no-flatpickr') || input.disabled) {
+            return;
+        }
+
+        window.flatpickr(input, {
+            altInput: true,
+            altFormat: isUrdu ? 'j F Y' : 'F j, Y',
+            dateFormat: 'Y-m-d',
+            allowInput: true,
+            disableMobile: true,
+            locale: isUrdu ? urduLocale : 'default',
+            minDate: input.getAttribute('min') || null,
+            maxDate: input.getAttribute('max') || null,
+            ariaDateFormat: isUrdu ? 'j F Y' : 'F j, Y'
+        });
+    };
+
+    const initializeWithin = function (root) {
+        if (root.matches && root.matches(datePickerSelector)) {
+            initializeDatePicker(root);
+        }
+        if (root.querySelectorAll) {
+            root.querySelectorAll(datePickerSelector).forEach(initializeDatePicker);
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeWithin(document);
+        new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+                mutation.addedNodes.forEach(function (node) {
+                    if (node.nodeType === 1) initializeWithin(node);
+                });
+            });
+        }).observe(document.body, { childList: true, subtree: true });
+    });
+}());
+</script>
 @stack('scripts')
 <!--<script src="{{ asset('assets/js/popper.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>-->

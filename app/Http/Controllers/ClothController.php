@@ -25,7 +25,7 @@ class ClothController extends Controller
    {
     try {
         $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
-        ->with(['colors.latestCostedStockAddition', 'images', 'videos'])
+        ->with(['type', 'brand', 'colors.latestCostedStockAddition', 'images', 'videos'])
         ->latest()
         ->get();
         return view('cloths.index', compact('cloths'));

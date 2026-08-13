@@ -52,6 +52,9 @@ jQuery(document).ready(function ($) {
             dataType: 'json',
             success: function (data) {
                 $('#orderDetail').css('display', 'block');
+                if ($.fn.DataTable.isDataTable('#cc-table-data-order-history')) {
+                    $('#cc-table-data-order-history').DataTable().destroy();
+                }
                 $('.tbody').empty();
                 $.each(data, function (index, order) {
                     var row = '<tr>' +
@@ -76,8 +79,8 @@ jQuery(document).ready(function ($) {
                     }
 
                     // Adding the select dropdown for rack number
-                    row += '<td><select class="form-control px-1" id="rack-no" data-orderid="' + order.orderId + '" style="height:40px;width:100%;padding-left:10px;padding-bottom:10px;margin:0px;font-size:10px;">' +
-                        '<option value="">ریک نمبر منتخب کریں۔</option>';
+                    row += '<td><select class="form-control px-1" id="rack-no" data-orderid="' + order.orderId + '" style="height:40px;width:100%;padding:6px 10px;margin:0;font-size:12px;">' +
+                        '<option value="">ریک نمبر منتخب کریں</option>';
 
                     // Iterating over racks
                     $.each(order.racks, function (i, rack) {
@@ -89,8 +92,8 @@ jQuery(document).ready(function ($) {
                     });
 
                     row += '</select></td>' +
-                        '<td><a class="btn btn-primary btn-sm admin-order-status text-white" href="/admin/order/edit/' + order.orderId + '">Edit</a></td>' +
-                        '<td><a href="/admin/order/prints/' + order.orderId + '" target="_blank"><i class="fa fa-print"></i></a></td>' +
+                        '<td><a class="btn btn-outline-primary btn-sm admin-order-status" href="/admin/order/edit/' + order.orderId + '">تبدیلی</a></td>' +
+                        '<td><a class="btn btn-light btn-sm" href="/admin/order/prints/' + order.orderId + '" target="_blank" aria-label="آرڈر پرنٹ کریں"><i class="fa fa-print"></i></a></td>' +
                         '</tr>';
 
                     $('.tbody').append(row);

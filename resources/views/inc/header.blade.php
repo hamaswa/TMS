@@ -26,8 +26,11 @@
     <link href="{{ asset('assets/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/css/main.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/css/responsive.css') }}" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
     <style>
         body{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};background:#f5f7fa;color:#243b53;font-family:{{ $isSuperAdmin ? 'Arial,sans-serif' : '"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif' }}}.tms-nav{background:linear-gradient(90deg,#102a43,#174f78);box-shadow:0 5px 18px rgba(15,42,67,.18)}.tms-nav .navbar-brand{font-weight:800;letter-spacing:.04em}.tms-nav .nav-link{color:rgba(255,255,255,.82)!important;font-weight:600;padding:.8rem .72rem!important}.tms-nav .nav-link:hover{color:#fff!important}.tms-nav .dropdown-menu{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};border:0;border-radius:12px;box-shadow:0 14px 35px rgba(31,45,61,.18);padding:.5rem}.tms-nav .dropdown-item{border-radius:8px;padding:.55rem .8rem}.module-pill{font-size:.65rem;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:.25rem .5rem;color:#bfe8f3}.main-content{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};min-height:calc(100vh - 70px)}body{top:0!important}
+        .flatpickr-calendar{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};border:1px solid #dfe7f1;border-radius:12px;box-shadow:0 14px 35px rgba(31,45,61,.18);font-family:{{ $isSuperAdmin ? 'Arial,sans-serif' : '"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif' }}}
+        .flatpickr-calendar.arrowTop:before,.flatpickr-calendar.arrowTop:after{border-bottom-color:#fff}.flatpickr-months{padding:6px 4px 2px}.flatpickr-months .flatpickr-month{height:42px;color:#14213d}.flatpickr-current-month{padding-top:5px;font-size:1rem}.flatpickr-current-month .flatpickr-monthDropdown-months,.flatpickr-current-month input.cur-year{font-weight:700}.flatpickr-weekday{color:#718096!important;font-weight:700!important}.flatpickr-day{border-radius:8px}.flatpickr-day.today{border-color:#1769ef;color:#1769ef}.flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange,.flatpickr-day.selected:hover{border-color:#1769ef;background:#1769ef;color:#fff}.flatpickr-day:hover{border-color:#e7efff;background:#e7efff}.flatpickr-input[readonly]:not([type=hidden]){cursor:pointer;background-color:#fff}.flatpickr-input.form-control:not([type=hidden]){padding-left:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2356677f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:left 12px center}
     </style>
     <script src="{{ asset('assets/js/jquery-3.5.1.min.js') }}"></script>
     <script src="{{ asset('assets/js/bootstrap.min.js') }}"></script>
@@ -48,14 +51,13 @@
             <li class="nav-item"><a class="nav-link" href="{{ $activeWorkspace ? route('admin.workspace.current') : route('admin.home') }}">ڈیش بورڈ</a></li>
             @if(Auth::user()->hasModule('tailoring') && (! $hasMultipleWorkspaces || $activeWorkspace === 'tailoring'))
                 <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="tailoringMenu" data-toggle="dropdown">ٹیلرنگ <span class="module-pill ml-1">فعال</span></a><div class="dropdown-menu" aria-labelledby="tailoringMenu">
-                    @if($canTailorWorkshop)<a class="dropdown-item" href="{{ route('admin.tailor-jobs.index') }}"><i class="fas fa-tasks fa-fw ml-2 text-primary"></i>کام کی فہرست</a>@endif
                     @if($canTailorOrders)<a class="dropdown-item" href="{{ route('admin.order.total') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i>ٹیلرنگ آرڈرز</a>@endif
-                    @if($canTailorOrders)<a class="dropdown-item" href="{{ route('admin.setting.index') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i> ترتیب</a>@endif
+                    @if($canTailorWorkshop)<a class="dropdown-item" href="{{ route('admin.tailor-jobs.index') }}"><i class="fas fa-tasks fa-fw ml-2 text-primary"></i>ورکشاپ</a>@endif
                     @if($canTailorCustomers)<a class="dropdown-item" href="{{ route('admin.Customers.index') }}"><i class="fas fa-user-friends fa-fw ml-2 text-primary"></i>گاہک اور پیمائش</a>@endif
-                    @if($canTailorTailors)<a class="dropdown-item" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-user-cog fa-fw ml-2 text-primary"></i>درزی</a>@endif
+                    @if($canTailorTailors)<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-user-tie fa-fw ml-2 text-primary"></i>درزیوں کی فہرست</a>@endif
                     @if($canTailorTailors)<a class="dropdown-item" href="{{ route('admin.production-workers.index') }}"><i class="fas fa-users fa-fw ml-2 text-primary"></i>پروڈکشن ورکرز اور اجرت</a>@endif
-                    @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.OptionType.index') }}"><i class="fas fa-ruler-combined fa-fw ml-2 text-primary"></i>پیمائش کے اختیارات</a>@endif
-                    @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-ruler-combined fa-fw ml-2 text-primary"></i>پیمائش ٹیمپلیٹس</a><a class="dropdown-item" href="{{ route('admin.measurement-fields.index') }}"><i class="fas fa-sliders-h fa-fw ml-2 text-primary"></i>اضافی پیمائش خانے</a>@endif
+                    @if($canTailorConfiguration)<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.OptionType.index') }}"><i class="fas fa-sliders-h fa-fw ml-2 text-primary"></i>پیمائش اور سلائی کے اختیارات</a>@endif
+                    @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i>پیمائش ٹیمپلیٹس</a><a class="dropdown-item" href="{{ route('admin.measurement-fields.index') }}"><i class="fas fa-ruler fa-fw ml-2 text-primary"></i>اضافی پیمائش خانے</a><a class="dropdown-item" href="{{ route('admin.design.index') }}"><i class="fas fa-palette fa-fw ml-2 text-primary"></i>سلائی ڈیزائن</a>@endif
                 </div></li>
             @endif
             @if(Auth::user()->hasModule('clothing') && (! $hasMultipleWorkspaces || $activeWorkspace === 'clothing'))
@@ -96,3 +98,4 @@
     </div></li></ul>@endauth
     </div>
 </nav></div></header>
+@include('inc.sidebar')
