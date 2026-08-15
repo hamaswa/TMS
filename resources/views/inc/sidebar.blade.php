@@ -60,6 +60,8 @@
                 </div>
             @endif
             @if($canShopSales)<a class="tms-side-link {{ request()->routeIs('admin.sellCloth','admin.sales.*') ? 'is-active' : '' }}" href="{{ route('admin.sellCloth') }}"><span class="tms-side-icon"><i class="fas fa-dollar-sign"></i></span><span class="tms-side-label">فروخت</span></a>@endif
+            @if($canShopSales && Auth::user()->business?->storefront)<a class="tms-side-link {{ request()->routeIs('admin.storefront.orders.*') ? 'is-active' : '' }}" href="{{ route('admin.storefront.orders.index') }}"><span class="tms-side-icon"><i class="fas fa-shopping-bag"></i></span><span class="tms-side-label">آن لائن آرڈرز</span></a>@endif
+            @if(Auth::user()->hasBusinessPermission('storefront.manage'))<a class="tms-side-link {{ request()->routeIs('admin.storefront.edit','admin.storefront.update') ? 'is-active' : '' }}" href="{{ route('admin.storefront.edit') }}"><span class="tms-side-icon"><i class="fas fa-globe-asia"></i></span><span class="tms-side-label">آن لائن دکان</span></a>@endif
         @endif
 
         @if(Auth::user()->hasModule('tailoring') && (! $hasMultipleWorkspaces || $activeWorkspace === 'tailoring'))

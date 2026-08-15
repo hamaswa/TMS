@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClothBrand;
 use App\Models\ClothType;
 use App\Models\Storefront;
 use App\Models\StorefrontClothingListing;
@@ -92,9 +93,33 @@ class PublicStorefrontController extends Controller
             404
         );
 
+        $storefront->load([
+            'business',
+            'clothingListings' => fn ($query) => $query
+                ->where('is_published', true)
+                ->whereHas('cloth', fn ($cloth) => $cloth->where('user_id', $storefront->business->owner_user_id))
+                ->with(['cloth.brand', 'cloth.type', 'cloth.images', 'cloth.colors'])
+                ->orderByDesc('is_featured')->orderBy('sort_order')->latest('id')->limit(8),
+            'tailoringServices' => fn ($query) => $query
+                ->where('is_published', true)->where('is_available', true)
+                ->orderByDesc('is_featured')->orderBy('sort_order')->latest('id')->limit(4),
+        ]);
+        $categoryRows = $storefront->clothingListings()
+            ->where('is_published', true)
+            ->join('cloths', 'cloths.id', '=', 'storefront_clothing_listings.cloth_id')
+            ->where('cloths.user_id', $storefront->business->owner_user_id)
+            ->whereNull('cloths.deleted_at')
+            ->get(['cloths.cloth_type_id', 'cloths.cloth_brand_id']);
+        $clothTypes = ClothType::query()->where('user_id', $storefront->business->owner_user_id)
+            ->whereIn('id', $categoryRows->pluck('cloth_type_id')->filter()->unique())->orderBy('name')->get();
+        $clothBrands = ClothBrand::query()->where('user_id', $storefront->business->owner_user_id)
+            ->whereIn('id', $categoryRows->pluck('cloth_brand_id')->filter()->unique())->orderBy('name')->get();
+
         return view('storefront.public.show', [
-            'storefront' => $storefront->load('business'),
+            'storefront' => $storefront,
             'preview' => false,
+            'clothTypes' => $clothTypes,
+            'clothBrands' => $clothBrands,
         ]);
     }
 
