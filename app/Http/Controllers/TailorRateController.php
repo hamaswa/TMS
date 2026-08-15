@@ -24,15 +24,9 @@ class TailorRateController extends Controller
      */
     public function create($id)
     {
-        try {
-            $tailor=Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
-            $types=Options::where('option_id',1)->where('user_id',auth()->user()->businessOwnerId())->get();
+        $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
 
-            return view('tailor.rate-create',compact('types','tailor'));
-
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        return redirect()->route('admin.tailor-rates', $tailor)->with('openRateModal', true);
     }
 
     /**
@@ -58,7 +52,8 @@ class TailorRateController extends Controller
             $rate = Tailorsalary::create($formData);
             app(ProductionWorkforceService::class)->syncRate($rate);
 
-            return back()->with('insert','درزی کی رقم کامیابی کے ساتھ شامل کی گئی۔');
+            return redirect()->route('admin.tailor-rates', $id)
+                ->with('insert','درزی کی رقم کامیابی کے ساتھ شامل کی گئی۔');
 
         } catch (\Throwable $th) {
             throw $th;

@@ -7,14 +7,19 @@ use Carbon\Carbon;
 use App\Models\Order;
 use App\Models\Tailor;
 use App\Models\Setting;
+use App\Models\Options;
 use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\TailorRecord;
 use App\Models\Tailorsalary;
+use App\Models\TailorSecurityDepositTransaction;
+use App\Services\ProductionWorkforceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 
 class TailorController extends Controller
@@ -106,25 +111,51 @@ class TailorController extends Controller
      */
     public function store(Request $request)
     {
+        $ownerId = Auth::user()->businessOwnerId();
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'contact' => ['required', 'string', 'max:50', Rule::unique('tailors', 'phone_number1')->where('user_id', $ownerId)],
+            'password' => ['required', 'string', 'min:6', 'max:255'],
+            'initial_rate_label' => ['nullable', 'required_with:initial_rate_price', 'string', 'max:100'],
+            'initial_rate_price' => ['nullable', 'required_with:initial_rate_label', 'numeric', 'min:0.01', 'max:9999999.99'],
+            'security_deposit' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'security_deposit_note' => ['nullable', 'string', 'max:500'],
+        ], [
+            'contact.unique' => 'اس دکان میں یہ فون نمبر پہلے سے کسی درزی کے نام پر موجود ہے۔',
+            'initial_rate_label.required_with' => 'ابتدائی اجرت کے ساتھ سلائی کی قسم بھی لکھیں۔',
+            'initial_rate_price.required_with' => 'سلائی کی قسم کے ساتھ فی سوٹ اجرت بھی لکھیں۔',
+        ]);
 
-        $obj = new Tailor;
-        $obj->name = $request->name;
-        $obj->user_id = Auth::user()->id;
-        $obj->phone_number1 = $request->contact;
-        $obj->password = $request->password;
-        $obj->save();
+        DB::transaction(function () use ($validated, $ownerId) {
+            $tailor = Tailor::create([
+                'name' => $validated['name'],
+                'user_id' => $ownerId,
+                'phone_number1' => $validated['contact'],
+                'password' => Hash::make($validated['password']),
+                'security_deposit' => $validated['security_deposit'] ?? 0,
+            ]);
 
-        if ($request->tailor_rates) {
-            $rates = explode(',', $request->tailor_rates);
-
-            foreach ($rates as $rate) {
-                $obj->tailorsalary()->create([
-                    "price" => $rate
+            if ((float) ($validated['security_deposit'] ?? 0) > 0) {
+                $tailor->securityDepositTransactions()->create([
+                    'user_id' => $ownerId,
+                    'transaction_type' => TailorSecurityDepositTransaction::TYPE_RECEIVED,
+                    'amount' => $validated['security_deposit'],
+                    'transaction_date' => now()->toDateString(),
+                    'note' => $validated['security_deposit_note'] ?? 'درزی شامل کرتے وقت وصول شدہ سیکیورٹی رقم',
                 ]);
             }
-        }
 
-        return redirect('admin/Tailor')->with('insert', 'Tailor Add');
+            if (! empty($validated['initial_rate_price'])) {
+                $tailor->tailorsalary()->create([
+                    'type' => $validated['initial_rate_label'],
+                    'price' => $validated['initial_rate_price'],
+                ]);
+            }
+
+            app(ProductionWorkforceService::class)->syncTailor($tailor->fresh());
+        });
+
+        return redirect('admin/Tailor')->with('insert', 'نیا درزی کامیابی سے شامل کر دیا گیا ہے۔');
     }
 
     /**
@@ -269,10 +300,6 @@ class TailorController extends Controller
                 'amount' => $validated['amount'],
                 'comment' => $validated['comment'],
             ]);
-
-            if ($validated['comment'] === 'advance') {
-                $tailor->increment('advance', $validated['amount']);
-            }
         });
 
         return redirect()->route('admin.tailor-report', $tailor)->with('success', 'درزی کا لین دین محفوظ کر دیا گیا ہے۔');
@@ -280,43 +307,66 @@ class TailorController extends Controller
 
     public function addAdnvanceRecord(Request $request, $id)
     {
-        try {
-            $tailorRecord = Tailor::findOrFail($id);
-            $tailorRecord->update([
-                'advance' => $request->input('amount')
-            ]);
-        } catch (\Exception $e) {
-            // Handle the case where the tailor record is not found
-            return response()->json($e->getMessage());
-        }
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+        ]);
 
-        return redirect()->back();
+        DB::transaction(function () use ($validated, $id) {
+            $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())
+                ->lockForUpdate()
+                ->findOrFail($id);
+            $tailor->increment('advance', (float) $validated['amount']);
+            TailorRecord::create([
+                'tailor_id' => $tailor->id,
+                'amount' => $validated['amount'],
+                'comment' => 'main_advance',
+            ]);
+        });
+
+        return redirect()->back()->with('insert', 'درزی کا مرکزی ایڈوانس محفوظ کر دیا گیا ہے۔');
     }
 
     public function cutAdvanceRecord(Request $request, $id)
     {
-        try {
-            $tailorRecord = Tailor::findOrFail($id);
-            $advance = $tailorRecord->advance;
-            $tailorRecord->update([
-                'advance' => $advance - $request->input('amount')
-            ]);
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'total' => ['required', 'numeric', 'min:0'],
+        ]);
 
-            $total = $request->input('total');
+        DB::transaction(function () use ($validated, $id) {
+            $ownerId = Auth::user()->businessOwnerId();
+            $tailor = Tailor::where('user_id', $ownerId)->lockForUpdate()->findOrFail($id);
+            $startDate = Carbon::now()->startOfWeek(Carbon::SATURDAY)->startOfDay();
+            $endDate = Carbon::now()->endOfWeek(Carbon::THURSDAY)->endOfDay();
+            $weeklyAdvance = (float) TailorRecord::where('tailor_id', $tailor->id)
+                ->where('comment', 'advance')
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->sum('amount');
+            $alreadyCovered = (float) Transaction::where('tailorId', $tailor->id)
+                ->where('userId', $ownerId)
+                ->where('Order_type', 'Tailor_Advance_Cut')
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->sum('remainingBalance');
+            $maximumCut = min((float) $tailor->advance, max(0, $weeklyAdvance - $alreadyCovered));
+            $amount = (float) $validated['amount'];
 
+            if ($amount > $maximumCut) {
+                throw ValidationException::withMessages([
+                    'amount' => 'کٹوتی باقی ہفتہ وار یا مرکزی ایڈوانس سے زیادہ نہیں ہو سکتی۔',
+                ]);
+            }
+
+            $tailor->decrement('advance', $amount);
             Transaction::create([
-                'remainingBalance' => $request->input('amount'),
-                'recivedPayment' => $total - $request->input('amount'),
+                'remainingBalance' => $amount,
+                'recivedPayment' => max(0, (float) $validated['total'] - $amount),
                 'Order_type' => 'Tailor_Advance_Cut',
-                'tailorId' => $request->input('tailor_id'), //hidden field in modal form
-                'userId' => auth()->user()->id
+                'tailorId' => $tailor->id,
+                'userId' => $ownerId,
             ]);
-        } catch (\Exception $e) {
-            // Handle the case where the tailor record is not found
-            return response()->json($e->getMessage());
-        }
+        });
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'ہفتہ وار ایڈوانس مرکزی ایڈوانس سے کاٹ دیا گیا ہے۔');
     }
 
 
@@ -359,11 +409,15 @@ class TailorController extends Controller
     {
         try {
 
-            $tailor = Tailor::find($id);
+            $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
 
             $tailor_rates = $tailor->tailorsalary;
+            $types = Options::where('option_id', 1)
+                ->where('user_id', Auth::user()->businessOwnerId())
+                ->orderBy('Name')
+                ->get();
 
-            return view('tailor.tailor-rate', compact('tailor_rates', 'tailor'));
+            return view('tailor.tailor-rate', compact('tailor_rates', 'tailor', 'types'));
         } catch (\Throwable $th) {
             throw $th;
         }

@@ -60,12 +60,12 @@ class TailorManagementWorkflowTest extends TestCase
 
         $this->assertTrue(Schema::hasColumn('tailors', 'advance'));
         $this->actingAs($owner)->post(route('admin.tailor.addAdvanceRecord', $tailor), ['amount' => 500])
-            ->assertRedirect()->assertSessionHas('insert', 'درزی کا ایڈوانس محفوظ کر دیا گیا ہے۔');
+            ->assertRedirect()->assertSessionHas('insert', 'درزی کا مرکزی ایڈوانس محفوظ کر دیا گیا ہے۔');
         $this->actingAs($owner)->post(route('admin.tailor.addAdvanceRecord', $tailor), ['amount' => 200])
             ->assertRedirect();
 
         $this->assertEquals(700, (float) $tailor->fresh()->advance);
-        $this->assertEquals(700, (float) TailorRecord::where('tailor_id', $tailor->id)->where('comment', 'advance')->sum('amount'));
+        $this->assertEquals(700, (float) TailorRecord::where('tailor_id', $tailor->id)->where('comment', 'main_advance')->sum('amount'));
         $this->assertDatabaseCount('tailor_records', 2);
 
         $this->actingAs($otherOwner)->post(route('admin.tailor.addAdvanceRecord', $tailor), ['amount' => 100])
@@ -111,7 +111,7 @@ class TailorManagementWorkflowTest extends TestCase
         $this->assertEquals(800, (float) $tailor->advance);
         $this->assertDatabaseHas('tailor_records', [
             'tailor_id' => $tailor->id,
-            'comment' => 'advance',
+            'comment' => 'main_advance',
             'amount' => 800,
         ]);
 
@@ -139,11 +139,11 @@ class TailorManagementWorkflowTest extends TestCase
         $this->actingAs($owner)->get(route('admin.tailor-report', $tailor))
             ->assertOk()
             ->assertSeeText('دکان کے پاس سیکیورٹی ڈپازٹ')
-            ->assertSeeText('درزی کو دیا گیا قابلِ وصول ایڈوانس')
+            ->assertSeeText('مرکزی قابلِ وصول ایڈوانس')
             ->assertSeeText('جزوی واپسی');
     }
 
-    public function test_report_transactions_update_advance_only_for_advance_type(): void
+    public function test_weekly_advance_is_separate_from_main_advance_and_is_deducted_from_weekly_payments(): void
     {
         $owner = $this->owner();
         $tailor = Tailor::create([
@@ -162,15 +162,31 @@ class TailorManagementWorkflowTest extends TestCase
             'comment' => 'salary',
         ])->assertRedirect();
 
-        $this->assertEquals(300, (float) $tailor->fresh()->advance);
+        $this->assertEquals(0, (float) $tailor->fresh()->advance);
+        $this->assertDatabaseHas('tailor_records', ['tailor_id' => $tailor->id, 'comment' => 'advance', 'amount' => 300]);
         $this->assertDatabaseHas('tailor_records', ['tailor_id' => $tailor->id, 'comment' => 'salary', 'amount' => 150]);
         $this->actingAs($owner)->get(route('admin.tailor-report', $tailor))
             ->assertOk()
             ->assertSeeText('موجودہ ہفتہ')
-            ->assertSeeText('ایڈوانس')
+            ->assertSeeText('ہفتہ وار ایڈوانس')
+            ->assertSeeText('ادائیگیوں سے منہا ایڈوانس')
+            ->assertSeeText('حتمی ہفتہ وار رقم')
             ->assertSeeText('اجرت کی ادائیگی')
             ->assertDontSee('weekFilter=undefined')
             ->assertDontSee('ajax.googleapis.com');
+
+        $this->actingAs($owner)->post(route('admin.tailor.addAdvanceRecord', $tailor), ['amount' => 500])
+            ->assertRedirect();
+        $this->actingAs($owner)->post(route('admin.tailor.cutAdvanceRecord', $tailor), [
+            'amount' => 300,
+            'total' => 150,
+        ])->assertRedirect();
+
+        $this->assertEquals(200, (float) $tailor->fresh()->advance);
+        $this->actingAs($owner)->get(route('admin.tailor-report', $tailor))
+            ->assertOk()
+            ->assertSeeText('مرکزی ایڈوانس سے کٹوتی')
+            ->assertDontSeeText('ادائیگیوں سے منہا ایڈوانس');
     }
 
     private function owner(): User

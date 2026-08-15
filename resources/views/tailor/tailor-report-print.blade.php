@@ -46,7 +46,7 @@
     $salaryAndOtherPayments = $salaryAmount + $otherExpenseAmount;
     $advanceCoveredFromMain = min($weeklyAdvance, (float) $advanceCutAmount);
     $advanceToDeductFromWeeklyPayment = max(0, $weeklyAdvance - $advanceCoveredFromMain);
-    $weeklySettlementTotal = $salaryAndOtherPayments - $advanceToDeductFromWeeklyPayment;
+    $weeklySettlementTotal = max(0, $salaryAndOtherPayments - $advanceToDeductFromWeeklyPayment);
     $totalSuits = $tailor_report->sum(fn ($order) => max(1, (int) $order->suitQuantity));
     $shopName = $setting?->name ?: auth()->user()->name;
 @endphp
@@ -94,8 +94,10 @@
     <section class="money-lines">
         <div class="money-line"><span>اجرت</span><strong>Rs. {{ number_format($salaryAmount,2) }}</strong></div>
         <div class="money-line"><span>دیگر ادائیگی</span><strong>Rs. {{ number_format($otherExpenseAmount,2) }}</strong></div>
-        <div class="money-line"><span>ایڈوانس</span><strong>Rs. {{ number_format($weeklyAdvance,2) }}</strong></div>
-        <div class="money-line final"><span>کل</span><strong>Rs. {{ number_format($weeklySettlementTotal,2) }}</strong></div>
+        <div class="money-line"><span>ہفتہ وار ایڈوانس</span><strong>Rs. {{ number_format($weeklyAdvance,2) }}</strong></div>
+        @if($advanceCoveredFromMain > 0)<div class="money-line"><span>مرکزی ایڈوانس سے کٹوتی</span><strong>Rs. {{ number_format($advanceCoveredFromMain,2) }}</strong></div>@endif
+        @if($advanceToDeductFromWeeklyPayment > 0)<div class="money-line"><span>ادائیگیوں سے منہا ایڈوانس</span><strong>- Rs. {{ number_format($advanceToDeductFromWeeklyPayment,2) }}</strong></div>@endif
+        <div class="money-line final"><span>حتمی ہفتہ وار رقم</span><strong>Rs. {{ number_format($weeklySettlementTotal,2) }}</strong></div>
     </section>
     @if($advanceCoveredFromMain > 0)
         <div class="advance-note"><strong>Rs. {{ number_format($advanceCoveredFromMain,2) }}</strong> مرکزی ایڈوانس سے کاٹا جا چکا ہے۔</div>
