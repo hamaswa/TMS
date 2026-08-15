@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\OptionType;
 use App\Models\Options;
-use DB;
-use App\Models\User;
 class OptionsController extends Controller
 {
     /**
@@ -18,9 +16,7 @@ class OptionsController extends Controller
      */
     public function index()
     {
-        
-        $OptionTypes = $this->availableOptionTypes()->get();
-        return view("Options.list",compact('OptionTypes'));
+        return redirect()->route('admin.OptionType.index');
     }
 
     /**
@@ -35,19 +31,9 @@ class OptionsController extends Controller
 
     public function add($id)
     {
-        $OptionTypes = $this->availableOptionTypes()->get();  //for side menu
-        $optionType = $this->availableOptionTypes()->findOrFail($id); //this for title top of options list
-             
-        // $options = User::with('options.optiontype')->where('id', Auth::user()->businessOwnerId())->find($id);
-        $options = DB::table('option_types')
-        ->select('options.*','option_types.name as otname')
-        ->leftjoin('options','option_types.id','=','options.option_id')
-        ->leftjoin('users','options.user_id','=','users.id')
-        ->where('users.id',Auth::user()->businessOwnerId())
-        ->where('option_types.id',$id)
-        ->get(); 
-    //    dd($options);
-        return view('Options.create',compact('options','optionType','OptionTypes'));
+        $optionType = $this->availableOptionTypes()->findOrFail($id);
+
+        return redirect()->route('admin.OptionType.index')->with('openChoiceModal', $optionType->id);
     }
     /**
      * Store a newly created resource in storage.
@@ -60,7 +46,7 @@ class OptionsController extends Controller
         $validated = $request->validate([
             'Name' => ['required', 'string', 'max:255'],
             'OptionTypeId' => ['required', 'integer'],
-        ]);
+        ], ['Name.required' => 'نئے انتخاب کا نام لکھیں۔']);
         $this->availableOptionTypes()->findOrFail($validated['OptionTypeId']);
         $slug = Str::slug($validated['Name'], '_');
         $obj = new Options;
@@ -69,8 +55,9 @@ class OptionsController extends Controller
         $obj->option_id=$validated['OptionTypeId'];
         $obj->user_id = Auth::user()->businessOwnerId();
         $obj->save();
-        // dd($obj);
-        return redirect('admin/Options/add/'.$validated['OptionTypeId']);
+        return redirect()->route('admin.OptionType.index')
+            ->with('success', 'نیا انتخاب شامل کر دیا گیا ہے۔')
+            ->with('openChoiceModal', $validated['OptionTypeId']);
     }
 
     /**
@@ -95,8 +82,10 @@ class OptionsController extends Controller
     public function edit($id)
     {
         $Option = Options::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
-        $OptionTypes = $this->availableOptionTypes()->get();
-        return view('Options.edit',compact('Option','OptionTypes'));
+
+        return redirect()->route('admin.OptionType.index')
+            ->with('openChoiceModal', $Option->option_id)
+            ->with('editChoice', $Option->id);
     }
 
     /**
@@ -111,7 +100,7 @@ class OptionsController extends Controller
         $validated = $request->validate([
             'Name' => ['required', 'string', 'max:255'],
             'OptionTypeId' => ['required', 'integer'],
-        ]);
+        ], ['Name.required' => 'انتخاب کا نام خالی نہیں ہو سکتا۔']);
         $OptionTypeId = $validated['OptionTypeId'];
         $this->availableOptionTypes()->findOrFail($OptionTypeId);
         $slug = Str::slug($validated['Name'], '_');
@@ -119,7 +108,9 @@ class OptionsController extends Controller
         $obj->Name = $validated['Name'];
         $obj->slug = $slug;
         $obj->save();
-        return redirect('admin/Options/add/'.$OptionTypeId)->with('update','Option Updated!');
+        return redirect()->route('admin.OptionType.index')
+            ->with('success', 'انتخاب کا نام تبدیل کر دیا گیا ہے۔')
+            ->with('openChoiceModal', $OptionTypeId);
     }
 
     /**
@@ -131,8 +122,11 @@ class OptionsController extends Controller
     public function destroy($id)
     {
         $obj = Options::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $optionTypeId = $obj->option_id;
         $obj->delete();
-        return back()->with('del','Option Deleted');
+        return redirect()->route('admin.OptionType.index')
+            ->with('success', 'انتخاب حذف کر دیا گیا ہے۔')
+            ->with('openChoiceModal', $optionTypeId);
     }
 
     private function availableOptionTypes()

@@ -6,8 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\OptionType;
-use App\Models\User;
-use DB;
 class OptionTypeController extends Controller
 {
     /**
@@ -17,18 +15,15 @@ class OptionTypeController extends Controller
      */
     public function index()
     {
-        $user_id = Auth::user()->businessOwnerId();
-        $OptionTypes = $this->availableOptionTypes()->get();
-      
-        $options = DB::table('option_types')
-                ->select('options.*','option_types.name as otname')
-                ->leftjoin('options','option_types.id','=','options.option_id')
-                ->leftjoin('users','options.user_id','=','users.id')
-                ->where('users.id',$user_id)
-                ->where('option_types.id',1)
-                ->first();    
-        //    dd($options);  
-        return view("OptionType.list",compact('OptionTypes','options'));
+        $ownerId = Auth::user()->businessOwnerId();
+        $OptionTypes = $this->availableOptionTypes()
+            ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->orderBy('Name')])
+            ->withCount(['options as choices_count' => fn ($query) => $query->where('user_id', $ownerId)])
+            ->orderByRaw('CASE WHEN user_id IS NULL THEN 0 ELSE 1 END')
+            ->orderBy('id')
+            ->get();
+
+        return view('OptionType.list', compact('OptionTypes'));
     }
 
     /**

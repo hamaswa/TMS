@@ -53,8 +53,13 @@ class ClientModuleAccessTest extends TestCase
 
         $this->actingAs($client)
             ->get(route('admin.options.add', 1))
+            ->assertRedirect(route('admin.OptionType.index'))
+            ->assertSessionHas('openChoiceModal', 1);
+
+        $this->actingAs($client)->get(route('admin.OptionType.index'))
             ->assertOk()
-            ->assertSeeText('سلائی');
+            ->assertSeeText('سلائی کی قسم')
+            ->assertSee('choiceModal_1', false);
     }
 
     public function test_super_admin_can_create_and_change_client_module_access(): void
