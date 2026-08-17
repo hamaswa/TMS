@@ -370,12 +370,18 @@ class TailorController extends Controller
     }
 
 
-    public function tailorReportPrint($id)
+    public function tailorReportPrint($id, Request $request)
     {
         $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
         $setting = Setting::where('user_id', Auth::user()->businessOwnerId())->first();
+        $filterType = $request->input('filterType') === 'monthly' ? 'monthly' : 'weekly';
         $startDate = Carbon::now()->startOfWeek(Carbon::SATURDAY)->startOfDay();
         $endDate = Carbon::now()->endOfWeek(Carbon::THURSDAY)->endOfDay();
+
+        if ($filterType === 'monthly') {
+            $startDate = Carbon::now()->startOfMonth()->startOfDay();
+            $endDate = Carbon::now()->endOfMonth()->endOfDay();
+        }
 
         $tailor_records = TailorRecord::where('tailor_id', $tailor->id)
             ->whereBetween('created_at', [$startDate, $endDate])
@@ -400,7 +406,7 @@ class TailorController extends Controller
 
         return view('tailor.tailor-report-print', compact(
             'tailor_report', 'total_amount', 'tailor', 'setting', 'tailor_records',
-            'transaction', 'advanceCutAmount', 'startDate', 'endDate'
+            'transaction', 'advanceCutAmount', 'startDate', 'endDate', 'filterType'
         ));
     }
 

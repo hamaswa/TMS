@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $tailor->name }} — ہفتہ وار حساب</title>
+    <title>{{ $tailor->name }} — {{ $filterType === 'monthly' ? 'ماہانہ' : 'ہفتہ وار' }} حساب</title>
     <style>
         @font-face{font-family:'Noto Nastaliq Urdu';src:url('{{ asset('assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') }}') format('woff2');font-display:swap}
         *{box-sizing:border-box}
@@ -46,6 +46,7 @@
     $advanceCoveredFromMain = min($weeklyAdvance, (float) $advanceCutAmount);
     $advanceToDeductFromWeeklyPayment = max(0, $weeklyAdvance - $advanceCoveredFromMain);
     $weeklySettlementTotal = max(0, $salaryAndOtherPayments - $advanceToDeductFromWeeklyPayment);
+    $periodLabel = $filterType === 'monthly' ? 'ماہانہ' : 'ہفتہ وار';
     $totalSuits = $tailor_report->sum(fn ($order) => max(1, (int) $order->suitQuantity));
     $workSummary = $tailor_report
         ->groupBy(fn ($order) => $order->rate?->options?->Name ?: $order->rate?->type ?: $order->design ?: '—')
@@ -76,11 +77,11 @@
     <button type="button" id="goBack">رپورٹ پر واپس جائیں</button>
 </div>
 
-<main class="receipt" aria-label="درزی کا ہفتہ وار حساب">
+<main class="receipt" aria-label="درزی کا {{ $periodLabel }} حساب">
     <header class="receipt-header">
         @if($setting?->logo_url)<img class="receipt-logo" src="{{ $setting->logo_url }}" alt="{{ $shopName }}">@endif
         <h1 class="shop-name">{{ $shopName }}</h1>
-        <div class="receipt-kind">درزی کا ہفتہ وار حساب</div>
+        <div class="receipt-kind">درزی کا {{ $periodLabel }} حساب</div>
     </header>
 
     <section class="receipt-meta">
@@ -109,14 +110,14 @@
         <div class="empty">اس ہفتے کوئی سلائی ریکارڈ موجود نہیں۔</div>
     @endif
 
-    <div class="section-title"><span>ہفتہ وار ادائیگی کا حساب</span><span>رقم روپے میں</span></div>
+    <div class="section-title"><span>{{ $periodLabel }} ادائیگی کا حساب</span><span>رقم روپے میں</span></div>
     <section class="money-lines">
         <div class="money-line"><span>اجرت</span><strong>Rs. {{ number_format($salaryAmount,2) }}</strong></div>
         <div class="money-line"><span>دیگر ادائیگی</span><strong>Rs. {{ number_format($otherExpenseAmount,2) }}</strong></div>
-        <div class="money-line"><span>ہفتہ وار ایڈوانس</span><strong>Rs. {{ number_format($weeklyAdvance,2) }}</strong></div>
+        <div class="money-line"><span>{{ $periodLabel }} ایڈوانس</span><strong>Rs. {{ number_format($weeklyAdvance,2) }}</strong></div>
         @if($advanceCoveredFromMain > 0)<div class="money-line"><span>مرکزی ایڈوانس سے کٹوتی</span><strong>Rs. {{ number_format($advanceCoveredFromMain,2) }}</strong></div>@endif
         @if($advanceToDeductFromWeeklyPayment > 0)<div class="money-line"><span>ادائیگیوں سے منہا ایڈوانس</span><strong>- Rs. {{ number_format($advanceToDeductFromWeeklyPayment,2) }}</strong></div>@endif
-        <div class="money-line final"><span>حتمی ہفتہ وار رقم</span><strong>Rs. {{ number_format($weeklySettlementTotal,2) }}</strong></div>
+        <div class="money-line final"><span>حتمی {{ $periodLabel }} رقم</span><strong>Rs. {{ number_format($weeklySettlementTotal,2) }}</strong></div>
     </section>
     @if($advanceCoveredFromMain > 0)
         <div class="advance-note"><strong>Rs. {{ number_format($advanceCoveredFromMain,2) }}</strong> مرکزی ایڈوانس سے کاٹا جا چکا ہے۔</div>

@@ -346,6 +346,33 @@ class TailorRateWorkflowTest extends TestCase
             ->assertSee('سوٹ × اجرت')
             ->assertSee('کل اجرت');
         $this->assertSame(1, substr_count($response->getContent(), 'سادہ سلائی'));
+
+        $monthlyOnlyOrder = Order::create([
+            'customerId' => $customer->id, 'sub_customer' => $customer->id,
+            'suitNum' => 'SN-104', 'suitQuantity' => 1, 'totalPayment' => 3200,
+            'tailorId' => $tailor->id, 'rateId' => $rateId, 'tailor_price' => 500,
+            'returnDate' => now()->addWeek()->toDateString(), 'userId' => $owner->id,
+            'status' => 'assigned',
+        ]);
+        $monthlyOnlyOrder->forceFill(['created_at' => now()->startOfMonth()->addDay()])->save();
+
+        $monthlyReport = $this->actingAs($owner)->get(route('admin.tailor-report', [
+            'id' => $tailor->id,
+            'filterType' => 'monthly',
+        ]));
+        $monthlyReport->assertOk()->assertSee(route('admin.report-print', [
+            'id' => $tailor->id,
+            'filterType' => 'monthly',
+        ]), false);
+
+        $this->actingAs($owner)->get(route('admin.report-print', [
+            'id' => $tailor->id,
+            'filterType' => 'monthly',
+        ]))->assertOk()
+            ->assertSeeText('درزی کا ماہانہ حساب')
+            ->assertSee('<span class="rate-breakdown">4 × 500</span>', false)
+            ->assertSee('<span class="work-total">Rs. 2,000</span>', false)
+            ->assertSee('SN-101, SN-102, SN-103, SN-104');
     }
 
     public function test_tailor_history_formats_serials_dates_and_table_controls_for_urdu_users(): void

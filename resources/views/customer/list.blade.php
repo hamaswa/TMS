@@ -597,7 +597,7 @@
                         </div>
                         <div class="modal-body">
                             <label for="orderStatusSelect" class="font-weight-bold">نیا مرحلہ منتخب کریں</label>
-                            <select id="orderStatusSelect" class="form-control order-status" name="order_status" required></select>
+                            <select id="orderStatusSelect" class="form-control order-status" name="order_status" required style="padding-top: 0px;"></select>
                             <small class="form-text text-muted mt-2">صرف موجودہ مرحلے کے بعد دستیاب اگلا مرحلہ دکھایا جائے گا۔</small>
                         </div>
                         <div class="modal-footer">
