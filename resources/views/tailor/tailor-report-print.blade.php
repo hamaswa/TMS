@@ -20,10 +20,9 @@
         .receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:1mm 3mm;padding:2.5mm 0;border-bottom:1px dashed #000;font-size:10px;line-height:1.9}
         .receipt-meta div:nth-child(even){text-align:left}.receipt-meta strong{font-weight:900}.ltr{direction:ltr;display:inline-block}
         .section-title{display:flex;align-items:center;justify-content:space-between;gap:2mm;margin:2.8mm 0 1.5mm;font-size:11px;font-weight:900}.section-title span:last-child{font-size:8px;font-weight:600}
-        .work-head{display:grid;grid-template-columns:1.25fr .7fr .7fr;padding:1.5mm 1mm;border-top:1px solid #000;border-bottom:1px solid #000;font-size:8px;font-weight:900}.work-head span:nth-child(2),.work-head span:nth-child(3){text-align:left}
+        .work-head{display:grid;grid-template-columns:.9fr .8fr .65fr 1.15fr;gap:1.5mm;padding:1.5mm 1mm;border-top:1px solid #000;border-bottom:1px solid #000;font-size:7px;font-weight:900}.work-head span:nth-child(n+2){text-align:left}
         .work-item{padding:1.7mm 1mm;border-bottom:1px dotted #777;break-inside:avoid;page-break-inside:avoid}
-        .work-main{display:grid;grid-template-columns:1.25fr .7fr .7fr;align-items:center;font-size:10px;font-weight:800;line-height:1.9}.work-main span:nth-child(2),.work-main span:nth-child(3){direction:ltr;text-align:left}
-        .work-sub{display:flex;justify-content:space-between;gap:2mm;margin-top:.5mm;color:#222;font:700 8px/1.7 Tahoma,Arial,sans-serif;direction:rtl}.work-sub .serial{direction:ltr}
+        .work-main{display:grid;grid-template-columns:.9fr .8fr .65fr 1.15fr;align-items:center;gap:1.5mm;font-size:9px;font-weight:800;line-height:1.9}.work-main .rate-breakdown,.work-main .work-total{direction:ltr;text-align:left;white-space:nowrap;font-family:Tahoma,Arial,sans-serif;font-size:8px}.work-main .serial-list{direction:ltr;text-align:left;overflow-wrap:anywhere;font:700 8px/1.7 Tahoma,Arial,sans-serif}
         .money-lines{padding:1mm 0;border-top:1px solid #000;border-bottom:1px solid #000}
         .money-line{display:flex;align-items:center;justify-content:space-between;gap:3mm;padding:1.1mm 1mm;font-size:10px;line-height:1.8}.money-line strong{direction:ltr;white-space:nowrap}.money-line.muted{font-size:9px}.money-line.deduction strong:before{content:'− '}.money-line.covered{border:1px solid #777;border-radius:2px;margin:1mm 0;padding:1.5mm 1mm}.money-line.final{margin-top:1mm;padding:2mm 1mm;border-top:2px solid #000;font-size:13px;font-weight:900}.money-line.final strong{font-size:14px}
         .advance-note{margin-top:1.5mm;padding:1.5mm 1mm;border:1px dashed #555;border-radius:2px;font-size:8px;font-weight:800;line-height:1.9;text-align:center}.advance-note strong{direction:ltr;display:inline-block;font-size:9px}
@@ -48,6 +47,27 @@
     $advanceToDeductFromWeeklyPayment = max(0, $weeklyAdvance - $advanceCoveredFromMain);
     $weeklySettlementTotal = max(0, $salaryAndOtherPayments - $advanceToDeductFromWeeklyPayment);
     $totalSuits = $tailor_report->sum(fn ($order) => max(1, (int) $order->suitQuantity));
+    $workSummary = $tailor_report
+        ->groupBy(fn ($order) => $order->rate?->options?->Name ?: $order->rate?->type ?: $order->design ?: '—')
+        ->map(function ($orders, $sewingName) {
+            $serials = $orders->flatMap(function ($order) {
+                $decoded = json_decode((string) $order->suitNum, true);
+                return is_array($decoded) ? $decoded : [$order->suitNum];
+            })->filter(fn ($serial) => filled($serial))->unique()->values();
+            $rateGroups = $orders->groupBy(fn ($order) => number_format((float) $order->tailor_price, 2, '.', ''));
+            $rateBreakdown = $rateGroups->map(function ($rateOrders, $rate) {
+                $suits = $rateOrders->sum(fn ($order) => max(1, (int) $order->suitQuantity));
+                return $suits.' × '.number_format((float) $rate, 0);
+            })->implode(' + ');
+
+            return [
+                'name' => $sewingName,
+                'suits' => $orders->sum(fn ($order) => max(1, (int) $order->suitQuantity)),
+                'rate_breakdown' => $rateBreakdown,
+                'total' => $orders->sum(fn ($order) => $order->tailorAmountDue()),
+                'serials' => $serials,
+            ];
+        })->values();
     $shopName = $setting?->name ?: auth()->user()->name;
 @endphp
 
@@ -73,17 +93,16 @@
     </section>
 
     <div class="section-title"><span>سلائی کا ریکارڈ</span><span>{{ $tailor_report->count() }} آرڈرز · {{ $totalSuits }} سوٹ</span></div>
-    @if($tailor_report->isNotEmpty())
-        <div class="work-head"><span>سلائی کی قسم</span><span>سوٹ × شرح</span><span>کل اجرت</span></div>
-        @foreach($tailor_report as $order)
-            @php($sewingName = $order->rate?->options?->Name ?: $order->rate?->type ?: $order->design ?: '—')
+    @if($workSummary->isNotEmpty())
+        <div class="work-head"><span>سلائی کی قسم</span><span>سوٹ × اجرت</span><span>کل اجرت</span><span>سیریل نمبر</span></div>
+        @foreach($workSummary as $work)
             <article class="work-item">
                 <div class="work-main">
-                    <span>{{ $sewingName }}</span>
-                    <span>{{ max(1,(int)$order->suitQuantity) }} × {{ number_format((float)$order->tailor_price,0) }}</span>
-                    <span>Rs. {{ number_format($order->tailorAmountDue(),0) }}</span>
+                    <span>{{ $work['name'] }}</span>
+                    <span class="rate-breakdown">{{ $work['rate_breakdown'] }}</span>
+                    <span class="work-total">Rs. {{ number_format($work['total'], 0) }}</span>
+                    <span class="serial-list">{{ $work['serials']->isNotEmpty() ? $work['serials']->implode(', ') : '—' }}</span>
                 </div>
-                <div class="work-sub"><span>{{ $order->created_at?->format('d-m-Y') }}</span><span class="serial">سیریل: {{ $order->suitNum ?: '—' }}</span></div>
             </article>
         @endforeach
     @else

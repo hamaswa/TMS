@@ -310,6 +310,44 @@ class TailorRateWorkflowTest extends TestCase
         $this->assertEquals(1700, (float) $order->transactions()->value('remainingBalance'));
     }
 
+    public function test_weekly_print_groups_orders_by_sewing_type_with_cost_total_and_serials(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Print Customer', 'phone_number1' => '03005550010', 'user_id' => $owner->id,
+        ]);
+        $tailor = Tailor::create([
+            'name' => 'Print Tailor', 'phone_number1' => '03001230010',
+            'password' => bcrypt('QaTailor@2026'), 'user_id' => $owner->id,
+        ]);
+        $rateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $tailor->id, 'options_id' => null, 'type' => 'سادہ سلائی', 'price' => 500,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        foreach ([[2, json_encode(['SN-101', 'SN-102'])], [1, 'SN-103']] as [$quantity, $serials]) {
+            Order::create([
+                'customerId' => $customer->id, 'sub_customer' => $customer->id,
+                'suitNum' => $serials, 'suitQuantity' => $quantity, 'totalPayment' => 3200,
+                'tailorId' => $tailor->id, 'rateId' => $rateId, 'tailor_price' => 500,
+                'returnDate' => now()->addWeek()->toDateString(), 'userId' => $owner->id,
+                'status' => 'assigned',
+            ]);
+        }
+
+        $response = $this->actingAs($owner)->get(route('admin.report-print', $tailor));
+
+        $response->assertOk()
+            ->assertSee('<span class="rate-breakdown">3 × 500</span>', false)
+            ->assertSee('<span class="work-total">Rs. 1,500</span>', false)
+            ->assertSee('SN-101, SN-102, SN-103')
+            ->assertSee('سوٹ × اجرت')
+            ->assertSee('کل اجرت');
+        $this->assertSame(1, substr_count($response->getContent(), 'سادہ سلائی'));
+    }
+
     public function test_tailor_history_formats_serials_dates_and_table_controls_for_urdu_users(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
