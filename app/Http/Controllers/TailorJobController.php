@@ -156,17 +156,49 @@ class TailorJobController extends Controller
     {
         $validated = $request->validate([
             'order_id' => ['required', 'integer'],
-            'order_status' => ['required', Rule::in(array_merge(Order::STATUSES, ['new', 'start', 'complete']))],
+            'order_status' => ['required', Rule::in(['start', 'complete'])],
         ]);
-        $status = match ($validated['order_status']) {
-            'new' => 'assigned',
-            'start' => 'cutting',
-            'complete' => 'ready',
-            default => $validated['order_status'],
-        };
-        $request->merge(['status' => $status]);
+        $nextStatus = $validated['order_status'] === 'start' ? 'cutting' : 'ready';
+        $job = $this->ownedJob((int) $validated['order_id']);
 
-        return $this->updateStatus($request, (int) $validated['order_id']);
+        if ($job->status === $nextStatus) {
+            return back()->with('success', 'آرڈر کی حالت پہلے ہی منتخب شدہ حالت پر ہے۔');
+        }
+
+        DB::transaction(function () use ($job, $nextStatus) {
+            $job = Order::where('userId', Auth::user()->businessOwnerId())
+                ->lockForUpdate()
+                ->findOrFail($job->id);
+            $fromStatus = $job->status;
+            $updates = ['status' => $nextStatus, 'status_changed_at' => now()];
+
+            if ($nextStatus === 'cutting' && ! $job->started_at) {
+                $updates['started_at'] = now();
+            }
+            if ($nextStatus === 'ready') {
+                $updates['ready_at'] = now();
+            }
+
+            $job->update($updates);
+            app(ProductionWorkforceService::class)->syncOrder($job);
+
+            OrderStatusHistory::create([
+                'order_id' => $job->id,
+                'user_id' => Auth::id(),
+                'tailor_id' => $job->tailorId,
+                'from_status' => $fromStatus,
+                'to_status' => $nextStatus,
+                'changed_by_type' => 'shop_owner',
+            ]);
+        });
+
+        $delivery = app(OrderLifecycleNotificationService::class)->send($job->fresh(), $nextStatus);
+        $message = 'آرڈر کی حالت اپ ڈیٹ کر دی گئی ہے۔';
+        if ($delivery && $delivery->status !== 'sent') {
+            $message .= ' گاہک کی اطلاع پر توجہ درکار ہے۔';
+        }
+
+        return back()->with('success', $message);
     }
 
     public function updatePayment(Request $request, int $order)

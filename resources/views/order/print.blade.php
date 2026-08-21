@@ -373,12 +373,10 @@
                             'system.chuta',
                         ];
 
-                        
-        /*
-         * Add custom measurements after the system measurements.
-         * Example:
-         * custom.6 => پائنچہ لمبائی
-         */
+        // Only keep system fields that were saved with this order.
+        $leftFields = array_values(array_filter($leftFields, fn($key) => isset($allMeasurements[$key])));
+        $rightFields = array_values(array_filter($rightFields, fn($key) => isset($allMeasurements[$key])));
+
         $customFields = $orderDetail->measurementValues
             ->filter(fn($item) => str_starts_with($item->source_key, 'custom.'))
             ->sortBy('sort_order')
@@ -386,8 +384,14 @@
             ->values()
             ->toArray();
 
-        // Add custom fields to the RIGHT column
-        $rightFields = array_merge($rightFields, $customFields);
+        // Fill the shorter column so system and custom fields print side by side.
+        foreach ($customFields as $customField) {
+            if (count($leftFields) < count($rightFields)) {
+                $leftFields[] = $customField;
+            } else {
+                $rightFields[] = $customField;
+            }
+        }
 
         $rows = max(count($leftFields), count($rightFields));
                     @endphp

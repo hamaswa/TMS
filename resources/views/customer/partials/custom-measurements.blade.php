@@ -1,16 +1,17 @@
 @if($measurementFields->isNotEmpty())
 @php($embedded = $embedded ?? false)
-<div class="{{ $embedded ? 'custom-measurements-inline' : 'card border-primary mb-4' }}" dir="rtl">
-    <div class="{{ $embedded ? 'd-flex flex-wrap justify-content-between align-items-center mt-4 mb-3 pt-3 border-top' : 'card-header bg-light d-flex justify-content-between align-items-center' }}">
+@unless($embedded)
+<div class="card border-primary mb-4" dir="rtl">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <div>
-            <strong>{{ $embedded ? 'کاروبار کے خصوصی پیمائشی خانے' : 'اضافی پیمائش' }}</strong>
-            @if($embedded)<small class="text-muted d-block">یہ خانے بھی اسی لباس کی پیمائش کا حصہ ہیں۔</small>@endif
+            <strong>اضافی پیمائش</strong>
         </div>
         @if(Auth::user()->hasBusinessPermission('tailoring.configuration'))
             <a href="{{ route('admin.measurement-fields.index') }}" class="btn btn-sm btn-outline-primary">خانے ترتیب دیں</a>
         @endif
     </div>
-    <div class="{{ $embedded ? '' : 'card-body' }}"><div class="{{ $embedded ? 'measurement-grid' : 'form-row' }}">
+    <div class="card-body"><div class="form-row">
+@endunless
         @foreach($measurementFields as $field)
             @php($value = old('custom_measurements.'.$field->id, $measurementValues->get($field->id)))
             <div class="form-group {{ $embedded ? 'edit-field mb-0' : 'col-md-6' }}" data-measurement-field="custom.{{ $field->id }}">
@@ -26,6 +27,8 @@
                 @error('custom_measurements.'.$field->id)<div class="text-danger small mt-1">{{ $message }}</div>@enderror
             </div>
         @endforeach
+@unless($embedded)
     </div></div>
 </div>
+@endunless
 @endif

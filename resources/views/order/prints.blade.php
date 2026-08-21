@@ -162,6 +162,11 @@ body {
             margin-bottom: 10px;
         }
 
+        .measurement-row,
+        .measurement-row * {
+            line-height: 1.35 !important;
+        }
+
         @media print {
             .btn {
                 display: none;
@@ -300,12 +305,9 @@ body {
             </div>
             <div id="sizeSection" style="max-width: 350px; margin-top:-30px;" class="ticket size-section">
                 <p align="center"> <img src="{{asset('images/setting/' . $setting->logo)}}" width="100"></p>
-                <h1 class="text-center" style="font-weight:800;margin-top:-20px;">{{$setting->name}}</h1>
-                <div align="center"> <span style="font-weight: bold;font-size: 14px;"></span>
-                </div>
-                <br>
+                <h1 class="text-center" style="font-weight:800;margin-top:-20px;margin-bottom:0;">{{$setting->name}}</h1>
                 <div class="pl-3 pr-3">
-                    <hr>
+                    <hr style="margin-top:4px;">
                     <div class="desing-flex">
                         <div>
                             <b>Serial num: {{$orderDetail->suitNum}}</b>
@@ -360,12 +362,10 @@ body {
                             'system.chuta',
                         ];
 
-                        
-        /*
-         * Add custom measurements after the system measurements.
-         * Example:
-         * custom.6 => پائنچہ لمبائی
-         */
+        // Only keep system fields that were saved with this order.
+        $leftFields = array_values(array_filter($leftFields, fn($key) => isset($allMeasurements[$key])));
+        $rightFields = array_values(array_filter($rightFields, fn($key) => isset($allMeasurements[$key])));
+
         $customFields = $orderDetail->measurementValues
             ->filter(fn($item) => str_starts_with($item->source_key, 'custom.'))
             ->sortBy('sort_order')
@@ -373,8 +373,14 @@ body {
             ->values()
             ->toArray();
 
-        // Add custom fields to the RIGHT column
-        $rightFields = array_merge($rightFields, $customFields);
+        // Fill the shorter column so system and custom fields print side by side.
+        foreach ($customFields as $customField) {
+            if (count($leftFields) < count($rightFields)) {
+                $leftFields[] = $customField;
+            } else {
+                $rightFields[] = $customField;
+            }
+        }
 
         $rows = max(count($leftFields), count($rightFields));
                     @endphp
@@ -383,7 +389,7 @@ body {
 
                     @for($i = 0; $i < $rows; $i++)
 
-                    <div class="row" style="display:flex;justify-content:space-between;padding:0 10px;">
+                    <div class="row measurement-row" style="display:flex;justify-content:space-between;padding:0 10px;">
 
                         {{-- LEFT COLUMN --}}
                         <div class="col-6" style="width:45%;">
@@ -415,7 +421,7 @@ body {
                                     $item = $allMeasurements[$rightFields[$i]];
                                 @endphp
 
-                                <div style="display:flex;align-items:flex-start;font-weight:600;padding:4px 8px;">
+                                <div style="display:flex;align-items:flex-start;font-weight:600;padding:0 8px;">
 
                                     <span style="width:40%; text-align:left; padding-right:10px;">
                                         {{ $item->value }}

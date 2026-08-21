@@ -2,309 +2,97 @@
 
 @section('content')
 @php
-    $monthNames = [
-        'January' => 'جنوری', 'February' => 'فروری', 'March' => 'مارچ',
-        'April' => 'اپریل', 'May' => 'مئی', 'June' => 'جون',
-        'July' => 'جولائی', 'August' => 'اگست', 'September' => 'ستمبر',
-        'October' => 'اکتوبر', 'November' => 'نومبر', 'December' => 'دسمبر',
-    ];
-    $totals = [
-        'orders' => collect($monthly_orders)->sum('orders'),
-        'suits' => collect($monthly_orders)->sum('suits'),
-        'payment' => collect($monthly_orders)->sum('payment'),
-        'neworders' => collect($monthly_orders)->sum('neworders'),
-        'inprocessorders' => collect($monthly_orders)->sum('inprocessorders'),
-        'completed' => collect($monthly_orders)->sum('completed'),
+    $dayNames = ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار'];
+    $statusLabels = [
+        'assigned' => 'کارخانے میں ہے',
+        'cutting' => 'کارخانے میں ہے',
+        'stitching' => 'کارخانے میں ہے',
+        'trial' => 'کارخانے میں ہے',
+        'ready' => 'تیار ہے',
+        'delivered' => 'حوالہ کر دیا گیا',
     ];
 @endphp
 
 <style>
-    .year-report-page {
-        --yr-blue: #1769e0;
-        --yr-navy: #11365b;
-        --yr-muted: #718198;
-        --yr-line: #dfe7f1;
-        min-height: calc(100vh - 70px);
-        background: #f4f7fa
-    }
-
-    .yr-shell {
-        width: min(100% - 38px, 1400px);
-        margin: 0 auto;
-        padding: 28px 0 46px
-    }
-
-    .yr-head {
-        margin-bottom: 18px
-    }
-
-    .yr-head h1 {
-        margin: 0;
-        color: var(--yr-navy);
-        font-size: 1.55rem;
-        font-weight: 900
-    }
-
-    .yr-head p {
-        margin: 5px 0 0;
-        color: var(--yr-muted);
-        font-size: .78rem
-    }
-
-    .yr-summary {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 18px
-    }
-
-    .yr-summary-card {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 16px;
-        border: 1px solid var(--yr-line);
-        border-radius: 13px;
-        background: #fff;
-        box-shadow: 0 4px 14px rgba(24, 52, 82, .04)
-    }
-
-    .yr-summary-icon {
-        display: grid;
-        place-items: center;
-        flex: 0 0 44px;
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        color: var(--yr-blue);
-        background: #eaf3ff
-    }
-
-    .yr-summary-card.is-suits .yr-summary-icon { color: #7651c9; background: #f1ebff }
-    .yr-summary-card.is-income .yr-summary-icon { color: #a56a00; background: #fff4da }
-    .yr-summary-card.is-complete .yr-summary-icon { color: #168553; background: #e8f8ef }
-
-    .yr-summary-card small {
-        display: block;
-        color: var(--yr-muted);
-        font-size: .68rem
-    }
-
-    .yr-summary-card strong {
-        display: block;
-        margin-top: 2px;
-        color: var(--yr-navy);
-        font-size: 1.18rem;
-        font-weight: 900
-    }
-
-    .yr-panel {
-        overflow: hidden;
-        border: 1px solid var(--yr-line);
-        border-radius: 14px;
-        background: #fff;
-        box-shadow: 0 5px 16px rgba(25, 55, 88, .04)
-    }
-
-    .yr-panel-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 15px 17px;
-        border-bottom: 1px solid #e7edf4
-    }
-
-    .yr-panel-head h2 {
-        margin: 0;
-        color: var(--yr-navy);
-        font-size: 1rem;
-        font-weight: 900
-    }
-
-    .yr-panel-head span {
-        color: var(--yr-muted);
-        font-size: .7rem
-    }
-
-    .yr-months {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 13px;
-        padding: 15px
-    }
-
-    .yr-month {
-        overflow: hidden;
-        border: 1px solid #e3eaf2;
-        border-radius: 12px;
-        background: #fbfcfe
-    }
-
-    .yr-month.has-work {
-        border-color: #bcd5f5;
-        background: #fff;
-        box-shadow: 0 6px 15px rgba(23, 105, 224, .07)
-    }
-
-    .yr-month-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 12px 14px;
-        border-bottom: 1px solid #edf1f6
-    }
-
-    .yr-month-head strong {
-        color: #66778b;
-        font-size: .88rem
-    }
-
-    .yr-month.has-work .yr-month-head strong { color: var(--yr-navy) }
-
-    .yr-month-state {
-        padding: 4px 8px;
-        border-radius: 999px;
-        color: #8795a6;
-        background: #eef2f6;
-        font-size: .62rem;
-        font-weight: 800
-    }
-
-    .yr-month.has-work .yr-month-state {
-        color: var(--yr-blue);
-        background: #e9f2ff
-    }
-
-    .yr-month-main {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        padding: 12px 8px
-    }
-
-    .yr-month-value {
-        padding: 0 8px;
-        border-left: 1px solid #edf1f6;
-        text-align: center
-    }
-
-    .yr-month-value:last-child { border-left: 0 }
-
-    .yr-month-value small {
-        display: block;
-        color: var(--yr-muted);
-        font-size: .61rem
-    }
-
-    .yr-month-value strong {
-        display: block;
-        margin-top: 3px;
-        color: #52677f;
-        font-size: .78rem
-    }
-
-    .yr-month.has-work .yr-month-value strong { color: var(--yr-navy) }
-
-    .yr-progress {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
-        padding: 0 12px 12px
-    }
-
-    .yr-progress span {
-        padding: 6px 5px;
-        border-radius: 7px;
-        color: #68798d;
-        background: #f0f4f8;
-        font-size: .6rem;
-        text-align: center
-    }
-
-    .yr-progress span:nth-child(1) { color: #1769e0; background: #eaf3ff }
-    .yr-progress span:nth-child(2) { color: #9a6900; background: #fff4da }
-    .yr-progress span:nth-child(3) { color: #168553; background: #e8f8ef }
-
-    .yr-empty-note {
-        padding: 11px 15px;
-        border-top: 1px solid #edf1f6;
-        color: var(--yr-muted);
-        background: #fbfdff;
-        font-size: .68rem
-    }
-
-    @media(max-width:992px) {
-        .yr-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-        .yr-months { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-    }
-
-    @media(max-width:650px) {
-        .yr-shell { width: min(100% - 20px, 1400px); padding-top: 18px }
-        .yr-summary,
-        .yr-months { grid-template-columns: 1fr }
-        .yr-panel-head { align-items: flex-start; flex-direction: column }
-    }
+    .weekly-orders-page{--wo-blue:#1769e0;--wo-navy:#11365b;--wo-muted:#718198;--wo-line:#dfe7f1;min-height:calc(100vh - 70px);background:#f4f7fa}
+    .wo-shell{width:min(100% - 38px,1450px);margin:0 auto;padding:28px 0 46px}
+    .wo-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}
+    .wo-head h1{margin:0;color:var(--wo-navy);font-size:1.55rem;font-weight:900}.wo-head p{margin:5px 0 0;color:var(--wo-muted);font-size:.82rem}
+    .wo-week-nav{display:flex;align-items:center;gap:8px}.wo-week-nav a{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid #d7e2ef;border-radius:10px;color:#405873;background:#fff;font-weight:700;text-decoration:none}.wo-week-nav a:hover{border-color:#9fc1ee;color:var(--wo-blue)}.wo-week-nav .is-current{color:#fff;border-color:var(--wo-blue);background:var(--wo-blue)}
+    .wo-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.wo-summary-card{display:flex;align-items:center;gap:12px;padding:15px;border:1px solid var(--wo-line);border-radius:13px;background:#fff}.wo-summary-icon{display:grid;place-items:center;width:43px;height:43px;border-radius:12px;color:var(--wo-blue);background:#eaf3ff}.wo-summary-card small{display:block;color:var(--wo-muted);font-size:.7rem}.wo-summary-card strong{display:block;margin-top:2px;color:var(--wo-navy);font-size:1.15rem;font-weight:900}.wo-summary-card.is-suits .wo-summary-icon{color:#7651c9;background:#f1ebff}.wo-summary-card.is-work .wo-summary-icon{color:#a56a00;background:#fff4da}.wo-summary-card.is-ready .wo-summary-icon{color:#168553;background:#e8f8ef}
+    .wo-range{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;padding:13px 16px;border:1px solid var(--wo-line);border-radius:13px;background:#fff}.wo-range strong{color:var(--wo-navy)}.wo-range span{color:var(--wo-muted);font-size:.78rem}
+    .wo-days{display:grid;gap:14px}.wo-day{overflow:hidden;border:1px solid var(--wo-line);border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(25,55,88,.04)}.wo-day.is-today{border-color:#8db9f5;box-shadow:0 7px 20px rgba(23,105,224,.1)}
+    .wo-day-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;border-bottom:1px solid #e8eef5;background:#f9fbfd}.wo-day.is-today .wo-day-head{background:#eef6ff}.wo-day-title{display:flex;align-items:center;gap:11px}.wo-date-box{display:grid;place-items:center;min-width:48px;height:48px;border-radius:12px;color:var(--wo-blue);background:#eaf3ff;font-size:1.15rem;font-weight:900}.wo-day-title h2{margin:0;color:var(--wo-navy);font-size:1rem;font-weight:900}.wo-day-title small{display:block;margin-top:3px;color:var(--wo-muted)}.wo-day-count{padding:5px 10px;border-radius:999px;color:#60738a;background:#edf2f7;font-size:.7rem;font-weight:800}.wo-day.has-orders .wo-day-count{color:var(--wo-blue);background:#e7f1ff}
+    .wo-orders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.wo-order{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(120px,.7fr) auto;align-items:center;gap:14px;padding:13px;border:1px solid #e4ebf3;border-radius:12px;background:#fff}.wo-order-main{min-width:0}.wo-order-main strong{display:block;overflow:hidden;color:#203b5a;font-size:.95rem;text-overflow:ellipsis;white-space:nowrap}.wo-order-main small{display:block;margin-top:4px;color:var(--wo-muted)}.wo-order-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.wo-order-meta span{padding:7px;border-radius:8px;color:#536a82;background:#f6f8fb;font-size:.7rem;text-align:center}.wo-order-meta b{display:block;margin-top:2px;color:#29435f}.wo-status{display:inline-block;margin-top:6px;padding:4px 8px;border-radius:999px;color:#9a6900;background:#fff4da;font-size:.66rem;font-weight:800}.wo-status.is-ready{color:#168553;background:#e8f8ef}.wo-status.is-delivered{color:#60738a;background:#edf2f7}.wo-order-actions{display:flex;gap:6px}.wo-action{display:grid;place-items:center;width:36px;height:36px;border:1px solid #d8e2ef;border-radius:9px;color:#49627e;background:#fff;text-decoration:none}.wo-action:hover{color:var(--wo-blue);border-color:#a9c9f2;background:#f3f8ff;text-decoration:none}.wo-action.is-edit{color:#fff;border-color:var(--wo-blue);background:var(--wo-blue)}
+    .wo-empty{padding:18px;color:#8795a6;text-align:center;font-size:.78rem}.wo-empty i{margin-left:6px;color:#b5c1d0}
+    @media(max-width:1050px){.wo-orders{grid-template-columns:1fr}.wo-head{align-items:flex-start;flex-direction:column}}
+    @media(max-width:700px){.wo-shell{width:min(100% - 20px,1450px);padding-top:18px}.wo-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.wo-week-nav{flex-wrap:wrap}.wo-order{grid-template-columns:1fr}.wo-order-actions{justify-content:flex-start}.wo-range{align-items:flex-start;flex-direction:column}}
+    @media(max-width:420px){.wo-summary{grid-template-columns:1fr}}
 </style>
 
-<section class="main-content year-report-page" dir="rtl">
-    <div class="yr-shell">
+<section class="main-content weekly-orders-page" dir="rtl">
+    <div class="wo-shell">
         @include('inc.message')
 
-        <header class="yr-head">
-            <h1><i class="fas fa-chart-bar ml-2 text-primary"></i>سال بھر کے آرڈرز</h1>
-            <p>پورے سال کے آرڈرز، سوٹ، سلائی کی رقم اور کام کی حالت ایک نظر میں دیکھیں۔</p>
+        <header class="wo-head">
+            <div><h1><i class="fas fa-calendar-week ml-2 text-primary"></i>ہفتہ وار ٹیلرنگ آرڈرز</h1><p>واپسی کی تاریخ کے مطابق ہر دن کے آرڈرز دیکھیں، رسید چیک کریں یا آرڈر میں ترمیم کریں۔</p></div>
+            <nav class="wo-week-nav" aria-label="ہفتہ تبدیل کریں">
+                <a href="{{ route('admin.order.total', ['week' => $weekStart->copy()->subWeek()->toDateString()]) }}"><i class="fas fa-chevron-right"></i>پچھلا ہفتہ</a>
+                <a class="is-current" href="{{ route('admin.order.total') }}">موجودہ ہفتہ</a>
+                <a href="{{ route('admin.order.total', ['week' => $weekStart->copy()->addWeek()->toDateString()]) }}">اگلا ہفتہ<i class="fas fa-chevron-left"></i></a>
+            </nav>
         </header>
 
-        <div class="yr-summary">
-            <div class="yr-summary-card">
-                <span class="yr-summary-icon"><i class="fas fa-clipboard-list"></i></span>
-                <div><small>کل آرڈرز</small><strong>{{ number_format($totals['orders']) }}</strong></div>
-            </div>
-            <div class="yr-summary-card is-suits">
-                <span class="yr-summary-icon"><i class="fas fa-tshirt"></i></span>
-                <div><small>کل سوٹ</small><strong>{{ number_format($totals['suits']) }}</strong></div>
-            </div>
-            <div class="yr-summary-card is-income">
-                <span class="yr-summary-icon"><i class="fas fa-coins"></i></span>
-                <div><small>کل سلائی کی رقم</small><strong>Rs. {{ number_format($totals['payment']) }}</strong></div>
-            </div>
-            <div class="yr-summary-card is-complete">
-                <span class="yr-summary-icon"><i class="fas fa-check-circle"></i></span>
-                <div><small>مکمل آرڈرز</small><strong>{{ number_format($totals['completed']) }}</strong></div>
-            </div>
+        <div class="wo-summary">
+            <div class="wo-summary-card"><span class="wo-summary-icon"><i class="fas fa-clipboard-list"></i></span><div><small>اس ہفتے کے آرڈرز</small><strong>{{ number_format($summary['orders']) }}</strong></div></div>
+            <div class="wo-summary-card is-suits"><span class="wo-summary-icon"><i class="fas fa-tshirt"></i></span><div><small>کل سوٹ</small><strong>{{ number_format($summary['suits']) }}</strong></div></div>
+            <div class="wo-summary-card is-work"><span class="wo-summary-icon"><i class="fas fa-store"></i></span><div><small>کارخانے میں</small><strong>{{ number_format($summary['in_workshop']) }}</strong></div></div>
+            <div class="wo-summary-card is-ready"><span class="wo-summary-icon"><i class="fas fa-check-circle"></i></span><div><small>تیار / حوالہ شدہ</small><strong>{{ number_format($summary['ready']) }}</strong></div></div>
         </div>
 
-        <section class="yr-panel">
-            <div class="yr-panel-head">
-                <h2>مہینوں کی تفصیل</h2>
-                <span><i class="fas fa-info-circle ml-1"></i>کام والے مہینے نیلے رنگ میں نمایاں ہیں</span>
-            </div>
-            <div class="yr-months">
-                @foreach ($monthly_orders as $monthName => $orders)
-                    @php($hasWork = (int) $orders['orders'] > 0)
-                    <article class="yr-month {{ $hasWork ? 'has-work' : '' }}">
-                        <div class="yr-month-head">
-                            <strong>{{ $monthNames[$monthName] ?? $monthName }}</strong>
-                            <span class="yr-month-state">{{ $hasWork ? $orders['orders'].' آرڈر' : 'کوئی آرڈر نہیں' }}</span>
+        <div class="wo-range"><strong><i class="far fa-calendar-alt ml-2 text-primary"></i>{{ $weekStart->format('d-m-Y') }} سے {{ $weekEnd->format('d-m-Y') }}</strong><span>آرڈر اس دن دکھایا جاتا ہے جس دن گاہک کو واپس دینا ہے۔</span></div>
+
+        <div class="wo-days">
+            @foreach($weekDays as $index => $day)
+                @php
+                    $dayOrders = $day['orders'];
+                    $isToday = $day['date']->isToday();
+                @endphp
+                <section class="wo-day {{ $dayOrders->isNotEmpty() ? 'has-orders' : '' }} {{ $isToday ? 'is-today' : '' }}">
+                    <div class="wo-day-head">
+                        <div class="wo-day-title"><span class="wo-date-box">{{ $day['date']->format('d') }}</span><div><h2>{{ $dayNames[$index] }} / {{ $day['date']->format('l') }}</h2><small>{{ $day['date']->format('d-m-Y') }}{{ $isToday ? ' · آج' : '' }}</small></div></div>
+                        <span class="wo-day-count">{{ $dayOrders->count() }} آرڈر</span>
+                    </div>
+
+                    @if($dayOrders->isNotEmpty())
+                        <div class="wo-orders">
+                            @foreach($dayOrders as $order)
+                                @php
+                                    $statusClass = $order->status === 'delivered' ? 'is-delivered' : (in_array($order->status, ['ready'], true) ? 'is-ready' : '');
+                                @endphp
+                                <article class="wo-order">
+                                    <div class="wo-order-main">
+                                        <strong>{{ $order->customers?->name ?: 'گاہک دستیاب نہیں' }} · آرڈر #{{ $order->suitNum ?: $order->id }}</strong>
+                                        <small>{{ $order->customers?->phone_number1 ?: 'فون نمبر موجود نہیں' }} · درزی: {{ $order->tailor?->name ?: 'مقرر نہیں' }}</small>
+                                        <span class="wo-status {{ $statusClass }}">{{ $statusLabels[$order->status] ?? $order->status }}</span>
+                                    </div>
+                                    <div class="wo-order-meta">
+                                        <span>سوٹ<b>{{ $order->suitQuantity ?: 1 }}</b></span>
+                                        <span>رقم<b>Rs. {{ number_format((float)$order->totalPayment) }}</b></span>
+                                    </div>
+                                    <div class="wo-order-actions">
+                                        <a class="wo-action" href="{{ route('admin.order-print', $order->id) }}" title="رسید دیکھیں" aria-label="رسید دیکھیں"><i class="fas fa-print"></i></a>
+                                        <a class="wo-action is-edit" href="{{ route('admin.order.edit', $order->id) }}" title="آرڈر میں ترمیم کریں" aria-label="آرڈر میں ترمیم کریں"><i class="fas fa-pen"></i></a>
+                                    </div>
+                                </article>
+                            @endforeach
                         </div>
-                        <div class="yr-month-main">
-                            <div class="yr-month-value"><small>آرڈرز</small><strong>{{ number_format($orders['orders']) }}</strong></div>
-                            <div class="yr-month-value"><small>سوٹ</small><strong>{{ number_format($orders['suits']) }}</strong></div>
-                            <div class="yr-month-value"><small>سلائی کی رقم</small><strong>Rs. {{ number_format($orders['payment']) }}</strong></div>
-                        </div>
-                        @if ($hasWork)
-                            <div class="yr-progress">
-                                <span><i class="fas fa-plus-circle ml-1"></i>نئے: {{ $orders['neworders'] }}</span>
-                                <span><i class="fas fa-cut ml-1"></i>سلائی جاری: {{ $orders['inprocessorders'] }}</span>
-                                <span><i class="fas fa-check ml-1"></i>مکمل: {{ $orders['completed'] }}</span>
-                            </div>
-                        @endif
-                    </article>
-                @endforeach
-            </div>
-            <div class="yr-empty-note"><i class="fas fa-lightbulb ml-1 text-warning"></i>جس مہینے میں آرڈر نہ ہو، اسے ہلکے رنگ میں دکھایا گیا ہے تاکہ کام والے مہینے فوراً نظر آئیں۔</div>
-        </section>
+                    @else
+                        <div class="wo-empty"><i class="far fa-calendar-check"></i>اس دن واپسی کے لیے کوئی آرڈر مقرر نہیں۔</div>
+                    @endif
+                </section>
+            @endforeach
+        </div>
     </div>
 </section>
 @endsection

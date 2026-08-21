@@ -98,8 +98,8 @@
                                 </div>
                             </div>
                         @endforeach
+                        @include('customer.partials.custom-measurements', ['embedded' => true])
                     </div>
-                    @include('customer.partials.custom-measurements', ['embedded' => true])
                 </section>
 
                 <section class="edit-section">

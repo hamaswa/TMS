@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use DateTime;
 use App\Models\rack;
 use App\Models\Order;
 use PhpOption\Option;
@@ -29,6 +28,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\ProductionWorkforceService;
 use App\Support\PaymentMethods;
+use Illuminate\Support\Carbon;
 
 
 class OrderController extends Controller
@@ -135,10 +135,8 @@ class OrderController extends Controller
 
     public function createOrder($id)
     {
-        // Retrieve all customers for the authenticated user
-        $customers = Customers::where('user_id', auth()->user()->businessOwnerId())->get();
-        // Find the customer based on the given ID
-        $customer = $customers->where('id', $id)->firstOrFail();
+        $customer = Customers::where('user_id', auth()->user()->businessOwnerId())
+            ->findOrFail($id);
         $data = [];
         $data['customer'] = $customer;
         $data['remainingBalance'] = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
@@ -156,10 +154,8 @@ class OrderController extends Controller
         $data['measurementTemplateId'] = $customer->measurement_template_id
             ?: $data['measurementTemplates']->firstWhere('is_default', true)?->id;
 
-        // Get the serial number by searching through the collection
-        $data['serialNumber'] = $customers->search(function ($item) use ($customer) {
-            return $item->id === $customer->id;
-        }) + 1; // Adding 1 to make it 1-based index
+        // Keep the customer's serial stable even when other customers are added.
+        $data['serialNumber'] = $customer->id;
         return view('order.create', compact('data'));
     }
 
@@ -306,7 +302,10 @@ class OrderController extends Controller
                     'orderId' => $order->id,
                     'rack_no' => $order->rack_no,
                     'racks' => $racks,
-                    'nextStatuses' => Order::nextStatusOptionsFor((string) $order->status),
+                    'nextStatuses' => in_array($order->status, ['ready', 'delivered'], true) ? [] : [
+                        ['value' => 'start', 'label' => 'کارخانے میں ہے'],
+                        ['value' => 'complete', 'label' => 'تیار ہے'],
+                    ],
                 ];
             }
 
@@ -445,36 +444,40 @@ class OrderController extends Controller
         return back();
     }
 
-    public function totalOrder()
+    public function totalOrder(Request $request)
     {
-        $monthly_orders = [];
+        $validated = $request->validate(['week' => ['nullable', 'date']]);
+        $weekStart = Carbon::parse($validated['week'] ?? now())
+            ->startOfWeek(Carbon::MONDAY)
+            ->startOfDay();
+        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
-        for ($month = 1; $month <= 12; $month++) {
-            $orders = Order::where('userId', auth()->user()->businessOwnerId())
-                ->whereMonth('created_at', $month)
-                ->get();
+        $orders = Order::where('userId', Auth::user()->businessOwnerId())
+            ->whereBetween('returnDate', [$weekStart->toDateString(), $weekEnd->toDateString()])
+            ->with(['customers:id,name,phone_number1', 'tailor:id,name'])
+            ->orderBy('returnDate')
+            ->orderBy('id')
+            ->get();
 
-            $ordersCount = $orders->count();
-            $totalSuitQuantity = $orders->sum('suitQuantity');
-            $totalpayment = $orders->sum('totalPayment');
+        $ordersByDate = $orders->groupBy(
+            fn (Order $order) => Carbon::parse($order->returnDate)->toDateString()
+        );
+        $weekDays = collect(range(0, 6))->map(function (int $offset) use ($weekStart, $ordersByDate) {
+            $date = $weekStart->copy()->addDays($offset);
 
-            $newOrdersCount = $orders->where('status', 'assigned')->count();
-            $processingOrdersCount = $orders->whereIn('status', ['cutting', 'stitching', 'trial'])->count();
-            $completedOrdersCount = $orders->whereIn('status', ['ready', 'delivered'])->count();
-
-            $monthname = DateTime::createFromFormat('!m', $month)->format('F');
-
-            $monthly_orders[$monthname] = [
-                'orders' => $ordersCount,
-                'suits' => $totalSuitQuantity,
-                'payment' => $totalpayment,
-                'neworders' => $newOrdersCount,
-                'inprocessorders' => $processingOrdersCount,
-                'completed' => $completedOrdersCount,
+            return [
+                'date' => $date,
+                'orders' => $ordersByDate->get($date->toDateString(), collect()),
             ];
-        }
-        // dd($orders);
-        return view('All_Total.order', compact('monthly_orders'));
+        });
+        $summary = [
+            'orders' => $orders->count(),
+            'suits' => (int) $orders->sum('suitQuantity'),
+            'in_workshop' => $orders->whereNotIn('status', ['ready', 'delivered'])->count(),
+            'ready' => $orders->whereIn('status', ['ready', 'delivered'])->count(),
+        ];
+
+        return view('All_Total.order', compact('weekStart', 'weekEnd', 'weekDays', 'summary'));
     }
 
     public function updateRackNo(Request $request, $orderId)

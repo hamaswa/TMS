@@ -499,7 +499,7 @@
                                     $initial = function_exists('mb_substr') ? mb_substr(trim($customer->name), 0, 1) : substr(trim($customer->name), 0, 1);
                                 @endphp
                                 <tr>
-                                    <td class="customer_serial customer-serial-cell" data-label="نمبر">{{ $loop->iteration }}</td>
+                                    <td class="customer_serial customer-serial-cell" data-label="نمبر">{{ $customer->id }}</td>
                                     <td class="customer-name-cell" data-label="گاہک">
                                         <div class="customer-identity">
                                             <span class="customer-avatar">{{ $initial ?: 'گ' }}</span>
@@ -598,7 +598,7 @@
                         <div class="modal-body">
                             <label for="orderStatusSelect" class="font-weight-bold">نیا مرحلہ منتخب کریں</label>
                             <select id="orderStatusSelect" class="form-control order-status" name="order_status" required style="padding-top: 0px;"></select>
-                            <small class="form-text text-muted mt-2">صرف موجودہ مرحلے کے بعد دستیاب اگلا مرحلہ دکھایا جائے گا۔</small>
+                            <small class="form-text text-muted mt-2">آرڈر کی موجودہ حالت کے لیے صرف کارخانے میں ہے یا تیار ہے منتخب کریں۔</small>
                         </div>
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary" id="submit-button"><i class="fas fa-check ml-1"></i> محفوظ کریں</button>

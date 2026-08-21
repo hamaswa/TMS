@@ -36,12 +36,12 @@
             </section>
 
             <section class="customer-step" data-step="2" aria-labelledby="customer-step-two">
-                <div class="customer-section">@include('customer.partials.measurement-template-selector', ['selectedTemplateId' => $measurementTemplates->firstWhere('is_default', true)?->id])<div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div><h2 id="customer-step-two" class="h5 font-weight-bold mb-1">لباس کی پیمائش</h2><p class="text-muted mb-0">بنیادی اور کاروبار کے خصوصی خانے ایک ہی جگہ درج کریں۔</p></div><span class="badge badge-light px-3 py-2">ضروری خانے *</span></div><div class="row">
+                <div class="customer-section">@include('customer.partials.measurement-template-selector', ['selectedTemplateId' => $measurementTemplates->firstWhere('is_default', true)?->id])<div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div><h2 id="customer-step-two" class="h5 font-weight-bold mb-1">لباس کی پیمائش</h2><p class="text-muted mb-0">بنیادی اور کاروبار کے خصوصی خانے ایک ہی جگہ درج کریں۔</p></div><span class="badge badge-light px-3 py-2">ضروری خانے *</span></div><div class="measurement-grid">
                     @foreach(['length'=>'لمبائی','arms'=>'بازو','teraa'=>'تیرا','senaChorai'=>'سینہ چوڑائی','damanchorai'=>'دامن چوڑائی','shalwar'=>'شلوار','pancha'=>'پائنچہ','shalwarGheer'=>'شلوار گھیر','monda'=>'مونڈھا','chuta'=>'چوٹا'] as $name => $label)
-                        <div class="col-sm-6 col-lg-4 form-group measurement-field"><label for="measurement-{{ $name }}">{{ $label }} <span class="text-danger">*</span></label><input id="measurement-{{ $name }}" type="number" step="0.01" min="0" class="form-control" name="{{ $name }}" value="{{ old($name) }}" required></div>
+                        <div class="form-group measurement-field"><label for="measurement-{{ $name }}">{{ $label }} <span class="text-danger">*</span></label><input id="measurement-{{ $name }}" type="number" step="0.01" min="0" class="form-control" name="{{ $name }}" value="{{ old($name) }}" required></div>
                     @endforeach
+                    @include('customer.partials.custom-measurements', ['embedded' => true])
                 </div>
-                @include('customer.partials.custom-measurements', ['embedded' => true])
                 </div>
                 <div class="step-actions"><button type="button" class="btn btn-outline-secondary previous-step"><i class="fas fa-arrow-right ml-1"></i> بنیادی معلومات</button><button type="button" class="btn btn-primary px-4 next-step">سلائی کی پسند <i class="fas fa-arrow-left mr-1"></i></button></div>
             </section>
