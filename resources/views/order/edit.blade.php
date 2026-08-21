@@ -31,8 +31,8 @@
                             <!-- select -->
                             <div class=" mt-3" id="select">
                                 <select class='form-control' style="height: 50px" name='sub_id'>
-                                    <option value='{{ $sub_customer->id }}'>{{ $sub_customer->name }}
-                                        {{ $sub_customer->phone_number1 }}</option>
+                                    <option value='{{ $measurementCustomer->id }}'>{{ $measurementCustomer->name }}
+                                        {{ $measurementCustomer->phone_number1 }}</option>
                                 </select>
                             </div>
                             <!-- select -->
@@ -152,15 +152,72 @@
                                     <textarea id="order_remarks" rows="4" cols="" class="form-control" name="remarks" dir="auto">{{ $data->remarks }}</textarea>
                                 </div>
                             </div>
-                            @if($data->measurementValues->isNotEmpty())
-                                <div class="card bg-light mb-3" dir="rtl"><div class="card-body">
-                                    <h5>آرڈر کے وقت محفوظ پیمائش</h5>
-                                    <div class="row">@foreach($data->measurementValues as $measurement)
-                                        <div class="col-md-4 mb-2"><span class="text-muted">{{ $measurement->label }}:</span> <strong>{{ $measurement->value }}</strong> @if($measurement->unit)<small>{{ $measurement->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }}</small>@endif</div>
-                                    @endforeach</div>
-                                    <small class="text-muted">یہ پیمائش اس آرڈر کی تاریخ کے لیے محفوظ ہے؛ گاہک کی نئی پیمائش اسے تبدیل نہیں کرے گی۔</small>
-                                </div></div>
-                            @endif
+                            @php
+                                $editableSourceKeys = collect(array_keys(\App\Services\MeasurementService::SYSTEM_FIELDS))
+                                    ->map(fn($key) => 'system.'.$key)
+                                    ->merge($measurementFields->map(fn($field) => 'custom.'.$field->id));
+                                $archivedMeasurements = $data->measurementValues
+                                    ->reject(fn($measurement) => $editableSourceKeys->contains($measurement->source_key));
+                            @endphp
+                            <div class="card bg-light mb-3" dir="rtl">
+                                <div class="card-body">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="mb-1">اس آرڈر کی پیمائش میں تبدیلی</h5>
+                                            <small class="text-muted">نئے پیمائش خانے بھی یہاں شامل ہیں۔ تبدیلی صرف اسی آرڈر اور اس کی رسید پر لاگو ہوگی۔</small>
+                                        </div>
+                                        <span class="badge badge-primary mt-2 mt-md-0">{{ count(\App\Services\MeasurementService::SYSTEM_FIELDS) + $measurementFields->count() }} خانے</span>
+                                    </div>
+                                    <div class="row">
+                                        @foreach(\App\Services\MeasurementService::SYSTEM_FIELDS as $key => $meta)
+                                            @php
+                                                $savedMeasurement = $savedMeasurementValues->get('system.'.$key);
+                                                $value = old('system_measurements.'.$key, $savedMeasurement?->value ?? data_get($measurementCustomer, $key));
+                                            @endphp
+                                            <div class="col-sm-6 col-lg-4 form-group">
+                                                <label for="order-system-measurement-{{ $key }}" class="font-weight-bold">
+                                                    {{ $meta['label'] }}
+                                                    @if(!$savedMeasurement)<span class="badge badge-info mr-1">نیا خانہ</span>@endif
+                                                    @if($meta['unit'] === 'inch')<small class="text-muted">(انچ)</small>@endif
+                                                </label>
+                                                <input id="order-system-measurement-{{ $key }}" class="form-control" name="system_measurements[{{ $key }}]" value="{{ $value }}" type="{{ $meta['unit'] === 'inch' ? 'number' : 'text' }}" @if($meta['unit'] === 'inch') step="0.01" min="0" @endif>
+                                            </div>
+                                        @endforeach
+
+                                        @foreach($measurementFields as $field)
+                                            @php
+                                                $savedMeasurement = $savedMeasurementValues->get('custom.'.$field->id);
+                                                $value = old('custom_measurements.'.$field->id, $savedMeasurement?->value ?? $customerCustomValues->get($field->id));
+                                            @endphp
+                                            <div class="col-sm-6 col-lg-4 form-group">
+                                                <label for="order-custom-measurement-{{ $field->id }}" class="font-weight-bold">
+                                                    {{ $field->label }}
+                                                    @if(!$savedMeasurement)<span class="badge badge-info mr-1">نیا خانہ</span>@endif
+                                                    @if($field->unit && $field->unit !== 'none')<small class="text-muted">({{ $field->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }})</small>@endif
+                                                </label>
+                                                @if($field->field_type === 'select')
+                                                    <select id="order-custom-measurement-{{ $field->id }}" class="form-control" name="custom_measurements[{{ $field->id }}]">
+                                                        <option value="">منتخب کریں</option>
+                                                        @foreach($field->options ?? [] as $option)<option value="{{ $option }}" @selected((string)$value === (string)$option)>{{ $option }}</option>@endforeach
+                                                    </select>
+                                                @else
+                                                    <input id="order-custom-measurement-{{ $field->id }}" class="form-control" name="custom_measurements[{{ $field->id }}]" value="{{ $value }}" type="{{ $field->field_type === 'number' ? 'number' : 'text' }}" @if($field->field_type === 'number') step="0.01" min="0" @endif>
+                                                @endif
+                                                @error('custom_measurements.'.$field->id)<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    @if($archivedMeasurements->isNotEmpty())
+                                        <div class="border-top pt-3 mt-1">
+                                            <h6 class="font-weight-bold">پرانے غیر فعال خانے</h6>
+                                            <div class="row">@foreach($archivedMeasurements as $measurement)
+                                                <div class="col-md-4 mb-2"><span class="text-muted">{{ $measurement->label }}:</span> <strong>{{ $measurement->value }}</strong></div>
+                                            @endforeach</div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                             <div class="button-group mt-2">
                                 <button type="submit" class="btn btn-blue mr-3">محفوظ کریں</button>
                             </div>

@@ -52,14 +52,46 @@ class OrderController extends Controller
         $recivedPayment = $orderTransaction?->recivedPayment ?? 0;
         $orderBalance = $orderTransaction?->remainingBalance ?? max(0, (float) $data->totalPayment - (float) $recivedPayment);
         $tailorRates = Tailorsalary::with('options')->where('tailor_id', $data->tailorId)->get();
+        $measurementCustomer = $sub_customer ?: $customer;
+        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $savedMeasurementValues = $data->measurementValues->keyBy('source_key');
+        $customerCustomValues = $measurementCustomer->measurementValues()
+            ->whereIn('measurement_field_id', $measurementFields->pluck('id'))
+            ->pluck('value', 'measurement_field_id');
         $data['design'] = Options::where('option_id', 1)->get();
         // $currentTailorRate = 1220;
-        return view('order.edit', compact('data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance', 'recivedPayment', 'sub_customer', 'customer'));
+        return view('order.edit', compact(
+            'data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance',
+            'recivedPayment', 'sub_customer', 'customer', 'measurementCustomer',
+            'measurementFields', 'savedMeasurementValues', 'customerCustomValues'
+        ));
     }
 
     public function update(Request $request, $id)
     {
-        $validated = $request->validate([
+        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $measurementRules = [
+            'system_measurements' => ['nullable', 'array'],
+            'custom_measurements' => ['nullable', 'array'],
+        ];
+        foreach (MeasurementService::SYSTEM_FIELDS as $key => $meta) {
+            $measurementRules['system_measurements.'.$key] = $meta['unit'] === 'inch'
+                ? ['nullable', 'numeric', 'min:0']
+                : ['nullable', 'string', 'max:500'];
+        }
+        foreach ($measurementFields as $field) {
+            $fieldRules = ['nullable'];
+            if ($field->field_type === 'number') {
+                array_push($fieldRules, 'numeric', 'min:0');
+            } elseif ($field->field_type === 'select') {
+                $fieldRules[] = Rule::in($field->options ?? []);
+            } else {
+                array_push($fieldRules, 'string', 'max:500');
+            }
+            $measurementRules['custom_measurements.'.$field->id] = $fieldRules;
+        }
+
+        $validated = $request->validate(array_merge([
             'sub_id' => ['nullable', 'integer'],
             'customerId' => ['required', 'integer'],
             'suitQuantity' => ['required', 'integer', 'min:1'],
@@ -77,9 +109,9 @@ class OrderController extends Controller
             'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
             'returnDate' => ['required', 'date'],
             'remarks' => ['nullable', 'string', 'max:1000'],
-        ], [
+        ], $measurementRules), [
             'recivedPayment.lte' => 'وصول رقم کل قیمت سے زیادہ نہیں ہو سکتی۔',
-        ]);
+        ], $this->measurements->attributes($measurementFields));
 
         $order = $this->ownedOrder($id);
         $this->ownedCustomer($validated['customerId']);
@@ -96,11 +128,11 @@ class OrderController extends Controller
         $measurementCustomerId = $validated['sub_id'] ?? $validated['customerId'];
         $measurementChanged = (int) $order->sub_customer !== (int) $measurementCustomerId;
         $measurementCustomer = $this->ownedCustomer($measurementCustomerId);
-        if ($measurementChanged || ! $order->measurementValues()->exists()) {
+        if ($measurementChanged) {
             $this->ensureRequiredMeasurements($measurementCustomer, $order->measurementTemplate);
         }
 
-        DB::transaction(function () use ($validated, $order, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer) {
+        DB::transaction(function () use ($validated, $order, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields) {
             $order->update([
                 "sub_customer" => $validated['sub_id'] ?? $validated['customerId'],
                 "customerId" => $validated['customerId'],
@@ -124,8 +156,45 @@ class OrderController extends Controller
                 ]
             );
 
-            if ($measurementChanged || ! $order->measurementValues()->exists()) {
+            if ($measurementChanged) {
                 $this->measurements->snapshotOrder($order, $measurementCustomer);
+            } else {
+                foreach (MeasurementService::SYSTEM_FIELDS as $key => $meta) {
+                    $value = $validated['system_measurements'][$key] ?? null;
+                    $sourceKey = 'system.'.$key;
+                    if ($value === null || $value === '') {
+                        $order->measurementValues()->where('source_key', $sourceKey)->delete();
+                        continue;
+                    }
+                    $order->measurementValues()->updateOrCreate(
+                        ['source_key' => $sourceKey],
+                        [
+                            'measurement_field_id' => null,
+                            'label' => $meta['label'],
+                            'value' => (string) $value,
+                            'unit' => $meta['unit'],
+                            'sort_order' => array_search($key, array_keys(MeasurementService::SYSTEM_FIELDS), true),
+                        ]
+                    );
+                }
+                foreach ($measurementFields as $field) {
+                    $value = $validated['custom_measurements'][$field->id] ?? null;
+                    $sourceKey = 'custom.'.$field->id;
+                    if ($value === null || $value === '') {
+                        $order->measurementValues()->where('source_key', $sourceKey)->delete();
+                        continue;
+                    }
+                    $order->measurementValues()->updateOrCreate(
+                        ['source_key' => $sourceKey],
+                        [
+                            'measurement_field_id' => $field->id,
+                            'label' => $field->label,
+                            'value' => (string) $value,
+                            'unit' => $field->unit,
+                            'sort_order' => 1000 + (int) $field->sort_order,
+                        ]
+                    );
+                }
             }
             app(ProductionWorkforceService::class)->syncOrder($order->fresh());
         });
