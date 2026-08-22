@@ -72,7 +72,7 @@
                                 @endphp
                                 <article class="wo-order">
                                     <div class="wo-order-main">
-                                        <strong>{{ $order->customers?->name ?: 'گاہک دستیاب نہیں' }} · آرڈر #{{ $order->suitNum ?: $order->id }}</strong>
+                                        <strong>{{ $order->customers?->name ?: 'گاہک دستیاب نہیں' }} · سیریل #{{ $order->customers?->id ?: '—' }}</strong>
                                         <small>{{ $order->customers?->phone_number1 ?: 'فون نمبر موجود نہیں' }} · درزی: {{ $order->tailor?->name ?: 'مقرر نہیں' }}</small>
                                         <span class="wo-status {{ $statusClass }}">{{ $statusLabels[$order->status] ?? $order->status }}</span>
                                     </div>

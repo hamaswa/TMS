@@ -307,7 +307,7 @@
                     <div class="order-detail-list">
                         <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong class="order-detail-value">{{ $orderDetail->suitQuantity }}</strong></div>
-                        <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong class="order-detail-value">{{ $orderDetail->suitNum }}</strong></div>
+                        <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong class="order-detail-value">{{ $orderDetail->sub_customer }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">آرڈر کی رقم:</span><strong class="order-detail-value">{{ $orderDetail->totalPayment }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">موجودہ رقم کی ادائیگی:</span><strong class="order-detail-value">{{ $orderDetail->transactions->first()?->recivedPayment ?? 0 }}</strong></div>
                         @if ($latestBalance - $previousBalance > 0)
@@ -343,7 +343,7 @@
                     <hr>
                     <div class="desing-flex">
                         <div>
-                            <p style="font-size:18px; font-weight:700;">Serial num: {{$orderDetail->suitNum}}</p>
+                            <p style="font-size:18px; font-weight:700;">Serial num: {{$orderDetail->sub_customer}}</p>
                         </div>
                         <div>
                             <p style="font-size:18px; font-weight:700;">{{$orderDetail->customers->name}}</p>
