@@ -162,11 +162,100 @@
             justify-content: space-between;
             /*margin-bottom: 10px;*/
         }
+
+        .measurement-row {
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .measurement-row,
+        .measurement-row * {
+            box-sizing: border-box;
+            line-height: 1.5 !important;
+        }
+
+        .measurement-label {
+            color: #000 !important;
+            font-weight: 900 !important;
+        }
+
+        .measurement-value {
+            color: #000 !important;
+            font-weight: 900 !important;
+        }
+
+        .order-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            direction: rtl;
+        }
+
+        .order-detail-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            min-height: 30px;
+        }
+
+        .order-detail-label {
+            flex: 0 0 66%;
+            color: #000;
+            font-size: 18px;
+            font-weight: 900;
+            line-height: 1.65;
+            text-align: right;
+        }
+
+        .order-detail-value {
+            flex: 1 1 34%;
+            min-width: 0;
+            color: #000;
+            direction: ltr;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+            text-align: left;
+        }
+
+        .order-detail-date {
+            font-size: 17px;
+            white-space: nowrap;
+        }
         .size .col-6{
             font-weight:300;
         }
 
         @media print {
+            @page {
+                margin: 0;
+            }
+
+            html,
+            body,
+            #invoice-POS {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
+
+            #top {
+                height: 0 !important;
+                min-height: 0 !important;
+                overflow: hidden;
+                border: 0;
+            }
+
+            #orderSection {
+                margin-top: 0 !important;
+            }
+
+            #orderSection > p:first-child {
+                margin: 0 !important;
+                line-height: normal;
+            }
+
             .btn {
                 display: none !important;
             }
@@ -215,88 +304,22 @@
                         </div>
                     </div>
                     <hr>
-                    <!--//customer name-->
-                    <div class="" style="text-align: right;">
-                        <div style="width: 50%; display: inline-block; font-size:20px; font-weight:600;">
-                            {!! '<p style="font-size:18px; position:absolute;left:40px;">' . $orderDetail->customers->name . '</p>' !!}
-                            <p
-                                style="font-weight: 900; font-size:18px margin:0px">:نام</p>
-                        </div>
-                    </div>
-
-                    <!--//number of suits-->
-                    <div class="" style="text-align: right;">
-                        <div style="width: 50%; display: inline-block; font-size:18px; font-weight:600;">
-                            {!! '<p style="font-size:18px;position:absolute;left:60px;">' . $orderDetail->suitQuantity . '</p>' !!}
-                            <p style="font-weight: 900; font-size:18px; margin:0px">:سوٹ کی تعداد</p>
-                        </div>
-                    </div>
-
-
-                    <div class="mb-3" style="text-align: right;">
-                        <div
-                            style="width: 50%; display: inline-block; font-size:18px; font-weight:400; max-width:400px; word-wrap:break-word; word-break:break-all;">
-                            {!! '<p style="font-size:18px; font-weight:900; position:absolute; left:60px;">' . $orderDetail->suitNum . '</p>' !!}
-                            <p style="font-size:18px; font-weight:900;margin:0px">:سیریل نمبر</p>
-                        </div>
-                    </div>
-
-
-                    <!--//order payment-->
-                    <div class="mb-3" style="text-align: right;">
-                        <div style="width: 100%; display: inline-block; font-size:18px;">
-                            {!! '<p style="font-size:18px; font-weight:900; position:absolute; left:40px;">' . $orderDetail->totalPayment .'</p>' !!}
-                            <p style="font-size:18px; font-weight:900;margin:0px">:آرڈر کی رقم
-                                </p>
-                        </div>
-                    </div>
-
-                    <!--//recieved payment-->
-                    <div class="mb-3" style="text-align: right;padding:0px 0px;">
-                        <div style="width: 100%; display: inline-block; font-size:18px; ">
-                            {!! '<p style="font-size:18px; font-weight:900; position:absolute;left:40px;">' . $orderDetail->transactions[0]->recivedPayment .'</p>' !!}
-                            <p style="font-weight:900; font-size:18px;margin:0px">:موجودہ رقم کی
-                            ادائیگی</p>
-                        </div>
-                    </div>
-                    <!-- Current due payments -->
-                    @if ($latestBalance - $previousBalance > 0)
-                        <div class="mb-3" style="text-align: right; padding: 5px 0px;">
-                            <div style="width: 100%; display: inline-block; font-size:18px;">
-                                {!! '<p style="font-size:18px; font-weight:900; position:absolute;left:40px;">' . ($latestBalance - $previousBalance) . '</p>' !!}
-                                <p style="font-weight:900; font-size:18px;margin:0px">:موجودہ ادائیگی واجب
-                                    الادا</p>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Previous payments due -->
-                    @if ($previousBalance > 0)
-                        <div class="mb-3" style="text-align: right; padding: 5px 0px;">
-                            <div style="width: 100%; display: inline-block; font-size:18px; ">
-                                {!! '<p style="font-size:18px; font-weight:900; position:absolute;left:40px;">' . $previousBalance . '</p>' !!}
-                                <p style="font-weight:900; font-size:18px;margin:0px">:گزشتہ ادائیگی کے
-                                    واجبات</p>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Latest balance or total balance -->
-                    @if ($latestBalance > 0)
-                        <div class="mb-3" style="text-align: right;">
-                            <div style="width: 100%; display: inline-block; font-size:18px; ">
-                                {!! '<p style="font-size:18px; font-weight: 900; position:absolute;left:40px;">' . $latestBalance . '</p>' !!}
-                                <p style="font-weight:900; font-size:18px; margin:0px">:کل ادائیگی واجب
-                                    الادا</p>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!--//return date-->
-                    <div class="mt-3" style="text-align: right; font-size:18px; ">
-                        {!! '<p style="font-size:18px; font-weight:900; position:absolute;left:40px;">' . $orderDetail->returnDate . '</p>' !!}
-                        <p style="font-Weight:900; font-size:18px; margin:0px;">:واپسی کی
-                            تاریخ</p>
+                    <div class="order-detail-list">
+                        <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
+                        <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong class="order-detail-value">{{ $orderDetail->suitQuantity }}</strong></div>
+                        <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong class="order-detail-value">{{ $orderDetail->suitNum }}</strong></div>
+                        <div class="order-detail-row"><span class="order-detail-label">آرڈر کی رقم:</span><strong class="order-detail-value">{{ $orderDetail->totalPayment }}</strong></div>
+                        <div class="order-detail-row"><span class="order-detail-label">موجودہ رقم کی ادائیگی:</span><strong class="order-detail-value">{{ $orderDetail->transactions->first()?->recivedPayment ?? 0 }}</strong></div>
+                        @if ($latestBalance - $previousBalance > 0)
+                            <div class="order-detail-row"><span class="order-detail-label">موجودہ ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $latestBalance - $previousBalance }}</strong></div>
+                        @endif
+                        @if ($previousBalance > 0)
+                            <div class="order-detail-row"><span class="order-detail-label">گزشتہ ادائیگی کے واجبات:</span><strong class="order-detail-value">{{ $previousBalance }}</strong></div>
+                        @endif
+                        @if ($latestBalance > 0)
+                            <div class="order-detail-row"><span class="order-detail-label">کل ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $latestBalance }}</strong></div>
+                        @endif
+                        <div class="order-detail-row"><span class="order-detail-label">واپسی کی تاریخ:</span><strong class="order-detail-value order-detail-date">{{ $orderDetail->returnDate }}</strong></div>
                     </div>
                     <div>
                         <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">{{$orderDetail->remarks}}</h3>
@@ -384,13 +407,13 @@
             ->values()
             ->toArray();
 
-        // Fill the shorter column so system and custom fields print side by side.
-        foreach ($customFields as $customField) {
-            if (count($leftFields) < count($rightFields)) {
-                $leftFields[] = $customField;
-            } else {
-                $rightFields[] = $customField;
-            }
+        // Keep the original system rows together, then print custom fields in pairs.
+        $systemRows = max(count($leftFields), count($rightFields));
+        $leftFields = array_pad($leftFields, $systemRows, null);
+        $rightFields = array_pad($rightFields, $systemRows, null);
+        foreach (array_chunk($customFields, 2) as $customPair) {
+            $leftFields[] = $customPair[0];
+            $rightFields[] = $customPair[1] ?? null;
         }
 
         $rows = max(count($leftFields), count($rightFields));
@@ -400,7 +423,7 @@
 
                     @for($i = 0; $i < $rows; $i++)
 
-                    <div class="row" style="display:flex;justify-content:space-between;padding:0 10px;">
+                    <div class="row measurement-row" style="display:flex;justify-content:space-between;padding:0 10px;">
 
                         {{-- LEFT COLUMN --}}
                         <div class="col-6" style="width:45%;">
@@ -411,11 +434,11 @@
                                     $item = $allMeasurements[$leftFields[$i]];
                                 @endphp
 
-                                <div style="display:flex;justify-content:space-between;font-weight:600;">
+                                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
 
-                                    <span>{{ $item->value }}</span>
+                                    <span class="measurement-value" style="min-width:0; white-space:normal; overflow-wrap:anywhere;">{{ $item->value }}</span>
 
-                                    <span style="font-size:20px;">{{ $item->label }}</span>
+                                    <span class="measurement-label" style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
 
                                 </div>
 
@@ -432,13 +455,13 @@
                                     $item = $allMeasurements[$rightFields[$i]];
                                 @endphp
 
-                                <div style="display:flex;align-items:flex-start;font-weight:600;padding:4px 8px;">
+                                <div style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
 
-                                    <span style="width:40%; text-align:left; padding-right:10px;">
+                                    <span class="measurement-value" style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
                                         {{ $item->value }}
                                     </span>
 
-                                    <span style="width:60%; text-align:right; font-size:20px; padding-left:10px;">
+                                    <span class="measurement-label" style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
                                         {{ $item->label }}
                                     </span>
 
