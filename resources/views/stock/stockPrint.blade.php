@@ -212,6 +212,7 @@
             } */
     </style>
     @include('print.partials.document-styles')
+    @include('stock.partials.pos80-styles')
 </head>
 
 <body class="tms-stock-print">
@@ -273,191 +274,53 @@
 
             <div id="orderSection" style="max-width: 380px; margin-top: -25px;" class="ticket order-section">
                 <div class="pl-3 pr-3" style="margin-top: 10px">
-                    @if($setting?->logo)
-                        @if($setting->logo_url)
-                            <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
-                        @endif
+                    @if($setting?->logo_url)
+                        <p class="stock-receipt-logo"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
                     @endif
-                    <h1 class="text-center" style="font-size: 16px;font-weight: 600;text-align: center">
+                    <h1 class="text-center stock-receipt-shop" style="font-size: 16px;font-weight: 600;text-align: center">
                         {{ $setting?->name ?: (auth()->user()->business?->name ?: auth()->user()->name) }}</h1>
-                        <h5 style="font-size: 16px;font-weight: 600;text-align: center">
+                        <h5 class="stock-receipt-number" style="font-size: 16px;font-weight: 600;text-align: center">
                             رسید نمبر: {{ $receipt?->receipt_number ?? $id }}</h5>
-                    <table class="table" style="width: 100%; table-layout: fixed;">
-
-                        <h4 style="position:relative; margin-bottom: 20px !important;font-size:20px;font-weight:700;" class="text-right">
-                            {{ $customerName }} : نام </h4>
-                        <h4 style="position:relative;text-align: right; margin-bottom:30px !important;font-size:20px;font-weight:700;">
-                            {{ $phone }} : موبائل نمبر</h4>
-                        <thead>
-                            <tr>
-                                <th style="width: 34%;">کپڑے کی تفصیل</th>
-                                <th style="width: 14%;">میٹر</th>
-                                <th style="width: 20%;">فی میٹر</th>
-                                <th style="width: 20%;">ٹوٹل</th>
-                                <th style="width: 12%;">ریک</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
+                    <div class="stock-customer-info">
+                        <div class="stock-customer-row"><span>نام:</span><strong>{{ $customerName }}</strong></div>
+                        <div class="stock-customer-row is-ltr"><span>موبائل نمبر:</span><strong>{{ $phone ?: '—' }}</strong></div>
+                        <div class="stock-customer-row is-ltr"><span>تاریخ:</span><strong>{{ $latestSaleStock->sellDate ? \Illuminate\Support\Carbon::parse($latestSaleStock->sellDate)->format('d-m-Y h:i A') : '—' }}</strong></div>
+                    </div>
+                    @php $totalAmount = 0; @endphp
+                    <div class="stock-items-list">
+                        @foreach ($sellStock as $sellstock)
                             @php
-                                $totalAmount = 0; // Initialize total amount variable
+                                $itemTotal = $sellstock->length * $sellstock->selling_price;
+                                $totalAmount += $itemTotal;
                             @endphp
-                            @foreach ($sellStock as $sellstock)
-                                {{-- in reverse order --}}
-                                <tr>
-                                    @php
-                                        $itemTotal = $sellstock->length * $sellstock->selling_price;
-                                        $totalAmount += $itemTotal; // Accumulate the total amount
-                                    @endphp
-                                    <td><b>{{ $sellstock->brand->name }} / {{ $sellstock->type->name }} / {{ $sellstock->color }}</b></td>
-                                    <td><b>{{ $sellstock->length }}</b></td>
-                                    <td><b>{{ number_format($sellstock->selling_price, 2) }}</b></td>
-                                    <td><b>{{ number_format($itemTotal, 2) }}</b></td>
-                                    <td><b>{{ $sellstock->clothes_rack }}</b></td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                        <tfoot>
-                            @if ($tailortransactions && $previousBalance > 0)
-                            <tr>
-                                <td colspan="4" style="text-align: right;font-size:20px;">
-                                    <span style="font-size: 12px;"> </span>
-                                    <b>{{ $totalAmount }}</b>
-                                </td>
-
-                                <td colspan="4" style="text-align: right;font-size:18px;"> : ٹوٹل</td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" style="text-align: right;font-size:20px;">
-                                    <b>{{ $payment }}<b>
-                                </td>
-
-                                <td colspan="4" style="text-align: right;font-size:18px;"> : ادائیگی</td>
-                            </tr>
-
-                            <tr>
-                                <td colspan="2" style="text-align: right;font-size:20px;">
-                                    <b>{{ $remaining }}<b>
-                                </td>
-
-                                <td colspan="4" style="text-align: right;font-size:18px;"> : ادائیگی واجب الادا</td>
-                            </tr>
-                                <tr>
-                                    <td colspan="4" style="text-align: right;font-size:20px;">
-                                        <span style="font-size: 12px;"></span>
-
-                                        <b>{{$previousBalance + $tailortransactions->Balance }}</b>
-                                    </td>
-
-                                    <td colspan="4" style="text-align: right;font-size:18px;"> : ٹیلرنگ اور فروخت</td>
-                                </tr>
-
-                                @elseif ($tailortransactions)
-                                <tr>
-                                    <td colspan="4" style="text-align: right;font-size:20px;">
-                                        <span style="font-size: 12px;"> </span>
-                                        <b>{{ $totalAmount }}</b>
-
-                                    </td>
-
-                                    <td colspan="4" style="text-align: right;font-size:18px;"> : ٹوٹل</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="4" style="text-align: right;font-size:20px;">
-                                        <b>{{ $payment }}<b>
-                                    </td>
-
-                                    <td colspan="4" style="text-align: right;font-size:18px;"> : ادائیگی</td>
-                                </tr>
-
-                                <tr>
-                                    <td colspan="4" style="text-align: right;font-size:20px;">
-                                        <b>{{ $remaining }}<b>
-                                    </td>
-
-                                    <td colspan="5" style="text-align: right;font-size:18px;"> : ادائیگی واجب الادا</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="4" style="text-align: right;font-size:20px;">
-                                        <span style="font-size: 12px;"></span>
-
-                                        {{ $tailortransactions->Balance }}
-                                    </td>
-
-                                    <td colspan="4" style="text-align: right;font-size:18px;"> : ٹیلرنگ</td>
-                                </tr>
-                            @elseif ($previousBalance > 0)
-                                <tr>
-                                    <td colspan="3" style="text-align: right;font-size:20px;">
-                                        <span style="font-size: 12px;"> </span>
-                                        <b>{{ $totalAmount }}</b>
-
-                                    </td>
-
-                                    <td colspan="3" style="text-align: right;font-size:18px;"> : ٹوٹل</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="3" style="text-align: right;font-size:20px;">
-                                        <b>{{ $payment }}<b>
-                                    </td>
-
-                                    <td colspan="3" style="text-align: right;font-size:18px;"> : ادائیگی</td>
-                                </tr>
-
-                                <tr>
-                                    <td colspan="2" style="text-align: right;font-size:20px;">
-                                        <b>{{ $remaining }}<b>
-                                    </td>
-
-                                    <td colspan="4" style="text-align: right;font-size:18px;"> : ادائیگی واجب الادا</td>
-                                </tr>
-
-                                <tr>
-                                    <td colspan="2" style="text-align: right;font-size:20px;">
-                                        <span style="font-size: 12px;"> </span>
-                                        <b>{{$previousBalance}}</b>
-                                    </td>
-                                    <td colspan="4" style="text-align: right;font-size:18px;"> : سابقہ ​​ادائیگیاں</td>
-                                </tr>
-
-                            @else
-                                <tr>
-                                    <td colspan="3" style="text-align: right;font-size:20px;">
-                                        <b>{{ $totalAmount }}</b>
-                                    </td>
-
-                                    <td colspan="3" style="text-align: right;font-size:18px;"> : ٹوٹل</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="3" style="text-align: right;font-size:20px;">
-                                        <b>{{ $payment }}<b>
-                                    </td>
-
-                                    <td colspan="3" style="text-align: right;font-size:18px;"> : ادائیگی</td>
-                                </tr>
-
-                                <tr>
-                                    <td colspan="3" style="text-align: right;font-size:20px;">
-                                        <b>{{ $remaining }}<b>
-                                    </td>
-
-                                    <td colspan="3" style="text-align: right;font-size:18px;"> : ادائیگی واجب الادا</td>
-                                </tr>
-                            {{-- @else
-                                <tr>
-                                    <td colspan="4" style="text-align: right;font-size:18px;">
-                                        {{ $totalAmount }}</td>
-                                    <td colspan="4" style="text-align: right;font-size:18px;">:ٹوٹل</td>
-                                </tr> --}}
-                            @endif
-                        </tfoot>
-                    </table>
+                            <div class="stock-item-card">
+                                <div class="stock-order-row"><span class="stock-order-label">برانڈ:</span><strong class="stock-order-value">{{ $sellstock->brand->name }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">قسم:</span><strong class="stock-order-value">{{ $sellstock->type->name }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">رنگ:</span><strong class="stock-order-value">{{ $sellstock->color }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">میٹر:</span><strong class="stock-order-value">{{ $sellstock->length }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">ٹوٹل:</span><strong class="stock-order-value">{{ number_format($itemTotal, 2) }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">ریک:</span><strong class="stock-order-value">{{ $sellstock->clothes_rack }}</strong></div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="stock-order-summary">
+                        <div class="stock-order-row"><span class="stock-order-label">ٹوٹل:</span><strong class="stock-order-value">{{ $totalAmount }}</strong></div>
+                        <div class="stock-order-row"><span class="stock-order-label">ادائیگی:</span><strong class="stock-order-value">{{ $payment }}</strong></div>
+                        <div class="stock-order-row"><span class="stock-order-label">ادائیگی واجب الادا:</span><strong class="stock-order-value">{{ $remaining }}</strong></div>
+                        @if ($tailortransactions && $previousBalance > 0)
+                            <div class="stock-order-row"><span class="stock-order-label">ٹیلرنگ اور فروخت:</span><strong class="stock-order-value">{{ $previousBalance + $tailortransactions->Balance }}</strong></div>
+                        @elseif ($tailortransactions)
+                            <div class="stock-order-row"><span class="stock-order-label">ٹیلرنگ:</span><strong class="stock-order-value">{{ $tailortransactions->Balance }}</strong></div>
+                        @elseif ($previousBalance > 0)
+                            <div class="stock-order-row"><span class="stock-order-label">سابقہ ادائیگیاں:</span><strong class="stock-order-value">{{ $previousBalance }}</strong></div>
+                        @endif
+                    </div>
                 </div>
 
             </div>
         </div>
 
-        <div style="width: 100%;">
+        <div class="stock-receipt-footer" style="width: 100%;">
             <div style="width: 100%;font-weight:900;" align="center">
                 @if($setting?->address)<p><b style="font-size: 16px;">{{ $setting->address }}</b></p>@endif
                 @if($setting?->contact_no)<p><b style="font-size: 16px;">{{ $setting->contact_no }}</b></p>@endif

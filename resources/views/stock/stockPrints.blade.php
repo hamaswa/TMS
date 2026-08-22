@@ -195,6 +195,7 @@
         }
     </style>
     @include('print.partials.document-styles')
+    @include('stock.partials.pos80-styles')
 </head>
 
 <body class="tms-stock-print">
@@ -230,94 +231,47 @@
             <div id="orderSection" style="max-width: 322px; margin-top: -25px;" class="ticket order-section">
                 <div class="pl-3 pr-3" style="margin-top: 10px">
                     @if($setting->logo_url)
-                        <p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
+                        <p class="stock-receipt-logo"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>
                     @endif
-                    <h1 class="text-center" style="font-size: 16px;font-weight: 600;text-align: center">
+                    <h1 class="text-center stock-receipt-shop" style="font-size: 16px;font-weight: 600;text-align: center">
                         {{ $setting->name }}</h1>
-                    <h5 style="font-size: 16px;font-weight: 600;text-align: center">
+                    <h5 class="stock-receipt-number" style="font-size: 16px;font-weight: 600;text-align: center">
                         رسید نمبر: {{ $receipt?->receipt_number ?? $id }}</h5>
-                    <table class="table" style="width: 100%; table-layout: fixed;">
-                        <h4
-                            style="position:relative;text-align: right; margin-bottom: 20px !important;font-size:18px;font-weight:600;">
-                            {{ $customerName }} : نام </h4>
-                        <h4
-                            style="position:relative;text-align: right; margin-bottom:30px !important;font-size:18px;font-weight:600;">
-                            {{ $phone }} : موبائل نمبر</h4>
-
-                        <h4
-                            style="position:relative;text-align: right; margin-bottom:30px !important;font-size:18px;font-weight:600;">
-                            {{ $sellStock->sellDate }} : تاریخ</h4>
-                        <thead>
-                            <tr>
-                                <th style="width: 34%;">کپڑے کی تفصیل</th>
-                                <th style="width: 14%;">میٹر</th>
-                                <th style="width: 20%;">فی میٹر</th>
-                                <th style="width: 20%;">ٹوٹل</th>
-                                <th style="width: 12%;">ریک</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="stock-customer-info">
+                        <div class="stock-customer-row"><span>نام:</span><strong>{{ $customerName }}</strong></div>
+                        <div class="stock-customer-row is-ltr"><span>موبائل نمبر:</span><strong>{{ $phone ?: '—' }}</strong></div>
+                        <div class="stock-customer-row is-ltr"><span>تاریخ:</span><strong>{{ $sellStock->sellDate ? \Illuminate\Support\Carbon::parse($sellStock->sellDate)->format('d-m-Y h:i A') : '—' }}</strong></div>
+                    </div>
+                    @php $totalAmount = 0; @endphp
+                    <div class="stock-items-list">
+                        @forelse ($saleStocks as $saleStock)
                             @php
-                                $totalAmount = 0; // Initialize total amount variable
+                                $itemTotal = $saleStock->length * $saleStock->selling_price;
+                                $totalAmount += $itemTotal;
                             @endphp
-                            @if ($saleStocks->isNotEmpty()) <!-- Check if there are any sale stocks -->
-                                {{-- Loop through each sale stock --}}
-                                @foreach ($saleStocks as $saleStock)
-                                    <tr>
-                                        <td><b>{{ $saleStock->brand->name }} / {{ $saleStock->type->name }} / {{ $saleStock->color }}</b></td>
-                                        <td><b>{{ $saleStock->length }}</b></td>
-                                        <td><b>{{ number_format($saleStock->selling_price, 2) }}</b></td>
-                                        <td><b>{{ number_format($saleStock->length * $saleStock->selling_price, 2) }}</b></td>
-                                        <td><b>{{ $saleStock->clothes_rack }}</b></td>
-                                    </tr>
-                                    @php
-                                        // Calculate total amount
-                                        $totalAmount += $saleStock->length * $saleStock->selling_price;
-                                    @endphp
-                                @endforeach
-                            @else
-                                <tr>
-                                    <td colspan="5">کوئی ریکارڈ موجود نہیں۔</td>
-                                </tr>
-                            @endif
-                        </tbody>
-
-
-                        <tfoot>
-
-                            <tr>
-                                <td colspan="3" style="text-align: right;font-size:20px;">
-                                    <b>{{ $totalAmount }}<b>
-                                </td>
-
-                                <td colspan="3" style="text-align: right;font-size:18px;"> : ٹوٹل</td>
-                            </tr>
-
-                            <tr>
-                                <td colspan="3" style="text-align: right;font-size:20px;">
-                                    <b>{{ $payment }}<b>
-                                </td>
-
-                                <td colspan="3" style="text-align: right;font-size:18px;"> : ادائیگی</td>
-                            </tr>
-
-                            <tr>
-                                <td colspan="3" style="text-align: right;font-size:20px;">
-                                    <b>{{ $remaining }}<b>
-                                </td>
-
-                                <td colspan="3" style="text-align: right;font-size:18px;"> : ادائیگی واجب الادا</td>
-                            </tr>
-
-                            {{-- @endif --}}
-                        </tfoot>
-                    </table>
+                            <div class="stock-item-card">
+                                <div class="stock-order-row"><span class="stock-order-label">برانڈ:</span><strong class="stock-order-value">{{ $saleStock->brand->name }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">قسم:</span><strong class="stock-order-value">{{ $saleStock->type->name }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">رنگ:</span><strong class="stock-order-value">{{ $saleStock->color }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">میٹر:</span><strong class="stock-order-value">{{ $saleStock->length }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">ٹوٹل:</span><strong class="stock-order-value">{{ number_format($itemTotal, 2) }}</strong></div>
+                                <div class="stock-order-row"><span class="stock-order-label">ریک:</span><strong class="stock-order-value">{{ $saleStock->clothes_rack }}</strong></div>
+                            </div>
+                        @empty
+                            <div class="stock-items-empty">کوئی ریکارڈ موجود نہیں۔</div>
+                        @endforelse
+                    </div>
+                    <div class="stock-order-summary">
+                        <div class="stock-order-row"><span class="stock-order-label">ٹوٹل:</span><strong class="stock-order-value">{{ $totalAmount }}</strong></div>
+                        <div class="stock-order-row"><span class="stock-order-label">ادائیگی:</span><strong class="stock-order-value">{{ $payment }}</strong></div>
+                        <div class="stock-order-row"><span class="stock-order-label">ادائیگی واجب الادا:</span><strong class="stock-order-value">{{ $remaining }}</strong></div>
+                    </div>
                 </div>
 
             </div>
         </div>
 
-        <div style="width: 100%;">
+        <div class="stock-receipt-footer" style="width: 100%;">
             <div style="width: 100%;" align="center">
                 <td><b style="font-size: 18px;">{{ $setting->address }}</b></td><br>
                 <td><b style="font-size: 18px;">{{ $setting->contact_no }}</b></td>

@@ -167,9 +167,17 @@ class ClothStockController extends Controller
             $id = auth()->user()->businessOwnerId();
             // dd($id);
             $customers = Customers::where('user_id', $id)->get();
+            $inventoryOptions = $cloths->map(fn ($cloth) => [
+                'brand_id' => (string) $cloth->cloth_brand_id,
+                'type_id' => (string) $cloth->cloth_type_id,
+                'colors' => $cloth->colors->map(fn ($color) => [
+                    'name' => $color->color,
+                    'length' => (float) $color->length,
+                ])->values(),
+            ])->values();
 
             // dd($customers);
-            return view('stock.sell', compact('customers', 'cloths'));
+            return view('stock.sell', compact('customers', 'cloths', 'inventoryOptions'));
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -849,13 +857,19 @@ class ClothStockController extends Controller
             'cloth_type.*' => ['required', 'integer'],
             'color' => ['required', 'array'],
             'color.*' => ['required', 'string', 'max:100'],
-            'per_meter' => ['required', 'array'],
+            'item_total' => ['nullable', 'array'],
+            'item_total.*' => ['required', 'numeric', 'min:0'],
+            'per_meter' => ['nullable', 'array'],
             'per_meter.*' => ['required', 'numeric', 'min:0'],
             'clothes_rack' => ['required', 'array'],
             'clothes_rack.*' => ['nullable', 'string', 'max:100'],
             'length' => ['required', 'array'],
             'length.*' => ['required', 'numeric', 'gt:0'],
-            'c_name' => ['required', 'string', 'regex:/^.+\|\d+$/'],
+            'customer_mode' => ['nullable', Rule::in(['regular', 'random'])],
+            'existing_customer_id' => ['nullable', 'integer'],
+            'random_customer_name' => ['nullable', 'string', 'max:255'],
+            'random_customer_phone' => ['nullable', 'string', 'max:30'],
+            'c_name' => ['nullable', 'string', 'regex:/^.+\|\d+$/'],
             'payment' => ['required', 'numeric', 'min:0'],
             'remain' => ['nullable', 'numeric', 'min:0'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
@@ -869,13 +883,32 @@ class ClothStockController extends Controller
         ]);
 
         $itemCount = count($validated['brand_name']);
-        foreach (['cloth_type', 'color', 'per_meter', 'clothes_rack', 'length'] as $field) {
+        foreach (['cloth_type', 'color', 'clothes_rack', 'length'] as $field) {
             abort_unless(count($validated[$field]) === $itemCount, 422, 'Sale item fields are incomplete.');
         }
 
-        $saleTotal = round(collect($validated['length'])
-            ->map(fn ($length, $index) => (float) $length * (float) $validated['per_meter'][$index])
-            ->sum(), 2);
+        $usesItemTotals = isset($validated['item_total']) && count($validated['item_total']) === $itemCount;
+        $usesLegacyRates = isset($validated['per_meter']) && count($validated['per_meter']) === $itemCount;
+        if (! $usesItemTotals && ! $usesLegacyRates) {
+            throw ValidationException::withMessages([
+                'item_total' => 'ہر کپڑے کی کل قیمت درج کریں۔',
+            ]);
+        }
+
+        $itemTotals = [];
+        $perMeters = [];
+        foreach ($validated['length'] as $index => $length) {
+            $length = (float) $length;
+            if ($usesItemTotals) {
+                $itemTotals[$index] = round((float) $validated['item_total'][$index], 2);
+                $perMeters[$index] = round($itemTotals[$index] / $length, 2);
+            } else {
+                $perMeters[$index] = round((float) $validated['per_meter'][$index], 2);
+                $itemTotals[$index] = round($length * $perMeters[$index], 2);
+            }
+        }
+
+        $saleTotal = round(array_sum($itemTotals), 2);
         if ((float) $validated['payment'] > $saleTotal) {
             throw ValidationException::withMessages([
                 'payment' => 'موصول شدہ رقم کل فروخت سے زیادہ نہیں ہو سکتی۔',
@@ -883,16 +916,43 @@ class ClothStockController extends Controller
         }
         $remainingBalance = round($saleTotal - (float) $validated['payment'], 2);
 
-        [, $customerId] = explode('|', $validated['c_name'], 2);
-        $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($customerId);
+        $ownerId = Auth::user()->businessOwnerId();
+        $customerMode = $validated['customer_mode'] ?? 'regular';
+        $existingCustomerId = $validated['existing_customer_id'] ?? null;
+        if (! $existingCustomerId && ! empty($validated['c_name'])) {
+            [, $existingCustomerId] = explode('|', $validated['c_name'], 2);
+        }
 
-        $firstSale = DB::transaction(function () use ($validated, $customer, $itemCount, $remainingBalance) {
+        if ($customerMode === 'random' && blank($validated['random_customer_name'] ?? null)) {
+            throw ValidationException::withMessages([
+                'random_customer_name' => 'نئے گاہک کا نام ضرور لکھیں۔',
+            ]);
+        }
+        if ($customerMode === 'regular' && ! $existingCustomerId) {
+            throw ValidationException::withMessages([
+                'existing_customer_id' => 'فہرست سے گاہک منتخب کریں۔',
+            ]);
+        }
+
+        $existingCustomer = $customerMode === 'regular'
+            ? Customers::where('user_id', $ownerId)->findOrFail($existingCustomerId)
+            : null;
+
+        [$firstSale, $customer] = DB::transaction(function () use ($validated, $existingCustomer, $customerMode, $itemCount, $remainingBalance, $ownerId, $perMeters) {
             $inventory = app(InventoryService::class);
             $firstSale = null;
             $soldAt = now();
+            $customer = $existingCustomer;
+            if ($customerMode === 'random') {
+                $customer = Customers::create([
+                    'name' => trim($validated['random_customer_name']),
+                    'phone_number1' => trim($validated['random_customer_phone'] ?? ''),
+                    'user_id' => $ownerId,
+                ]);
+            }
             $receipt = CounterSaleReceipt::create([
                 'receipt_number' => 'TMSC-'.Str::upper(Str::random(6)),
-                'user_id' => Auth::user()->businessOwnerId(),
+                'user_id' => $ownerId,
                 'customer_id' => $customer->id,
                 'status' => 'completed',
                 'created_at' => $soldAt,
@@ -900,14 +960,24 @@ class ClothStockController extends Controller
             ]);
 
             for ($i = 0; $i < $itemCount; $i++) {
-                $cloth = Cloth::where('user_id', Auth::user()->businessOwnerId())
+                $cloth = Cloth::where('user_id', $ownerId)
                     ->where('cloth_type_id', $validated['cloth_type'][$i])
                     ->where('cloth_brand_id', $validated['brand_name'][$i])
-                    ->firstOrFail();
+                    ->first();
+                if (! $cloth) {
+                    throw ValidationException::withMessages([
+                        'cloth_type.'.$i => 'منتخب برانڈ اور کپڑے کی قسم آپس میں درست نہیں۔',
+                    ]);
+                }
                 $clothColor = $cloth->colors()
                     ->where('color', $validated['color'][$i])
                     ->lockForUpdate()
-                    ->firstOrFail();
+                    ->first();
+                if (! $clothColor) {
+                    throw ValidationException::withMessages([
+                        'color.'.$i => 'منتخب رنگ اس برانڈ اور کپڑے کی قسم میں دستیاب نہیں۔',
+                    ]);
+                }
 
                 if ((float) $clothColor->length < (float) $validated['length'][$i]) {
                     throw ValidationException::withMessages([
@@ -916,7 +986,7 @@ class ClothStockController extends Controller
                 }
 
                 $costPrice = (float) $clothColor->average_unit_cost ?: (float) $cloth->price;
-                $salePrice = (float) $validated['per_meter'][$i];
+                $salePrice = $perMeters[$i];
                 $sale = SaleStock::create([
                     'counter_sale_receipt_id' => $receipt->id,
                     'cloth_type_id' => $validated['cloth_type'][$i],
@@ -931,7 +1001,7 @@ class ClothStockController extends Controller
                     'selling_price' => $salePrice,
                     'profit' => max(0, $salePrice - $costPrice),
                     'loss' => max(0, $costPrice - $salePrice),
-                    'user_id' => Auth::user()->businessOwnerId(),
+                    'user_id' => $ownerId,
                     'cloth_id' => $cloth->id,
                     'cloth_color_id' => $clothColor->id,
                     'cost_per_meter' => $costPrice,
@@ -951,13 +1021,13 @@ class ClothStockController extends Controller
                 'customerId' => $customer->id,
                 'Order_type' => 'Sale',
                 'sale_id' => $firstSale->id,
-                'userId' => Auth::user()->businessOwnerId(),
+                'userId' => $ownerId,
                 'payment_method' => $validated['payment_method'] ?? 'cash',
                 'payment_reference' => $validated['payment_reference'] ?? null,
                 'paid_on' => $validated['paid_on'] ?? now()->toDateString(),
             ]);
 
-            return $firstSale;
+            return [$firstSale, $customer];
         });
 
         return redirect()->route('admin.printStock', ['id' => $firstSale->id, 'customerId' => $customer->id]);

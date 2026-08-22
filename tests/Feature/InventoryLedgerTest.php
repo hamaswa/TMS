@@ -86,6 +86,75 @@ class InventoryLedgerTest extends TestCase
                 && $sales->first()->items_count === 1);
     }
 
+    public function test_counter_sale_creates_random_customer_and_derives_rate_from_item_total(): void
+    {
+        [$owner, $cloth, $color] = $this->stock(10, 100);
+
+        $response = $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'customer_mode' => 'random',
+            'random_customer_name' => 'Walk In Customer',
+            'random_customer_phone' => '',
+            'brand_name' => [$cloth->cloth_brand_id],
+            'cloth_type' => [$cloth->cloth_type_id],
+            'color' => [$color->color],
+            'item_total' => [500],
+            'clothes_rack' => [null],
+            'length' => [4],
+            'payment' => 500,
+            'remain' => 0,
+            'payment_method' => 'cash',
+            'paid_on' => now()->toDateString(),
+        ]);
+
+        $customer = Customers::where('user_id', $owner->id)
+            ->where('name', 'Walk In Customer')
+            ->firstOrFail();
+        $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
+
+        $response->assertRedirect(route('admin.printStock', [
+            'id' => $sale->id,
+            'customerId' => $customer->id,
+        ]));
+        $this->assertSame('', $customer->phone_number1);
+        $this->assertSame($customer->id, (int) $sale->c_id);
+        $this->assertEquals(125, (float) $sale->selling_price);
+        $this->assertDatabaseHas('counter_sale_receipts', ['customer_id' => $customer->id]);
+        $this->assertDatabaseHas('transactions', [
+            'customerId' => $customer->id,
+            'recivedPayment' => 500,
+            'remainingBalance' => 0,
+        ]);
+    }
+
+    public function test_counter_sale_rejects_color_that_does_not_belong_to_selected_cloth_without_a_404(): void
+    {
+        [$owner, $cloth] = $this->stock(10, 100);
+        $customer = Customers::create([
+            'name' => 'Color Check Customer',
+            'phone_number1' => '03001112222',
+            'user_id' => $owner->id,
+        ]);
+
+        $response = $this->actingAs($owner)->from(route('admin.sellCloth'))->post(route('admin.sellStock'), [
+            'customer_mode' => 'regular',
+            'existing_customer_id' => $customer->id,
+            'brand_name' => [$cloth->cloth_brand_id],
+            'cloth_type' => [$cloth->cloth_type_id],
+            'color' => ['Wrong color'],
+            'item_total' => [300],
+            'clothes_rack' => [null],
+            'length' => [2],
+            'payment' => 300,
+        ]);
+
+        $response->assertRedirect(route('admin.sellCloth'))
+            ->assertSessionHasErrors([
+                'color.0' => 'منتخب رنگ اس برانڈ اور کپڑے کی قسم میں دستیاب نہیں۔',
+            ]);
+        $this->assertDatabaseCount('sale_stocks', 0);
+        $this->assertDatabaseCount('counter_sale_receipts', 0);
+    }
+
     public function test_counter_sale_cancellation_restores_every_item_and_reverses_customer_and_financial_totals_once(): void
     {
         [$owner, $cloth, $firstColor] = $this->stock(10, 100);
@@ -247,6 +316,10 @@ class InventoryLedgerTest extends TestCase
 
         $response->assertOk()
             ->assertSeeText('گاہک کی معلومات')
+            ->assertSeeText('ریگولر گاہک')
+            ->assertSeeText('رینڈم / نیا گاہک')
+            ->assertSeeText('کل قیمت')
+            ->assertSeeText('ریٹ فی میٹر')
             ->assertSeeText('مزید کپڑا شامل کریں')
             ->assertSee('assets/js/form-accessibility.js', false)
             ->assertDontSee('width: 120%', false)
