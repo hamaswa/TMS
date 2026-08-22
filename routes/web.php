@@ -32,6 +32,7 @@ use App\Http\Controllers\OptionTypeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderWorkAssignmentController;
 use App\Http\Controllers\ProductionWorkerController;
+use App\Http\Controllers\PublicOrderTrackingController;
 use App\Http\Controllers\PublicLocaleController;
 use App\Http\Controllers\PublicStorefrontCartController;
 use App\Http\Controllers\PublicStorefrontCheckoutController;
@@ -97,6 +98,10 @@ Route::get('/shops/{storefront:slug}/tailoring/{service}', [PublicStorefrontCont
 Route::post('/shops/{storefront:slug}/inquiries', [PublicStorefrontController::class, 'submitInquiry'])
     ->middleware(['public.locale', 'throttle:10,1'])
     ->name('storefront.inquiries.store');
+
+Route::get('/order-status/{order}', [PublicOrderTrackingController::class, 'show'])
+    ->middleware(['signed', 'throttle:60,1'])
+    ->name('orders.track');
 
 Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'business.status', 'business.activity'], 'as' => 'employee.password.'], function () {
     Route::get('/password', [EmployeePasswordController::class, 'edit'])->name('edit');

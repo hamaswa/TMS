@@ -27,13 +27,17 @@ use App\Services\MeasurementService;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\ProductionWorkforceService;
+use App\Services\CustomerLedgerService;
 use App\Support\PaymentMethods;
 use Illuminate\Support\Carbon;
 
 
 class OrderController extends Controller
 {
-    public function __construct(private MeasurementService $measurements)
+    public function __construct(
+        private MeasurementService $measurements,
+        private CustomerLedgerService $customerLedger
+    )
     {
     }
 
@@ -348,10 +352,23 @@ class OrderController extends Controller
                 ->where('orders.userId', Auth::user()->businessOwnerId())
                 ->get();
             $racks = rack::where('user_id', auth()->user()->businessOwnerId())->get();
+            $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
+            $orderBalances = $canViewBalances
+                ? $this->customerLedger->orderBalances(Auth::user()->businessOwnerId(), (int) $id)
+                : collect();
 
             $data = [];
             $i = 1;
             foreach ($Orders as $order) {
+                $remaining = $canViewBalances
+                    ? max(0, (float) $orderBalances->get((int) $order->id, (float) $order->totalPayment))
+                    : null;
+                $paid = $canViewBalances ? max(0, (float) $order->totalPayment - $remaining) : null;
+                $paymentStatus = ! $canViewBalances ? null : match (true) {
+                    $remaining <= 0 => ['key' => 'paid', 'label' => 'ادا شدہ'],
+                    $paid > 0 => ['key' => 'partial', 'label' => 'جزوی ادا شدہ'],
+                    default => ['key' => 'unpaid', 'label' => 'غیر ادا شدہ'],
+                };
                 $button = ucfirst($order->status ?: 'assigned');
                 $btn = match ($order->status) {
                     'assigned' => 'btn-primary',
@@ -362,6 +379,11 @@ class OrderController extends Controller
                 $data[] = [
                     'number' => $i++,
                     'totalPayment' => $order->totalPayment,
+                    'paidAmount' => $paid,
+                    'remainingAmount' => $remaining,
+                    'paymentStatus' => $paymentStatus,
+                    'canReceivePayment' => $canViewBalances && $remaining > 0,
+                    'customerId' => (int) $id,
                     'created_at' => date('d-m-Y', strtotime($order->created_at)),
                     'returnDate' => date('d-m-Y', strtotime($order->returnDate)),
                     'suitQuantity' => $order->suitQuantity,
@@ -404,10 +426,12 @@ class OrderController extends Controller
 
         $setting = Setting::ensureDefaultFor(Auth::user());
         $status = "default";
-        $printConfig = app(\App\Services\PrintDocumentService::class)
-            ->make($setting, request(), 'tailor-order', $order->id);
+        $printDocumentService = app(\App\Services\PrintDocumentService::class);
+        $printConfig = $printDocumentService->make($setting, request(), 'tailor-order', $order->id);
+        $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $order->id]);
+        $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
 
-        return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig'));
+        return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
     }
 
 
@@ -449,37 +473,17 @@ class OrderController extends Controller
 
         $setting = Setting::ensureDefaultFor(Auth::user());
         $status = "default";
-        $printConfig = app(\App\Services\PrintDocumentService::class)
-            ->make($setting, request(), 'tailor-order-copy', $order->id);
+        $printDocumentService = app(\App\Services\PrintDocumentService::class);
+        $printConfig = $printDocumentService->make($setting, request(), 'tailor-order-copy', $order->id);
+        $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $order->id]);
+        $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
 
-        return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig'));
+        return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
     }
 
     private function printBalanceSummary(Order $order): array
     {
-        $ownerId = Auth::user()->businessOwnerId();
-        $orderTransaction = Transaction::where('userId', $ownerId)
-            ->where('customerId', $order->customerId)
-            ->where('orderId', $order->id)
-            ->where('Order_type', 'Tailor')
-            ->orderBy('id')
-            ->first();
-
-        $orderBalance = $orderTransaction
-            ? (float) $orderTransaction->remainingBalance
-            : max(0, (float) $order->totalPayment - (float) ($order->transactions()->sum('recivedPayment')));
-        $previousBalance = $orderTransaction
-            ? (float) Transaction::where('userId', $ownerId)
-                ->where('customerId', $order->customerId)
-                ->where('id', '<', $orderTransaction->id)
-                ->sum('remainingBalance')
-            : 0.0;
-
-        return [
-            max(0, round($previousBalance + $orderBalance, 2)),
-            round($previousBalance, 2),
-            max(0, round($orderBalance, 2)),
-        ];
+        return $this->customerLedger->receiptSummary($order);
     }
 
     public function search(Request $req)
