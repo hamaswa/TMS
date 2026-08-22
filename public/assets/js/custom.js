@@ -153,6 +153,9 @@ jQuery(document).ready(function ($) {
             dataType: 'json',
             success: function (data) {
                 $('#orderDetail').css('display', 'block');
+                if ($.fn.DataTable.isDataTable('#cc-table-data-order-history')) {
+                    $('#cc-table-data-order-history').DataTable().destroy();
+                }
                 $('.tbody').empty();
                 $.each(data, function (index, sale) {
                     var row = '<tr>' +
