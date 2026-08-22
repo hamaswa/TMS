@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\SvgWriter;
 use Illuminate\Http\Request;
 
@@ -44,18 +44,16 @@ class PrintDocumentService
         ];
     }
 
-    public function qrSvg(string $payload, int $size = 160): string
+    private function qrSvg(string $payload): string
     {
-        $size = max(80, min(400, $size));
-
-        $qrCode = new QrCode(
-            data: $payload,
-            encoding: new Encoding('UTF-8'),
-            errorCorrectionLevel: ErrorCorrectionLevel::Medium,
-            size: $size,
-            margin: 4,
-        );
-        $result = (new SvgWriter)->write($qrCode);
+        $result = Builder::create()
+            ->writer(new SvgWriter)
+            ->data($payload)
+            ->encoding(new Encoding('UTF-8'))
+            ->errorCorrectionLevel(ErrorCorrectionLevel::Medium)
+            ->size(160)
+            ->margin(4)
+            ->build();
 
         return $result->getString();
     }

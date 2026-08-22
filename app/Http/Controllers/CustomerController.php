@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\BusinessRole;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
-use App\Models\Order;
 use App\Models\Options;
 use App\Models\OptionType;
 use App\Models\rack;
@@ -15,7 +14,6 @@ use App\Models\Transaction;
 use App\Rules\PakistanMobileNumber;
 use App\Rules\UniqueCustomerPhone;
 use App\Services\MeasurementService;
-use App\Services\CustomerLedgerService;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -27,10 +25,7 @@ use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
-    public function __construct(
-        private MeasurementService $measurements,
-        private CustomerLedgerService $customerLedger
-    ) {}
+    public function __construct(private MeasurementService $measurements) {}
 
     /**
      * Display a listing of the resource.
@@ -518,7 +513,6 @@ class CustomerController extends Controller
     {
         $validated = $req->validate([
             'customer_id' => ['required', 'integer'],
-            'order_id' => ['nullable', 'integer'],
             'DirectPayment' => ['required', 'numeric', 'gt:0'],
             'comment' => ['nullable', 'string', 'max:1000'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
@@ -537,20 +531,6 @@ class CustomerController extends Controller
         // Retrieve the current remaining balance for the customer
         $currentBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->sum('remainingBalance');
 
-        $order = null;
-        if (! empty($validated['order_id'])) {
-            $order = Order::where('userId', Auth::user()->businessOwnerId())
-                ->where('customerId', $customer->id)
-                ->findOrFail($validated['order_id']);
-            $orderBalance = $this->customerLedger->orderBalance($order);
-
-            if ((float) $validated['DirectPayment'] > $orderBalance) {
-                return redirect()->back()->with([
-                    'balanceError' => "آرڈر #{$order->id} کا موجودہ بقایا Rs: {$orderBalance} ہے۔ درج کی گئی رقم اس سے زیادہ نہیں ہو سکتی۔",
-                ]);
-            }
-        }
-
         // Retrieve the customer's name
         $customerName = $customer->name;
 
@@ -568,7 +548,6 @@ class CustomerController extends Controller
         $transaction->remainingBalance = (-$validated['DirectPayment']);
         $transaction->recivedPayment = $validated['DirectPayment'];
         $transaction->Order_type = 'Payment';
-        $transaction->orderId = $order?->id;
         $transaction->comment = $validated['comment'] ?? null;
         $transaction->payment_method = $paymentMethod;
         $transaction->payment_reference = $validated['payment_reference'] ?? null;

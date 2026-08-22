@@ -330,17 +330,7 @@
         .customer-order-panel { scroll-margin-top: 90px; }
         .customer-order-panel .customer-panel__head { background: linear-gradient(135deg, #f7faff, #fff); }
         .customer-order-person { color: var(--customer-blue); }
-        .customer-order-table { min-width: 1500px; }
-        .order-money { direction: ltr; display: inline-block; font-weight: 800; white-space: nowrap; }
-        .order-money.is-paid { color: #138455; }
-        .order-money.is-due { color: #cf3f4d; }
-        .order-payment-cell { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
-        .order-payment-status { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 5px 9px; border-radius: 999px; font-size: .76rem; font-weight: 800; white-space: nowrap; }
-        .order-payment-status.is-paid { color: #087747; background: #e6f7ef; }
-        .order-payment-status.is-partial { color: #9a6500; background: #fff3d6; }
-        .order-payment-status.is-unpaid { color: #b12f3c; background: #ffecef; }
-        .order-payment-button { min-height: 32px; padding: 5px 9px; border: 1px solid #bce5d1; border-radius: 8px; color: #087747; background: #effaf4; font-size: .76rem; font-weight: 800; white-space: nowrap; }
-        .order-payment-button:hover { border-color: #83cfaa; background: #ddf5e9; }
+        .customer-order-table { min-width: 1120px; }
 
         .customer-workspace .modal-content { overflow: hidden; border: 0; border-radius: 15px; box-shadow: 0 20px 60px rgba(12, 35, 68, .22); }
         .customer-workspace .modal-header { align-items: center; border-bottom: 1px solid var(--customer-line); }
@@ -568,7 +558,7 @@
                 <div class="customer-panel__head">
                     <div class="customer-panel__title">
                         <h2><span id="cus_name" class="customer-order-person"></span> کے آرڈر</h2>
-                        <p>ہر آرڈر کی رقم، ادائیگی، بقایا، موجودہ مرحلہ اور ریک نمبر یہاں دیکھیں۔</p>
+                        <p>آرڈر کی تاریخ، واپسی، درزی، موجودہ مرحلہ اور ریک نمبر یہاں دیکھیں۔</p>
                     </div>
                     <span class="customer-stat__icon"><i class="fas fa-receipt"></i></span>
                 </div>
@@ -576,11 +566,9 @@
                     <table class="table js-sortable-table customer-directory customer-order-table" id="cc-table-data-order-history">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>نمبر</th>
-                                <th class="no-sort">کل رقم</th>
-                                <th class="no-sort">ادا شدہ</th>
-                                <th class="no-sort">بقایا</th>
-                                <th class="no-sort">ادائیگی</th>
+                                <th class="no-sort">رقم</th>
                                 <th class="no-sort">آرڈر کی تاریخ</th>
                                 <th class="no-sort">واپسی کی تاریخ</th>
                                 <th class="no-sort">کپڑوں کی تعداد</th>
@@ -627,13 +615,11 @@
                     <form action="{{ url('admin/DirectPayment') }}" method="post">
                         @csrf
                         <input type="hidden" id="customer_id" name="customer_id">
-                        <input type="hidden" id="payment_order_id" name="order_id">
                         <div class="modal-header">
-                            <h4 class="modal-title" id="paymentModalTitle"><i class="fas fa-wallet text-success ml-2"></i> گاہک کی ادائیگی درج کریں</h4>
+                            <h4 class="modal-title"><i class="fas fa-wallet text-success ml-2"></i> گاہک کی ادائیگی درج کریں</h4>
                             <button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
                         </div>
                         <div class="modal-body">
-                            <div id="orderPaymentContext" class="alert alert-info text-right" style="display:none"></div>
                             <div class="form-group">
                                 <label for="directPaymentAmount" class="font-weight-bold">وصول شدہ رقم</label>
                                 <div class="input-group" dir="ltr">

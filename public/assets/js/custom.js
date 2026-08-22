@@ -58,22 +58,9 @@ jQuery(document).ready(function ($) {
                 $('.tbody').empty();
                 $.each(data, function (index, order) {
                     var row = '<tr>' +
+                        '<td></td>' +
                         '<td>' + order.number + '</td>' +
                         '<td>' + order.totalPayment + '</td>' +
-                        '<td>' + (order.paidAmount === null ? '—' : '<span class="order-money is-paid">Rs. ' + Number(order.paidAmount).toFixed(2) + '</span>') + '</td>' +
-                        '<td>' + (order.remainingAmount === null ? '—' : '<span class="order-money ' + (Number(order.remainingAmount) > 0 ? 'is-due' : 'is-paid') + '">Rs. ' + Number(order.remainingAmount).toFixed(2) + '</span>') + '</td>';
-
-                    if (order.paymentStatus) {
-                        row += '<td><div class="order-payment-cell"><span class="order-payment-status is-' + order.paymentStatus.key + '">' + order.paymentStatus.label + '</span>';
-                        if (order.canReceivePayment) {
-                            row += '<button type="button" class="order-payment-button" data-toggle="modal" data-target="#myModalpayment" data-customerid="' + order.customerId + '" data-orderid="' + order.orderId + '" data-remaining="' + order.remainingAmount + '"><i class="fas fa-wallet"></i> رقم وصول کریں</button>';
-                        }
-                        row += '</div></td>';
-                    } else {
-                        row += '<td>اجازت درکار ہے</td>';
-                    }
-
-                    row +=
                         '<td>' + order.created_at + '</td>' +
                         '<td>' + order.returnDate + '</td>' +
                         '<td>' + order.suitQuantity + '</td>' +
@@ -279,23 +266,7 @@ jQuery(document).ready(function ($) {
     $(document).on('click', '.customer_payment_paid', function () {
         var cus_id = $(this).data('customerid');
         $('#customer_id').val(cus_id);
-        $('#payment_order_id').val('');
-        $('#directPaymentAmount').removeAttr('max').val('');
-        $('#paymentModalTitle').html('<i class="fas fa-wallet text-success ml-2"></i> گاہک کی ادائیگی درج کریں');
-        $('#orderPaymentContext').hide().text('');
         // alert('tst');
-    });
-
-    $(document).on('click', '.order-payment-button', function () {
-        var customerId = $(this).data('customerid');
-        var orderId = $(this).data('orderid');
-        var remaining = Number($(this).data('remaining') || 0).toFixed(2);
-
-        $('#customer_id').val(customerId);
-        $('#payment_order_id').val(orderId);
-        $('#directPaymentAmount').attr('max', remaining).val('');
-        $('#paymentModalTitle').html('<i class="fas fa-wallet text-success ml-2"></i> آرڈر #' + orderId + ' کی ادائیگی');
-        $('#orderPaymentContext').text('اس آرڈر کا موجودہ بقایا: Rs. ' + remaining).show();
     });
 
     // for tailoring and sale both

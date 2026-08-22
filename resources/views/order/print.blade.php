@@ -224,36 +224,6 @@
             font-size: 17px;
             white-space: nowrap;
         }
-
-        .order-tracking-qr {
-            direction: rtl;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            margin: 12px 0 7px;
-            padding: 9px 0;
-            border-top: 1px solid #999;
-            border-bottom: 1px solid #999;
-            break-inside: avoid;
-            page-break-inside: avoid;
-        }
-
-        .order-tracking-qr svg {
-            display: block;
-            flex: 0 0 105px;
-            width: 105px;
-            height: 105px;
-        }
-
-        .order-tracking-qr__text {
-            max-width: 145px;
-            color: #000;
-            font-size: 12px;
-            font-weight: 900;
-            line-height: 1.9;
-            text-align: right;
-        }
         .size .col-6{
             font-weight:300;
         }
@@ -340,8 +310,8 @@
                         <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong class="order-detail-value">{{ $orderDetail->sub_customer }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">آرڈر کی رقم:</span><strong class="order-detail-value">{{ $orderDetail->totalPayment }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">موجودہ رقم کی ادائیگی:</span><strong class="order-detail-value">{{ $orderDetail->transactions->first()?->recivedPayment ?? 0 }}</strong></div>
-                        @if ($orderBalance > 0)
-                            <div class="order-detail-row"><span class="order-detail-label">موجودہ ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $orderBalance }}</strong></div>
+                        @if ($latestBalance - $previousBalance > 0)
+                            <div class="order-detail-row"><span class="order-detail-label">موجودہ ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $latestBalance - $previousBalance }}</strong></div>
                         @endif
                         @if ($previousBalance > 0)
                             <div class="order-detail-row"><span class="order-detail-label">گزشتہ ادائیگی کے واجبات:</span><strong class="order-detail-value">{{ $previousBalance }}</strong></div>
@@ -351,10 +321,6 @@
                         @endif
                         <div class="order-detail-row"><span class="order-detail-label">واپسی کی تاریخ:</span><strong class="order-detail-value order-detail-date">{{ $orderDetail->returnDate }}</strong></div>
                     </div>
-                    <aside class="order-tracking-qr" data-tracking-url="{{ $trackingUrl }}" aria-label="آرڈر کی صورتحال دیکھنے کا QR کوڈ">
-                        {!! $trackingQrSvg !!}
-                        <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
-                    </aside>
                     <div>
                         <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">{{$orderDetail->remarks}}</h3>
                     </div>
