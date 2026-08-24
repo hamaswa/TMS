@@ -72,6 +72,7 @@ class CustomerCreationTest extends TestCase
             ->assertSee('class="customer-details-grid"', false)
             ->assertSee('class="combined-panel measurement-panel"', false)
             ->assertSee('class="combined-panel preference-panel"', false)
+            ->assertSee('class="form-control js-no-wheel-number"', false)
             ->assertDontSee('data-step="3"', false)
             ->assertSeeText('مشترکہ گاہک اکاؤنٹ');
 
