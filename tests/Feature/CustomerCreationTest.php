@@ -68,8 +68,11 @@ class CustomerCreationTest extends TestCase
         $this->actingAs($owner)->get(route('admin.Customers.create'))
             ->assertOk()
             ->assertSeeText('بنیادی معلومات')
-            ->assertSeeText('پیمائش')
-            ->assertSeeText('سلائی کی پسند')
+            ->assertSeeText('پیمائش اور سلائی کی پسند')
+            ->assertSee('class="customer-details-grid"', false)
+            ->assertSee('class="combined-panel measurement-panel"', false)
+            ->assertSee('class="combined-panel preference-panel"', false)
+            ->assertDontSee('data-step="3"', false)
             ->assertSeeText('مشترکہ گاہک اکاؤنٹ');
 
         $this->actingAs($owner)->post(route('admin.Customers.store'), [
