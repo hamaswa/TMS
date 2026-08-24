@@ -600,8 +600,14 @@
         <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
-                    <form action="{{ url('admin/order-status') }}" method="post">
+                    <form id="orderStatusForm"
+                          action="{{ $detailedWorkflow ? '' : url('admin/order-status') }}"
+                          method="post"
+                          @if($detailedWorkflow) data-action-base="{{ url('admin/tailor-jobs') }}" @endif>
                         @csrf
+                        @if($detailedWorkflow)
+                            @method('PATCH')
+                        @endif
                         <input type="hidden" id="order_id" name="order_id">
                         <div class="modal-header">
                             <h4 class="modal-title"><i class="fas fa-tasks text-primary ml-2"></i> آرڈر کا اگلا مرحلہ</h4>
@@ -609,8 +615,12 @@
                         </div>
                         <div class="modal-body">
                             <label for="orderStatusSelect" class="font-weight-bold">نیا مرحلہ منتخب کریں</label>
-                            <select id="orderStatusSelect" class="form-control order-status" name="order_status" required style="padding-top: 0px;"></select>
-                            <small class="form-text text-muted mt-2">آرڈر کی موجودہ حالت کے لیے صرف کارخانے میں ہے یا تیار ہے منتخب کریں۔</small>
+                            <select id="orderStatusSelect" class="form-control order-status" name="{{ $detailedWorkflow ? 'status' : 'order_status' }}" required style="padding-top: 0px;"></select>
+                            <small class="form-text text-muted mt-2">
+                                {{ $detailedWorkflow
+                                    ? 'صرف آرڈر کی موجودہ حالت کے بعد والا درست مرحلہ دکھایا گیا ہے۔'
+                                    : 'آرڈر کی موجودہ حالت کے لیے صرف کارخانے میں ہے یا تیار ہے منتخب کریں۔' }}
+                            </small>
                         </div>
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary" id="submit-button"><i class="fas fa-check ml-1"></i> محفوظ کریں</button>

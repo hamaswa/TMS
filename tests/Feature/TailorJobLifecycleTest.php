@@ -11,6 +11,7 @@ use App\Models\TailorRecord;
 use App\Models\User;
 use App\Services\OrderLifecycleNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -48,6 +49,112 @@ class TailorJobLifecycleTest extends TestCase
             'notifiable_id' => $order->sub_customer,
             'type' => 'tailor_job_status',
         ]);
+    }
+
+    public function test_weekly_orders_status_control_switches_between_workshop_and_ready(): void
+    {
+        [$owner, , $order] = $this->job(['status' => 'cutting']);
+
+        $this->actingAs($owner)->post(route('admin.order.status'), [
+            'order_id' => $order->id,
+            'order_status' => 'complete',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame('ready', $order->fresh()->status);
+
+        $this->actingAs($owner)->post(route('admin.order.status'), [
+            'order_id' => $order->id,
+            'order_status' => 'start',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame('cutting', $order->fresh()->status);
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'from_status' => 'ready',
+            'to_status' => 'cutting',
+            'changed_by_type' => 'shop_owner',
+        ]);
+    }
+
+    public function test_workshop_page_uses_two_statuses_and_tailor_can_mark_an_order_ready(): void
+    {
+        [$owner, $tailor, $order] = $this->job(['status' => 'assigned']);
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-jobs.index', ['status' => 'workshop']))
+            ->assertOk()
+            ->assertSee('name="order_status"', false)
+            ->assertSee('value="start"', false)
+            ->assertSee('value="complete"', false);
+
+        $this->app['auth']->guard()->logout();
+        $session = [
+            'tailor-login-success' => $tailor->name,
+            'tailor' => 'tailor',
+            'tailor_id' => $tailor->id,
+        ];
+
+        $this->withSession($session)->post(route('tailor.order.status'), [
+            'order_id' => $order->id,
+            'order_status' => 'complete',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame('ready', $order->fresh()->status);
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'from_status' => 'assigned',
+            'to_status' => 'ready',
+            'changed_by_type' => 'tailor',
+        ]);
+    }
+
+    public function test_shop_can_enable_detailed_statuses_for_workshop_weekly_orders_and_qr(): void
+    {
+        [$owner, , $order] = $this->job(['status' => 'stitching']);
+
+        $this->actingAs($owner)->put(route('admin.tailoring-workflow.update'), [
+            'tailoring_status_mode' => Business::TAILORING_STATUS_DETAILED,
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertDatabaseHas('businesses', [
+            'owner_user_id' => $owner->id,
+            'tailoring_status_mode' => Business::TAILORING_STATUS_DETAILED,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-jobs.index', ['status' => 'stitching']))
+            ->assertOk()
+            ->assertSeeText('سلائی')
+            ->assertSee('name="status"', false)
+            ->assertDontSee('name="order_status"', false);
+
+        $this->actingAs($owner)
+            ->get(route('admin.order.total', ['week' => $order->returnDate]))
+            ->assertOk()
+            ->assertSeeText('سلائی')
+            ->assertSee(route('admin.tailor-jobs.status', $order), false);
+
+        $this->actingAs($owner)
+            ->get(route('admin.Customers.index'))
+            ->assertOk()
+            ->assertSee('name="status"', false)
+            ->assertSee('data-action-base="'.url('admin/tailor-jobs').'"', false)
+            ->assertDontSee('name="order_status"', false);
+
+        $customerOrders = $this->actingAs($owner)
+            ->getJson(route('admin.getCustomer', ['id' => $order->customerId]))
+            ->assertOk()
+            ->json();
+        $historyOrder = collect($customerOrders)->firstWhere('orderId', $order->id);
+
+        $this->assertSame('سلائی', $historyOrder['button']);
+        $this->assertSame(Order::nextStatusOptionsFor('stitching'), $historyOrder['nextStatuses']);
+
+        $trackingUrl = URL::signedRoute('orders.track', ['order' => $order->id]);
+        $this->get($trackingUrl)
+            ->assertOk()
+            ->assertSeeText('سلائی')
+            ->assertDontSeeText('کارخانے میں ہے');
     }
 
     public function test_lifecycle_notification_delivery_is_idempotent(): void

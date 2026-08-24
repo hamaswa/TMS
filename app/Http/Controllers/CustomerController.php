@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BusinessRole;
+use App\Models\Business;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
@@ -51,6 +52,8 @@ class CustomerController extends Controller
     public function index()
     {
         $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
+            === Business::TAILORING_STATUS_DETAILED;
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
             ->where('parent_id', null)
             ->when($canViewBalances, fn ($query) => $query->withSum([
@@ -58,7 +61,7 @@ class CustomerController extends Controller
             ], 'remainingBalance'))
             ->get();
 
-        return view('customer.list', compact('customers', 'canViewBalances'));
+        return view('customer.list', compact('customers', 'canViewBalances', 'detailedWorkflow'));
     }
 
     public function accounts()

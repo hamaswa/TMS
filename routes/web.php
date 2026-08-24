@@ -48,6 +48,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TailorController;
 use App\Http\Controllers\TailorJobController;
 use App\Http\Controllers\TailorRateController;
+use App\Http\Controllers\TailoringWorkflowSettingController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -287,6 +288,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 
     // OptionTypes
     Route::middleware('business.permission:tailoring.configuration')->group(function () {
+        Route::get('/tailoring-workflow', [TailoringWorkflowSettingController::class, 'edit'])->name('tailoring-workflow.edit');
+        Route::put('/tailoring-workflow', [TailoringWorkflowSettingController::class, 'update'])->name('tailoring-workflow.update');
         Route::resource('/OptionType', OptionTypeController::class);
         Route::resource('/Options', OptionsController::class);
         Route::resource('/measurement-fields', MeasurementFieldController::class)->only(['index', 'store', 'update', 'destroy']);
@@ -455,7 +458,7 @@ Route::group(['middleware' => 'Tailor', 'prefix' => 'tailor'], function () {
     Route::get('logout', [TailorController::class, 'logout']);
     Route::post('tailor-weakly-print/{id}', [TailorController::class, 'tailor_weekly']);
     // order-status
-    Route::post('order-status', [TailorJobController::class, 'updateLegacyStatus']);
+    Route::post('order-status', [TailorJobController::class, 'updateLegacyStatus'])->name('tailor.order.status');
 });
 
 Route::get('tailor-login', [TailorController::class, 'tailor_login']);

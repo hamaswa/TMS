@@ -12,6 +12,9 @@
             'failed' => 'ناکام',
             'skipped' => 'درج نہیں ہوئی',
         ];
+        if (! $detailedWorkflow) {
+            $statusLabels = [...$statusLabels, 'assigned' => 'کارخانے میں ہے', 'cutting' => 'کارخانے میں ہے', 'stitching' => 'کارخانے میں ہے', 'trial' => 'کارخانے میں ہے', 'ready' => 'تیار ہے'];
+        }
         $hasMoreFilters =
             filled($filters['status'] ?? null) ||
             filled($filters['tailor_id'] ?? null) ||
@@ -361,7 +364,7 @@
 
         .tj-progress-form {
             display: grid;
-            grid-template-columns: minmax(150px, 1fr) minmax(170px, 1fr) auto;
+            grid-template-columns: minmax(170px, 1fr) auto;
             gap: 8px
         }
 
@@ -564,11 +567,16 @@
                         <div class="tj-filter-grid">
                             <div class="tj-field"><label for="status">کام کا مرحلہ</label><select id="status"
                                     name="status" class="form-control" style="padding-top: 0px">
-                                    <option value="">تمام مراحل</option>
-                                    @foreach (\App\Models\Order::STATUSES as $status)
-                                        <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>
-                                            {{ $statusLabels[$status] ?? $status }}</option>
-                                    @endforeach
+                                    @if($detailedWorkflow)
+                                        <option value="">تمام مراحل</option>
+                                        @foreach (\App\Models\Order::STATUSES as $status)
+                                            <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $statusLabels[$status] }}</option>
+                                        @endforeach
+                                    @else
+                                        <option value="">تمام حالتیں</option>
+                                        <option value="workshop" @selected(($filters['status'] ?? '') === 'workshop')>کارخانے میں ہے</option>
+                                        <option value="ready" @selected(($filters['status'] ?? '') === 'ready')>تیار ہے</option>
+                                    @endif
                                 </select>
                             </div>
                             <div class="tj-field"><label for="tailor_id">درزی</label><select id="tailor_id" name="tailor_id"
@@ -619,9 +627,11 @@
                         @php
                             $deadline = $order->returnDate ? \Carbon\Carbon::parse($order->returnDate) : null;
                             $overdue = $deadline && $deadline->isBefore(today()) && $order->status !== 'delivered';
-                            $nextStatusOptions = collect($order->nextStatusOptions())->reject(
-                                fn($option) => $isTailor && $option['value'] === 'delivered',
-                            );
+                            $isDelivered = $order->status === 'delivered';
+                            $isReady = $order->status === 'ready';
+                            $nextStatusOptions = $detailedWorkflow
+                                ? collect($order->nextStatusOptions())->reject(fn($option) => $isTailor && $option['value'] === 'delivered')
+                                : collect();
                             $earned = $order->tailorAmountDue();
                             $deliveries = $order->notificationDeliveries->keyBy('stage');
                             $paymentErrors = $errors->getBag('tailorPayment' . $order->id);
@@ -652,20 +662,27 @@
                             </div>
                             <div class="tj-card-body">
                                 <div class="tj-action-box">
-                                    <h4><i class="fas fa-forward ml-1 text-primary"></i>اگلا کام</h4>
-                                    @if ($nextStatusOptions->isNotEmpty())
-                                        <form class="tj-progress-form" method="POST"
-                                            action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}">
+                                    <h4><i class="fas fa-exchange-alt ml-1 text-primary"></i>کام کی حالت</h4>
+                                    @if($detailedWorkflow && $nextStatusOptions->isNotEmpty())
+                                        <form class="tj-progress-form" method="POST" action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}">
                                             @csrf @method('PATCH')
                                             <select name="status" class="form-control" required>
-                                                @foreach ($nextStatusOptions as $nextStatus)
-                                                    <option value="{{ $nextStatus['value'] }}">{{ $nextStatus['label'] }}
-                                                    </option>
+                                                @foreach($nextStatusOptions as $nextStatus)
+                                                    <option value="{{ $nextStatus['value'] }}">{{ $nextStatus['label'] }}</option>
                                                 @endforeach
                                             </select>
-                                            <input type="text" name="note" maxlength="1000" class="form-control"
-                                                placeholder="نوٹ (اختیاری)"><button class="tj-button tj-primary"
-                                                type="submit"><i class="fas fa-check"></i> مرحلہ بدلیں</button>
+                                            <button class="tj-button tj-primary" type="submit"><i class="fas fa-check"></i> مرحلہ بدلیں</button>
+                                        </form>
+                                    @elseif(! $detailedWorkflow && ! $isDelivered)
+                                        <form class="tj-progress-form" method="POST"
+                                            action="{{ $isTailor ? route('tailor.order.status') : route('admin.order.status') }}">
+                                            @csrf
+                                            <input type="hidden" name="order_id" value="{{ $order->id }}">
+                                            <select name="order_status" class="form-control" required>
+                                                <option value="start" @selected(! $isReady)>کارخانے میں ہے</option>
+                                                <option value="complete" @selected($isReady)>تیار ہے</option>
+                                            </select>
+                                            <button class="tj-button tj-primary" type="submit"><i class="fas fa-check"></i> حالت بدلیں</button>
                                         </form>
                                     @else<span class="text-muted small"><i
                                                 class="fas fa-check-circle ml-1 text-success"></i>یہ کام مکمل ہو چکا

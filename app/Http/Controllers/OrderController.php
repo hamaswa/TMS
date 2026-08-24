@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\rack;
+use App\Models\Business;
 use App\Models\Order;
 use PhpOption\Option;
 use App\Models\Design;
@@ -352,6 +353,8 @@ class OrderController extends Controller
                 ->where('orders.userId', Auth::user()->businessOwnerId())
                 ->get();
             $racks = rack::where('user_id', auth()->user()->businessOwnerId())->get();
+            $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
+                === Business::TAILORING_STATUS_DETAILED;
             $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
             $orderBalances = $canViewBalances
                 ? $this->customerLedger->orderBalances(Auth::user()->businessOwnerId(), (int) $id)
@@ -369,7 +372,10 @@ class OrderController extends Controller
                     $paid > 0 => ['key' => 'partial', 'label' => 'جزوی ادا شدہ'],
                     default => ['key' => 'unpaid', 'label' => 'غیر ادا شدہ'],
                 };
-                $button = ucfirst($order->status ?: 'assigned');
+                $currentStatus = (string) ($order->status ?: 'assigned');
+                $button = $detailedWorkflow
+                    ? (Order::STATUS_LABELS[$currentStatus] ?? ucfirst($currentStatus))
+                    : (in_array($currentStatus, ['ready', 'delivered'], true) ? 'تیار ہے' : 'کارخانے میں ہے');
                 $btn = match ($order->status) {
                     'assigned' => 'btn-primary',
                     'cutting', 'stitching', 'trial' => 'btn-warning',
@@ -393,10 +399,12 @@ class OrderController extends Controller
                     'orderId' => $order->id,
                     'rack_no' => $order->rack_no,
                     'racks' => $racks,
-                    'nextStatuses' => in_array($order->status, ['ready', 'delivered'], true) ? [] : [
-                        ['value' => 'start', 'label' => 'کارخانے میں ہے'],
-                        ['value' => 'complete', 'label' => 'تیار ہے'],
-                    ],
+                    'nextStatuses' => $detailedWorkflow
+                        ? Order::nextStatusOptionsFor($currentStatus)
+                        : (in_array($currentStatus, ['ready', 'delivered'], true) ? [] : [
+                            ['value' => 'start', 'label' => 'کارخانے میں ہے'],
+                            ['value' => 'complete', 'label' => 'تیار ہے'],
+                        ]),
                 ];
             }
 
@@ -519,13 +527,15 @@ class OrderController extends Controller
 
     public function totalOrder(Request $request)
     {
+        $ownerId = Auth::user()->businessOwnerId();
+        $detailedWorkflow = Business::tailoringStatusModeForOwner($ownerId) === Business::TAILORING_STATUS_DETAILED;
         $validated = $request->validate(['week' => ['nullable', 'date']]);
         $weekStart = Carbon::parse($validated['week'] ?? now())
             ->startOfWeek(Carbon::MONDAY)
             ->startOfDay();
         $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
-        $orders = Order::where('userId', Auth::user()->businessOwnerId())
+        $orders = Order::where('userId', $ownerId)
             ->whereBetween('returnDate', [$weekStart->toDateString(), $weekEnd->toDateString()])
             ->with(['customers:id,name,phone_number1', 'tailor:id,name'])
             ->orderBy('returnDate')
@@ -550,7 +560,7 @@ class OrderController extends Controller
             'ready' => $orders->whereIn('status', ['ready', 'delivered'])->count(),
         ];
 
-        return view('All_Total.order', compact('weekStart', 'weekEnd', 'weekDays', 'summary'));
+        return view('All_Total.order', compact('weekStart', 'weekEnd', 'weekDays', 'summary', 'detailedWorkflow'));
     }
 
     public function updateRackNo(Request $request, $orderId)

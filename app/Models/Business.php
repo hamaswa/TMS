@@ -15,6 +15,9 @@ class Business extends Model
     public const STATUS_SUSPENDED = 'suspended';
     public const STATUS_REJECTED = 'rejected';
     public const STATUSES = [self::STATUS_PENDING, self::STATUS_ACTIVE, self::STATUS_SUSPENDED, self::STATUS_REJECTED];
+    public const TAILORING_STATUS_SIMPLE = 'simple';
+    public const TAILORING_STATUS_DETAILED = 'detailed';
+    public const TAILORING_STATUS_MODES = [self::TAILORING_STATUS_SIMPLE, self::TAILORING_STATUS_DETAILED];
 
     protected $fillable = [
         'name',
@@ -22,6 +25,7 @@ class Business extends Model
         'owner_user_id',
         'tailoring_enabled',
         'clothing_enabled',
+        'tailoring_status_mode',
         'status',
         'approved_at',
         'approved_by_user_id',
@@ -159,6 +163,17 @@ class Business extends Model
             User::MODULE_CLOTHING => $this->clothing_enabled,
             default => false,
         };
+    }
+
+    public function usesDetailedTailoringWorkflow(): bool
+    {
+        return $this->tailoring_status_mode === self::TAILORING_STATUS_DETAILED;
+    }
+
+    public static function tailoringStatusModeForOwner(int $ownerId): string
+    {
+        return (string) (self::where('owner_user_id', $ownerId)->value('tailoring_status_mode')
+            ?: self::TAILORING_STATUS_SIMPLE);
     }
 
     public function isActive(): bool

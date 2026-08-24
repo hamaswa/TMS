@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Business;
 use App\Models\Order;
 use App\Models\OrderNotificationDelivery;
 use App\Models\OrderStatusHistory;
@@ -19,8 +20,10 @@ class TailorJobController extends Controller
 {
     public function adminIndex(Request $request)
     {
+        $ownerId = Auth::user()->businessOwnerId();
+        $detailedWorkflow = $this->usesDetailedWorkflow($ownerId);
         $filters = $request->validate([
-            'status' => ['nullable', Rule::in(Order::STATUSES)],
+            'status' => ['nullable', Rule::in($detailedWorkflow ? Order::STATUSES : ['workshop', 'ready'])],
             'tailor_id' => ['nullable', 'integer'],
             'due' => ['nullable', Rule::in(['today', 'overdue'])],
             'q' => ['nullable', 'string', 'max:100'],
@@ -29,13 +32,16 @@ class TailorJobController extends Controller
             'per_page' => ['nullable', Rule::in(['15', '25', '50', '100'])],
         ]);
 
-        $tailors = Tailor::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
+        $tailors = Tailor::where('user_id', $ownerId)->orderBy('name')->get();
         if (! empty($filters['tailor_id'])) {
             $tailors->firstWhere('id', (int) $filters['tailor_id']) ?: abort(404);
         }
 
-        $orders = $this->jobQuery(Auth::user()->businessOwnerId())
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+        $orders = $this->jobQuery($ownerId)
+            ->when($detailedWorkflow && filled($filters['status'] ?? null), fn ($query) => $query->where('status', $filters['status']))
+            ->when(! $detailedWorkflow && ($filters['status'] ?? null) === 'workshop', fn ($query) => $query
+                ->whereIn('status', ['assigned', 'cutting', 'stitching', 'trial']))
+            ->when(! $detailedWorkflow && ($filters['status'] ?? null) === 'ready', fn ($query) => $query->where('status', 'ready'))
             ->when($filters['tailor_id'] ?? null, fn ($query, $tailorId) => $query->where('tailorId', $tailorId))
             ->when($filters['q'] ?? null, function ($query, $search) {
                 $query->where(function ($nested) use ($search) {
@@ -61,14 +67,16 @@ class TailorJobController extends Controller
             'orders' => $orders,
             'tailors' => $tailors,
             'isTailor' => false,
+            'detailedWorkflow' => $detailedWorkflow,
             'filters' => $filters,
-            'stats' => $this->statsFor(Auth::user()->businessOwnerId()),
+            'stats' => $this->statsFor($ownerId),
         ]);
     }
 
     public function tailorIndex()
     {
         $tailor = $this->sessionTailor();
+        $detailedWorkflow = $this->usesDetailedWorkflow((int) $tailor->user_id);
         $orders = $this->jobQuery($tailor->user_id)
             ->where('tailorId', $tailor->id)
             ->orderByRaw("CASE WHEN status = 'delivered' THEN 1 ELSE 0 END")
@@ -79,6 +87,7 @@ class TailorJobController extends Controller
             'orders' => $orders,
             'tailors' => collect([$tailor]),
             'isTailor' => true,
+            'detailedWorkflow' => $detailedWorkflow,
             'filters' => [],
             'stats' => $this->statsFor($tailor->user_id, $tailor->id),
         ]);
@@ -160,13 +169,15 @@ class TailorJobController extends Controller
         ]);
         $nextStatus = $validated['order_status'] === 'start' ? 'cutting' : 'ready';
         $job = $this->ownedJob((int) $validated['order_id']);
+        $actor = Auth::check() ? 'shop_owner' : 'tailor';
+        $ownerId = (int) $job->userId;
 
         if ($job->status === $nextStatus) {
             return back()->with('success', 'آرڈر کی حالت پہلے ہی منتخب شدہ حالت پر ہے۔');
         }
 
-        DB::transaction(function () use ($job, $nextStatus) {
-            $job = Order::where('userId', Auth::user()->businessOwnerId())
+        DB::transaction(function () use ($job, $nextStatus, $actor, $ownerId) {
+            $job = Order::where('userId', $ownerId)
                 ->lockForUpdate()
                 ->findOrFail($job->id);
             $fromStatus = $job->status;
@@ -188,7 +199,7 @@ class TailorJobController extends Controller
                 'tailor_id' => $job->tailorId,
                 'from_status' => $fromStatus,
                 'to_status' => $nextStatus,
-                'changed_by_type' => 'shop_owner',
+                'changed_by_type' => $actor,
             ]);
         });
 
@@ -297,5 +308,10 @@ class TailorJobController extends Controller
             'overdue' => (clone $query)->whereDate('returnDate', '<', today())->where('status', '!=', 'delivered')->count(),
             'ready' => (clone $query)->where('status', 'ready')->count(),
         ];
+    }
+
+    private function usesDetailedWorkflow(int $ownerId): bool
+    {
+        return Business::tailoringStatusModeForOwner($ownerId) === Business::TAILORING_STATUS_DETAILED;
     }
 }

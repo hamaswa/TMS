@@ -18,6 +18,11 @@ if (document.documentElement.lang === 'ur' && jQuery.fn.dataTable) {
 
 jQuery(document).ready(function ($) {
 
+    // Keep page scrolling from accidentally changing focused price fields.
+    $(document).on('wheel', '.js-no-wheel-number', function () {
+        this.blur();
+    });
+
     $('#cc-table-data-customer-list').DataTable({
         dom: 'Bfrtip',
         buttons: [
@@ -242,6 +247,11 @@ jQuery(document).ready(function ($) {
             nextStatuses = [];
         }
         $('#order_id').val(order_id);
+        var statusForm = $('#orderStatusForm');
+        var detailedActionBase = statusForm.data('action-base');
+        if (detailedActionBase) {
+            statusForm.attr('action', String(detailedActionBase).replace(/\/$/, '') + '/' + order_id + '/status');
+        }
         var select = $('#myModal .order-status');
         select.empty();
         $.each(nextStatuses, function (_, status) {

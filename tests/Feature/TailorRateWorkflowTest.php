@@ -169,6 +169,8 @@ class TailorRateWorkflowTest extends TestCase
             ->assertSeeText('اس آرڈر کی باقی رقم')
             ->assertSee('for="totalPayment"', false)
             ->assertSee('for="recivedPayment"', false)
+            ->assertSee('id="totalPayment"', false)
+            ->assertSee('class="form-control js-no-wheel-number"', false)
             ->assertSee('aria-label="محفوظ ناپ تلاش کریں"', false);
 
         $this->actingAs($owner)->post(route('admin.order.insert'), $payload)->assertRedirect();

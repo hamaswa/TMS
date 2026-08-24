@@ -141,84 +141,46 @@
             overflow-wrap: anywhere;
         }
 
-        .tracking-field.is-balance {
-            background: #fff8e8;
-            border-color: #f3dfae;
-        }
-
-        .tracking-field.is-balance strong {
-            color: #9a6500;
-            font-size: 1.18rem;
-        }
-
-        .progress-title {
-            margin: 0 0 14px;
-            font-size: 1.08rem;
-            font-weight: 900;
-        }
-
-        .status-list {
-            display: grid;
-            gap: 0;
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
-
-        .status-step {
-            position: relative;
+        .tracking-field.is-payment {
             display: flex;
-            align-items: center;
-            gap: 13px;
-            min-height: 58px;
-            color: #8a97a9;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .status-step:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            top: 39px;
-            right: 16px;
-            width: 2px;
-            height: 25px;
-            background: #dce4ee;
+        .tracking-field.is-payment.is-paid {
+            background: #eaf8f0;
+            border-color: #b9e2ca;
         }
 
-        .status-dot {
-            z-index: 1;
-            display: grid;
-            place-items: center;
-            flex: 0 0 34px;
-            width: 34px;
-            height: 34px;
-            color: #8492a5;
-            background: #edf1f6;
-            border: 2px solid #dbe3ed;
-            border-radius: 50%;
-            font: 800 .78rem/1 Arial, sans-serif;
+        .tracking-field.is-payment.is-paid strong {
+            color: var(--green);
         }
 
-        .status-step.is-complete,
-        .status-step.is-active {
-            color: var(--navy);
+        .tracking-field.is-payment.is-unpaid {
+            background: #fff0f1;
+            border-color: #f0c5ca;
+        }
+
+        .tracking-field.is-payment.is-unpaid strong {
+            color: #c02b39;
+        }
+
+        .tracking-field.is-payment strong {
+            font-family: 'Noto Nastaliq Urdu', Tahoma, sans-serif;
+            font-size: 1rem;
             font-weight: 900;
         }
 
-        .status-step.is-complete .status-dot {
-            color: #fff;
-            background: var(--green);
-            border-color: var(--green);
+        .tracking-field.is-previous-balance {
+            grid-column: 1 / -1;
+            min-height: auto;
+            background: #fff8e8;
+            border-color: #f0d99f;
         }
 
-        .status-step.is-complete:not(:last-child)::after {
-            background: var(--green);
-        }
-
-        .status-step.is-active .status-dot {
-            color: #fff;
-            background: var(--blue);
-            border-color: var(--blue);
-            box-shadow: 0 0 0 5px rgba(23, 105, 224, .12);
+        .tracking-field.is-previous-balance strong {
+            color: #9a6500;
+            font-size: 1.08rem;
         }
 
         .tracking-note {
@@ -271,7 +233,6 @@
 </head>
 
 <body>
-    @php($currentIndex = array_search($currentStatus, $statuses, true))
     <main class="tracking-shell">
         <article class="tracking-card">
             <header class="tracking-head">
@@ -298,21 +259,16 @@
                             تاریخ</span><strong>{{ $order->returnDate ?: '—' }}</strong></div>
                     <div class="tracking-field"><span>آرڈر کی رقم</span><strong>Rs.
                             {{ number_format((float) $order->totalPayment, 2) }}</strong></div>
-                    <div class="tracking-field is-balance"><span>موجودہ باقی بقایا</span><strong>Rs.
-                            {{ number_format($remainingBalance, 2) }}</strong></div>
-                </section>
-
-                <section aria-labelledby="progress-title">
-                    <h2 id="progress-title" class="progress-title">آرڈر کی پیش رفت</h2>
-                    <ol class="status-list">
-                        @foreach ($statuses as $index => $status)
-                            <li
-                                class="status-step {{ $index < $currentIndex ? 'is-complete' : ($index === $currentIndex ? 'is-active' : '') }}">
-                                <span class="status-dot">{{ $index < $currentIndex ? '✓' : $index + 1 }}</span>
-                                <span>{{ \App\Models\Order::STATUS_LABELS[$status] }}</span>
-                            </li>
-                        @endforeach
-                    </ol>
+                    <div class="tracking-field is-payment {{ $paymentReceived ? 'is-paid' : 'is-unpaid' }}">
+                        <span>ادائیگی کی صورتحال</span>
+                        <strong>{{ $paymentReceived ? '✓ ادائیگی موصول ہو گئی ہے' : '✕ ادائیگی موصول نہیں ہوئی' }}</strong>
+                    </div>
+                    @if($previousBalance > 0)
+                        <div class="tracking-field is-previous-balance">
+                            <span>پچھلا بقایا باقی ہے</span>
+                            <strong>Rs. {{ number_format($previousBalance, 2) }}</strong>
+                        </div>
+                    @endif
                 </section>
 
                 <p class="tracking-note">یہ نجی لنک آپ کی رسید کے QR کوڈ سے کھولا گیا ہے۔ تازہ صورتحال دیکھنے کے لیے اسی

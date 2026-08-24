@@ -172,22 +172,22 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertDontSee('TMS REF: '.$order->id);
     }
 
-    public function test_order_receipt_qr_opens_signed_public_status_and_balance_page(): void
+    public function test_order_receipt_qr_opens_signed_public_status_and_payment_page(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();
         $order->update(['status' => 'ready', 'returnDate' => '2026-08-30']);
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'userId' => $owner->id,
+            'Order_type' => 'Sale',
+            'remainingBalance' => 200,
+        ]);
         Transaction::create([
             'customerId' => $order->customerId,
             'orderId' => $order->id,
             'userId' => $owner->id,
             'Order_type' => 'Tailor',
             'remainingBalance' => 450,
-        ]);
-        Transaction::create([
-            'customerId' => $order->customerId,
-            'userId' => $owner->id,
-            'Order_type' => 'Sale',
-            'remainingBalance' => 200,
         ]);
 
         $trackingUrl = URL::signedRoute('orders.track', ['order' => $order->id]);
@@ -197,10 +197,29 @@ class LegacyRouteCleanupTest extends TestCase
         $this->get($trackingUrl)
             ->assertOk()
             ->assertViewIs('order.track')
-            ->assertSeeText('تیار')
+            ->assertSeeText('تیار ہے')
             ->assertSeeText('Test customer')
-            ->assertSeeText('موجودہ باقی بقایا')
-            ->assertSeeText('650.00');
+            ->assertSeeText('ادائیگی موصول نہیں ہوئی')
+            ->assertSeeText('پچھلا بقایا باقی ہے')
+            ->assertSeeText('200.00')
+            ->assertDontSeeText('موجودہ باقی بقایا')
+            ->assertDontSeeText('آرڈر کی پیش رفت');
+
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'orderId' => $order->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Payment',
+            'recivedPayment' => 450,
+            'remainingBalance' => -450,
+        ]);
+
+        $this->get($trackingUrl)
+            ->assertOk()
+            ->assertSeeText('ادائیگی موصول ہو گئی ہے')
+            ->assertSeeText('پچھلا بقایا باقی ہے')
+            ->assertSeeText('200.00')
+            ->assertDontSeeText('ادائیگی موصول نہیں ہوئی');
 
         $this->actingAs($owner)
             ->get(route('admin.order-print', $order))

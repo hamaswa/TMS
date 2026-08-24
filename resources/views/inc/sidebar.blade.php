@@ -82,12 +82,13 @@
             @endif
 
             @if($canTailorConfiguration)
-                <a class="tms-side-link {{ request()->routeIs('admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-templates.*','admin.measurement-fields.*','admin.design.*') ? 'is-active' : '' }}" href="{{ route('admin.OptionType.index') }}">
+                <a class="tms-side-link {{ request()->routeIs('admin.tailoring-workflow.*','admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-templates.*','admin.measurement-fields.*','admin.design.*') ? 'is-active' : '' }}" href="{{ route('admin.OptionType.index') }}">
                     <span class="tms-side-icon"><i class="fas fa-sliders-h"></i></span>
                     <span class="tms-side-label">ٹیلرنگ ترتیب</span>
                     <i class="fas fa-chevron-down tms-side-caret"></i>
                 </a>
-                <div class="tms-side-submenu {{ request()->routeIs('admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-templates.*','admin.measurement-fields.*','admin.design.*') ? 'is-open' : '' }}">
+                <div class="tms-side-submenu {{ request()->routeIs('admin.tailoring-workflow.*','admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-templates.*','admin.measurement-fields.*','admin.design.*') ? 'is-open' : '' }}">
+                    <a class="{{ request()->routeIs('admin.tailoring-workflow.*') ? 'is-active' : '' }}" href="{{ route('admin.tailoring-workflow.edit') }}"><i class="fas fa-project-diagram"></i>کام کی حالتیں</a>
                     <a class="{{ request()->routeIs('admin.OptionType.*','admin.Options.*','admin.options.*') ? 'is-active' : '' }}" href="{{ route('admin.OptionType.index') }}"><i class="fas fa-ruler-combined"></i>پیمائش اور سلائی کے اختیارات</a>
                     <a class="{{ request()->routeIs('admin.measurement-templates.*') ? 'is-active' : '' }}" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-clipboard-list"></i>پیمائش ٹیمپلیٹس</a>
                     <a class="{{ request()->routeIs('admin.measurement-fields.*') ? 'is-active' : '' }}" href="{{ route('admin.measurement-fields.index') }}"><i class="fas fa-ruler"></i>اضافی پیمائش خانے</a>
