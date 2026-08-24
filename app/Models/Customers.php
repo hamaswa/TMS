@@ -67,9 +67,14 @@ class Customers extends Authenticatable
     protected static function booted(): void
     {
         static::saving(function (Customers $customer) {
-            if ($customer->isDirty('phone_number1')) {
-                $customer->phone_number1_normalized = PakistanPhoneNumber::normalize($customer->phone_number1);
-                $customer->phone_normalization_conflict = false;
+            if ($customer->isDirty('phone_number1') || $customer->isDirty('parent_id')) {
+                if ($customer->parent_id !== null) {
+                    $customer->phone_number1_normalized = null;
+                    $customer->phone_normalization_conflict = true;
+                } else {
+                    $customer->phone_number1_normalized = PakistanPhoneNumber::normalize($customer->phone_number1);
+                    $customer->phone_normalization_conflict = false;
+                }
             }
         });
     }
@@ -84,10 +89,12 @@ class Customers extends Authenticatable
         }
 
         $matches = static::where('user_id', $ownerId)
+            ->whereNull('parent_id')
             ->where('phone_number1_normalized', $normalized)
             ->limit(2)
             ->get();
         $legacyConflicts = static::where('user_id', $ownerId)
+            ->whereNull('parent_id')
             ->where('phone_normalization_conflict', true)
             ->whereNull('phone_number1_normalized')
             ->get()

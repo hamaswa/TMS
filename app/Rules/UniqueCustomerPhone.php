@@ -31,12 +31,14 @@ class UniqueCustomerPhone implements ValidationRule
 
         $exists = Customers::withTrashed()
             ->where('user_id', $this->ownerId)
+            ->whereNull('parent_id')
             ->where('phone_number1_normalized', $normalized)
             ->when($this->ignoreCustomerId, fn ($query) => $query->where('id', '!=', $this->ignoreCustomerId))
             ->exists();
 
         $legacyConflictExists = Customers::withTrashed()
             ->where('user_id', $this->ownerId)
+            ->whereNull('parent_id')
             ->where('phone_normalization_conflict', true)
             ->whereNull('phone_number1_normalized')
             ->when($this->ignoreCustomerId, fn ($query) => $query->where('id', '!=', $this->ignoreCustomerId))

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use session;
 use Carbon\Carbon;
 use App\Models\Order;
+use App\Models\Business;
 use App\Models\Tailor;
 use App\Models\Setting;
 use App\Models\Options;
@@ -215,6 +216,8 @@ class TailorController extends Controller
     public function tailorRecord($id)
     {
         $ownerId = Auth::user()->businessOwnerId();
+        $detailedWorkflow = Business::tailoringStatusModeForOwner($ownerId)
+            === Business::TAILORING_STATUS_DETAILED;
         $tailor = Tailor::where('user_id', $ownerId)->findOrFail($id);
         $data = [];
         $data['tailor-name'] = $tailor->name;
@@ -223,7 +226,7 @@ class TailorController extends Controller
             ->with(['orders' => fn ($query) => $query->with(['customers', 'rate.options'])->latest('created_at')])
             ->findOrFail($id);
 
-        return view('tailor.tailor-record', compact('data', 'Tailor_records'));
+        return view('tailor.tailor-record', compact('data', 'Tailor_records', 'detailedWorkflow'));
     }
 
     //     public function tailorReport($id)

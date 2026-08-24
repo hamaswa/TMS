@@ -11,6 +11,8 @@
     .customer-step{display:none}.customer-step.active{display:block}.customer-section{border:1px solid #e2e8f0;border-radius:16px;padding:1.25rem;background:#fbfdff}
     .measurement-field label{font-weight:700}.step-actions{display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid #edf2f7}
     .measurement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.measurement-grid .form-group{margin-bottom:0}.measurement-grid label{font-weight:700}
+    .duplicate-customer-card{border:1px solid #d9e5f3;border-radius:14px;padding:1rem;background:#f8fbff}.duplicate-customer-card strong{display:block;color:#102a43;font-size:1.05rem}.duplicate-customer-card span{color:#60758d}
+    .duplicate-choice{display:flex;gap:.75rem;justify-content:flex-start;flex-wrap:wrap}.duplicate-choice .btn{min-height:44px;border-radius:10px;font-weight:800}
     @media(max-width:767px){.customer-progress{grid-template-columns:1fr}.customer-form-head{padding:1.3rem}.customer-form-card .card-body{padding:1rem!important}.measurement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:420px){.measurement-grid{grid-template-columns:1fr}}
 </style>
@@ -25,6 +27,7 @@
         </div>
 
         <form id="customer-create-form" action="{{ route('admin.Customers.store') }}" method="post">@csrf
+            <input id="duplicate-action" type="hidden" name="duplicate_action" value="">
             <section class="customer-step active" data-step="1" aria-labelledby="customer-step-one">
                 <div class="customer-section"><h2 id="customer-step-one" class="h5 font-weight-bold mb-1">گاہک کی بنیادی معلومات</h2><p class="text-muted mb-4">رابطہ اور موبائل اکاؤنٹ کی معلومات درج کریں۔</p><div class="row">
                     <div class="col-md-6 form-group"><label>نام <span class="text-danger">*</span></label><input type="text" class="form-control" name="name" value="{{ old('name') }}" required autocomplete="name"></div>
@@ -57,6 +60,31 @@
                 <div class="step-actions"><button type="button" class="btn btn-outline-secondary previous-step"><i class="fas fa-arrow-right ml-1"></i> پیمائش</button><button type="submit" class="btn btn-success px-5"><i class="fas fa-check ml-1"></i> گاہک محفوظ کریں</button></div>
             </section>
         </form>
+        @if(session('duplicate_customer'))
+            @php($duplicateCustomer = session('duplicate_customer'))
+            <div class="modal fade" id="duplicateCustomerModal" tabindex="-1" role="dialog" aria-labelledby="duplicateCustomerTitle" aria-hidden="true" data-backdrop="static">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content border-0" style="border-radius:18px;overflow:hidden">
+                        <div class="modal-header align-items-center">
+                            <h4 class="modal-title font-weight-bold" id="duplicateCustomerTitle"><i class="fas fa-user-check text-primary ml-2"></i> یہ موبائل نمبر پہلے سے محفوظ ہے</h4>
+                            <button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body p-4 text-right">
+                            <p class="mb-3">اس نمبر کے ساتھ موجود گاہک ملا ہے۔ مطلوبہ کارروائی منتخب کریں:</p>
+                            <div class="duplicate-customer-card mb-4">
+                                <strong>{{ $duplicateCustomer['name'] }}</strong>
+                                <span dir="ltr">{{ $duplicateCustomer['phone'] }}</span>
+                            </div>
+                            <div class="duplicate-choice">
+                                <button type="button" class="btn btn-primary duplicate-customer-choice" data-action="use_existing"><i class="fas fa-user-check ml-1"></i> موجودہ گاہک استعمال کریں</button>
+                                <button type="button" class="btn btn-outline-success duplicate-customer-choice" data-action="create_profile"><i class="fas fa-copy ml-1"></i> نیا ریکارڈ شامل کریں</button>
+                            </div>
+                            <small class="d-block text-muted mt-3">نیا ریکارڈ اسی مشترکہ گاہک اکاؤنٹ کے تحت الگ نام اور ناپ کے طور پر محفوظ ہوگا؛ بقایا اور موبائل لاگ اِن مشترک رہیں گے۔</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
         <noscript><style>.customer-step{display:block!important;margin-bottom:2rem}.next-step,.previous-step,.customer-progress{display:none!important}</style></noscript>
     </div>
 </div></div></section>
@@ -89,6 +117,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }));
     form.querySelectorAll('.previous-step').forEach(button => button.addEventListener('click', () => showStep(current - 1)));
     progress.forEach((item, index) => item.addEventListener('click', () => { if (index <= current) showStep(index); }));
+
+    const duplicateModal = document.getElementById('duplicateCustomerModal');
+    if (duplicateModal) {
+        if (window.jQuery && typeof window.jQuery.fn.modal === 'function') {
+            window.jQuery(duplicateModal).modal('show');
+        }
+
+        duplicateModal.querySelectorAll('.duplicate-customer-choice').forEach(button => {
+            button.addEventListener('click', function () {
+                document.getElementById('duplicate-action').value = this.dataset.action;
+                if (window.jQuery && typeof window.jQuery.fn.modal === 'function') {
+                    window.jQuery(duplicateModal).modal('hide');
+                }
+                form.requestSubmit ? form.requestSubmit() : form.submit();
+            });
+        });
+    }
 });
 </script>
 @endsection

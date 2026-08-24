@@ -6,6 +6,14 @@
         $totalSuits = $orders->sum(fn ($order) => max(1, (int) $order->suitQuantity));
         $totalEarnings = $orders->sum(fn ($order) => (float) $order->tailor_price * max(1, (int) $order->suitQuantity));
         $urduDays = ['Sat' => 'ہفتہ', 'Sun' => 'اتوار', 'Mon' => 'پیر', 'Tue' => 'منگل', 'Wed' => 'بدھ', 'Thu' => 'جمعرات', 'Fri' => 'جمعہ'];
+        $statusLabels = $detailedWorkflow ? \App\Models\Order::STATUS_LABELS : [
+            'assigned' => 'کارخانے میں ہے',
+            'cutting' => 'کارخانے میں ہے',
+            'stitching' => 'کارخانے میں ہے',
+            'trial' => 'کارخانے میں ہے',
+            'ready' => 'تیار ہے',
+            'delivered' => 'تیار ہے',
+        ];
     @endphp
 
     <style>
@@ -59,8 +67,15 @@
         .to-quantity { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 30px; padding: 0 9px; color: #1769e0; background: #eaf3ff; border-radius: 8px; font-weight: 800; }
         .to-money { direction: ltr; unicode-bidi: isolate; color: var(--to-navy); font-weight: 800; white-space: nowrap; }
         .to-money.is-total { color: #078653; }
-        .to-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; color: #53647d; background: #f2f5f9; border-radius: 999px; font-size: .75rem; font-weight: 750; white-space: nowrap; }
+        .to-status-wrap { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+        .to-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; color: #53647d; background: #f2f5f9; border-radius: 999px; font-size: .75rem; font-weight: 800; white-space: nowrap; }
         .to-status::before { content: ''; width: 6px; height: 6px; background: #7890ad; border-radius: 50%; }
+        .to-status.is-workshop { color: #9b6200; background: #fff3cf; }
+        .to-status.is-workshop::before { background: #d18a00; }
+        .to-status.is-ready { color: #fff; background: linear-gradient(135deg, #2478ec, #1159bd); }
+        .to-status.is-ready::before { background: #fff; }
+        .to-status.is-delivered { color: #fff; background: linear-gradient(135deg, #1daa6a, #087747); box-shadow: 0 4px 11px rgba(8,119,71,.16); }
+        .to-status.is-delivered::before { background: #fff; }
         .to-empty { padding: 55px 20px !important; text-align: center !important; }
         .to-empty i { display: block; margin-bottom: 12px; color: #b3c1d2; font-size: 2rem; }
         .to-empty strong { display: block; color: var(--to-navy); }
@@ -131,7 +146,11 @@
                                     $quantity = max(1, (int) $record->suitQuantity);
                                     $orderDate = \Carbon\Carbon::parse($record->created_at);
                                     $returnDate = $record->returnDate ? \Carbon\Carbon::parse($record->returnDate) : null;
-                                    $statusLabel = \App\Models\Order::STATUS_LABELS[$record->status] ?? ($record->status ?: 'درج شدہ');
+                                    $statusLabel = $statusLabels[$record->status] ?? ($record->status ?: 'درج شدہ');
+                                    $statusClass = in_array($record->status, ['ready', 'delivered'], true) ? 'is-ready' : 'is-workshop';
+                                    if ($detailedWorkflow) {
+                                        $statusClass = $record->status === 'delivered' ? 'is-delivered' : ($record->status === 'ready' ? 'is-ready' : '');
+                                    }
                                 @endphp
                                 <tr>
                                     <td data-order="{{ $orderDate->timestamp }}"><div class="to-date"><strong>{{ $orderDate->format('d-m-Y') }}</strong><small>{{ $urduDays[$orderDate->format('D')] ?? $orderDate->format('D') }}</small></div></td>
@@ -141,7 +160,12 @@
                                     <td><span class="to-money">Rs. {{ number_format((float) $record->tailor_price, 2) }}</span></td>
                                     <td><span class="to-money is-total">Rs. {{ number_format((float) $record->tailor_price * $quantity, 2) }}</span></td>
                                     <td><div class="to-date">@if($returnDate)<strong>{{ $returnDate->format('d-m-Y') }}</strong><small>{{ $urduDays[$returnDate->format('D')] ?? $returnDate->format('D') }}</small>@else<span>—</span>@endif</div></td>
-                                    <td><span class="to-status">{{ $statusLabel }}</span></td>
+                                    <td><div class="to-status-wrap">
+                                        <span class="to-status {{ $statusClass }}">{{ $statusLabel }}</span>
+                                        @if(! $detailedWorkflow && $record->status === 'delivered')
+                                            <span class="to-status is-delivered">گاہک کے حوالے ہو گیا</span>
+                                        @endif
+                                    </div></td>
                                 </tr>
                             @endforeach
                         </tbody>

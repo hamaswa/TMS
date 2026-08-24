@@ -75,12 +75,12 @@ class CustomerCreationTest extends TestCase
             ->assertSeeInOrder(['name="chuta"', 'value="15"'], false);
     }
 
-    public function test_client_cannot_create_same_mobile_in_local_and_international_formats(): void
+    public function test_duplicate_mobile_prompts_the_owner_to_use_the_existing_customer_or_add_a_profile(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true]);
         $owner->assignRole($role);
-        Customers::create([
+        $existing = Customers::create([
             'name' => 'Existing Customer',
             'phone_number1' => '03001234567',
             'user_id' => $owner->id,
@@ -89,9 +89,50 @@ class CustomerCreationTest extends TestCase
         $this->actingAs($owner)->post(route('admin.Customers.store'), [
             'name' => 'Duplicate Customer',
             'contact' => '+92 300 1234567',
-        ])->assertSessionHasErrors('contact');
+        ])->assertSessionHas('duplicate_customer', fn (array $customer) => $customer['id'] === $existing->id)
+            ->assertSessionHasInput('name', 'Duplicate Customer');
 
         $this->assertDatabaseCount('customers', 1);
+
+        $expectedUrl = url('admin/Customers').'?'.http_build_query([
+            'customer' => $existing->id,
+            'search' => $existing->phone_number1,
+        ]).'#orderDetail';
+
+        $this->actingAs($owner)->post(route('admin.Customers.store'), [
+            'name' => 'Duplicate Customer',
+            'contact' => '+92 300 1234567',
+            'duplicate_action' => 'use_existing',
+        ])->assertRedirect($expectedUrl);
+
+        $this->assertDatabaseCount('customers', 1);
+    }
+
+    public function test_owner_can_add_a_secondary_measurement_profile_for_an_existing_phone(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $existing = Customers::create([
+            'name' => 'Main Customer',
+            'phone_number1' => '03001234567',
+            'user_id' => $owner->id,
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.Customers.store'), [
+            'name' => 'Second Measurement Profile',
+            'contact' => '+92 300 1234567',
+            'duplicate_action' => 'create_profile',
+            'length' => 44,
+            'arms' => 25,
+        ])->assertSessionHas('insert');
+
+        $profile = Customers::where('parent_id', $existing->id)->firstOrFail();
+        $this->assertSame('Second Measurement Profile', $profile->name);
+        $this->assertSame('03001234567', $existing->fresh()->phone_number1);
+        $this->assertNull($profile->phone_number1_normalized);
+        $this->assertTrue($profile->phone_normalization_conflict);
+        $this->assertSame($existing->id, Customers::findByPhoneForOwner($owner->id, '+92 300 1234567')?->id);
     }
 
     public function test_client_can_reset_customer_pin_and_existing_mobile_sessions_are_revoked(): void

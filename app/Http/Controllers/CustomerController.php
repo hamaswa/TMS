@@ -17,6 +17,7 @@ use App\Rules\PakistanMobileNumber;
 use App\Rules\UniqueCustomerPhone;
 use App\Services\MeasurementService;
 use App\Services\CustomerLedgerService;
+use App\Support\PakistanPhoneNumber;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -59,6 +60,7 @@ class CustomerController extends Controller
             ->when($canViewBalances, fn ($query) => $query->withSum([
                 'transactions as current_balance' => fn ($transactions) => $transactions->where('userId', Auth::user()->businessOwnerId()),
             ], 'remainingBalance'))
+            ->orderBy('id', 'desc')
             ->get();
 
         return view('customer.list', compact('customers', 'canViewBalances', 'detailedWorkflow'));
@@ -262,8 +264,8 @@ class CustomerController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'contact' => [
                 'required', 'string', 'max:50', new PakistanMobileNumber,
-                new UniqueCustomerPhone(Auth::user()->businessOwnerId()),
             ],
+            'duplicate_action' => ['nullable', Rule::in(['use_existing', 'create_profile'])],
             'mobile_pin' => ['nullable', 'digits:6'],
             'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
             'length' => ['nullable', 'numeric', 'min:0'],
@@ -279,6 +281,29 @@ class CustomerController extends Controller
             'note' => ['nullable', 'string', 'max:2000'],
         ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
 
+        $existingCustomer = $this->existingRootCustomerByPhone($validated['contact']);
+        $duplicateAction = $validated['duplicate_action'] ?? null;
+
+        if ($existingCustomer && ! $duplicateAction) {
+            return redirect()->back()
+                ->withInput()
+                ->with('duplicate_customer', [
+                    'id' => $existingCustomer->id,
+                    'name' => $existingCustomer->name,
+                    'phone' => $existingCustomer->phone_number1,
+                ]);
+        }
+
+        if ($existingCustomer && $duplicateAction === 'use_existing') {
+            $query = http_build_query([
+                'customer' => $existingCustomer->id,
+                'search' => $existingCustomer->phone_number1,
+            ]);
+
+            return redirect(url('admin/Customers').'?'.$query.'#orderDetail')
+                ->with('insert', 'موجودہ گاہک کا ریکارڈ منتخب کر لیا گیا ہے۔');
+        }
+
         $obj = new Customers;
         $obj->name = $request->name;
         $obj->phone_number1 = $request->contact;
@@ -293,6 +318,9 @@ class CustomerController extends Controller
         $obj->shoulder = $request->monda;
         $obj->chuta = $request->chuta;
         $obj->note = $request->note;
+        if ($existingCustomer && $duplicateAction === 'create_profile') {
+            $obj->parent_id = $existingCustomer->id;
+        }
 
         // select option
         $daamanparts = explode('-', $request->add_daaman_type);
@@ -337,9 +365,12 @@ class CustomerController extends Controller
         $obj->sleeve = $sleeve_opening_type;
         $obj->user_id = Auth::user()->businessOwnerId();
         $obj->measurement_template_id = $measurementTemplate?->id;
-        $plainPin = $validated['mobile_pin'] ?? (string) random_int(100000, 999999);
-        $obj->mobile_pin = Hash::make($plainPin);
-        $obj->pin_changed_at = now();
+        $isSecondaryProfile = $obj->parent_id !== null;
+        $plainPin = $isSecondaryProfile
+            ? null
+            : ($validated['mobile_pin'] ?? (string) random_int(100000, 999999));
+        $obj->mobile_pin = $plainPin ? Hash::make($plainPin) : null;
+        $obj->pin_changed_at = $plainPin ? now() : null;
         DB::transaction(function () use ($obj, $measurementFields, $validated, $measurementTemplate) {
             $obj->save();
             $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
@@ -351,6 +382,16 @@ class CustomerController extends Controller
                 'customer_created',
             );
         });
+
+        if ($isSecondaryProfile) {
+            $query = http_build_query([
+                'customer' => $existingCustomer->id,
+                'search' => $existingCustomer->phone_number1,
+            ]);
+
+            return redirect(url('admin/Customers').'?'.$query.'#orderDetail')
+                ->with('insert', "{$obj->name} کا نیا ناپ/پروفائل موجودہ گاہک کے ساتھ شامل کر دیا گیا ہے۔");
+        }
 
         // dd($obj);
         return redirect('admin/Customers')
@@ -529,6 +570,8 @@ class CustomerController extends Controller
             'paid_on' => ['nullable', 'date'],
             'return_to_statement' => ['nullable', 'boolean'],
             'return_to_accounts' => ['nullable', 'boolean'],
+            'preserve_customer_context' => ['nullable', 'boolean'],
+            'customer_search' => ['nullable', 'string', 'max:200'],
         ]);
         $paymentMethod = $validated['payment_method'] ?? 'cash';
         if (PaymentMethods::requiresReference($paymentMethod) && blank($validated['payment_reference'] ?? null)) {
@@ -579,11 +622,22 @@ class CustomerController extends Controller
         $transaction->userId = Auth::user()->businessOwnerId();
         $transaction->save();
 
-        $response = $req->boolean('return_to_statement')
-            ? redirect()->route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions'])
-            : ($req->boolean('return_to_accounts')
-                ? redirect()->route('admin.customer-accounts.index')
-                : redirect('admin/Customers'));
+        if ($req->boolean('return_to_statement')) {
+            $response = redirect()->route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']);
+        } elseif ($req->boolean('return_to_accounts')) {
+            $response = redirect()->route('admin.customer-accounts.index');
+        } elseif ($req->boolean('preserve_customer_context')) {
+            $query = ['customer' => $customer->id];
+            $search = trim((string) ($validated['customer_search'] ?? ''));
+
+            if ($search !== '') {
+                $query['search'] = $search;
+            }
+
+            $response = redirect(url('admin/Customers').'?'.http_build_query($query).'#orderDetail');
+        } else {
+            $response = redirect('admin/Customers');
+        }
 
         return $response->with('insert', " {$customerName} کے لئے آپ نے Rs{$req->DirectPayment} کی رقم درج کی ہے");
     }
@@ -680,6 +734,24 @@ class CustomerController extends Controller
     private function ownedCustomer($id): Customers
     {
         return Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
+
+    private function existingRootCustomerByPhone(string $phone): ?Customers
+    {
+        $ownerId = Auth::user()->businessOwnerId();
+        $normalized = PakistanPhoneNumber::normalize($phone);
+        $query = Customers::where('user_id', $ownerId)->whereNull('parent_id');
+
+        if ($normalized) {
+            $customer = (clone $query)->where('phone_number1_normalized', $normalized)->first();
+            if ($customer) {
+                return $customer;
+            }
+        }
+
+        return $query->get()->first(
+            fn (Customers $customer) => PakistanPhoneNumber::normalize($customer->phone_number1) === $normalized
+        );
     }
 
     private function measurementTemplates()

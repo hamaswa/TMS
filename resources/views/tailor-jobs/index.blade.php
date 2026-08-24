@@ -381,6 +381,12 @@
             background: var(--tj-blue)
         }
 
+        .tj-success {
+            border-color: #15945c;
+            color: #fff;
+            background: linear-gradient(135deg, #1daa6a, #087747)
+        }
+
         .tj-payment-summary {
             display: flex;
             justify-content: space-between;
@@ -684,6 +690,13 @@
                                             </select>
                                             <button class="tj-button tj-primary" type="submit"><i class="fas fa-check"></i> حالت بدلیں</button>
                                         </form>
+                                        @if($isReady && ! $isTailor)
+                                            <form class="mt-2" method="POST" action="{{ route('admin.order.status') }}">
+                                                @csrf
+                                                <input type="hidden" name="order_id" value="{{ $order->id }}">
+                                                <button class="tj-button tj-success" type="submit" name="order_status" value="deliver"><i class="fas fa-handshake"></i> گاہک کے حوالے کریں</button>
+                                            </form>
+                                        @endif
                                     @else<span class="text-muted small"><i
                                                 class="fas fa-check-circle ml-1 text-success"></i>یہ کام مکمل ہو چکا
                                             ہے۔</span>

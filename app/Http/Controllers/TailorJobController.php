@@ -165,12 +165,28 @@ class TailorJobController extends Controller
     {
         $validated = $request->validate([
             'order_id' => ['required', 'integer'],
-            'order_status' => ['required', Rule::in(['start', 'complete'])],
+            'order_status' => ['required', Rule::in(['start', 'complete', 'deliver'])],
         ]);
-        $nextStatus = $validated['order_status'] === 'start' ? 'cutting' : 'ready';
+        $nextStatus = match ($validated['order_status']) {
+            'start' => 'cutting',
+            'complete' => 'ready',
+            'deliver' => 'delivered',
+        };
         $job = $this->ownedJob((int) $validated['order_id']);
         $actor = Auth::check() ? 'shop_owner' : 'tailor';
         $ownerId = (int) $job->userId;
+
+        if ($nextStatus === 'delivered' && $actor !== 'shop_owner') {
+            throw ValidationException::withMessages([
+                'order_status' => 'صرف دکان کا مالک آرڈر گاہک کے حوالے شدہ کے طور پر محفوظ کر سکتا ہے۔',
+            ]);
+        }
+
+        if ($nextStatus === 'delivered' && $job->status !== 'ready') {
+            throw ValidationException::withMessages([
+                'order_status' => 'صرف تیار آرڈر کو گاہک کے حوالے کیا جا سکتا ہے۔',
+            ]);
+        }
 
         if ($job->status === $nextStatus) {
             return back()->with('success', 'آرڈر کی حالت پہلے ہی منتخب شدہ حالت پر ہے۔');
@@ -181,6 +197,13 @@ class TailorJobController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($job->id);
             $fromStatus = $job->status;
+
+            if ($nextStatus === 'delivered' && $fromStatus !== 'ready') {
+                throw ValidationException::withMessages([
+                    'order_status' => 'آرڈر کی حالت تبدیل ہو چکی ہے۔ صفحہ تازہ کر کے دوبارہ کوشش کریں۔',
+                ]);
+            }
+
             $updates = ['status' => $nextStatus, 'status_changed_at' => now()];
 
             if ($nextStatus === 'cutting' && ! $job->started_at) {
@@ -188,6 +211,9 @@ class TailorJobController extends Controller
             }
             if ($nextStatus === 'ready') {
                 $updates['ready_at'] = now();
+            }
+            if ($nextStatus === 'delivered') {
+                $updates['delivered_at'] = now();
             }
 
             $job->update($updates);

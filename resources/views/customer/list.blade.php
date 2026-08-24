@@ -341,6 +341,18 @@
         .order-payment-status.is-unpaid { color: #b12f3c; background: #ffecef; }
         .order-payment-button { min-height: 32px; padding: 5px 9px; border: 1px solid #bce5d1; border-radius: 8px; color: #087747; background: #effaf4; font-size: .76rem; font-weight: 800; white-space: nowrap; }
         .order-payment-button:hover { border-color: #83cfaa; background: #ddf5e9; }
+        .customer-order-status { min-width: 112px; border: 1px solid transparent; border-radius: 9px; font-weight: 900; box-shadow: 0 5px 14px rgba(25, 45, 75, .08); }
+        .customer-order-status.order-stage-workshop { color: #9b6200; border-color: #f2cf82; background: #fff3cf; }
+        .customer-order-status.order-stage-ready { color: #fff; border-color: #1769e0; background: linear-gradient(135deg, #2478ec, #1159bd); }
+        .customer-order-status.order-stage-delivered { color: #fff; border-color: #1769e0; background: linear-gradient(135deg, #2478ec, #1159bd); }
+        .customer-order-status:not(.disabled):hover { transform: translateY(-1px); filter: brightness(.98); }
+        .customer-order-status.disabled { cursor: default; opacity: 1; }
+        .order-status-cell { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
+        .order-delivery-form { margin: 0; }
+        .order-delivery-action, .order-delivered-badge { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 10px; border-radius: 9px; font-size: .74rem; font-weight: 900; white-space: nowrap; }
+        .order-delivery-action { color: #087747; border: 1px solid #8bd0ad; background: #e9f8f0; cursor: pointer; }
+        .order-delivery-action:hover { color: #fff; border-color: #15945c; background: #15945c; }
+        .order-delivered-badge { color: #fff; border: 1px solid #15945c; background: linear-gradient(135deg, #1daa6a, #087747); box-shadow: 0 5px 14px rgba(8, 119, 71, .18); }
 
         .customer-workspace .modal-content { overflow: hidden; border: 0; border-radius: 15px; box-shadow: 0 20px 60px rgba(12, 35, 68, .22); }
         .customer-workspace .modal-header { align-items: center; border-bottom: 1px solid var(--customer-line); }
@@ -487,7 +499,7 @@
                     </div>
                     <label class="customer-search" for="customerDirectorySearch">
                         <i class="fas fa-search"></i>
-                        <input id="customerDirectorySearch" type="search" placeholder="نام یا فون نمبر سے تلاش کریں" autocomplete="off">
+                        <input id="customerDirectorySearch" type="search" value="{{ request('search') }}" placeholder="نام یا فون نمبر سے تلاش کریں" autocomplete="off">
                     </label>
                 </div>
 
@@ -619,7 +631,7 @@
                             <small class="form-text text-muted mt-2">
                                 {{ $detailedWorkflow
                                     ? 'صرف آرڈر کی موجودہ حالت کے بعد والا درست مرحلہ دکھایا گیا ہے۔'
-                                    : 'آرڈر کی موجودہ حالت کے لیے صرف کارخانے میں ہے یا تیار ہے منتخب کریں۔' }}
+                                    : 'کام کی حالت کے لیے صرف کارخانے میں ہے یا تیار ہے منتخب کریں۔ حوالگی الگ سبز بٹن سے محفوظ ہوگی۔' }}
                             </small>
                         </div>
                         <div class="modal-footer">
@@ -638,6 +650,8 @@
                         @csrf
                         <input type="hidden" id="customer_id" name="customer_id">
                         <input type="hidden" id="payment_order_id" name="order_id">
+                        <input type="hidden" name="preserve_customer_context" value="1">
+                        <input type="hidden" id="customer_search_context" name="customer_search" value="{{ request('search') }}">
                         <div class="modal-header">
                             <h4 class="modal-title" id="paymentModalTitle"><i class="fas fa-wallet text-success ml-2"></i> گاہک کی ادائیگی درج کریں</h4>
                             <button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
@@ -714,10 +728,16 @@
 
     <script>
         $(document).ready(function () {
+            var initialCustomerId = @json((int) request('customer'));
+
             $('#customerDirectorySearch').on('input', function () {
                 if ($.fn.DataTable && $.fn.DataTable.isDataTable('#cc-table-data-customer-list')) {
                     $('#cc-table-data-customer-list').DataTable().search(this.value).draw();
                 }
+            });
+
+            $('#myModalpayment form').on('submit', function () {
+                $('#customer_search_context').val($('#customerDirectorySearch').val() || '');
             });
 
             $(document).on('click', '.getCustomer', function () {
@@ -728,6 +748,23 @@
                     }
                 }, 350);
             });
+
+            if (initialCustomerId) {
+                var restoreCustomerContext = function () {
+                    var searchInput = $('#customerDirectorySearch');
+
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#cc-table-data-customer-list')) {
+                        $('#cc-table-data-customer-list').DataTable().search(searchInput.val()).draw();
+                    }
+
+                    var customerButton = $('.getCustomer[data-id="' + initialCustomerId + '"]');
+                    if (customerButton.length) {
+                        customerButton.trigger('click');
+                    }
+                };
+
+                setTimeout(restoreCustomerContext, 100);
+            }
         });
     </script>
 @endsection

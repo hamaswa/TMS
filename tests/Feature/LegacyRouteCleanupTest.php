@@ -343,6 +343,33 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertViewHas('latestBalance', 2500.0);
     }
 
+    public function test_customer_payment_returns_to_the_searched_customer_context(): void
+    {
+        [$owner, $order] = $this->orderWithoutActiveSetting();
+        $order->update(['totalPayment' => 1500]);
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'orderId' => $order->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'recivedPayment' => 0,
+            'remainingBalance' => 1500,
+        ]);
+
+        $expectedUrl = url('admin/Customers').'?'.http_build_query([
+            'customer' => $order->customerId,
+            'search' => '9123',
+        ]).'#orderDetail';
+
+        $this->actingAs($owner)->post(route('admin.DirectPayment'), [
+            'customer_id' => $order->customerId,
+            'order_id' => $order->id,
+            'DirectPayment' => 500,
+            'preserve_customer_context' => 1,
+            'customer_search' => '9123',
+        ])->assertRedirect($expectedUrl);
+    }
+
     public function test_order_notes_field_has_an_explicit_accessible_label_and_direction(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();

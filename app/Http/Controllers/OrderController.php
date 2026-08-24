@@ -375,12 +375,16 @@ class OrderController extends Controller
                 $currentStatus = (string) ($order->status ?: 'assigned');
                 $button = $detailedWorkflow
                     ? (Order::STATUS_LABELS[$currentStatus] ?? ucfirst($currentStatus))
-                    : (in_array($currentStatus, ['ready', 'delivered'], true) ? 'تیار ہے' : 'کارخانے میں ہے');
-                $btn = match ($order->status) {
-                    'assigned' => 'btn-primary',
-                    'cutting', 'stitching', 'trial' => 'btn-warning',
-                    'ready', 'delivered' => 'btn-success',
-                    default => 'btn-secondary',
+                    : match ($currentStatus) {
+                        'ready' => 'تیار ہے',
+                        'delivered' => 'تیار ہے',
+                        default => 'کارخانے میں ہے',
+                    };
+                $btn = match ($currentStatus) {
+                    'assigned', 'cutting', 'stitching', 'trial' => 'order-stage-workshop',
+                    'ready' => 'order-stage-ready',
+                    'delivered' => $detailedWorkflow ? 'order-stage-delivered' : 'order-stage-ready',
+                    default => 'order-stage-workshop',
                 };
                 $data[] = [
                     'number' => $i++,
@@ -399,12 +403,17 @@ class OrderController extends Controller
                     'orderId' => $order->id,
                     'rack_no' => $order->rack_no,
                     'racks' => $racks,
+                    'canMarkDelivered' => ! $detailedWorkflow && $currentStatus === 'ready',
+                    'isDelivered' => ! $detailedWorkflow && $currentStatus === 'delivered',
                     'nextStatuses' => $detailedWorkflow
                         ? Order::nextStatusOptionsFor($currentStatus)
-                        : (in_array($currentStatus, ['ready', 'delivered'], true) ? [] : [
+                        : match ($currentStatus) {
+                            'delivered' => [],
+                            default => [
                             ['value' => 'start', 'label' => 'کارخانے میں ہے'],
                             ['value' => 'complete', 'label' => 'تیار ہے'],
-                        ]),
+                            ],
+                        },
                 ];
             }
 

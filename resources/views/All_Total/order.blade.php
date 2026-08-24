@@ -101,6 +101,15 @@
                                                         <i class="fas fa-check ml-1"></i>تیار ہے
                                                     </button>
                                                 </form>
+                                                @if($isReady)
+                                                    <form method="POST" action="{{ route('admin.order.status') }}">
+                                                        @csrf
+                                                        <input type="hidden" name="order_id" value="{{ $order->id }}">
+                                                        <button class="wo-status-option" type="submit" name="order_status" value="deliver" title="گاہک کے حوالے کریں">
+                                                            <i class="fas fa-handshake ml-1"></i>حوالہ کریں
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             @endif
                                         </div>
                                     </div>

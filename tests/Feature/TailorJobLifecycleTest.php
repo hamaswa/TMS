@@ -106,6 +106,90 @@ class TailorJobLifecycleTest extends TestCase
             'to_status' => 'ready',
             'changed_by_type' => 'tailor',
         ]);
+
+        $this->withSession($session)
+            ->from(route('tailor.jobs.index'))
+            ->post(route('tailor.order.status'), [
+                'order_id' => $order->id,
+                'order_status' => 'deliver',
+            ])
+            ->assertRedirect(route('tailor.jobs.index'))
+            ->assertSessionHasErrors('order_status');
+
+        $this->assertSame('ready', $order->fresh()->status);
+    }
+
+    public function test_simple_workflow_allows_the_shop_owner_to_deliver_a_ready_order(): void
+    {
+        [$owner, , $order] = $this->job(['status' => 'ready']);
+
+        $customerOrders = $this->actingAs($owner)
+            ->getJson(route('admin.getCustomer', ['id' => $order->customerId]))
+            ->assertOk()
+            ->json();
+        $historyOrder = collect($customerOrders)->firstWhere('orderId', $order->id);
+
+        $this->assertSame('تیار ہے', $historyOrder['button']);
+        $this->assertSame([
+            ['value' => 'start', 'label' => 'کارخانے میں ہے'],
+            ['value' => 'complete', 'label' => 'تیار ہے'],
+        ], $historyOrder['nextStatuses']);
+        $this->assertTrue($historyOrder['canMarkDelivered']);
+        $this->assertFalse($historyOrder['isDelivered']);
+
+        $this->actingAs($owner)->post(route('admin.order.status'), [
+            'order_id' => $order->id,
+            'order_status' => 'deliver',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->delivered_at);
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'from_status' => 'ready',
+            'to_status' => 'delivered',
+            'changed_by_type' => 'shop_owner',
+        ]);
+
+        $deliveredOrders = $this->actingAs($owner)
+            ->getJson(route('admin.getCustomer', ['id' => $order->customerId]))
+            ->assertOk()
+            ->json();
+        $deliveredOrder = collect($deliveredOrders)->firstWhere('orderId', $order->id);
+
+        $this->assertSame('تیار ہے', $deliveredOrder['button']);
+        $this->assertSame([], $deliveredOrder['nextStatuses']);
+        $this->assertSame('order-stage-ready', $deliveredOrder['btnClass']);
+        $this->assertFalse($deliveredOrder['canMarkDelivered']);
+        $this->assertTrue($deliveredOrder['isDelivered']);
+    }
+
+    public function test_tailor_order_history_uses_the_selected_workflow_statuses(): void
+    {
+        [$owner, $tailor, $order] = $this->job(['status' => 'assigned']);
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-orders', $tailor))
+            ->assertOk()
+            ->assertSeeText('کارخانے میں ہے')
+            ->assertDontSeeText('درزی مقرر');
+
+        $order->update(['status' => 'delivered']);
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-orders', $tailor))
+            ->assertOk()
+            ->assertSeeText('تیار ہے')
+            ->assertSeeText('گاہک کے حوالے ہو گیا')
+            ->assertSee('to-status is-delivered', false);
+
+        $owner->business->update(['tailoring_status_mode' => Business::TAILORING_STATUS_DETAILED]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-orders', $tailor))
+            ->assertOk()
+            ->assertSeeText('حوالہ شدہ')
+            ->assertDontSeeText('گاہک کے حوالے ہو گیا');
     }
 
     public function test_shop_can_enable_detailed_statuses_for_workshop_weekly_orders_and_qr(): void

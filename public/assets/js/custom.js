@@ -23,8 +23,10 @@ jQuery(document).ready(function ($) {
         this.blur();
     });
 
-    $('#cc-table-data-customer-list').DataTable({
+    var customerListTable = $('#cc-table-data-customer-list');
+    customerListTable.DataTable({
         dom: 'Bfrtip',
+        order: customerListTable.hasClass('customer-list-table') ? [[0, 'desc']] : [[0, 'asc']],
         buttons: [
             'csv', 'excel', 'pdf'
         ]
@@ -88,13 +90,26 @@ jQuery(document).ready(function ($) {
                     var buttonStatus = order.button.toLowerCase();
                     var buttonText = order.button;
                     var nextStatuses = Array.isArray(order.nextStatuses) ? order.nextStatuses : [];
+                    var statusControl = '';
 
                     if (nextStatuses.length === 0) {
                         buttonClass += ' disabled';
-                        row += '<td><button type="button" class="btn btn-sm ' + buttonClass + '" disabled>' + buttonText + '</button></td>';
+                        statusControl = '<button type="button" class="btn btn-sm ' + buttonClass + '" disabled>' + buttonText + '</button>';
                     } else {
-                        row += '<td><button type="button" class="btn btn-sm ' + buttonClass + '" data-toggle="modal" data-target="#myModal" data-orderid="' + order.orderId + '" data-nextstatuses="' + encodeURIComponent(JSON.stringify(nextStatuses)) + '">' + buttonText + '</button></td>';
+                        statusControl = '<button type="button" class="btn btn-sm ' + buttonClass + '" data-toggle="modal" data-target="#myModal" data-orderid="' + order.orderId + '" data-nextstatuses="' + encodeURIComponent(JSON.stringify(nextStatuses)) + '">' + buttonText + '</button>';
                     }
+
+                    if (order.canMarkDelivered) {
+                        statusControl += '<form class="order-delivery-form" method="POST" action="/admin/order-status">' +
+                            '<input type="hidden" name="_token" value="' + $('meta[name="csrf-token"]').attr('content') + '">' +
+                            '<input type="hidden" name="order_id" value="' + order.orderId + '">' +
+                            '<input type="hidden" name="order_status" value="deliver">' +
+                            '<button type="submit" class="order-delivery-action"><i class="fas fa-handshake"></i> گاہک کے حوالے کریں</button></form>';
+                    } else if (order.isDelivered) {
+                        statusControl += '<span class="order-delivered-badge"><i class="fas fa-check-circle"></i> گاہک کے حوالے ہو گیا</span>';
+                    }
+
+                    row += '<td><div class="order-status-cell">' + statusControl + '</div></td>';
 
                     // Adding the select dropdown for rack number
                     row += '<td><select class="form-control px-1" id="rack-no" data-orderid="' + order.orderId + '" style="height:40px;width:100%;padding:6px 10px;margin:0;font-size:12px;">' +
@@ -116,7 +131,10 @@ jQuery(document).ready(function ($) {
 
                     $('.tbody').append(row);
                 });
-                $('#cc-table-data-order-history').DataTable();
+                var customerOrderTable = $('#cc-table-data-order-history');
+                customerOrderTable.DataTable({
+                    order: customerOrderTable.hasClass('customer-order-table') ? [[0, 'desc']] : [[0, 'asc']],
+                });
             },
             error: function (xhr, status, error) {
                 console.error(xhr.responseText);
