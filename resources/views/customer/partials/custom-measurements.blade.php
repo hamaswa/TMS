@@ -22,7 +22,7 @@
                         @foreach($field->options ?? [] as $option)<option value="{{ $option }}" @selected((string) $value === (string) $option)>{{ $option }}</option>@endforeach
                     </select>
                 @else
-                    <input class="form-control{{ $field->field_type === 'number' ? ' js-no-wheel-number' : '' }}" id="custom_measurement_{{ $field->id }}" name="custom_measurements[{{ $field->id }}]" value="{{ $value }}" type="{{ $field->field_type === 'number' ? 'number' : 'text' }}" @if($field->field_type === 'number') step="0.01" min="0" @endif @required($field->is_required)>
+                    <input class="form-control" id="custom_measurement_{{ $field->id }}" name="custom_measurements[{{ $field->id }}]" value="{{ $value }}" type="{{ $field->field_type === 'number' ? 'number' : 'text' }}" @if($field->field_type === 'number') step="0.01" min="0" @endif @required($field->is_required)>
                 @endif
                 @error('custom_measurements.'.$field->id)<div class="text-danger small mt-1">{{ $message }}</div>@enderror
             </div>

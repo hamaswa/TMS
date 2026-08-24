@@ -64,14 +64,14 @@
                             <div class="form-group form-row">
                                 <label class="col-sm-3 col-form-label">ٹوٹل قیمت</label>
                                 <div class="col-sm-9">
-                                    <input type="number" value="{{ $data->totalPayment }}" class="form-control js-no-wheel-number"
+                                    <input type="number" value="{{ $data->totalPayment }}" class="form-control"
                                         name="totalPayment" id="totalPayment" required>
                                 </div>
                             </div>
                             <div class="form-group form-row">
                                 <label class="col-sm-3 col-form-label">وصول رقم</label>
                                 <div class="col-sm-9">
-                                    <input type="number" value="{{ $recivedPayment }}" class="form-control js-no-wheel-number"
+                                    <input type="number" value="{{ $recivedPayment }}" class="form-control"
                                         name="recivedPayment" id="recivedPayment" required>
                                 </div>
                             </div>

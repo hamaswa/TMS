@@ -18,8 +18,9 @@ if (document.documentElement.lang === 'ur' && jQuery.fn.dataTable) {
 
 jQuery(document).ready(function ($) {
 
-    // Keep page scrolling from accidentally changing focused price fields.
-    $(document).on('wheel', '.js-no-wheel-number', function () {
+    // Keep page scrolling from accidentally changing any editable number field.
+    // Add data-allow-wheel to a number input only when wheel changes are intentional.
+    $(document).on('wheel', 'input[type="number"]:not([readonly]):not([disabled]):not([data-allow-wheel])', function () {
         this.blur();
     });
 

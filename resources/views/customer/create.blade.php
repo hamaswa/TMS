@@ -366,7 +366,7 @@
                                                     for="measurement-{{ $name }}">{{ $label }} <span
                                                         class="text-danger">*</span></label><input
                                                     id="measurement-{{ $name }}" type="number" step="0.01"
-                                                    min="0" class="form-control js-no-wheel-number" name="{{ $name }}"
+                                                    min="0" class="form-control" name="{{ $name }}"
                                                     value="{{ old($name) }}" required></div>
                                         @endforeach
                                         @include('customer.partials.custom-measurements', [
