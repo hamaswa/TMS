@@ -273,6 +273,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     // Route::get('/notifications-stream', [UserController::class, 'notificationsStream'])->name('notifications-stream');
 
     Route::middleware('business.permission:tailoring.customers')->group(function () {
+        Route::get('/Customers/search-results', [CustomerController::class, 'searchDirectory'])->name('customers.search');
         Route::resource('/Customers', CustomerController::class);
         Route::post('DirectPayment', [CustomerController::class, 'DirectPayment'])->middleware('business.permission:customers.balances')->name('DirectPayment');
         Route::post('RackNo', [CustomerController::class, 'RackNo'])->name('RackNo');

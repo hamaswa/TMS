@@ -24,13 +24,15 @@ jQuery(document).ready(function ($) {
     });
 
     var customerListTable = $('#cc-table-data-customer-list');
-    customerListTable.DataTable({
-        dom: 'Bfrtip',
-        order: customerListTable.hasClass('customer-list-table') ? [[0, 'desc']] : [[0, 'asc']],
-        buttons: [
-            'csv', 'excel', 'pdf'
-        ]
-    });
+    if (customerListTable.length && !customerListTable.hasClass('js-ajax-customer-table')) {
+        customerListTable.DataTable({
+            dom: 'Bfrtip',
+            order: customerListTable.hasClass('customer-list-table') ? [[0, 'desc']] : [[0, 'asc']],
+            buttons: [
+                'csv', 'excel', 'pdf'
+            ]
+        });
+    }
 
     $('#v-pills-tab a').on('click', function () {
         var OptionTypeId = $(this).attr('id');

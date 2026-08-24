@@ -55,15 +55,33 @@ class CustomerController extends Controller
         $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
         $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
             === Business::TAILORING_STATUS_DETAILED;
-        $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
-            ->where('parent_id', null)
-            ->when($canViewBalances, fn ($query) => $query->withSum([
-                'transactions as current_balance' => fn ($transactions) => $transactions->where('userId', Auth::user()->businessOwnerId()),
-            ], 'remainingBalance'))
+        $customers = $this->customerDirectoryQuery($canViewBalances, (string) request('search', ''))
             ->orderBy('id', 'desc')
+            ->limit(25)
+            ->get();
+        $stats = $this->customerDirectoryStats($canViewBalances);
+
+        return view('customer.list', array_merge(
+            compact('customers', 'canViewBalances', 'detailedWorkflow'),
+            $stats,
+        ));
+    }
+
+    public function searchDirectory(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+        ]);
+        $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $customers = $this->customerDirectoryQuery($canViewBalances, (string) ($validated['search'] ?? ''))
+            ->orderBy('id', 'desc')
+            ->limit(25)
             ->get();
 
-        return view('customer.list', compact('customers', 'canViewBalances', 'detailedWorkflow'));
+        return response()->json([
+            'html' => view('customer.partials.directory-rows', compact('customers', 'canViewBalances'))->render(),
+            'count' => $customers->count(),
+        ]);
     }
 
     public function accounts()
@@ -591,8 +609,13 @@ class CustomerController extends Controller
             $orderBalance = $this->customerLedger->orderBalance($order);
 
             if ((float) $validated['DirectPayment'] > $orderBalance) {
+                $message = "آرڈر #{$order->id} کا موجودہ بقایا Rs: {$orderBalance} ہے۔ درج کی گئی رقم اس سے زیادہ نہیں ہو سکتی۔";
+                if ($req->expectsJson()) {
+                    return response()->json(['message' => $message, 'errors' => ['DirectPayment' => [$message]]], 422);
+                }
+
                 return redirect()->back()->with([
-                    'balanceError' => "آرڈر #{$order->id} کا موجودہ بقایا Rs: {$orderBalance} ہے۔ درج کی گئی رقم اس سے زیادہ نہیں ہو سکتی۔",
+                    'balanceError' => $message,
                 ]);
             }
         }
@@ -603,8 +626,13 @@ class CustomerController extends Controller
         // Check if the DirectPayment amount is less than or equal to the current balance
         if ($validated['DirectPayment'] > $currentBalance) {
             // If the payment exceeds the current balance, show an error message
+            $message = "موجودہ واجبات Rs: {$currentBalance} ہیں۔ {$customerName} کے لئے آپ نے Rs: {$req->DirectPayment} کی رقم درج کی ہے جو دستیاب واجبات سے زیادہ ہے";
+            if ($req->expectsJson()) {
+                return response()->json(['message' => $message, 'errors' => ['DirectPayment' => [$message]]], 422);
+            }
+
             return redirect()->back()->with([
-                'balanceError' => "موجودہ واجبات Rs: {$currentBalance} ہیں۔ {$customerName} کے لئے آپ نے  Rs : {$req->DirectPayment} کی رقم درج کی ہے جو دستیاب واجبات سے زیادہ ہے",
+                'balanceError' => $message,
             ]);
         }
 
@@ -621,6 +649,15 @@ class CustomerController extends Controller
         $transaction->paid_on = $validated['paid_on'] ?? now()->toDateString();
         $transaction->userId = Auth::user()->businessOwnerId();
         $transaction->save();
+
+        if ($req->expectsJson()) {
+            return response()->json([
+                'message' => "{$customerName} کے لئے Rs {$validated['DirectPayment']} کی رقم درج کر دی گئی ہے۔",
+                'customerId' => $customer->id,
+                'balance' => max(0, (float) $currentBalance - (float) $validated['DirectPayment']),
+                'stats' => $this->customerDirectoryStats(true),
+            ]);
+        }
 
         if ($req->boolean('return_to_statement')) {
             $response = redirect()->route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'transactions']);
@@ -752,6 +789,61 @@ class CustomerController extends Controller
         return $query->get()->first(
             fn (Customers $customer) => PakistanPhoneNumber::normalize($customer->phone_number1) === $normalized
         );
+    }
+
+    private function customerDirectoryQuery(bool $canViewBalances, string $search = '')
+    {
+        $ownerId = Auth::user()->businessOwnerId();
+        $search = trim($search);
+
+        return Customers::query()
+            ->where('user_id', $ownerId)
+            ->whereNull('parent_id')
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(function ($searchQuery) use ($search, $like) {
+                    $searchQuery->where('name', 'like', $like)
+                        ->orWhere('phone_number1', 'like', $like);
+                    if (ctype_digit($search)) {
+                        $searchQuery->orWhere('id', (int) $search);
+                    }
+                });
+            })
+            ->when($canViewBalances, fn ($query) => $query->withSum([
+                'transactions as current_balance' => fn ($transactions) => $transactions->where('userId', $ownerId),
+            ], 'remainingBalance'));
+    }
+
+    private function customerDirectoryStats(bool $canViewBalances): array
+    {
+        $ownerId = Auth::user()->businessOwnerId();
+        $customerCount = Customers::where('user_id', $ownerId)->whereNull('parent_id')->count();
+
+        if (! $canViewBalances) {
+            return compact('customerCount') + [
+                'totalBalance' => 0.0,
+                'customersWithBalance' => 0,
+                'settledCustomers' => 0,
+            ];
+        }
+
+        $balanceTotals = Transaction::query()
+            ->selectRaw('customerId, SUM(remainingBalance) AS current_balance')
+            ->where('userId', $ownerId)
+            ->groupBy('customerId');
+        $stats = Customers::query()
+            ->where('customers.user_id', $ownerId)
+            ->whereNull('customers.parent_id')
+            ->leftJoinSub($balanceTotals, 'customer_balances', 'customer_balances.customerId', '=', 'customers.id')
+            ->selectRaw('COALESCE(SUM(customer_balances.current_balance), 0) AS total_balance')
+            ->selectRaw('SUM(CASE WHEN COALESCE(customer_balances.current_balance, 0) > 0 THEN 1 ELSE 0 END) AS customers_with_balance')
+            ->first();
+        $customersWithBalance = (int) ($stats->customers_with_balance ?? 0);
+
+        return compact('customerCount', 'customersWithBalance') + [
+            'totalBalance' => (float) ($stats->total_balance ?? 0),
+            'settledCustomers' => max(0, $customerCount - $customersWithBalance),
+        ];
     }
 
     private function measurementTemplates()

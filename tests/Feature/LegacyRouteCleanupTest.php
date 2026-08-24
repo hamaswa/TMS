@@ -370,6 +370,38 @@ class LegacyRouteCleanupTest extends TestCase
         ])->assertRedirect($expectedUrl);
     }
 
+    public function test_customer_payment_can_be_saved_by_ajax_without_a_page_reload(): void
+    {
+        [$owner, $order] = $this->orderWithoutActiveSetting();
+        $order->update(['totalPayment' => 1500]);
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'orderId' => $order->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'recivedPayment' => 0,
+            'remainingBalance' => 1500,
+        ]);
+
+        $this->actingAs($owner)->postJson(route('admin.DirectPayment'), [
+            'customer_id' => $order->customerId,
+            'order_id' => $order->id,
+            'DirectPayment' => 500,
+        ])->assertOk()
+            ->assertJsonPath('customerId', $order->customerId)
+            ->assertJsonPath('balance', 1000)
+            ->assertJsonPath('stats.totalBalance', 1000)
+            ->assertJsonPath('stats.customersWithBalance', 1);
+
+        $this->assertDatabaseHas('transactions', [
+            'customerId' => $order->customerId,
+            'orderId' => $order->id,
+            'Order_type' => 'Payment',
+            'recivedPayment' => 500,
+            'remainingBalance' => -500,
+        ]);
+    }
+
     public function test_order_notes_field_has_an_explicit_accessible_label_and_direction(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();

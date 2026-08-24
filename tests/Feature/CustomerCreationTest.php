@@ -31,6 +31,34 @@ class CustomerCreationTest extends TestCase
             ->assertSee('aria-label="'.$customer->name.' کی ادائیگی درج کریں"', false);
     }
 
+    public function test_customer_directory_uses_a_limited_initial_list_and_ajax_server_search(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true, 'is_business_owner' => true]);
+        $owner->assignRole($role);
+
+        foreach (range(1, 26) as $number) {
+            Customers::create([
+                'user_id' => $owner->id,
+                'name' => sprintf('Directory Customer %02d', $number),
+                'phone_number1' => '0300'.str_pad((string) $number, 7, '0', STR_PAD_LEFT),
+            ]);
+        }
+
+        $this->actingAs($owner)->get(route('admin.Customers.index'))
+            ->assertOk()
+            ->assertSeeText('Directory Customer 26')
+            ->assertDontSeeText('Directory Customer 01')
+            ->assertSeeText('26');
+
+        $response = $this->actingAs($owner)->getJson(route('admin.customers.search', [
+            'search' => 'Directory Customer 01',
+        ]))->assertOk()->assertJsonPath('count', 1);
+
+        $this->assertStringContainsString('Directory Customer 01', $response->json('html'));
+        $this->assertStringNotContainsString('Directory Customer 02', $response->json('html'));
+    }
+
     public function test_tailoring_client_can_create_a_customer_with_default_design_options(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

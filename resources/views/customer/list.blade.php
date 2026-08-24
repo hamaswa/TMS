@@ -1,17 +1,6 @@
 @extends('main')
 
 @section('content')
-    @php
-        $customerCount = $customers->count();
-        $totalBalance = $canViewBalances ? (float) $customers->sum('current_balance') : 0;
-        $customersWithBalance = $canViewBalances
-            ? $customers->filter(fn ($customer) => (float) $customer->current_balance > 0)->count()
-            : 0;
-        $settledCustomers = $canViewBalances
-            ? $customers->filter(fn ($customer) => (float) $customer->current_balance <= 0)->count()
-            : 0;
-    @endphp
-
     <style>
         .customer-workspace {
             --customer-blue: #1769e0;
@@ -360,6 +349,8 @@
         .customer-workspace .modal-body { text-align: right; }
         .customer-workspace .modal-footer { justify-content: flex-start; border-top: 1px solid var(--customer-line); }
         .customer-workspace .form-control { min-height: 43px; border-color: #d7e0ec; border-radius: 9px; }
+        .customer-search-status { padding: 9px 17px; color: #718096; font-size: .82rem; border-top: 1px solid var(--customer-line); background: #fbfdff; }
+        .customer-search-status.is-loading { color: #1769e0; }
 
         @media (max-width: 1100px) {
             .customer-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -451,12 +442,17 @@
                 </div>
             @endif
 
+            <div id="customerAjaxAlert" class="customer-alert is-success" role="status" style="display:none">
+                <i class="fas fa-check-circle"></i>
+                <div></div>
+            </div>
+
             <div class="customer-stats">
                 <article class="customer-stat">
                     <span class="customer-stat__icon"><i class="fas fa-user-friends"></i></span>
                     <div>
                         <div class="customer-stat__label">کل گاہک</div>
-                        <div class="customer-stat__value">{{ number_format($customerCount) }}</div>
+                        <div id="customerStatCount" class="customer-stat__value">{{ number_format($customerCount) }}</div>
                     </div>
                 </article>
 
@@ -464,7 +460,7 @@
                     <span class="customer-stat__icon"><i class="fas fa-wallet"></i></span>
                     <div>
                         <div class="customer-stat__label">کل بقایا</div>
-                        <div class="customer-stat__value">
+                        <div id="customerStatBalance" class="customer-stat__value">
                             @if ($canViewBalances)
                                 Rs. {{ number_format($totalBalance, 2) }}
                             @else
@@ -478,7 +474,7 @@
                     <span class="customer-stat__icon"><i class="fas fa-exclamation-circle"></i></span>
                     <div>
                         <div class="customer-stat__label">بقایا والے گاہک</div>
-                        <div class="customer-stat__value">{{ $canViewBalances ? number_format($customersWithBalance) : '—' }}</div>
+                        <div id="customerStatDue" class="customer-stat__value">{{ $canViewBalances ? number_format($customersWithBalance) : '—' }}</div>
                     </div>
                 </article>
 
@@ -486,7 +482,7 @@
                     <span class="customer-stat__icon"><i class="fas fa-user-check"></i></span>
                     <div>
                         <div class="customer-stat__label">حساب مکمل</div>
-                        <div class="customer-stat__value">{{ $canViewBalances ? number_format($settledCustomers) : '—' }}</div>
+                        <div id="customerStatSettled" class="customer-stat__value">{{ $canViewBalances ? number_format($settledCustomers) : '—' }}</div>
                     </div>
                 </article>
             </div>
@@ -504,7 +500,7 @@
                 </div>
 
                 <div class="customer-table-wrap">
-                    <table class="table js-sortable-table customer-directory customer-list-table" id="cc-table-data-customer-list">
+                    <table class="table customer-directory customer-list-table js-ajax-customer-table" id="cc-table-data-customer-list" data-search-url="{{ route('admin.customers.search') }}">
                         <thead>
                             <tr>
                                 <th scope="col">#</th>
@@ -514,66 +510,10 @@
                                 <th scope="col" class="no-sort">فوری کارروائیاں</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @foreach ($customers as $customer)
-                                @php
-                                    $currentBalance = (float) ($customer->current_balance ?? 0);
-                                    $initial = function_exists('mb_substr') ? mb_substr(trim($customer->name), 0, 1) : substr(trim($customer->name), 0, 1);
-                                @endphp
-                                <tr>
-                                    <td class="customer_serial customer-serial-cell" data-label="نمبر">{{ $customer->id }}</td>
-                                    <td class="customer-name-cell" data-label="گاہک">
-                                        <div class="customer-identity">
-                                            <span class="customer-avatar">{{ $initial ?: 'گ' }}</span>
-                                            <button type="button"
-                                                class="getCustomer customer-link"
-                                                data-url="{{ url('admin/getCustomer') }}"
-                                                data-id="{{ $customer->id }}"
-                                                data-name="{{ $customer->name }}"
-                                                aria-label="{{ $customer->name }} کے آرڈر دیکھیں">
-                                                {{ $customer->name }}
-                                                <small>آرڈر کی تفصیل دیکھیں</small>
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td data-label="فون نمبر"><span class="customer-phone">{{ $customer->phone_number1 ?: '—' }}</span></td>
-                                    <td data-label="موجودہ بقایا">
-                                        @if ($canViewBalances)
-                                            <span class="customer-balance {{ $currentBalance > 0 ? 'is-due' : 'is-clear' }}">
-                                                Rs. {{ number_format($currentBalance, 2) }}
-                                            </span>
-                                        @else
-                                            <span class="text-muted">اجازت درکار ہے</span>
-                                        @endif
-                                    </td>
-                                    <td class="customer-actions-cell" data-label="فوری کارروائیاں">
-                                        <div class="customer-row-actions">
-                                            <a href="{{ route('admin.customers.statement', $customer) }}" class="customer-row-action is-blue">
-                                                <i class="fas fa-id-card"></i> پروفائل / کھاتہ
-                                            </a>
-                                            <a href="{{ url('admin/order', ['id' => $customer->id]) }}" class="customer-row-action is-green">
-                                                <i class="fas fa-cut"></i> نیا آرڈر
-                                            </a>
-                                            <a href="{{ url('admin/Customers/' . $customer->id . '/edit') }}" class="customer-row-action">
-                                                <i class="fas fa-ruler-combined"></i> معلومات / پیمائش
-                                            </a>
-                                            @if ($canViewBalances)
-                                                <button type="button"
-                                                    class="customer-row-action customer_payment_paid"
-                                                    aria-label="{{ $customer->name }} کی ادائیگی درج کریں"
-                                                    data-customerid="{{ $customer->id }}"
-                                                    data-toggle="modal"
-                                                    data-target="#myModalpayment">
-                                                    <i class="fas fa-wallet"></i> ادائیگی
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
+                        <tbody>@include('customer.partials.directory-rows')</tbody>
                     </table>
                 </div>
+                <div id="customerSearchStatus" class="customer-search-status">تازہ ترین 25 گاہک دکھائے جا رہے ہیں۔ مزید گاہک تلاش کرنے کے لیے نام، فون یا نمبر لکھیں۔</div>
             </section>
 
             <section id="orderDetail" class="customer-panel customer-order-panel" style="display:none" aria-live="polite">
@@ -657,6 +597,7 @@
                             <button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
                         </div>
                         <div class="modal-body">
+                            <div id="paymentAjaxFeedback" class="alert alert-danger text-right" style="display:none"></div>
                             <div id="orderPaymentContext" class="alert alert-info text-right" style="display:none"></div>
                             <div class="form-group">
                                 <label for="directPaymentAmount" class="font-weight-bold">وصول شدہ رقم</label>
@@ -729,18 +670,113 @@
     <script>
         $(document).ready(function () {
             var initialCustomerId = @json((int) request('customer'));
+            var selectedCustomerId = initialCustomerId || null;
+            var customerSearchTimer = null;
+            var customerSearchRequest = null;
+            var customerTable = $('#cc-table-data-customer-list');
+            var customerTableBody = customerTable.find('tbody');
+            var customerSearchStatus = $('#customerSearchStatus');
+
+            function formatMoney(value) {
+                return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            function loadCustomers(search, reopenCustomerId) {
+                if (customerSearchRequest) {
+                    customerSearchRequest.abort();
+                }
+
+                customerSearchStatus.addClass('is-loading').text('گاہک تلاش کیے جا رہے ہیں۔۔۔');
+                customerSearchRequest = $.ajax({
+                    url: customerTable.data('search-url'),
+                    type: 'GET',
+                    dataType: 'json',
+                    data: { search: search || '' },
+                    success: function (response) {
+                        customerTableBody.html(response.html);
+                        customerSearchStatus.removeClass('is-loading').text(
+                            search
+                                ? response.count + ' ملتے جلتے گاہک دکھائے جا رہے ہیں۔'
+                                : 'تازہ ترین ' + response.count + ' گاہک دکھائے جا رہے ہیں۔ مزید گاہک تلاش کرنے کے لیے نام، فون یا نمبر لکھیں۔'
+                        );
+
+                        if (reopenCustomerId) {
+                            var customerButton = $('.getCustomer[data-id="' + reopenCustomerId + '"]');
+                            if (customerButton.length) {
+                                customerButton.trigger('click');
+                            }
+                        }
+                    },
+                    error: function (xhr, status) {
+                        if (status !== 'abort') {
+                            customerSearchStatus.removeClass('is-loading').text('تلاش مکمل نہیں ہو سکی۔ دوبارہ کوشش کریں۔');
+                        }
+                    }
+                });
+            }
 
             $('#customerDirectorySearch').on('input', function () {
-                if ($.fn.DataTable && $.fn.DataTable.isDataTable('#cc-table-data-customer-list')) {
-                    $('#cc-table-data-customer-list').DataTable().search(this.value).draw();
-                }
+                var search = this.value.trim();
+                clearTimeout(customerSearchTimer);
+                customerSearchTimer = setTimeout(function () {
+                    loadCustomers(search, null);
+                }, 300);
             });
 
-            $('#myModalpayment form').on('submit', function () {
+            $('#myModalpayment form').on('submit', function (event) {
+                event.preventDefault();
                 $('#customer_search_context').val($('#customerDirectorySearch').val() || '');
+                var form = $(this);
+                var submitButton = form.find('button[type="submit"]');
+                var feedback = $('#paymentAjaxFeedback');
+                var customerId = $('#customer_id').val();
+                var orderId = $('#payment_order_id').val();
+                feedback.hide().text('');
+                submitButton.prop('disabled', true);
+
+                $.ajax({
+                    url: form.attr('action'),
+                    type: 'POST',
+                    data: form.serialize(),
+                    dataType: 'json',
+                    headers: { Accept: 'application/json' },
+                    success: function (response) {
+                        var balance = Number(response.balance || 0);
+                        $('[data-customer-balance="' + response.customerId + '"]')
+                            .toggleClass('is-due', balance > 0)
+                            .toggleClass('is-clear', balance <= 0)
+                            .text('Rs. ' + formatMoney(balance));
+
+                        if (response.stats) {
+                            $('#customerStatCount').text(Number(response.stats.customerCount || 0).toLocaleString('en-US'));
+                            $('#customerStatBalance').text('Rs. ' + formatMoney(response.stats.totalBalance));
+                            $('#customerStatDue').text(Number(response.stats.customersWithBalance || 0).toLocaleString('en-US'));
+                            $('#customerStatSettled').text(Number(response.stats.settledCustomers || 0).toLocaleString('en-US'));
+                        }
+
+                        $('#myModalpayment').modal('hide');
+                        $('#customerAjaxAlert').show().find('div').text(response.message);
+                        form[0].reset();
+
+                        if (orderId || ($('#orderDetail').is(':visible') && String(selectedCustomerId) === String(customerId))) {
+                            var selectedCustomerButton = $('.getCustomer[data-id="' + customerId + '"]');
+                            if (selectedCustomerButton.length) {
+                                selectedCustomerButton.trigger('click');
+                            }
+                        }
+                    },
+                    error: function (xhr) {
+                        var response = xhr.responseJSON || {};
+                        feedback.text(response.message || 'ادائیگی محفوظ نہیں ہو سکی۔ معلومات چیک کرکے دوبارہ کوشش کریں۔').show();
+                    },
+                    complete: function () {
+                        submitButton.prop('disabled', false);
+                    }
+                });
             });
 
             $(document).on('click', '.getCustomer', function () {
+                selectedCustomerId = $(this).data('id');
                 setTimeout(function () {
                     var orderPanel = document.getElementById('orderDetail');
                     if (orderPanel) {
@@ -751,15 +787,11 @@
 
             if (initialCustomerId) {
                 var restoreCustomerContext = function () {
-                    var searchInput = $('#customerDirectorySearch');
-
-                    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#cc-table-data-customer-list')) {
-                        $('#cc-table-data-customer-list').DataTable().search(searchInput.val()).draw();
-                    }
-
                     var customerButton = $('.getCustomer[data-id="' + initialCustomerId + '"]');
                     if (customerButton.length) {
                         customerButton.trigger('click');
+                    } else {
+                        loadCustomers($('#customerDirectorySearch').val(), initialCustomerId);
                     }
                 };
 
