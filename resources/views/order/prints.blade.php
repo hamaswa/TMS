@@ -183,6 +183,87 @@ body {
             font-weight: 900 !important;
         }
 
+        .measurement-header {
+            padding: 5mm 8px 0;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .measurement-logo-wrap {
+            margin: 0 !important;
+            line-height: 1;
+        }
+
+        .measurement-logo {
+            display: block;
+            width: 82px;
+            max-height: 70px;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+
+        .measurement-shop-name {
+            margin: 4px 0 7px !important;
+            font-weight: 900 !important;
+            line-height: 1.4;
+            text-align: center;
+        }
+
+        .measurement-meta {
+            padding-right: 8px !important;
+            padding-left: 8px !important;
+        }
+
+        .measurement-meta-row {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: start;
+            gap: 12px;
+            margin-bottom: 7px !important;
+        }
+
+        .measurement-meta-cell {
+            min-width: 0;
+            color: #000;
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.45;
+        }
+
+        .measurement-serial {
+            direction: ltr;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .measurement-footer {
+            margin-top: 8px;
+            padding: 7px 8px 5px;
+            border-top: 1px solid #777;
+            text-align: center;
+        }
+
+        .measurement-footer,
+        .measurement-footer * {
+            color: #000 !important;
+            font-size: 14px !important;
+            font-weight: 900 !important;
+            line-height: 1.7 !important;
+        }
+
+        .measurement-footer p {
+            margin: 0 !important;
+        }
+
+        .measurement-footer-contact {
+            direction: ltr;
+            font-family: Arial, sans-serif;
+            letter-spacing: .2px;
+        }
+
         .order-detail-list {
             display: flex;
             flex-direction: column;
@@ -217,6 +298,33 @@ body {
             line-height: 1.5;
             overflow-wrap: anywhere;
             text-align: left;
+        }
+
+        .order-footer {
+            width: 100%;
+            margin-top: 10px;
+            padding: 9px 6px 5px;
+            border-top: 1px solid #777;
+            text-align: center;
+        }
+
+        .order-footer,
+        .order-footer * {
+            color: #000 !important;
+            font-size: 13px !important;
+            font-weight: 900 !important;
+            line-height: 1.7 !important;
+        }
+
+        .order-footer p {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .order-footer-contact {
+            direction: ltr;
+            font-family: Arial, sans-serif;
+            letter-spacing: .2px;
         }
 
         .order-detail-date {
@@ -275,6 +383,11 @@ body {
 
             #orderSection {
                 margin-top: 0 !important;
+            }
+
+            #sizeSection {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
             }
 
             #orderSection > p:first-child {
@@ -348,11 +461,10 @@ body {
                         <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;">{{$orderDetail->remarks}}
                         </h3>
                     </div>
-                    <hr>
-                    <div style="width: 100%;" align="center">
-                        <p><b>{!! $setting->address !!}</b></p>
-                        <p>{{ $setting->contact_no }}</p>
-                        <p style="text-align:center;padding:5px;"><b></b>{{ $setting->note }}</b></p>
+                    <div class="order-footer">
+                        <p>{!! $setting->address !!}</p>
+                        <p class="order-footer-contact">{{ $setting->contact_no }}</p>
+                        <p>{{ $setting->note }}</p>
                     </div>
                     <hr>
                 </div>
@@ -360,32 +472,34 @@ body {
                 <!--<p style="text-align:center; font-size: 10px">{{ $setting->note }}</p>-->
                 <!--<hr>-->
             </div>
-            <div id="sizeSection" style="max-width: 350px; margin-top:-30px;" class="ticket size-section">
-                <p align="center"> <img src="{{asset('images/setting/' . $setting->logo)}}" width="100"></p>
-                <h1 class="text-center" style="font-weight:800;margin-top:-20px;margin-bottom:0;">{{$setting->name}}</h1>
-                <div class="pl-1 pr-1">
+            <div id="sizeSection" style="max-width: 350px;" class="ticket size-section">
+                <div class="measurement-header">
+                    <p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{asset('images/setting/' . $setting->logo)}}" alt=""></p>
+                    <h1 class="text-center measurement-shop-name">{{$setting->name}}</h1>
+                </div>
+                <div class="pl-1 pr-1 measurement-meta">
                     <hr style="margin-top:4px;">
-                    <div class="desing-flex">
-                        <div>
-                            <b>Serial num: {{$orderDetail->sub_customer}}</b>
+                    <div class="desing-flex measurement-meta-row">
+                        <div class="measurement-meta-cell measurement-serial">
+                            Serial num: {{$orderDetail->sub_customer}}
                         </div>
-                        <div>
-                            <b>{{$orderDetail->customers->name}}</b>
-                        </div>
-                    </div>
-                    <div class="desing-flex">
-                        <div style="font-size:19px;">
-                            <b> {{$tailor->name}}</b>
-                        </div>
-                        <div>
-                            <b> درزی کا نام </b>
+                        <div class="measurement-meta-cell" style="text-align:right;">
+                            {{$orderDetail->customers->name}}
                         </div>
                     </div>
-                    <div class="desing-flex" style="font-weight:600">
-                        <div>
+                    <div class="desing-flex measurement-meta-row">
+                        <div class="measurement-meta-cell" style="text-align:left;">
+                            {{$tailor->name}}
+                        </div>
+                        <div class="measurement-meta-cell" style="text-align:right;">
+                            درزی کا نام
+                        </div>
+                    </div>
+                    <div class="desing-flex measurement-meta-row">
+                        <div class="measurement-meta-cell" style="direction:ltr;text-align:left;font-family:Arial,sans-serif;font-size:13px;white-space:nowrap;">
                             {{date('d-m-Y h:m A', strtotime($orderDetail->created_at))}}
                         </div>
-                        <div>
+                        <div class="measurement-meta-cell" style="direction:ltr;text-align:right;font-family:Arial,sans-serif;font-size:14px;white-space:nowrap;">
                             {{$orderDetail->customers->phone_number1}}
                         </div>
                     </div>
@@ -697,8 +811,10 @@ body {
                             <div>
                                 <h3 class="text-center font-weight-400 mt-2" style="font-size: 16px;">{{$orderDetail->remarks}}</h3>
                             </div>
-                            <p>{!! $setting->address !!}</p>
-                            <p>{{$setting->contact_no}}</p>
+                            <div class="measurement-footer">
+                                <p>{!! $setting->address !!}</p>
+                                <p class="measurement-footer-contact">{{$setting->contact_no}}</p>
+                            </div>
                         </div>
                     </div>
                     <!--<p style="text-align:center">{{$setting->note}}</p>-->

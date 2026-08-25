@@ -63,12 +63,22 @@ class OrderController extends Controller
         $customerCustomValues = $measurementCustomer->measurementValues()
             ->whereIn('measurement_field_id', $measurementFields->pluck('id'))
             ->pluck('value', 'measurement_field_id');
+        $preferenceOptions = OptionType::query()
+            ->whereIn('type', ['necktype', 'sleeve', 'daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
+            ->with(['options' => fn ($query) => $query
+                ->where('user_id', Auth::user()->businessOwnerId())
+                ->orderBy('Name')])
+            ->get()
+            ->mapWithKeys(fn (OptionType $type) => [
+                $type->type === 'daaman' ? 'Daaman' : $type->type => $type->options,
+            ]);
         $data['design'] = Options::where('option_id', 1)->get();
         // $currentTailorRate = 1220;
         return view('order.edit', compact(
             'data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance',
             'recivedPayment', 'sub_customer', 'customer', 'measurementCustomer',
-            'measurementFields', 'savedMeasurementValues', 'customerCustomValues'
+            'measurementFields', 'savedMeasurementValues', 'customerCustomValues',
+            'preferenceOptions'
         ));
     }
 

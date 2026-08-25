@@ -258,11 +258,21 @@ class TailorRateWorkflowTest extends TestCase
 
     public function test_order_edit_has_one_tailor_selector_and_separates_order_and_customer_balances(): void
     {
+        $this->seed(OptionTypesSeeder::class);
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true]);
         $owner->assignRole($role);
+        Options::create([
+            'user_id' => $owner->id, 'option_id' => 3,
+            'Name' => 'Round neck', 'slug' => 'round-neck',
+        ]);
+        Options::create([
+            'user_id' => $owner->id, 'option_id' => 3,
+            'Name' => 'Square neck', 'slug' => 'square-neck',
+        ]);
         $customer = Customers::create([
             'name' => 'Faisal Mahmood', 'phone_number1' => '03005551234', 'user_id' => $owner->id,
+            'length' => 40, 'necktype' => 'Round neck',
         ]);
         $tailor = Tailor::create([
             'name' => 'Rashid Mahmood', 'phone_number1' => '03001230004',
@@ -277,6 +287,16 @@ class TailorRateWorkflowTest extends TestCase
             'suitQuantity' => 1, 'totalPayment' => 3200, 'tailorId' => $tailor->id,
             'rateId' => $rateId, 'tailor_price' => 900, 'returnDate' => now()->addWeek()->toDateString(),
             'userId' => $owner->id, 'status' => 'assigned',
+        ]);
+        $order->measurementValues()->createMany([
+            [
+                'source_key' => 'system.length', 'label' => 'لمبائی',
+                'value' => '40', 'unit' => 'inch', 'sort_order' => 0,
+            ],
+            [
+                'source_key' => 'system.necktype', 'label' => 'گلہ',
+                'value' => 'Round neck', 'unit' => null, 'sort_order' => 1,
+            ],
         ]);
         Transaction::create([
             'customerId' => $customer->id, 'orderId' => $order->id, 'userId' => $owner->id,
@@ -293,7 +313,13 @@ class TailorRateWorkflowTest extends TestCase
             ->assertSeeText('گاہک کا مشترکہ بقایا')
             ->assertSee('value="1700"', false)
             ->assertSee('value="700"', false)
-            ->assertSee('900 -- Mens suit');
+            ->assertSee('900 -- Mens suit')
+            ->assertSeeText('لباس کی پیمائش')
+            ->assertSeeText('سلائی کی پسند')
+            ->assertSee('name="system_measurements[length]"', false)
+            ->assertSee('name="system_measurements[necktype]"', false)
+            ->assertSee('<option value="Round neck" selected>Round neck</option>', false)
+            ->assertSee('<option value="Square neck"', false);
         $this->assertSame(1, substr_count($response->getContent(), 'name="tailorId"'));
         $this->assertSame(1, substr_count($response->getContent(), 'name="tailor_price"'));
 
