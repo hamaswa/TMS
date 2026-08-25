@@ -67,6 +67,9 @@ jQuery(document).ready(function ($) {
                 }
                 $('.tbody').empty();
                 $.each(data, function (index, order) {
+                    var returnSearch = $('#customerDirectorySearch').val() || '';
+                    var returnContext = '?return_customer=' + encodeURIComponent(customer_id)
+                        + '&return_search=' + encodeURIComponent(returnSearch);
                     var row = '<tr>' +
                         '<td>' + order.number + '</td>' +
                         '<td>' + order.totalPayment + '</td>' +
@@ -128,7 +131,7 @@ jQuery(document).ready(function ($) {
                     });
 
                     row += '</select></td>' +
-                        '<td><a class="btn btn-outline-primary btn-sm admin-order-status" href="/admin/order/edit/' + order.orderId + '">تبدیلی</a></td>' +
+                        '<td><a class="btn btn-outline-primary btn-sm admin-order-status" href="/admin/order/edit/' + order.orderId + returnContext + '">تبدیلی</a></td>' +
                         '<td><a class="btn btn-light btn-sm" href="/admin/order/prints/' + order.orderId + '" target="_blank" aria-label="آرڈر پرنٹ کریں"><i class="fa fa-print"></i></a></td>' +
                         '</tr>';
 

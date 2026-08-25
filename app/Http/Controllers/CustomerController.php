@@ -469,6 +469,8 @@ class CustomerController extends Controller
                 new UniqueCustomerPhone(Auth::user()->businessOwnerId(), (int) $id),
             ],
             'mobile_pin' => ['nullable', 'digits:6'],
+            'return_customer' => ['nullable', 'integer'],
+            'return_search' => ['nullable', 'string', 'max:200'],
             'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
             'length' => ['nullable', 'numeric', 'min:0'],
             'arms' => ['nullable', 'numeric', 'min:0'],
@@ -555,7 +557,15 @@ class CustomerController extends Controller
             }
         });
         // dd($obj);
-        $response = redirect('admin/Customers')->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
+        $returnToDirectory = (int) ($validated['return_customer'] ?? 0) === (int) $obj->id;
+        $returnSearch = trim((string) ($validated['return_search'] ?? ''));
+        $response = $returnToDirectory
+            ? redirect(url('admin/Customers').'?'.http_build_query([
+                'customer' => $obj->id,
+                'search' => $returnSearch !== '' ? $returnSearch : $obj->phone_number1,
+            ]).'#orderDetail')
+            : redirect('admin/Customers');
+        $response->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
 
         if (! empty($validated['mobile_pin'])) {
             $response->with('customer_pin', $validated['mobile_pin'])

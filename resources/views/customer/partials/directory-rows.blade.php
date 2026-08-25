@@ -37,7 +37,7 @@
                 <a href="{{ url('admin/order', ['id' => $customer->id]) }}" class="customer-row-action is-green">
                     <i class="fas fa-cut"></i> نیا آرڈر
                 </a>
-                <a href="{{ url('admin/Customers/' . $customer->id . '/edit') }}" class="customer-row-action">
+                <a href="{{ url('admin/Customers/' . $customer->id . '/edit') . '?' . http_build_query(['return_customer' => $customer->id, 'return_search' => request('search', '')]) }}" class="customer-row-action">
                     <i class="fas fa-ruler-combined"></i> معلومات / پیمائش
                 </a>
                 @if ($canViewBalances)

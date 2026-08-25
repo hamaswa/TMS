@@ -280,6 +280,8 @@
                     class="add-customer-form mt-4">
                     @csrf
                     @method('put')
+                    <input type="hidden" name="return_customer" value="{{ old('return_customer', request('return_customer')) }}">
+                    <input type="hidden" name="return_search" value="{{ old('return_search', request('return_search')) }}">
                     <div class="row justify-content-center">
                         <div class="col-12">
                             <div class="order-customer-picker">

@@ -20,7 +20,7 @@
 <script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>
 <script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>
 <script src="{{ asset('assets/js/main.js')}}"></script>
-<script src="{{asset('assets/js/custom.js')}}"></script>
+<script src="{{ asset('assets/js/custom.js') }}?v=20260825c"></script>
 <script src="{{ asset('assets/js/form-accessibility.js') }}?v=20260728"></script>
 <script src="{{asset('assets/js/confirm-modal.js')}}"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>

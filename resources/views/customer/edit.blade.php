@@ -48,6 +48,8 @@
             <form id="customer-edit-form" action="{{ route('admin.Customers.update', $customer) }}" method="post" class="customer-edit-card bg-white">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="return_customer" value="{{ old('return_customer', request('return_customer')) }}">
+                <input type="hidden" name="return_search" value="{{ old('return_search', request('return_search')) }}">
 
                 <section class="edit-section">
                     <div class="edit-section-heading">

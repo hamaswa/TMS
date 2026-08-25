@@ -183,6 +183,17 @@ body {
             font-weight: 900 !important;
         }
 
+        .measurement-preference-value {
+            flex: 1 1 auto;
+            min-width: 0;
+            direction: rtl;
+            unicode-bidi: plaintext;
+            text-align: left;
+            white-space: normal;
+            word-break: normal;
+            overflow-wrap: normal;
+        }
+
         .measurement-header {
             padding: 5mm 8px 0;
             break-inside: avoid;
@@ -262,6 +273,20 @@ body {
             direction: ltr;
             font-family: Arial, sans-serif;
             letter-spacing: .2px;
+        }
+
+        .receipt-builder-credit {
+            direction: ltr;
+            margin-top: 5px !important;
+            padding-top: 4px !important;
+            border-top: 1px dotted #777;
+            font-family: Arial, sans-serif !important;
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            letter-spacing: .15px;
+            line-height: 1.35 !important;
+            text-align: center;
+            white-space: nowrap;
         }
 
         .order-detail-list {
@@ -465,6 +490,7 @@ body {
                         <p>{!! $setting->address !!}</p>
                         <p class="order-footer-contact">{{ $setting->contact_no }}</p>
                         <p>{{ $setting->note }}</p>
+                        <p class="receipt-builder-credit">Built by IT Linked</p>
                     </div>
                     <hr>
                 </div>
@@ -572,7 +598,7 @@ body {
 
                                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
 
-                                    <span class="measurement-value" style="min-width:0; white-space:normal; overflow-wrap:anywhere;">{{ $item->value }}</span>
+                                    <span class="measurement-value measurement-preference-value">{{ $item->value }}</span>
 
                                     <span class="measurement-label" style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
 
@@ -814,6 +840,7 @@ body {
                             <div class="measurement-footer">
                                 <p>{!! $setting->address !!}</p>
                                 <p class="measurement-footer-contact">{{$setting->contact_no}}</p>
+                                <p class="receipt-builder-credit">Built by IT Linked</p>
                             </div>
                         </div>
                     </div>

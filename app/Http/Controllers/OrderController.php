@@ -124,12 +124,14 @@ class OrderController extends Controller
             'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
             'returnDate' => ['required', 'date'],
             'remarks' => ['nullable', 'string', 'max:1000'],
+            'return_customer' => ['nullable', 'integer'],
+            'return_search' => ['nullable', 'string', 'max:200'],
         ], $measurementRules), [
             'recivedPayment.lte' => 'وصول رقم کل قیمت سے زیادہ نہیں ہو سکتی۔',
         ], $this->measurements->attributes($measurementFields));
 
         $order = $this->ownedOrder($id);
-        $this->ownedCustomer($validated['customerId']);
+        $customer = $this->ownedCustomer($validated['customerId']);
         $this->ownedTailor($validated['tailorId']);
         if (!empty($validated['sub_id'])) {
             $this->ownedCustomer($validated['sub_id']);
@@ -214,7 +216,16 @@ class OrderController extends Controller
             app(ProductionWorkforceService::class)->syncOrder($order->fresh());
         });
 
-        return redirect('admin/Customers')->with('insert', 'آرڈر کامیابی سے اپ ڈیٹ کر دیا گیا ہے۔');
+        $returnToDirectory = (int) ($validated['return_customer'] ?? 0) === (int) $validated['customerId'];
+        $returnSearch = trim((string) ($validated['return_search'] ?? ''));
+        $response = $returnToDirectory
+            ? redirect(url('admin/Customers').'?'.http_build_query([
+                'customer' => $validated['customerId'],
+                'search' => $returnSearch !== '' ? $returnSearch : $customer->phone_number1,
+            ]).'#orderDetail')
+            : redirect('admin/Customers');
+
+        return $response->with('insert', 'آرڈر کامیابی سے اپ ڈیٹ کر دیا گیا ہے۔');
     }
 
     public function createOrder($id)
