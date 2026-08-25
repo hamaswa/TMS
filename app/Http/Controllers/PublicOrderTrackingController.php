@@ -14,7 +14,7 @@ class PublicOrderTrackingController extends Controller
     {
         $order->load('customers');
 
-        [, $previousBalance, $orderBalance] = $customerLedger->receiptSummary($order);
+        [$previousBalance, $orderBalance] = $customerLedger->trackingSummary($order);
         $paymentReceived = $orderBalance <= 0;
 
         $setting = Setting::query()

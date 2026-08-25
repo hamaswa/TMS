@@ -221,9 +221,26 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSeeText('200.00')
             ->assertDontSeeText('ادائیگی موصول نہیں ہوئی');
 
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'orderId' => $order->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Payment',
+            'recivedPayment' => 200,
+            'remainingBalance' => -200,
+        ]);
+
+        $this->get($trackingUrl)
+            ->assertOk()
+            ->assertSeeText('ادائیگی موصول ہو گئی ہے')
+            ->assertDontSeeText('پچھلا بقایا باقی ہے')
+            ->assertDontSeeText('200.00');
+
         $this->actingAs($owner)
             ->get(route('admin.order-print', $order))
             ->assertOk()
+            ->assertViewHas('previousBalance', 0.0)
+            ->assertViewHas('latestBalance', 0.0)
             ->assertSee('class="order-tracking-qr"', false)
             ->assertSee(e($trackingUrl), false)
             ->assertSee('<svg', false);
@@ -231,6 +248,8 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)
             ->get(route('admin.order-prints', $order))
             ->assertOk()
+            ->assertViewHas('previousBalance', 0.0)
+            ->assertViewHas('latestBalance', 0.0)
             ->assertSee('class="order-tracking-qr"', false);
     }
 
@@ -279,8 +298,9 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)
             ->get(route('admin.order-print', $firstOrder))
             ->assertOk()
+            ->assertViewHas('previousBalance', 1500.0)
             ->assertViewHas('orderBalance', 0.0)
-            ->assertViewHas('latestBalance', 0.0);
+            ->assertViewHas('latestBalance', 1500.0);
     }
 
     public function test_customer_order_payment_is_linked_and_reported_for_that_order(): void
@@ -341,6 +361,36 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertViewHas('previousBalance', 1500.0)
             ->assertViewHas('orderBalance', 1000.0)
             ->assertViewHas('latestBalance', 2500.0);
+    }
+
+    public function test_legacy_order_balance_that_includes_previous_dues_is_not_added_twice_on_receipt(): void
+    {
+        [$owner, $order] = $this->orderWithoutActiveSetting();
+        $order->update(['totalPayment' => 9500]);
+
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'remainingBalance' => 4500,
+        ]);
+        Transaction::create([
+            'customerId' => $order->customerId,
+            'orderId' => $order->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'remainingBalance' => 14000,
+        ]);
+
+        foreach (['admin.order-print', 'admin.order-prints'] as $route) {
+            $this->actingAs($owner)
+                ->get(route($route, $order))
+                ->assertOk()
+                ->assertViewHas('previousBalance', 4500.0)
+                ->assertViewHas('orderBalance', 9500.0)
+                ->assertViewHas('latestBalance', 14000.0)
+                ->assertDontSeeText('18500');
+        }
     }
 
     public function test_customer_payment_returns_to_the_searched_customer_context(): void

@@ -60,6 +60,24 @@ class CustomerLedgerService
         ];
     }
 
+    public function trackingSummary(Order $order): array
+    {
+        $allocation = $this->allocate((int) $order->userId, (int) $order->customerId);
+        $orderId = (int) $order->id;
+        $customerBalance = max(0, round($allocation['ledger_balance'] / 100, 2));
+
+        if (! array_key_exists($orderId, $allocation['order_first_transaction_ids'])) {
+            return [$customerBalance, $this->orderBalance($order)];
+        }
+
+        $orderBalance = max(0, round(($allocation['order_balances'][$orderId] ?? 0) / 100, 2));
+
+        return [
+            max(0, round($customerBalance - $orderBalance, 2)),
+            $orderBalance,
+        ];
+    }
+
     private function allocate(int $ownerId, int $customerId): array
     {
         $transactions = Transaction::where('userId', $ownerId)
@@ -71,10 +89,12 @@ class CustomerLedgerService
         $sharedCredit = 0;
         $orderCredits = [];
         $orderFirstTransactionIds = [];
+        $ledgerBalance = 0;
 
         foreach ($transactions as $transaction) {
             $orderId = filled($transaction->orderId) ? (int) $transaction->orderId : null;
             $amount = (int) round((float) $transaction->remainingBalance * 100);
+            $ledgerBalance += $amount;
 
             if ($orderId && $transaction->Order_type === 'Tailor') {
                 $orderFirstTransactionIds[$orderId] ??= (int) $transaction->id;
@@ -127,6 +147,7 @@ class CustomerLedgerService
 
         return [
             'charges' => $charges,
+            'ledger_balance' => $ledgerBalance,
             'order_balances' => $orderBalances,
             'order_first_transaction_ids' => $orderFirstTransactionIds,
         ];

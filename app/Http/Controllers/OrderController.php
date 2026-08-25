@@ -500,7 +500,21 @@ class OrderController extends Controller
 
     private function printBalanceSummary(Order $order): array
     {
-        return $this->customerLedger->receiptSummary($order);
+        [$previousBalance, $orderBalance] = $this->customerLedger->trackingSummary($order);
+        $receivedForOrder = (float) $order->transactions()->sum('recivedPayment');
+        $currentOrderDue = max(0, round((float) $order->totalPayment - $receivedForOrder, 2));
+
+        // Legacy transactions may contain the customer's previous balance inside
+        // this order's balance. Limit this figure to the order's own unpaid amount
+        // because older dues are displayed separately on the receipt.
+        $orderBalance = min($orderBalance, $currentOrderDue);
+        $latestBalance = round($previousBalance + $orderBalance, 2);
+
+        return [
+            $latestBalance,
+            $previousBalance,
+            $orderBalance,
+        ];
     }
 
     public function search(Request $req)
