@@ -38,6 +38,25 @@ class Customers extends Authenticatable
     use HasApiTokens, Notifiable, SoftDeletes;
 
     /**
+     * Keep the legacy production `Chuta` column compatible with the canonical
+     * lowercase `chuta` attribute used throughout the application.
+     */
+    public function getChutaAttribute($value)
+    {
+        return $value ?? ($this->attributes['Chuta'] ?? null);
+    }
+
+    public function setChutaAttribute($value): void
+    {
+        $column = array_key_exists('Chuta', $this->attributes)
+            && ! array_key_exists('chuta', $this->attributes)
+                ? 'Chuta'
+                : 'chuta';
+
+        $this->attributes[$column] = $value;
+    }
+
+    /**
      * The "type" of the auto-incrementing ID.
      *
      * @var string

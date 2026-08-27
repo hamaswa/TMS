@@ -569,6 +569,16 @@
                         @php
                             $allMeasurements = $orderDetail->measurementValues->keyBy('source_key');
 
+                            // Older production snapshots can miss this field because the
+                            // legacy database column is named `Chuta` instead of `chuta`.
+                            if (! $allMeasurements->has('system.chuta') && filled($orderDetail->customers->chuta)) {
+                                $allMeasurements->put('system.chuta', (object) [
+                                    'source_key' => 'system.chuta',
+                                    'label' => 'چوتا',
+                                    'value' => (string) $orderDetail->customers->chuta,
+                                ]);
+                            }
+
                             // Left column (Design fields)
                             $leftFields = [
                                 'system.necktype',

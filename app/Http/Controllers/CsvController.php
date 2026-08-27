@@ -91,7 +91,7 @@ class CsvController extends Controller
     public function exportCsv()
     {
         try {
-            $customers_list = Customers::select('name', 'phone_number1', 'sleeve', 'shoulder', 'senaChorai', 'shalwar', 'teraa', 'jeab', 'length', 'damanchorai', 'button', 'shirtbutton', 'swingtype', 'arms', 'Chuta', 'necktype', 'shalwarGheer', 'pancha', 'Daaman', 'plate_type', 'note', 'comments')->where('user_id', Auth::user()->businessOwnerId())->get();
+            $customers_list = Customers::select('name', 'phone_number1', 'sleeve', 'shoulder', 'senaChorai', 'shalwar', 'teraa', 'jeab', 'length', 'damanchorai', 'button', 'shirtbutton', 'swingtype', 'arms', 'chuta', 'necktype', 'shalwarGheer', 'pancha', 'Daaman', 'plate_type', 'note', 'comments')->where('user_id', Auth::user()->businessOwnerId())->get();
 
             // Define Urdu headers
             $headers = [
