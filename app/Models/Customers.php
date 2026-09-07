@@ -166,6 +166,16 @@ class Customers extends Authenticatable
         return $this->hasMany(CustomerMeasurementHistory::class, 'customer_id')->orderByDesc('id');
     }
 
+    public function primaryCustomer()
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function familyMeasurementProfiles()
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('name');
+    }
+
     public function servernotifi()
     {
         return $this->hasMany(ServerNotifications::class, 'customer_id');

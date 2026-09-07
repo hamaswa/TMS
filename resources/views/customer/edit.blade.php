@@ -1,5 +1,10 @@
 @extends('main')
 @section('content')
+@php
+    $statementUrl = $parentCustomer
+        ? route('admin.customers.statement', ['id' => $parentCustomer->id, 'tab' => 'measurements', 'profile' => $customer->id])
+        : route('admin.customers.statement', $customer);
+@endphp
 <style>
     .customer-edit-page{background:#f4f7fb;min-height:calc(100vh - 70px)}
     .customer-edit-shell{max-width:1180px;margin:0 auto}
@@ -28,11 +33,11 @@
             <div class="customer-edit-hero mb-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center">
                     <div>
-                        <span class="badge badge-light text-primary mb-2">گاہک کی معلومات</span>
+                        <span class="badge badge-light text-primary mb-2">{{ $parentCustomer ? 'خاندانی پیمائش پروفائل' : 'گاہک کی معلومات' }}</span>
                         <h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1>
-                        <p class="mb-0">رابطہ، پیمائش، سلائی کی پسند اور موبائل پن ایک جگہ تبدیل کریں۔</p>
+                        <p class="mb-0">{{ $parentCustomer ? $parentCustomer->name.' کے مشترکہ اکاؤنٹ میں اس فرد کی پیمائش اور سلائی کی پسند تبدیل کریں۔' : 'رابطہ، پیمائش، سلائی کی پسند اور موبائل پن ایک جگہ تبدیل کریں۔' }}</p>
                     </div>
-                    <a href="{{ route('admin.customers.statement', $customer) }}" class="btn btn-light mt-3 mt-md-0">
+                    <a href="{{ $statementUrl }}" class="btn btn-light mt-3 mt-md-0">
                         <i class="fas fa-user ml-1"></i> پروفائل / کھاتہ
                     </a>
                 </div>
@@ -53,7 +58,7 @@
 
                 <section class="edit-section">
                     <div class="edit-section-heading">
-                        <div><h2>بنیادی معلومات</h2><p>گاہک کی مشترکہ شناخت جو دکان اور ٹیلرنگ دونوں میں استعمال ہوتی ہے۔</p></div>
+                        <div><h2>بنیادی معلومات</h2><p>{{ $parentCustomer ? 'نام الگ ہے، جبکہ رابطہ اور کھاتہ مرکزی گاہک کے ساتھ مشترک ہیں۔' : 'گاہک کی مشترکہ شناخت جو دکان اور ٹیلرنگ دونوں میں استعمال ہوتی ہے۔' }}</p></div>
                         <span class="section-icon"><i class="fas fa-user"></i></span>
                     </div>
                     <div class="row">
@@ -64,7 +69,8 @@
                         </div>
                         <div class="col-md-6 form-group edit-field">
                             <label for="customer-contact">رابطہ نمبر <span class="text-danger">*</span></label>
-                            <input id="customer-contact" type="tel" inputmode="tel" class="form-control text-left" name="contact" value="{{ old('contact', $customer->phone_number1) }}" required dir="ltr" autocomplete="tel" placeholder="03001234567 یا +923001234567">
+                            <input id="customer-contact" type="tel" inputmode="tel" class="form-control text-left" name="contact" value="{{ old('contact', $parentCustomer?->phone_number1 ?? $customer->phone_number1) }}" required dir="ltr" autocomplete="tel" @if($parentCustomer) readonly @endif placeholder="03001234567 یا +923001234567">
+                            @if($parentCustomer)<small class="form-text text-muted">رابطہ نمبر مرکزی گاہک {{ $parentCustomer->name }} کے اکاؤنٹ سے استعمال ہوگا۔</small>@endif
                             @error('contact')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                         </div>
                     </div>
@@ -141,19 +147,19 @@
                             <textarea id="customer-note" class="form-control" name="note" rows="4" maxlength="2000" placeholder="مثلاً فٹنگ، کپڑے یا ڈیلیوری سے متعلق ہدایات">{{ old('note', $customer->note) }}</textarea>
                             <small class="form-text text-muted">یہ نوٹ گاہک کے مشترکہ پروفائل میں دکھائی دے گا۔</small>
                         </div>
-                        <div class="col-lg-5">
+                        @unless($parentCustomer)<div class="col-lg-5">
                             <div class="security-panel edit-field">
                                 <label for="mobile-pin"><i class="fas fa-shield-alt ml-1 text-warning"></i> نیا موبائل لاگ اِن پن</label>
                                 <input id="mobile-pin" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" class="form-control text-left" name="mobile_pin" placeholder="6 ہندسوں کا نیا پن" dir="ltr">
                                 <small class="form-text text-muted mt-2">خالی چھوڑنے سے موجودہ پن تبدیل نہیں ہوگا۔ نیا پن محفوظ کرنے پر پرانے موبائل سیشن بند ہو جائیں گے۔</small>
                                 @error('mobile_pin')<div class="text-danger small mt-1">پن لازماً 6 ہندسوں کا ہونا چاہیے۔</div>@enderror
                             </div>
-                        </div>
+                        </div>@endunless
                     </div>
                 </section>
 
                 <div class="edit-actions">
-                    <a href="{{ route('admin.customers.statement', $customer) }}" class="btn btn-outline-secondary"><i class="fas fa-times ml-1"></i> منسوخ کریں</a>
+                    <a href="{{ $statementUrl }}" class="btn btn-outline-secondary"><i class="fas fa-times ml-1"></i> منسوخ کریں</a>
                     <button type="submit" class="btn btn-success px-5"><i class="fas fa-check ml-1"></i> تبدیلیاں محفوظ کریں</button>
                 </div>
             </form>
