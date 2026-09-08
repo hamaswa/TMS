@@ -177,7 +177,7 @@ class CustomerController extends Controller
             : null;
         $orders = $canViewTailoring
             ? $customer->orders()->where('userId', $ownerId)
-                ->with('tailor:id,name')
+                ->with(['tailor:id,name', 'customers:id,name', 'measurementTemplate:id,name'])
                 ->withSum(['transactions as outstanding_amount' => fn ($query) => $query->where('userId', $ownerId)], 'remainingBalance')
                 ->latest()->limit(50)->get()
             : collect();

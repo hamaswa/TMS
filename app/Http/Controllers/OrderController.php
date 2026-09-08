@@ -59,7 +59,15 @@ class OrderController extends Controller
         $orderBalance = $orderTransaction?->remainingBalance ?? max(0, (float) $data->totalPayment - (float) $recivedPayment);
         $tailorRates = Tailorsalary::with('options')->where('tailor_id', $data->tailorId)->get();
         $measurementCustomer = $sub_customer ?: $customer;
-        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $measurementFields = $this->measurements->fieldsForTemplate(
+            $this->measurements->activeFields(Auth::user()->businessOwnerId()),
+            $data->measurementTemplate,
+        );
+        $measurementSystemKeys = $data->measurementTemplate
+            ? collect($data->measurementTemplate->system_fields ?? [])
+                ->filter(fn ($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
+                ->values()
+            : collect(array_keys(MeasurementService::SYSTEM_FIELDS));
         $useLatestMeasurements = request()->boolean('latest_measurements');
         $savedMeasurementValues = $useLatestMeasurements
             ? collect()
@@ -82,19 +90,28 @@ class OrderController extends Controller
             'data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance',
             'recivedPayment', 'sub_customer', 'customer', 'measurementCustomer',
             'measurementFields', 'savedMeasurementValues', 'customerCustomValues',
-            'preferenceOptions', 'useLatestMeasurements'
+            'preferenceOptions', 'useLatestMeasurements', 'measurementSystemKeys'
         ));
     }
 
     public function update(Request $request, $id)
     {
         $order = $this->ownedOrder($id);
-        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $measurementFields = $this->measurements->fieldsForTemplate(
+            $this->measurements->activeFields(Auth::user()->businessOwnerId()),
+            $order->measurementTemplate,
+        );
+        $measurementSystemKeys = $order->measurementTemplate
+            ? collect($order->measurementTemplate->system_fields ?? [])
+                ->filter(fn ($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
+                ->values()
+            : collect(array_keys(MeasurementService::SYSTEM_FIELDS));
         $measurementRules = [
             'system_measurements' => ['nullable', 'array'],
             'custom_measurements' => ['nullable', 'array'],
         ];
-        foreach (MeasurementService::SYSTEM_FIELDS as $key => $meta) {
+        foreach ($measurementSystemKeys as $key) {
+            $meta = MeasurementService::SYSTEM_FIELDS[$key];
             $measurementRules['system_measurements.'.$key] = $meta['unit'] === 'inch'
                 ? ['nullable', 'numeric', 'min:0']
                 : ['nullable', 'string', 'max:500'];
@@ -159,7 +176,7 @@ class OrderController extends Controller
             $this->ensureRequiredMeasurements($measurementCustomer, $order->measurementTemplate);
         }
 
-        DB::transaction(function () use ($validated, $order, $tailor, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields) {
+        DB::transaction(function () use ($validated, $order, $tailor, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields, $measurementSystemKeys) {
             $wasUnassigned = $order->status === 'unassigned' && ! $order->tailorId;
             $order->update([
                 "sub_customer" => $validated['sub_id'] ?? $validated['customerId'],
@@ -202,7 +219,8 @@ class OrderController extends Controller
             if ($measurementChanged) {
                 $this->measurements->snapshotOrder($order, $measurementCustomer);
             } else {
-                foreach (MeasurementService::SYSTEM_FIELDS as $key => $meta) {
+                foreach ($measurementSystemKeys as $key) {
+                    $meta = MeasurementService::SYSTEM_FIELDS[$key];
                     $value = $validated['system_measurements'][$key] ?? null;
                     $sourceKey = 'system.'.$key;
                     if ($value === null || $value === '') {
@@ -238,6 +256,13 @@ class OrderController extends Controller
                         ]
                     );
                 }
+
+                $preferenceSourceKeys = collect(['necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
+                    ->map(fn ($key) => 'system.'.$key);
+                $order->measurementValues()
+                    ->whereIn('source_key', $preferenceSourceKeys)
+                    ->where('value', '0')
+                    ->delete();
 
                 if (! empty($validated['save_measurements_to_profile'])) {
                     $this->measurements->syncCustomerFromOrder(
@@ -287,8 +312,16 @@ class OrderController extends Controller
         $data['measurementTemplateId'] = $customer->measurement_template_id
             ?: $data['measurementTemplates']->firstWhere('is_default', true)?->id;
 
+        $requestedProfileId = (int) old('sub_id', $customer->id);
+        $data['selectedMeasurementProfile'] = Customers::where('user_id', auth()->user()->businessOwnerId())
+            ->whereKey($requestedProfileId)
+            ->where(function ($query) use ($customer) {
+                $query->whereKey($customer->id)->orWhere('parent_id', $customer->id);
+            })
+            ->first() ?: $customer;
+
         // Keep the customer's serial stable even when other customers are added.
-        $data['serialNumber'] = $customer->id;
+        $data['serialNumber'] = $data['selectedMeasurementProfile']->id;
         return view('order.create', compact('data'));
     }
 
@@ -500,7 +533,7 @@ class OrderController extends Controller
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = $order->load(['customers', 'measurementValues']);
+        $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
         
         // dd($orderDetail);
 
@@ -548,7 +581,7 @@ class OrderController extends Controller
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = $order->load(['customers', 'measurementValues']);
+        $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
         
         [$latestBalance, $previousBalance, $orderBalance] = $this->printBalanceSummary($order);
 

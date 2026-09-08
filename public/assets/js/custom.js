@@ -230,9 +230,14 @@ jQuery(document).ready(function ($) {
     var measurementSearchTimer = null;
     var measurementSearchRequest = null;
     function syncMeasurementProfileSerial() {
-        var serial = $('#measurement-profile-select option:selected').attr('data-serial');
+        var selectedProfile = $('#measurement-profile-select option:selected');
+        var serial = selectedProfile.attr('data-serial');
+        var profileName = selectedProfile.attr('data-name');
         if (serial !== undefined && serial !== '') {
             $('#order_serial_number').val(serial);
+        }
+        if (profileName !== undefined && profileName !== '') {
+            $('#order_customer_name').val(profileName);
         }
     }
     $(document).on('input', '#search.search[data-url]', function () {

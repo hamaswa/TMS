@@ -360,6 +360,126 @@ class TailorRateWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_failed_family_order_keeps_the_selected_profile_and_serial(): void
+    {
+        Notification::fake();
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'واسکٹ',
+            'system_fields' => ['length', 'arms'],
+            'custom_field_ids' => [],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+        $customer = Customers::create([
+            'name' => 'Muhammad Aslam', 'phone_number1' => '03005551234',
+            'user_id' => $owner->id, 'measurement_template_id' => $template->id,
+            'length' => 42, 'arms' => 24,
+        ]);
+        $family = Customers::create([
+            'name' => 'Ali Aslam', 'parent_id' => $customer->id,
+            'phone_number1' => $customer->phone_number1, 'user_id' => $owner->id,
+            'measurement_template_id' => $template->id, 'length' => 40,
+        ]);
+
+        $this->actingAs($owner)
+            ->from(route('admin.order.create', $customer))
+            ->post(route('admin.order.insert'), [
+                'customerId' => $customer->id,
+                'sub_id' => $family->id,
+                'measurement_template_id' => $template->id,
+                'suitQuantity' => 1,
+                'totalPayment' => 3000,
+                'recivedPayment' => 0,
+                'returnDate' => now()->addWeek()->toDateString(),
+            ])
+            ->assertRedirect(route('admin.order.create', $customer))
+            ->assertSessionHasErrors('measurement_template_id')
+            ->assertSessionHasInput('sub_id', $family->id);
+
+        $this->actingAs($owner)->get(route('admin.order.create', $customer))
+            ->assertOk()
+            ->assertSee('data-serial="'.$family->id.'"', false)
+            ->assertSee('value="'.$family->name.'"', false)
+            ->assertSee('value="'.$family->id.'"', false);
+    }
+
+    public function test_note_only_edit_is_template_scoped_and_does_not_roll_back_the_profile(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'واسکٹ',
+            'system_fields' => ['length'],
+            'custom_field_ids' => [],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+        $primary = Customers::create([
+            'name' => 'Muhammad Aslam', 'phone_number1' => '03005551234',
+            'user_id' => $owner->id,
+        ]);
+        $family = Customers::create([
+            'name' => 'Ali Aslam', 'parent_id' => $primary->id,
+            'phone_number1' => $primary->phone_number1, 'user_id' => $owner->id,
+            'measurement_template_id' => $template->id, 'length' => 43, 'necktype' => '0',
+        ]);
+        $order = Order::create([
+            'customerId' => $primary->id, 'sub_customer' => $family->id,
+            'measurement_template_id' => $template->id, 'suitNum' => (string) $family->id,
+            'suitQuantity' => 1, 'totalPayment' => 3000,
+            'returnDate' => now()->addWeek()->toDateString(), 'userId' => $owner->id,
+            'status' => 'unassigned',
+        ]);
+        $order->measurementValues()->createMany([
+            ['source_key' => 'system.length', 'label' => 'لمبائی', 'value' => '42', 'unit' => 'inch', 'sort_order' => 0],
+            ['source_key' => 'system.necktype', 'label' => 'گلہ', 'value' => '0', 'unit' => '', 'sort_order' => 1],
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.order.edit', $order))
+            ->assertOk()
+            ->assertSee('name="system_measurements[length]" value="42"', false)
+            ->assertDontSee('name="system_measurements[necktype]"', false)
+            ->assertDontSee('name="save_measurements_to_profile" value="1" checked', false);
+
+        $this->actingAs($owner)->put(route('admin.order.update', $order), [
+            'sub_id' => $family->id,
+            'customerId' => $primary->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 3000,
+            'recivedPayment' => 0,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'remarks' => 'صرف نوٹ تبدیل ہوا',
+            'system_measurements' => ['length' => 42],
+        ])->assertRedirect();
+
+        $this->assertSame('43', (string) $family->fresh()->length);
+        $this->assertDatabaseHas('order_measurement_values', [
+            'order_id' => $order->id, 'source_key' => 'system.length', 'value' => '42',
+        ]);
+        $this->assertDatabaseMissing('order_measurement_values', [
+            'order_id' => $order->id, 'source_key' => 'system.necktype',
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.order-print', $order))
+            ->assertOk()
+            ->assertSeeText('واسکٹ')
+            ->assertDontSeeText('گلہ');
+        $this->actingAs($owner)->get(route('admin.customers.statement', [
+            'id' => $primary->id, 'tab' => 'tailoring',
+        ]))->assertOk()
+            ->assertSeeText('Ali Aslam')
+            ->assertSeeText('سیریل '.$family->id)
+            ->assertSeeText('واسکٹ')
+            ->assertSeeText(Order::STATUS_LABELS['unassigned'])
+            ->assertDontSeeText('unassigned');
+    }
+
     public function test_order_is_blocked_until_selected_template_measurements_are_complete(): void
     {
         Notification::fake();

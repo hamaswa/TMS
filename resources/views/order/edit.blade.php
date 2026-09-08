@@ -386,8 +386,9 @@
                                 </div>
                             </section>
                             @php
-                                $preferenceKeys = ['necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type'];
-                                $measurementKeys = collect(array_keys(\App\Services\MeasurementService::SYSTEM_FIELDS))
+                                $preferenceKeys = collect(['necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
+                                    ->intersect($measurementSystemKeys)->values()->all();
+                                $measurementKeys = $measurementSystemKeys
                                     ->reject(fn($key) => in_array($key, $preferenceKeys, true));
                                 $editableSourceKeys = collect(array_keys(\App\Services\MeasurementService::SYSTEM_FIELDS))
                                     ->map(fn($key) => 'system.'.$key)
@@ -402,7 +403,7 @@
                                             <h5 class="mb-1">اس آرڈر کی پیمائش میں تبدیلی</h5>
                                             <small class="text-muted">آرڈر کی پرانی کاپی محفوظ رہتی ہے۔ نیچے منتخب کرنے پر یہی تبدیلی گاہک کے آئندہ آرڈرز کے لیے بھی محفوظ ہوگی۔</small>
                                         </div>
-                                        <span class="badge badge-primary mt-2 mt-md-0">{{ count(\App\Services\MeasurementService::SYSTEM_FIELDS) + $measurementFields->count() }} خانے</span>
+                                        <span class="badge badge-primary mt-2 mt-md-0">{{ count($measurementSystemKeys) + $measurementFields->count() }} خانے</span>
                                     </div>
                                     <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center" role="status">
                                         <div>
@@ -416,7 +417,7 @@
                                         @endunless
                                     </div>
                                     <div class="custom-control custom-checkbox mb-3">
-                                        <input id="save-measurements-to-profile" type="checkbox" class="custom-control-input" name="save_measurements_to_profile" value="1" @checked(old('save_measurements_to_profile', true))>
+                                        <input id="save-measurements-to-profile" type="checkbox" class="custom-control-input" name="save_measurements_to_profile" value="1" @checked(old('save_measurements_to_profile', false))>
                                         <label class="custom-control-label font-weight-bold" for="save-measurements-to-profile">یہ تبدیلی گاہک کے تازہ محفوظ ناپ میں بھی محفوظ کریں</label>
                                         <small class="form-text text-muted">اگر یہ صرف اسی آرڈر کی خاص تبدیلی ہے تو نشان ہٹا دیں۔</small>
                                     </div>

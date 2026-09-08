@@ -1,7 +1,7 @@
 @extends('main')
 @section('content')
 @php
-    $statusLabels = ['assigned' => 'تفویض شدہ', 'cutting' => 'کٹائی', 'stitching' => 'سلائی', 'trial' => 'ٹرائل', 'ready' => 'تیار', 'delivered' => 'حوالے شدہ'];
+    $statusLabels = \App\Models\Order::STATUS_LABELS;
     $historySourceLabels = ['customer_created' => 'ابتدائی پیمائش', 'baseline' => 'پچھلی محفوظ پیمائش', 'customer_update' => 'تبدیل شدہ پیمائش', 'order_update' => 'آرڈر سے تبدیل شدہ پیمائش'];
     $customerScopeLabel = $canViewTailoring && $canViewShop
         ? 'ٹیلرنگ اور کپڑے کی دکان کا ایک ریکارڈ'
@@ -105,9 +105,9 @@
         @endif
 
         @if($activeTab === 'tailoring' && $canViewTailoring)
-            <div class="card workspace-card"><div class="card-body p-0"><div class="section-heading p-4 mb-0"><div><h2 class="h5 font-weight-bold">ٹیلرنگ آرڈرز</h2><p>گاہک کے تمام حالیہ سلائی آرڈرز اور کام کی حالت</p></div><span class="badge badge-primary px-3 py-2">{{ $orders->count() }} آرڈرز</span></div><div class="table-responsive"><table class="table table-hover mb-0 text-right"><thead><tr><th>آرڈر</th><th>تاریخ</th><th>سوٹ</th><th>کل رقم</th><th>بقایا</th><th>درزی</th><th>حالت</th><th></th></tr></thead><tbody>
-                @forelse($orders as $order)<tr><td>#{{ $order->id }}</td><td>{{ $order->created_at?->format('d-m-Y') }}</td><td>{{ $order->suitQuantity ?: 1 }}</td><td>Rs {{ number_format((float) $order->totalPayment, 2) }}</td><td>Rs {{ number_format((float) ($order->outstanding_amount ?? 0), 2) }}</td><td>{{ $order->tailor?->name ?: 'مقرر نہیں' }}</td><td><span class="status-badge">{{ $statusLabels[$order->status] ?? $order->status }}</span></td><td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.order-print', $order) }}">رسید</a></td></tr>
-                @empty<tr><td colspan="8" class="empty-state">ابھی کوئی ٹیلرنگ آرڈر موجود نہیں۔</td></tr>@endforelse
+            <div class="card workspace-card"><div class="card-body p-0"><div class="section-heading p-4 mb-0"><div><h2 class="h5 font-weight-bold">ٹیلرنگ آرڈرز</h2><p>گاہک کے تمام حالیہ سلائی آرڈرز اور کام کی حالت</p></div><span class="badge badge-primary px-3 py-2">{{ $orders->count() }} آرڈرز</span></div><div class="table-responsive"><table class="table table-hover mb-0 text-right"><thead><tr><th>آرڈر</th><th>فرد / سیریل</th><th>لباس</th><th>آرڈر تاریخ</th><th>واپسی</th><th>سوٹ</th><th>کل رقم</th><th>بقایا</th><th>درزی</th><th>حالت</th><th></th></tr></thead><tbody>
+                @forelse($orders as $order)<tr><td>#{{ $order->id }}</td><td><strong>{{ $order->customers?->name ?: $customer->name }}</strong><br><small class="text-muted">سیریل {{ $order->sub_customer ?: $order->suitNum }}</small></td><td>{{ $order->measurementTemplate?->name ?: 'تمام پیمائش' }}</td><td>{{ $order->created_at?->format('d-m-Y') }}</td><td>{{ $order->returnDate ? \Illuminate\Support\Carbon::parse($order->returnDate)->format('d-m-Y') : '—' }}</td><td>{{ $order->suitQuantity ?: 1 }}</td><td>Rs {{ number_format((float) $order->totalPayment, 2) }}</td><td>Rs {{ number_format((float) ($order->outstanding_amount ?? 0), 2) }}</td><td>{{ $order->tailor?->name ?: 'مقرر نہیں' }}</td><td><span class="status-badge">{{ $statusLabels[$order->status] ?? 'نامعلوم حالت' }}</span></td><td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.order-print', $order) }}">رسید</a></td></tr>
+                @empty<tr><td colspan="11" class="empty-state">ابھی کوئی ٹیلرنگ آرڈر موجود نہیں۔</td></tr>@endforelse
                 </tbody></table></div></div></div>
         @endif
 

@@ -464,6 +464,12 @@ body {
                     <div class="order-detail-list">
                         <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong class="order-detail-value">{{ $orderDetail->suitQuantity }}</strong></div>
+                        @php
+                            $legacyGarments = json_decode((string) $orderDetail->suitNum, true);
+                            $garmentLabel = $orderDetail->measurementTemplate?->name
+                                ?: (is_array($legacyGarments) ? implode('، ', $legacyGarments) : 'تمام پیمائش');
+                        @endphp
+                        <div class="order-detail-row"><span class="order-detail-label">لباس:</span><strong class="order-detail-value">{{ $garmentLabel }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong class="order-detail-value">{{ $orderDetail->sub_customer }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">آرڈر کی رقم:</span><strong class="order-detail-value">{{ $orderDetail->totalPayment }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">موجودہ رقم کی ادائیگی:</span><strong class="order-detail-value">{{ $orderDetail->transactions->first()?->recivedPayment ?? 0 }}</strong></div>
@@ -471,7 +477,7 @@ body {
                             <div class="order-detail-row"><span class="order-detail-label">موجودہ ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $orderBalance }}</strong></div>
                         @endif
                         @if ($previousBalance > 0)
-                            <div class="order-detail-row"><span class="order-detail-label">گزشتہ ادائیگی کے واجبات:</span><strong class="order-detail-value">{{ $previousBalance }}</strong></div>
+                            <div class="order-detail-row"><span class="order-detail-label">دیگر آرڈرز کا موجودہ بقایا:</span><strong class="order-detail-value">{{ $previousBalance }}</strong></div>
                         @endif
                         @if ($latestBalance > 0)
                             <div class="order-detail-row"><span class="order-detail-label">کل ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $latestBalance }}</strong></div>
@@ -513,6 +519,7 @@ body {
                             {{$orderDetail->customers->name}}
                         </div>
                     </div>
+                    <div class="text-center font-weight-bold mb-1">لباس: {{ $garmentLabel }}</div>
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell" style="text-align:left;">
                             {{ $tailor?->name ?: 'بعد میں مقرر ہوگا' }}
@@ -531,7 +538,10 @@ body {
                     </div>
                     @if($order->measurementValues->count())
                     @php
-                        $allMeasurements = $orderDetail->measurementValues->keyBy('source_key');
+                        $preferenceSourceKeys = ['system.necktype', 'system.sleeve', 'system.Daaman', 'system.jeab', 'system.swingtype', 'system.button', 'system.plate_type'];
+                        $allMeasurements = $orderDetail->measurementValues
+                            ->reject(fn($item) => in_array($item->source_key, $preferenceSourceKeys, true) && trim((string) $item->value) === '0')
+                            ->keyBy('source_key');
 
                         // Older production snapshots can miss this field because the
                         // legacy database column is named `Chuta` instead of `chuta`.

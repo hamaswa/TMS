@@ -79,7 +79,7 @@
 
             <div class="order-search-card">
                 <div class="order-search-label"><strong>محفوظ ناپ تلاش کریں</strong><small>اسی گاہک یا متعلقہ فرد کا محفوظ ناپ منتخب کریں۔</small></div>
-                <div class="order-search-control"><i class="fas fa-search"></i><input class="search" type="text" placeholder="نام یا ناپ تلاش کریں" id="search" data-url="{{ url('admin/search') }}" data-customer-id="{{ $data['customer']->id }}" aria-label="محفوظ ناپ تلاش کریں" autocomplete="off"><div id="select"></div></div>
+                <div class="order-search-control"><i class="fas fa-search"></i><input class="search" type="text" placeholder="نام یا ناپ تلاش کریں" id="search" data-url="{{ url('admin/search') }}" data-customer-id="{{ $data['customer']->id }}" aria-label="محفوظ ناپ تلاش کریں" autocomplete="off"><div id="select">@include('order.partials.measurement-profile-select', ['data' => collect([$data['selectedMeasurementProfile']])])</div></div>
             </div>
 
             <div class="order-form-grid">
@@ -91,7 +91,7 @@
                                 <div class="order-template mb-3"><label for="order-measurement-template">لباس کا پیمائش ٹیمپلیٹ</label><select id="order-measurement-template" class="form-control" name="measurement_template_id"><option value="">تمام محفوظ پیمائش</option>@foreach($data['measurementTemplates'] as $template)<option value="{{ $template->id }}" @selected((string)old('measurement_template_id',$data['measurementTemplateId'])===(string)$template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>@endforeach</select><small class="form-text text-muted">صرف منتخب ٹیمپلیٹ کی پیمائش آرڈر کے ساتھ محفوظ ہوگی؛ گاہک کی اصل پیمائش تبدیل نہیں ہوگی۔</small></div>
                             @endif
                             <div class="order-fields">
-                                <div class="order-field"><label for="order_customer_name">گاہک کا نام</label><div class="order-control"><i class="fas fa-user"></i><input id="order_customer_name" type="text" class="form-control" name="CustomerName" readonly value="{{ $data['customer']->name }}"></div></div>
+                                <div class="order-field"><label for="order_customer_name">ناپ والے فرد کا نام</label><div class="order-control"><i class="fas fa-user"></i><input id="order_customer_name" type="text" class="form-control" name="CustomerName" readonly value="{{ $data['selectedMeasurementProfile']->name }}"></div></div>
                                 <div class="order-field"><label for="order_serial_number">سیریل نمبر</label><div class="order-control" id="suitNumContainer"><i class="fas fa-hashtag"></i><input id="order_serial_number" type="text" class="form-control" name="serail" required value="{{ $data['serialNumber'] }}" readonly></div></div>
                                 <div class="order-field is-wide"><label for="suitQuantity">سوٹ کی تعداد <span class="order-required">*</span></label><div class="order-control"><i class="fas fa-tshirt"></i><input type="number" min="1" class="form-control" name="suitQuantity" id="suitQuantity" value="{{ old('suitQuantity',1) }}" required></div></div>
                             </div>
