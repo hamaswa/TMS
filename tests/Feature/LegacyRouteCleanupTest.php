@@ -159,6 +159,7 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSee('unicode-bidi: plaintext', false)
             ->assertSee('body.tms-order-print #orderSection', false)
             ->assertSee('grid-template-columns: minmax(0, 56%) minmax(0, 44%)', false)
+            ->assertSee('.measurement-row > .measurement-column-empty', false)
             ->assertSee('@media screen and (max-width: 520px)', false)
             ->assertSee('TMS REF: '.$order->id)
             ->assertSee('<svg', false);

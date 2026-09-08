@@ -641,73 +641,42 @@
                                 ->values()
                                 ->toArray();
 
-                            // Keep the original system rows together, then print custom fields in pairs.
-                            $systemRows = max(count($leftFields), count($rightFields));
-                            $leftFields = array_pad($leftFields, $systemRows, null);
-                            $rightFields = array_pad($rightFields, $systemRows, null);
-                            foreach (array_chunk($customFields, 2) as $customPair) {
-                                $leftFields[] = $customPair[0];
-                                $rightFields[] = $customPair[1] ?? null;
-                            }
-
-                            $rows = max(count($leftFields), count($rightFields));
+                            // Flow saved measurements into compact pairs so a sparse design column
+                            // cannot leave the body measurements in a tall half-width stack.
+                            $measurementRows = array_chunk(
+                                array_merge($rightFields, $leftFields, $customFields),
+                                2,
+                            );
                         @endphp
 
                         <hr>
 
-                        @for ($i = 0; $i < $rows; $i++)
+                        @foreach ($measurementRows as $measurementRow)
                             <div class="row measurement-row"
                                 style="display:flex;justify-content:space-between;padding:0 10px;">
-
-                                {{-- LEFT COLUMN --}}
-                                <div class="col-6" style="width:45%;">
-
-                                    @if (isset($leftFields[$i]) && isset($allMeasurements[$leftFields[$i]]))
-                                        @php
-                                            $item = $allMeasurements[$leftFields[$i]];
-                                        @endphp
-
-                                        <div
-                                            style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
-
-                                            <span class="measurement-value measurement-preference-value">{{ $item->value }}</span>
-
-                                            <span class="measurement-label"
-                                                style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
-
-                                        </div>
-                                    @endif
-
-                                </div>
-
-                                {{-- RIGHT COLUMN --}}
-                                <div class="col-6" style="width:45%;">
-
-                                    @if (isset($rightFields[$i]) && isset($allMeasurements[$rightFields[$i]]))
-                                        @php
-                                            $item = $allMeasurements[$rightFields[$i]];
-                                        @endphp
-
-                                        <div
-                                            style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
-
-                                            <span class="measurement-value"
-                                                style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
-                                                {{ $item->value }}
-                                            </span>
-
-                                            <span class="measurement-label"
-                                                style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
-                                                {{ $item->label }}
-                                            </span>
-
-                                        </div>
-                                    @endif
-
-                                </div>
+                                @foreach ([0, 1] as $column)
+                                    @php($hasMeasurement = isset($measurementRow[$column]) && isset($allMeasurements[$measurementRow[$column]]))
+                                    <div class="col-6 {{ $hasMeasurement ? '' : 'measurement-column-empty' }} {{ $hasMeasurement && count($measurementRow) === 1 ? 'measurement-column-full' : '' }}"
+                                        style="width:45%;">
+                                        @if ($hasMeasurement)
+                                            @php($item = $allMeasurements[$measurementRow[$column]])
+                                            <div
+                                                style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
+                                                <span class="measurement-value"
+                                                    style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
+                                                    {{ $item->value }}
+                                                </span>
+                                                <span class="measurement-label"
+                                                    style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
+                                                    {{ $item->label }}
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
 
                             </div>
-                        @endfor
+                        @endforeach
                     @else
                         <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
                             <div class="col-6 mt-2 mb-2" style="width: 45%">
