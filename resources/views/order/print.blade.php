@@ -662,13 +662,13 @@
                                             @php($item = $allMeasurements[$measurementRow[$column]])
                                             <div
                                                 style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
-                                                <span class="measurement-value"
-                                                    style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
-                                                    {{ $item->value }}
-                                                </span>
                                                 <span class="measurement-label"
                                                     style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
                                                     {{ $item->label }}
+                                                </span>
+                                                <span class="measurement-value"
+                                                    style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
+                                                    {{ $item->value }}
                                                 </span>
                                             </div>
                                         @endif
