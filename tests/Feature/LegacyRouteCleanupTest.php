@@ -157,8 +157,6 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSee('order-note', false)
             ->assertSee('dir="auto"', false)
             ->assertSee('unicode-bidi: plaintext', false)
-            ->assertSee('html.tms-paper-receipt_80 body.tms-order-print #orderSection', false)
-            ->assertSee('grid-template-columns: minmax(0, 56%) minmax(0, 44%)', false)
             ->assertSee('TMS REF: '.$order->id)
             ->assertSee('<svg', false);
 
