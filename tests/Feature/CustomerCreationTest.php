@@ -28,6 +28,12 @@ class CustomerCreationTest extends TestCase
             ->assertOk()
             ->assertSee(route('admin.Customers.create'), false)
             ->assertSeeText('نیا گاہک شامل کریں')
+            ->assertSee('href="'.route('admin.customers.statement', $customer).'"', false)
+            ->assertSeeText('پروفائل اور کھاتہ دیکھیں')
+            ->assertSeeText('حالیہ آرڈر دیکھیں')
+            ->assertSeeText('خاندان کا نیا ناپ شامل کریں')
+            ->assertSee('data-toggle="dropdown"', false)
+            ->assertSee('aria-label="'.$customer->name.' کی مزید کارروائیاں"', false)
             ->assertSee('aria-label="'.$customer->name.' کی ادائیگی درج کریں"', false);
     }
 

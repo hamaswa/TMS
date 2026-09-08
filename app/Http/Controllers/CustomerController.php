@@ -52,8 +52,11 @@ class CustomerController extends Controller
 
     public function index()
     {
-        $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
-        $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
+        $user = Auth::user();
+        $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
+        $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
+        $detailedWorkflow = Business::tailoringStatusModeForOwner($user->businessOwnerId())
             === Business::TAILORING_STATUS_DETAILED;
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) request('search', ''))
             ->orderBy('id', 'desc')
@@ -62,7 +65,7 @@ class CustomerController extends Controller
         $stats = $this->customerDirectoryStats($canViewBalances);
 
         return view('customer.list', array_merge(
-            compact('customers', 'canViewBalances', 'detailedWorkflow'),
+            compact('customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements', 'detailedWorkflow'),
             $stats,
         ));
     }
@@ -72,14 +75,19 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
         ]);
-        $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $user = Auth::user();
+        $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
+        $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) ($validated['search'] ?? ''))
             ->orderBy('id', 'desc')
             ->limit(25)
             ->get();
 
         return response()->json([
-            'html' => view('customer.partials.directory-rows', compact('customers', 'canViewBalances'))->render(),
+            'html' => view('customer.partials.directory-rows', compact(
+                'customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements'
+            ))->render(),
             'count' => $customers->count(),
         ]);
     }
