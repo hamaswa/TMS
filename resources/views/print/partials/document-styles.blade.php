@@ -33,7 +33,7 @@
     html.tms-paper-a4 #invoice-POS,
     html.tms-paper-a4 .receipt,
     html.tms-paper-a4 .tms-print-document {
-        padding: 10mm !important;
+        padding: clamp(12px, 5vw, 10mm) !important;
     }
 
     html[class*="tms-paper-"] table {
@@ -88,8 +88,11 @@
         flex-wrap: wrap;
         align-items: center;
         gap: 7px;
-        width: min(var(--tms-print-content-width), calc(100% - 20px));
-        margin: 10px auto;
+        justify-content: center;
+        position: relative;
+        z-index: 10;
+        width: min(680px, calc(100% - 24px));
+        margin: 12px auto 18px;
         font-family: "Noto Nastaliq Urdu", Tahoma, sans-serif;
     }
 
@@ -105,6 +108,7 @@
         font: inherit;
         line-height: 1.4;
         text-decoration: none;
+        white-space: nowrap;
     }
 
     .tms-print-toolbar .is-active,
@@ -134,6 +138,174 @@
         color: #52616b;
         font: 10px/1.35 Arial, sans-serif;
         overflow-wrap: anywhere;
+    }
+
+    body.tms-order-print #orderSection,
+    body.tms-order-print #sizeSection {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: none !important;
+        margin-top: 0 !important;
+    }
+
+    body.tms-order-print .receipt-shop-name {
+        margin: 0 0 9px !important;
+        text-align: center;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print #invoice-POS {
+        padding: 3mm !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print #orderSection > .pl-3.pr-3 {
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .receipt-shop-name {
+        font-size: 17px !important;
+        line-height: 1.75 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .receipt-date,
+    html.tms-paper-receipt_80 body.tms-order-print .order-section h2 {
+        margin: 0 !important;
+        font-size: 15px !important;
+        line-height: 1.55 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-list {
+        gap: 2px !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 56%) minmax(0, 44%);
+        gap: 7px !important;
+        min-height: 0 !important;
+        padding: 4px 0;
+        border-bottom: 1px dotted #d3d3d3;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-label,
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-value {
+        min-width: 0 !important;
+        font-size: 14px !important;
+        line-height: 1.75 !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-label {
+        text-align: right !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-value {
+        text-align: left !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-tracking-qr {
+        gap: 8px;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-tracking-qr svg {
+        flex-basis: 72px;
+        width: 72px;
+        height: 72px;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-tracking-qr__text {
+        max-width: none;
+        font-size: 10px;
+        line-height: 1.7;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-header {
+        padding: 3mm 2px 0;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-shop-name {
+        font-size: 17px !important;
+        line-height: 1.75 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-meta-row {
+        gap: 6px;
+        margin-bottom: 5px !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-meta-cell {
+        font-size: 12px !important;
+        line-height: 1.65 !important;
+        white-space: normal !important;
+        overflow-wrap: break-word;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-row {
+        gap: 4px;
+        margin-right: 0;
+        margin-left: 0;
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-row > .col-6 {
+        flex: 0 0 calc(50% - 2px);
+        width: calc(50% - 2px) !important;
+        max-width: calc(50% - 2px);
+        padding-right: 2px;
+        padding-left: 2px;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-row .measurement-label,
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-row .measurement-value {
+        min-width: 0;
+        font-size: 12px !important;
+        line-height: 1.7 !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .size-section .measurement-row > .col-6 > .d-flex {
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .size-section .measurement-row > .col-6 > .d-flex > div {
+        min-width: 0;
+        font-size: 12px !important;
+        line-height: 1.7 !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-note h3,
+    html.tms-paper-receipt_80 body.tms-order-print .size-section h3 {
+        margin: 10px 0 0 !important;
+        font-size: 13px !important;
+        line-height: 1.55 !important;
+        overflow-wrap: break-word;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-footer,
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-footer {
+        padding-right: 2px;
+        padding-left: 2px;
+    }
+
+    @media screen and (max-width: 520px) {
+        .tms-print-toolbar {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .tms-print-toolbar a,
+        .tms-print-toolbar button {
+            width: 100%;
+            text-align: center;
+        }
     }
 
     @media print {

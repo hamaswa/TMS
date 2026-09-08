@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ur" dir="rtl">
 
 <head>
     <meta charset="UTF-8">
@@ -453,9 +453,9 @@ body {
             </div><!--End Info-->
         </center><!--End InvoiceTop-->
         <div id="fullSection">
-            <div id="orderSection" style="max-width: 350px; margin-top:-60px;" class="ticket order-section">
+            <div id="orderSection" class="ticket order-section">
                 @if($setting->logo_url)<p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>@endif
-                <h1 class="text-center"  style="font-size: 16px;font-weight: 600;text-align: center;margin-top:-20px; ">{{ $setting->name }}
+                <h1 class="text-center receipt-shop-name">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3">
                     <div class="d-flex justify-content-between ">
