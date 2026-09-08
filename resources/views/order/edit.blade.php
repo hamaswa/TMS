@@ -357,8 +357,8 @@
                                     </div>
                                     <div class="order-field">
                                         <label for="tailor-selected"><i class="fas fa-user-tie"></i> درزی</label>
-                                        <select id="tailor-selected" class="form-control" name="tailorId" required dir="rtl">
-                                            <option value="0">درزی کو منتخب کریں</option>
+                                        <select id="tailor-selected" class="form-control" name="tailorId" @if($data->tailorId) required @endif dir="rtl">
+                                            <option value="">ابھی درزی مقرر نہ کریں</option>
                                             @foreach ($tailors as $tailor)
                                                 <option value="{{ $tailor->id }}" @selected((int) $data->tailorId === (int) $tailor->id)>{{ $tailor->name }}</option>
                                             @endforeach
@@ -367,7 +367,7 @@
                                     <div class="order-field">
                                         <label for="order-tailor-price"><i class="fas fa-tags"></i> درزی رقم</label>
                                         <div id="tailor-rates">
-                                            <select id="order-tailor-price" class="form-control" name="tailor_price" required dir="rtl">
+                                            <select id="order-tailor-price" class="form-control" name="tailor_price" @if($data->tailorId) required @endif dir="rtl">
                                                 <option value="">درزی کی رقم منتخب کریں</option>
                                                 @foreach($tailorRates as $rate)
                                                     <option value="{{ $rate->id }}-{{ $rate->price }}" @selected((int) $rate->id === (int) $data->rateId)>{{ $rate->price }} -- {{ $rate->options?->Name ?: ($rate->type ?: 'سلائی') }}</option>

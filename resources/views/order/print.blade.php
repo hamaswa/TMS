@@ -549,7 +549,7 @@
                     </div>
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell" style="text-align:left;">
-                            {{ $tailor->name }}
+                            {{ $tailor?->name ?: 'بعد میں مقرر ہوگا' }}
                         </div>
                         <div class="measurement-meta-cell" style="text-align:right;">
                             درزی کا نام

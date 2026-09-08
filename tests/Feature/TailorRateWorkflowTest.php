@@ -193,6 +193,53 @@ class TailorRateWorkflowTest extends TestCase
         $this->assertDatabaseCount('orders', 1);
     }
 
+    public function test_order_can_be_created_and_printed_without_selecting_a_tailor(): void
+    {
+        Notification::fake();
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Muhammad Bilal',
+            'phone_number1' => '03005552345',
+            'user_id' => $owner->id,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.order.create', $customer))
+            ->assertOk()
+            ->assertSeeText('ابھی درزی مقرر نہ کریں')
+            ->assertSeeText('بعد میں ورکشاپ سے دستیابی اور جاری کام دیکھ کر مقرر کریں');
+
+        $response = $this->actingAs($owner)->post(route('admin.order.insert'), [
+            'customerId' => $customer->id,
+            'suitQuantity' => 2,
+            'totalPayment' => 5000,
+            'recivedPayment' => 1000,
+            'returnDate' => now()->addWeek()->toDateString(),
+        ]);
+
+        $order = Order::sole();
+        $response->assertRedirect(url('/admin/order/print/'.$order->id));
+        $this->assertNull($order->tailorId);
+        $this->assertNull($order->rateId);
+        $this->assertEquals(0, (float) $order->tailor_price);
+        $this->assertSame('unassigned', $order->status);
+        $this->assertDatabaseMissing('order_work_assignments', ['order_id' => $order->id]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.order-print', $order))
+            ->assertOk()
+            ->assertSeeText('بعد میں مقرر ہوگا');
+
+        $history = $this->actingAs($owner)
+            ->getJson(route('admin.getCustomer', ['id' => $customer->id]))
+            ->assertOk()
+            ->json();
+        $this->assertSame('ابھی مقرر نہیں', $history[0]['tailorName']);
+        $this->assertSame([], $history[0]['nextStatuses']);
+    }
+
     public function test_new_orders_use_the_selected_measurement_profile_as_a_stable_server_controlled_serial(): void
     {
         Notification::fake();

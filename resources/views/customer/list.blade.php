@@ -331,6 +331,7 @@
         .order-payment-button { min-height: 32px; padding: 5px 9px; border: 1px solid #bce5d1; border-radius: 8px; color: #087747; background: #effaf4; font-size: .76rem; font-weight: 800; white-space: nowrap; }
         .order-payment-button:hover { border-color: #83cfaa; background: #ddf5e9; }
         .customer-order-status { min-width: 112px; border: 1px solid transparent; border-radius: 9px; font-weight: 900; box-shadow: 0 5px 14px rgba(25, 45, 75, .08); }
+        .customer-order-status.order-stage-unassigned { color: #6b4d08; border-color: #ead08c; background: #fff8df; }
         .customer-order-status.order-stage-workshop { color: #9b6200; border-color: #f2cf82; background: #fff3cf; }
         .customer-order-status.order-stage-ready { color: #fff; border-color: #1769e0; background: linear-gradient(135deg, #2478ec, #1159bd); }
         .customer-order-status.order-stage-delivered { color: #fff; border-color: #1769e0; background: linear-gradient(135deg, #2478ec, #1159bd); }

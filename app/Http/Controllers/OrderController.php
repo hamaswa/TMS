@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\rack;
 use App\Models\Business;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use PhpOption\Option;
 use App\Models\Design;
 use App\Models\Tailor;
@@ -87,6 +88,7 @@ class OrderController extends Controller
 
     public function update(Request $request, $id)
     {
+        $order = $this->ownedOrder($id);
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementRules = [
             'system_measurements' => ['nullable', 'array'],
@@ -123,8 +125,8 @@ class OrderController extends Controller
                 'max:255',
             ],
             'paid_on' => ['nullable', 'date'],
-            'tailorId' => ['required', 'integer'],
-            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
+            'tailorId' => [Rule::requiredIf((bool) $order->tailorId), 'nullable', 'integer'],
+            'tailor_price' => [Rule::requiredIf(fn () => $request->filled('tailorId')), 'nullable', 'regex:/^\d+-.+$/', 'max:255'],
             'returnDate' => ['required', 'date'],
             'remarks' => ['nullable', 'string', 'max:1000'],
             'return_customer' => ['nullable', 'integer'],
@@ -134,16 +136,20 @@ class OrderController extends Controller
             'recivedPayment.lte' => 'وصول رقم کل قیمت سے زیادہ نہیں ہو سکتی۔',
         ], $this->measurements->attributes($measurementFields));
 
-        $order = $this->ownedOrder($id);
         $customer = $this->ownedCustomer($validated['customerId']);
-        $this->ownedTailor($validated['tailorId']);
+        $tailor = ! empty($validated['tailorId']) ? $this->ownedTailor($validated['tailorId']) : null;
         if (!empty($validated['sub_id'])) {
             $this->ownedCustomer($validated['sub_id']);
         }
 
         //new change
-        [$rateId, $tailorPrice] = explode('-', $validated['tailor_price'], 2);
-        Tailorsalary::where('tailor_id', $validated['tailorId'])->findOrFail($rateId);
+        $rateId = null;
+        $tailorPrice = 0;
+        if ($tailor) {
+            [$rateId] = explode('-', $validated['tailor_price'], 2);
+            $tailorRate = Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+            $tailorPrice = $tailorRate->price;
+        }
         $remainingBalance = max(0, $validated['totalPayment'] - $validated['recivedPayment']);
 
         $measurementCustomerId = $validated['sub_id'] ?? $validated['customerId'];
@@ -153,20 +159,35 @@ class OrderController extends Controller
             $this->ensureRequiredMeasurements($measurementCustomer, $order->measurementTemplate);
         }
 
-        DB::transaction(function () use ($validated, $order, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields) {
+        DB::transaction(function () use ($validated, $order, $tailor, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields) {
+            $wasUnassigned = $order->status === 'unassigned' && ! $order->tailorId;
             $order->update([
                 "sub_customer" => $validated['sub_id'] ?? $validated['customerId'],
                 "customerId" => $validated['customerId'],
                 "suitQuantity" => $validated['suitQuantity'],
                 "totalPayment" => $validated['totalPayment'],
-                "tailorId" => $validated['tailorId'],
+                "tailorId" => $tailor?->id,
                 "rateId" => $rateId,
                 "tailor_price" => $tailorPrice,
                 "userId" => Auth::user()->businessOwnerId(),
                 "returnDate" => $validated['returnDate'],
                 "remarks" => $validated['remarks'] ?? null,
                 "suitNum" => $measurementChanged ? (string) $measurementCustomer->id : $order->suitNum,
+                "status" => $order->status === 'unassigned' && $tailor ? 'assigned' : $order->status,
+                "status_changed_at" => $wasUnassigned && $tailor ? now() : $order->status_changed_at,
             ]);
+
+            if ($wasUnassigned && $tailor) {
+                OrderStatusHistory::create([
+                    'order_id' => $order->id,
+                    'user_id' => Auth::id(),
+                    'tailor_id' => $tailor->id,
+                    'from_status' => 'unassigned',
+                    'to_status' => 'assigned',
+                    'changed_by_type' => 'shop_owner',
+                    'note' => 'آرڈر میں ترمیم کے دوران درزی مقرر کیا گیا۔',
+                ]);
+            }
 
             Transaction::updateOrCreate(
                 ['orderId' => $order->id, 'userId' => Auth::user()->businessOwnerId()],
@@ -283,8 +304,8 @@ class OrderController extends Controller
             'returnDate' => ['required', 'date'],
             'design' => ['nullable', 'string', 'max:255'],
             'designPrice' => ['nullable', 'numeric', 'min:0'],
-            'tailorId' => ['required', 'integer'],
-            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
+            'tailorId' => ['nullable', 'integer'],
+            'tailor_price' => [Rule::requiredIf(fn () => $req->filled('tailorId')), 'nullable', 'regex:/^\d+-.+$/', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:1000'],
             'measurement_template_id' => ['nullable', 'integer', Rule::exists('measurement_templates', 'id')
                 ->where('user_id', Auth::user()->businessOwnerId())->where('is_active', true)],
@@ -293,13 +314,18 @@ class OrderController extends Controller
         ]);
 
         $this->ownedCustomer($validated['customerId']);
-        $tailor = $this->ownedTailor($validated['tailorId']);
+        $tailor = ! empty($validated['tailorId']) ? $this->ownedTailor($validated['tailorId']) : null;
         if (!empty($validated['sub_id'])) {
             $this->ownedCustomer($validated['sub_id']);
         }
 
-        [$rateId, $tailorPrice] = explode('-', $validated['tailor_price'], 2);
-        Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+        $rateId = null;
+        $tailorPrice = 0;
+        if ($tailor) {
+            [$rateId] = explode('-', $validated['tailor_price'], 2);
+            $tailorRate = Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+            $tailorPrice = $tailorRate->price;
+        }
         $remainingBalance = round((float) $validated['totalPayment'] - (float) $validated['recivedPayment'], 2);
         $designParts = explode('-', $validated['design'] ?? '', 2);
         $subCustomerId = $validated['sub_id'] ?? $validated['customerId'];
@@ -313,7 +339,7 @@ class OrderController extends Controller
                     ->where('is_default', true)
                     ->first());
         $this->ensureRequiredMeasurements($measurementCustomer, $measurementTemplate);
-        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $remainingBalance, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
+        [$obj, $transaction] = DB::transaction(function () use ($validated, $tailor, $rateId, $tailorPrice, $remainingBalance, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
             $obj = Order::create([
                 'customerId' => $validated['customerId'],
                 'sub_customer' => $subCustomerId,
@@ -322,14 +348,14 @@ class OrderController extends Controller
                 'totalPayment' => $validated['totalPayment'],
                 'returnDate' => $validated['returnDate'],
                 'design' => $designParts[0] ?: 0,
-                'tailorId' => $validated['tailorId'],
+                'tailorId' => $tailor?->id,
                 'rateId' => $rateId,
                 'userId' => Auth::user()->businessOwnerId(),
                 'remarks' => $validated['remarks'] ?? null,
                 'tailor_price' => $tailorPrice,
                 'suitNum' => (string) $measurementCustomer->id,
                 'designPrice' => $validated['designPrice'] ?? 0,
-                'status' => 'assigned',
+                'status' => $tailor ? 'assigned' : 'unassigned',
                 'status_changed_at' => now(),
                 'tailor_paid_amount' => 0,
                 'tailor_payment_status' => 'unpaid',
@@ -384,7 +410,7 @@ class OrderController extends Controller
         try {
             $id = $req->id;
             $Orders = DB::table('orders')
-                ->join('tailors', 'orders.tailorId', '=', 'tailors.id')
+                ->leftJoin('tailors', 'orders.tailorId', '=', 'tailors.id')
                 ->select('orders.*', 'tailors.name as tailor_name')
                 ->where('orders.customerId', $id)
                 ->where('orders.userId', Auth::user()->businessOwnerId())
@@ -413,11 +439,13 @@ class OrderController extends Controller
                 $button = $detailedWorkflow
                     ? (Order::STATUS_LABELS[$currentStatus] ?? ucfirst($currentStatus))
                     : match ($currentStatus) {
+                        'unassigned' => 'درزی مقرر ہونا باقی',
                         'ready' => 'تیار ہے',
                         'delivered' => 'تیار ہے',
                         default => 'کارخانے میں ہے',
                     };
                 $btn = match ($currentStatus) {
+                    'unassigned' => 'order-stage-unassigned',
                     'assigned', 'cutting', 'stitching', 'trial' => 'order-stage-workshop',
                     'ready' => 'order-stage-ready',
                     'delivered' => $detailedWorkflow ? 'order-stage-delivered' : 'order-stage-ready',
@@ -434,7 +462,7 @@ class OrderController extends Controller
                     'created_at' => date('d-m-Y', strtotime($order->created_at)),
                     'returnDate' => date('d-m-Y', strtotime($order->returnDate)),
                     'suitQuantity' => $order->suitQuantity,
-                    'tailorName' => $order->tailor_name,
+                    'tailorName' => $order->tailor_name ?: 'ابھی مقرر نہیں',
                     'button' => $button,
                     'btnClass' => $btn,
                     'orderId' => $order->id,
@@ -445,6 +473,7 @@ class OrderController extends Controller
                     'nextStatuses' => $detailedWorkflow
                         ? Order::nextStatusOptionsFor($currentStatus)
                         : match ($currentStatus) {
+                            'unassigned' => [],
                             'delivered' => [],
                             default => [
                             ['value' => 'start', 'label' => 'کارخانے میں ہے'],
@@ -465,8 +494,7 @@ class OrderController extends Controller
     public function print($id)
     {
         $order = $this->ownedOrder($id);
-        $tailor_id = $order->tailorId;
-        $tailor = $this->ownedTailor($tailor_id);
+        $tailor = $order->tailorId ? $this->ownedTailor($order->tailorId) : null;
 
 
         $customerId = $order->customerId;
@@ -514,8 +542,7 @@ class OrderController extends Controller
     public function two_prints($id)
     {
         $order = $this->ownedOrder($id);
-        $tailor_id = $order->tailorId;
-        $tailor = $this->ownedTailor($tailor_id);
+        $tailor = $order->tailorId ? $this->ownedTailor($order->tailorId) : null;
 
 
         $customerId = $order->customerId;

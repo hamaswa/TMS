@@ -84,7 +84,7 @@
 
         .tj-stats {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 12px;
             margin-bottom: 16px
         }
@@ -551,7 +551,7 @@
             @endif
 
             <div class="tj-stats">
-                @foreach ([['جاری کام', $stats['active'], 'fa-cut', ''], ['آج دینے ہیں', $stats['due_today'], 'fa-calendar-day', 'is-due'], ['دیر ہو گئی', $stats['overdue'], 'fa-exclamation-triangle', 'is-late'], ['تیار ہیں', $stats['ready'], 'fa-check-circle', 'is-ready']] as [$label, $value, $icon, $class])
+                @foreach ([['درزی مقرر ہونا باقی', $stats['unassigned'], 'fa-user-clock', ''], ['جاری کام', $stats['active'], 'fa-cut', ''], ['آج دینے ہیں', $stats['due_today'], 'fa-calendar-day', 'is-due'], ['دیر ہو گئی', $stats['overdue'], 'fa-exclamation-triangle', 'is-late'], ['تیار ہیں', $stats['ready'], 'fa-check-circle', 'is-ready']] as [$label, $value, $icon, $class])
                     <div class="tj-stat {{ $class }}"><span class="tj-stat-icon"><i
                                 class="fas {{ $icon }}"></i></span>
                         <div><small>{{ $label }}</small><strong>{{ $value }}</strong></div>
@@ -580,6 +580,7 @@
                                         @endforeach
                                     @else
                                         <option value="">تمام حالتیں</option>
+                                        <option value="unassigned" @selected(($filters['status'] ?? '') === 'unassigned')>درزی مقرر ہونا باقی</option>
                                         <option value="workshop" @selected(($filters['status'] ?? '') === 'workshop')>کارخانے میں ہے</option>
                                         <option value="ready" @selected(($filters['status'] ?? '') === 'ready')>تیار ہے</option>
                                     @endif
@@ -666,6 +667,33 @@
                                         مرحلہ</small><strong>{{ $statusLabels[$order->status] ?? $order->status }}</strong>
                                 </div>
                             </div>
+                            @if(!$isTailor && $order->status === 'unassigned')
+                                <div class="tj-card-body" style="grid-template-columns:1fr">
+                                    <div class="tj-action-box">
+                                        <h4><i class="fas fa-user-check ml-1 text-primary"></i>دستیابی دیکھ کر درزی مقرر کریں</h4>
+                                        <form method="POST" action="{{ route('admin.tailor-jobs.assign', $order) }}" class="tj-assignment-form">
+                                            @csrf @method('PATCH')
+                                            <div class="tj-progress-form">
+                                                <select name="tailor_id" class="form-control js-assignment-tailor" required aria-label="درزی منتخب کریں">
+                                                    <option value="">درزی منتخب کریں</option>
+                                                    @foreach($tailors as $tailor)
+                                                        <option value="{{ $tailor->id }}" @disabled($tailor->tailorsalary->isEmpty())>{{ $tailor->name }} — {{ (int)($tailorWorkloads[$tailor->id] ?? 0) }} جاری کام{{ $tailor->tailorsalary->isEmpty() ? ' — شرح موجود نہیں' : '' }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <select name="tailor_price" class="form-control js-assignment-rate" required aria-label="سلائی شرح منتخب کریں">
+                                                    <option value="">پہلے درزی منتخب کریں</option>
+                                                    @foreach($tailors as $tailor)
+                                                        @foreach($tailor->tailorsalary as $rate)
+                                                            <option value="{{ $rate->id }}-{{ $rate->price }}" data-tailor="{{ $tailor->id }}" hidden>{{ number_format((float)$rate->price,2) }} — {{ $rate->options?->Name ?: ($rate->type ?: 'عام سلائی') }}</option>
+                                                        @endforeach
+                                                    @endforeach
+                                                </select>
+                                                <button class="tj-button tj-primary" type="submit"><i class="fas fa-check"></i> درزی مقرر کریں</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            @else
                             <div class="tj-card-body">
                                 <div class="tj-action-box">
                                     <h4><i class="fas fa-exchange-alt ml-1 text-primary"></i>کام کی حالت</h4>
@@ -731,6 +759,7 @@
                                     </div>
                                 @endif
                             </div>
+                            @endif
                             <details class="tj-notifications">
                                 <summary><i class="fas fa-bell ml-1"></i>گاہک کی اندرونی اطلاع دیکھیں</summary>
                                 <div class="tj-notification-list">
@@ -765,4 +794,18 @@
             </section>
         </div>
     </section>
+    <script>
+        document.addEventListener('change', function (event) {
+            if (!event.target.matches('.js-assignment-tailor')) return;
+            const form = event.target.closest('.tj-assignment-form');
+            const rates = form.querySelector('.js-assignment-rate');
+            const tailorId = event.target.value;
+            rates.value = '';
+            rates.querySelectorAll('option[data-tailor]').forEach(function (option) {
+                option.hidden = option.dataset.tailor !== tailorId;
+            });
+            const firstRate = rates.querySelector('option[data-tailor="' + tailorId + '"]');
+            if (firstRate) firstRate.selected = true;
+        });
+    </script>
 @endsection

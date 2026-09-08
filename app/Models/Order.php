@@ -9,9 +9,10 @@ class Order extends Model
 {
     use HasFactory;
 
-    public const STATUSES = ['assigned', 'cutting', 'stitching', 'trial', 'ready', 'delivered'];
+    public const STATUSES = ['unassigned', 'assigned', 'cutting', 'stitching', 'trial', 'ready', 'delivered'];
 
     public const STATUS_LABELS = [
+        'unassigned' => 'درزی مقرر ہونا باقی',
         'assigned' => 'درزی مقرر',
         'cutting' => 'کٹائی',
         'stitching' => 'سلائی',
@@ -93,6 +94,7 @@ class Order extends Model
     public static function nextStatusOptionsFor(string $status): array
     {
         $nextStatuses = match ($status) {
+            'unassigned' => [],
             'assigned' => ['cutting'],
             'cutting' => ['stitching'],
             'stitching' => ['trial'],
