@@ -291,7 +291,7 @@
                             </div>
                             <div class="input-group">
                                 <input class="form-control border-end-0 border rounded-pill search" type="text"
-                                    placeholder="نام یا فون نمبر سے ناپ تلاش کریں" id="search" data-url="{{ route('admin.search') }}">
+                                    placeholder="نام یا فون نمبر سے ناپ تلاش کریں" id="search" data-url="{{ route('admin.search') }}" data-customer-id="{{ $customer->id }}">
                                 <span class="input-group-append">
                                     <button
                                         class="btn btn-outline-secondary bg-white border-start-0 border rounded-pill ms-n3"
@@ -400,9 +400,25 @@
                                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                                         <div>
                                             <h5 class="mb-1">اس آرڈر کی پیمائش میں تبدیلی</h5>
-                                            <small class="text-muted">نئے پیمائش خانے بھی یہاں شامل ہیں۔ تبدیلی صرف اسی آرڈر اور اس کی رسید پر لاگو ہوگی۔</small>
+                                            <small class="text-muted">آرڈر کی پرانی کاپی محفوظ رہتی ہے۔ نیچے منتخب کرنے پر یہی تبدیلی گاہک کے آئندہ آرڈرز کے لیے بھی محفوظ ہوگی۔</small>
                                         </div>
                                         <span class="badge badge-primary mt-2 mt-md-0">{{ count(\App\Services\MeasurementService::SYSTEM_FIELDS) + $measurementFields->count() }} خانے</span>
+                                    </div>
+                                    <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center" role="status">
+                                        <div>
+                                            <strong>{{ $useLatestMeasurements ? 'گاہک کا تازہ محفوظ ناپ دکھایا جا رہا ہے۔' : 'اس آرڈر کے وقت محفوظ کیا گیا ناپ دکھایا جا رہا ہے۔' }}</strong>
+                                            <div class="small mt-1">پرانے آرڈر کا ریکارڈ خودکار طور پر تبدیل نہیں کیا جاتا۔</div>
+                                        </div>
+                                        @unless($useLatestMeasurements)
+                                            <a class="btn btn-sm btn-outline-primary mt-2 mt-md-0" href="{{ route('admin.order.edit', ['id' => $data->id, 'latest_measurements' => 1]) }}">
+                                                تازہ محفوظ ناپ لوڈ کریں
+                                            </a>
+                                        @endunless
+                                    </div>
+                                    <div class="custom-control custom-checkbox mb-3">
+                                        <input id="save-measurements-to-profile" type="checkbox" class="custom-control-input" name="save_measurements_to_profile" value="1" @checked(old('save_measurements_to_profile', true))>
+                                        <label class="custom-control-label font-weight-bold" for="save-measurements-to-profile">یہ تبدیلی گاہک کے تازہ محفوظ ناپ میں بھی محفوظ کریں</label>
+                                        <small class="form-text text-muted">اگر یہ صرف اسی آرڈر کی خاص تبدیلی ہے تو نشان ہٹا دیں۔</small>
                                     </div>
                                     <div class="order-measurement-layout">
                                         <section class="order-measurement-panel">

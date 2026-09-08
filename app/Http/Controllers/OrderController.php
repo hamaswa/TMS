@@ -59,7 +59,10 @@ class OrderController extends Controller
         $tailorRates = Tailorsalary::with('options')->where('tailor_id', $data->tailorId)->get();
         $measurementCustomer = $sub_customer ?: $customer;
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
-        $savedMeasurementValues = $data->measurementValues->keyBy('source_key');
+        $useLatestMeasurements = request()->boolean('latest_measurements');
+        $savedMeasurementValues = $useLatestMeasurements
+            ? collect()
+            : $data->measurementValues->keyBy('source_key');
         $customerCustomValues = $measurementCustomer->measurementValues()
             ->whereIn('measurement_field_id', $measurementFields->pluck('id'))
             ->pluck('value', 'measurement_field_id');
@@ -78,7 +81,7 @@ class OrderController extends Controller
             'data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance',
             'recivedPayment', 'sub_customer', 'customer', 'measurementCustomer',
             'measurementFields', 'savedMeasurementValues', 'customerCustomValues',
-            'preferenceOptions'
+            'preferenceOptions', 'useLatestMeasurements'
         ));
     }
 
@@ -126,6 +129,7 @@ class OrderController extends Controller
             'remarks' => ['nullable', 'string', 'max:1000'],
             'return_customer' => ['nullable', 'integer'],
             'return_search' => ['nullable', 'string', 'max:200'],
+            'save_measurements_to_profile' => ['nullable', 'boolean'],
         ], $measurementRules), [
             'recivedPayment.lte' => 'وصول رقم کل قیمت سے زیادہ نہیں ہو سکتی۔',
         ], $this->measurements->attributes($measurementFields));
@@ -161,6 +165,7 @@ class OrderController extends Controller
                 "userId" => Auth::user()->businessOwnerId(),
                 "returnDate" => $validated['returnDate'],
                 "remarks" => $validated['remarks'] ?? null,
+                "suitNum" => $measurementChanged ? (string) $measurementCustomer->id : $order->suitNum,
             ]);
 
             Transaction::updateOrCreate(
@@ -210,6 +215,18 @@ class OrderController extends Controller
                             'unit' => $field->unit,
                             'sort_order' => 1000 + (int) $field->sort_order,
                         ]
+                    );
+                }
+
+                if (! empty($validated['save_measurements_to_profile'])) {
+                    $this->measurements->syncCustomerFromOrder(
+                        $measurementCustomer,
+                        Auth::user()->businessOwnerId(),
+                        $measurementFields,
+                        $validated['system_measurements'] ?? [],
+                        $validated['custom_measurements'] ?? [],
+                        $order->measurementTemplate,
+                        Auth::id(),
                     );
                 }
             }
@@ -269,7 +286,6 @@ class OrderController extends Controller
             'tailorId' => ['required', 'integer'],
             'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:1000'],
-            'serail' => ['nullable', 'string', 'max:255'],
             'measurement_template_id' => ['nullable', 'integer', Rule::exists('measurement_templates', 'id')
                 ->where('user_id', Auth::user()->businessOwnerId())->where('is_active', true)],
         ], [
@@ -311,7 +327,7 @@ class OrderController extends Controller
                 'userId' => Auth::user()->businessOwnerId(),
                 'remarks' => $validated['remarks'] ?? null,
                 'tailor_price' => $tailorPrice,
-                'suitNum' => $validated['serail'] ?? null,
+                'suitNum' => (string) $measurementCustomer->id,
                 'designPrice' => $validated['designPrice'] ?? 0,
                 'status' => 'assigned',
                 'status_changed_at' => now(),
@@ -540,21 +556,34 @@ class OrderController extends Controller
 
     public function search(Request $req)
     {
-        $search = $req->validate(['sub_search' => ['nullable', 'string', 'max:255']])['sub_search'] ?? '';
+        $validated = $req->validate([
+            'sub_search' => ['nullable', 'string', 'max:255'],
+            'customer_id' => ['nullable', 'integer'],
+        ]);
+        $search = $validated['sub_search'] ?? '';
+        $primaryCustomer = null;
+        if (! empty($validated['customer_id'])) {
+            $primaryCustomer = $this->ownedCustomer((int) $validated['customer_id']);
+            if ($primaryCustomer->parent_id !== null) {
+                $primaryCustomer = $this->ownedCustomer((int) $primaryCustomer->parent_id);
+            }
+        }
         $data = Customers::where('user_id', Auth::user()->businessOwnerId())
+            ->when($primaryCustomer, fn ($query) => $query->where(function ($family) use ($primaryCustomer) {
+                $family->whereKey($primaryCustomer->id)
+                    ->orWhere('parent_id', $primaryCustomer->id);
+            }))
             ->where(function ($query) use ($search) {
                 $query->where('name', 'like', '%' . $search . '%')
                     ->orWhere('phone_number1', 'like', '%' . $search . '%')
                     ->orWhere('id', 'like', '%' . $search . '%');
             })
+            ->orderByRaw('parent_id is not null')
+            ->orderBy('name')
+            ->limit(25)
             ->get();
-        $html = "";
-        $html .= "<select class='form-control' style='height:50px' name='sub_id'>";
-        foreach ($data as $val) {
-            $html .= "<option value='" . $val->id . "'>" . $val->id . " - " . $val->name . " - " . $val->phone_number1 . "</option>";
-        }
-        $html .= "</select>";
-        return $html;
+
+        return view('order.partials.measurement-profile-select', compact('data'));
     }
 
     public function order_status(Request $req)

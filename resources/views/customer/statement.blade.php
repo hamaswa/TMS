@@ -2,7 +2,7 @@
 @section('content')
 @php
     $statusLabels = ['assigned' => 'تفویض شدہ', 'cutting' => 'کٹائی', 'stitching' => 'سلائی', 'trial' => 'ٹرائل', 'ready' => 'تیار', 'delivered' => 'حوالے شدہ'];
-    $historySourceLabels = ['customer_created' => 'ابتدائی پیمائش', 'baseline' => 'پچھلی محفوظ پیمائش', 'customer_update' => 'تبدیل شدہ پیمائش'];
+    $historySourceLabels = ['customer_created' => 'ابتدائی پیمائش', 'baseline' => 'پچھلی محفوظ پیمائش', 'customer_update' => 'تبدیل شدہ پیمائش', 'order_update' => 'آرڈر سے تبدیل شدہ پیمائش'];
     $customerScopeLabel = $canViewTailoring && $canViewShop
         ? 'ٹیلرنگ اور کپڑے کی دکان کا ایک ریکارڈ'
         : ($canViewTailoring ? 'ٹیلرنگ کا مشترکہ گاہک ریکارڈ' : ($canViewShop ? 'کپڑے کی دکان کا گاہک ریکارڈ' : 'گاہک کا ریکارڈ'));

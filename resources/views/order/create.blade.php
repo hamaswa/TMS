@@ -79,7 +79,7 @@
 
             <div class="order-search-card">
                 <div class="order-search-label"><strong>محفوظ ناپ تلاش کریں</strong><small>اسی گاہک یا متعلقہ فرد کا محفوظ ناپ منتخب کریں۔</small></div>
-                <div class="order-search-control"><i class="fas fa-search"></i><input class="search" type="text" placeholder="نام یا ناپ تلاش کریں" id="search" data-url="{{ url('admin/search') }}" aria-label="محفوظ ناپ تلاش کریں" autocomplete="off"><div id="select"></div></div>
+                <div class="order-search-control"><i class="fas fa-search"></i><input class="search" type="text" placeholder="نام یا ناپ تلاش کریں" id="search" data-url="{{ url('admin/search') }}" data-customer-id="{{ $data['customer']->id }}" aria-label="محفوظ ناپ تلاش کریں" autocomplete="off"><div id="select"></div></div>
             </div>
 
             <div class="order-form-grid">
