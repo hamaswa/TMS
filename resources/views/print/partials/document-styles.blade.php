@@ -61,6 +61,91 @@
         text-align: center !important;
     }
 
+    /* Keep the Urdu order receipt readable inside a true 80mm paper width. */
+    html.tms-paper-receipt_80 body.tms-order-print #invoice-POS {
+        padding: 3mm !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print #orderSection {
+        width: 100% !important;
+        max-width: none !important;
+        margin-top: 0 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print #orderSection > h1 {
+        margin: 0 0 8px !important;
+        font-size: 17px !important;
+        line-height: 1.7 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print #orderSection > .pl-3.pr-3 {
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .receipt-date,
+    html.tms-paper-receipt_80 body.tms-order-print .order-section h2 {
+        margin: 0 !important;
+        font-size: 15px !important;
+        line-height: 1.55 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-list {
+        gap: 2px !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 56%) minmax(0, 44%);
+        gap: 7px !important;
+        min-height: 0 !important;
+        padding: 4px 0;
+        border-bottom: 1px dotted #d3d3d3;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-label,
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-value {
+        min-width: 0 !important;
+        font-size: 14px !important;
+        line-height: 1.75 !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-label {
+        text-align: right !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-detail-value {
+        text-align: left !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-tracking-qr {
+        gap: 8px;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-tracking-qr svg {
+        flex-basis: 72px;
+        width: 72px;
+        height: 72px;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .order-tracking-qr__text {
+        max-width: none;
+        font-size: 10px;
+        line-height: 1.7;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-label,
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-value {
+        font-size: 14px !important;
+        line-height: 1.65 !important;
+    }
+
+    html.tms-paper-receipt_80 body.tms-order-print .measurement-label {
+        white-space: normal !important;
+    }
+
     body.tms-stock-print .printbtn {
         display: none !important;
     }
