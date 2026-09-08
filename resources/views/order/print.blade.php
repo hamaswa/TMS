@@ -12,7 +12,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
-    <title>Tailor Managment Order Recipt</title>
+    <title>ٹیلرنگ آرڈر رسید</title>
     <style>
         @font-face {
             font-family: 'Noto Nastaliq Urdu';
@@ -442,9 +442,16 @@
                 position: relative;
             } */
     </style>
+    @include('print.partials.document-styles')
+    <style>
+        body.tms-order-print .printbtn { display: none !important; }
+        html.tms-paper-a4 #orderSection,
+        html.tms-paper-a4 #sizeSection { max-width: none !important; }
+    </style>
 </head>
 
-<body>
+<body class="tms-order-print">
+    @include('print.partials.toolbar')
 
     <div id="invoice-POS">
         <center id="top">
@@ -467,20 +474,21 @@
 
         <div id="fullSection">
             <div id="orderSection" style="max-width: 350px;margin-top:-30px;" class="ticket order-section">
-                <p align="center"><img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
+                @if($setting->logo_url)<p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>@endif
                 <h1 class="text-center" style="text-align: center;margin-top:-10px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3" style="margin-top: 0px">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h2>invoice No # {{ $orderDetail->id }}
+                            <h2>رسید نمبر # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div style="font-weight:900;">
-                            <h3>{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
+                            <h3 class="receipt-date">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
                         </div>
                     </div>
                     <hr>
+                    <div class="order-summary-row">
                     <div class="order-detail-list">
                         <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong
                                 class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
@@ -518,12 +526,15 @@
                                 class="order-detail-value order-detail-date">{{ $orderDetail->returnDate }}</strong>
                         </div>
                     </div>
+                    </div>
+                    @if(!empty($printConfig['show_qr']))
                     <aside class="order-tracking-qr" data-tracking-url="{{ $trackingUrl }}"
                         aria-label="آرڈر کی صورتحال دیکھنے کا QR کوڈ">
                         {!! $trackingQrSvg !!}
-                        <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
+                        <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔<br><span dir="ltr">TMS REF: {{ $printConfig['reference'] }}</span></div>
                     </aside>
-                    <div>
+                    @endif
+                    <div class="order-note" dir="auto">
                         <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">
                             {{ $orderDetail->remarks }}</h3>
                     </div>
@@ -531,7 +542,7 @@
                         <p>{!! $setting->address !!}</p>
                         <p class="order-footer-contact">{{ $setting->contact_no }}</p>
                         <p>{{ $setting->note }}</p>
-                        <p class="receipt-builder-credit">Built by IT Linked</p>
+                        <p class="receipt-builder-credit">تیار کردہ: IT Linked</p>
                     </div>
                     <hr>
                 </div>
@@ -541,14 +552,14 @@
             </div>
             <div id="sizeSection" style="max-width: 350px;" class="ticket size-section">
                 <div class="measurement-header">
-                    <p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{ asset('images/setting/' . $setting->logo) }}" alt=""></p>
+                    @if($setting->logo_url)<p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو"></p>@endif
                     <h1 class="text-center measurement-shop-name">{{ $setting->name }}</h1>
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
                     <hr>
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell measurement-serial">
-                            Serial num: {{ $orderDetail->sub_customer }}
+                            سیریل نمبر: {{ $orderDetail->sub_customer }}
                         </div>
                         <div class="measurement-meta-cell" style="text-align:right;">
                             {{ $orderDetail->customers->name }}
@@ -904,7 +915,7 @@
                             <div class="measurement-footer">
                                 <p>{!! $setting->address !!}</p>
                                 <p class="measurement-footer-contact">{{ $setting->contact_no }}</p>
-                                <p class="receipt-builder-credit">Built by IT Linked</p>
+                                <p class="receipt-builder-credit">تیار کردہ: IT Linked</p>
                             </div>
                         </div>
                     </div>

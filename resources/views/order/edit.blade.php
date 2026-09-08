@@ -284,6 +284,12 @@
                     <input type="hidden" name="return_search" value="{{ old('return_search', request('return_search')) }}">
                     <div class="row justify-content-center">
                         <div class="col-12">
+                            @unless($canEditMeasurements)
+                                <input type="hidden" name="sub_id" value="{{ $measurementCustomer->id }}">
+                                <div class="alert alert-warning" dir="rtl" role="status">
+                                    <strong>ناپ لاک ہے:</strong> یہ آرڈر ورکشاپ کے مرحلے میں داخل ہو چکا ہے، اس لیے ناپ والا فرد اور جاری شدہ پیمائش تبدیل نہیں کی جا سکتی۔
+                                </div>
+                            @else
                             <div class="order-customer-picker">
                             <div class="order-customer-picker__head">
                                 <span class="order-panel-icon"><i class="fas fa-user-tag"></i></span>
@@ -310,6 +316,7 @@
                             </div>
                             </div>
                             <!-- select -->
+                            @endunless
                         </div>
                     </div>
 
@@ -331,8 +338,9 @@
                                         <input id="order-suit-quantity" type="number" min="1" value="{{ $data->suitQuantity }}" class="form-control" name="suitQuantity" required>
                                     </div>
                                     <div class="order-field">
-                                        <label for="order-customer-name"><i class="fas fa-user"></i> گاہک کا نام</label>
-                                        <input id="order-customer-name" type="text" class="form-control" name="CustomerName" readonly value="{{ $customer->name }}">
+                                        <label for="order-customer-name"><i class="fas fa-user"></i> ناپ والے فرد کا نام</label>
+                                        <input id="order-customer-name" type="text" class="form-control" name="CustomerName" readonly value="{{ $measurementCustomer->name }}">
+                                        @if($measurementCustomer->id !== $customer->id)<small class="form-text text-muted">مشترکہ کھاتہ: {{ $customer->name }}</small>@endif
                                         <input type="hidden" name="customerId" value="{{ $customer->id }}">
                                     </div>
                                     <div class="order-field is-money">
@@ -410,12 +418,16 @@
                                             <strong>{{ $useLatestMeasurements ? 'گاہک کا تازہ محفوظ ناپ دکھایا جا رہا ہے۔' : 'اس آرڈر کے وقت محفوظ کیا گیا ناپ دکھایا جا رہا ہے۔' }}</strong>
                                             <div class="small mt-1">پرانے آرڈر کا ریکارڈ خودکار طور پر تبدیل نہیں کیا جاتا۔</div>
                                         </div>
-                                        @unless($useLatestMeasurements)
+                                        @if($canEditMeasurements && ! $useLatestMeasurements)
                                             <a class="btn btn-sm btn-outline-primary mt-2 mt-md-0" href="{{ route('admin.order.edit', ['id' => $data->id, 'latest_measurements' => 1]) }}">
                                                 تازہ محفوظ ناپ لوڈ کریں
                                             </a>
-                                        @endunless
+                                        @endif
                                     </div>
+                                    @unless($canEditMeasurements)
+                                        <div class="alert alert-warning" role="status">جاری شدہ پیمائش صرف دیکھی جا سکتی ہے۔ نئی پیمائش آئندہ آرڈر میں استعمال کریں۔</div>
+                                    @endunless
+                                    <fieldset @disabled(! $canEditMeasurements)>
                                     <div class="custom-control custom-checkbox mb-3">
                                         <input id="save-measurements-to-profile" type="checkbox" class="custom-control-input" name="save_measurements_to_profile" value="1" @checked(old('save_measurements_to_profile', false))>
                                         <label class="custom-control-label font-weight-bold" for="save-measurements-to-profile">یہ تبدیلی گاہک کے تازہ محفوظ ناپ میں بھی محفوظ کریں</label>
@@ -439,7 +451,7 @@
                                                     <div class="form-group">
                                                         <label for="order-system-measurement-{{ $key }}">
                                                             {{ $meta['label'] }}
-                                                            @if(!$savedMeasurement)<span class="badge badge-info mr-1">نیا خانہ</span>@endif
+                                                            @if(!$useLatestMeasurements && !$savedMeasurement)<span class="badge badge-info mr-1">نیا خانہ</span>@endif
                                                             <small class="text-muted">(انچ)</small>
                                                         </label>
                                                         <input id="order-system-measurement-{{ $key }}" class="form-control" name="system_measurements[{{ $key }}]" value="{{ $value }}" type="number" step="0.01" min="0">
@@ -454,7 +466,7 @@
                                                     <div class="form-group">
                                                         <label for="order-custom-measurement-{{ $field->id }}">
                                                             {{ $field->label }}
-                                                            @if(!$savedMeasurement)<span class="badge badge-info mr-1">نیا خانہ</span>@endif
+                                                            @if(!$useLatestMeasurements && !$savedMeasurement)<span class="badge badge-info mr-1">نیا خانہ</span>@endif
                                                             @if($field->unit && $field->unit !== 'none')<small class="text-muted">({{ $field->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }})</small>@endif
                                                         </label>
                                                         @if($field->field_type === 'select')
@@ -490,7 +502,7 @@
                                                     <div class="form-group">
                                                         <label for="order-system-preference-{{ $key }}">
                                                             {{ $meta['label'] }}
-                                                            @if(!$savedMeasurement)<span class="badge badge-info mr-1">نیا خانہ</span>@endif
+                                                            @if(!$useLatestMeasurements && !$savedMeasurement)<span class="badge badge-info mr-1">نیا خانہ</span>@endif
                                                         </label>
                                                         <select id="order-system-preference-{{ $key }}" class="form-control" name="system_measurements[{{ $key }}]">
                                                             <option value="">{{ $meta['label'] }} منتخب کریں</option>
@@ -516,6 +528,7 @@
                                             @endforeach</div>
                                         </div>
                                     @endif
+                                    </fieldset>
                                 </div>
                             </div>
                             <div class="button-group mt-2">

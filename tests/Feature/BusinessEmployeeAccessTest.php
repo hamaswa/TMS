@@ -32,7 +32,7 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($employee)->get(route('admin.dashboard.tailoring'))
             ->assertOk()
             ->assertSee('<h1', false)
-            ->assertSee('.workspace-hero h1{color:#fff!important}', false);
+            ->assertSeeText('ٹیلرنگ ڈیش بورڈ');
         $this->actingAs($employee)->get(route('admin.tailor-jobs.index'))->assertOk();
         $this->actingAs($employee)->get(route('admin.purchases.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.financial-reports.index'))
@@ -78,7 +78,7 @@ class BusinessEmployeeAccessTest extends TestCase
             ->assertRedirect(route('admin.financial-reports.index'));
         $this->actingAs($employee)->get(route('admin.financial-reports.index'))
             ->assertOk()
-            ->assertSeeText('روپے 1,234.00');
+            ->assertSeeText('Rs. 1,234.00');
         $this->actingAs($employee)->get(route('admin.payment-reconciliation.index'))->assertOk();
         $this->actingAs($employee)->get(route('admin.dashboard.tailoring'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.dashboard.clothing'))->assertForbidden();

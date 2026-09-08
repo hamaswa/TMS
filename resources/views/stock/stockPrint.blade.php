@@ -249,7 +249,29 @@
                     </p>
                 @endif
             </div>
-            @endif
+        @elseif($receipt && $latestSaleStock)
+            <section class="card border-danger mb-3 no-print" style="max-width:720px;margin:0 auto">
+                <div class="card-body" dir="rtl">
+                    <h2 class="h5 text-danger">کاؤنٹر فروخت منسوخ کریں</h2>
+                    <p class="text-muted">منسوخی سے تمام اشیاء اسٹاک میں واپس اور گاہک کا کھاتہ درست ہو جائے گا۔ یہ کارروائی آڈٹ ریکارڈ میں محفوظ رہے گی۔</p>
+                    <form method="POST" action="{{ route('admin.counter-sales.cancel', $latestSaleStock) }}"
+                        data-confirm="کیا آپ یہ کاؤنٹر فروخت منسوخ کر کے تمام کپڑا اسٹاک اور گاہک کا کھاتہ واپس کرنا چاہتے ہیں؟">
+                        @csrf
+                        @method('PATCH')
+                        <div class="form-group"><label for="cancellation_reason">منسوخی کی وجہ</label><textarea
+                                id="cancellation_reason" name="cancellation_reason" class="form-control" minlength="5" maxlength="1000" required>{{ old('cancellation_reason') }}</textarea></div>
+                        <div class="form-group"><label for="refund_method">رقم واپسی کا طریقہ</label><select
+                                id="refund_method" name="refund_method" class="form-control">
+                                <option value="">کوئی رقم واپس نہیں کرنی</option>
+                                @foreach (\App\Support\PaymentMethods::LABELS as $method => $label)
+                                    <option value="{{ $method }}" @selected(old('refund_method') === $method)>{{ $label }}</option>
+                                @endforeach
+                            </select></div>
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-ban ml-1"></i> فروخت منسوخ کریں</button>
+                    </form>
+                </div>
+            </section>
+        @endif
 
     <div id="invoice-POS" @class(['cancelled-receipt' => $receipt?->status === 'cancelled'])>
 

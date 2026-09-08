@@ -321,9 +321,9 @@ class TailorRateWorkflowTest extends TestCase
         ]);
         $order = Order::create([
             'customerId' => $customer->id, 'sub_customer' => $customer->id, 'suitNum' => (string) $customer->id,
-            'suitQuantity' => 1, 'totalPayment' => 3200, 'tailorId' => $tailor->id,
-            'rateId' => $rateId, 'tailor_price' => 900, 'returnDate' => now()->addWeek()->toDateString(),
-            'userId' => $owner->id, 'status' => 'assigned',
+            'suitQuantity' => 1, 'totalPayment' => 3200, 'tailorId' => null,
+            'rateId' => null, 'tailor_price' => 0, 'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id, 'status' => 'unassigned',
         ]);
         $order->measurementValues()->create([
             'source_key' => 'system.length', 'label' => 'لمبائی', 'value' => '41',
@@ -342,8 +342,8 @@ class TailorRateWorkflowTest extends TestCase
 
         $this->actingAs($owner)->put(route('admin.order.update', $order), [
             'sub_id' => $customer->id, 'customerId' => $customer->id, 'suitQuantity' => 1,
-            'totalPayment' => 3200, 'recivedPayment' => 0, 'tailorId' => $tailor->id,
-            'tailor_price' => $rateId.'-900', 'returnDate' => now()->addWeek()->toDateString(),
+            'totalPayment' => 3200, 'recivedPayment' => 0,
+            'returnDate' => now()->addWeek()->toDateString(),
             'system_measurements' => ['length' => 44],
             'save_measurements_to_profile' => 1,
         ])->assertRedirect();
@@ -357,6 +357,57 @@ class TailorRateWorkflowTest extends TestCase
         ]);
         $this->assertDatabaseHas('customer_measurement_histories', [
             'customer_id' => $customer->id, 'source' => 'order_update',
+        ]);
+    }
+
+    public function test_measurements_are_locked_after_an_order_enters_production(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Tariq Mehmood', 'phone_number1' => '03005550001',
+            'user_id' => $owner->id, 'length' => 42,
+        ]);
+        $tailor = Tailor::create([
+            'name' => 'Rashid Mahmood', 'phone_number1' => '03005550002',
+            'password' => bcrypt('QaTailor@2026'), 'user_id' => $owner->id,
+        ]);
+        $rateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $tailor->id, 'options_id' => null, 'type' => 'Mens suit', 'price' => 900,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $order = Order::create([
+            'customerId' => $customer->id, 'sub_customer' => $customer->id,
+            'suitNum' => (string) $customer->id, 'suitQuantity' => 1,
+            'totalPayment' => 3200, 'tailorId' => $tailor->id, 'rateId' => $rateId,
+            'tailor_price' => 900, 'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id, 'status' => 'assigned',
+        ]);
+        $order->measurementValues()->create([
+            'source_key' => 'system.length', 'label' => 'لمبائی', 'value' => '42',
+            'unit' => 'inch', 'sort_order' => 0,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.order.edit', [
+            'id' => $order->id, 'latest_measurements' => 1,
+        ]))->assertOk()
+            ->assertSeeText('ناپ لاک ہے')
+            ->assertDontSeeText('تازہ محفوظ ناپ لوڈ کریں')
+            ->assertSee('fieldset disabled', false);
+
+        $this->actingAs($owner)->put(route('admin.order.update', $order), [
+            'sub_id' => $customer->id, 'customerId' => $customer->id,
+            'suitQuantity' => 1, 'totalPayment' => 3200, 'recivedPayment' => 0,
+            'tailorId' => $tailor->id, 'tailor_price' => $rateId.'-900',
+            'returnDate' => now()->addWeek()->toDateString(),
+            'system_measurements' => ['length' => 50],
+            'save_measurements_to_profile' => 1,
+        ])->assertRedirect();
+
+        $this->assertSame('42', (string) $customer->fresh()->length);
+        $this->assertDatabaseHas('order_measurement_values', [
+            'order_id' => $order->id, 'source_key' => 'system.length', 'value' => '42',
         ]);
     }
 

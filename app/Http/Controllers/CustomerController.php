@@ -268,6 +268,14 @@ class CustomerController extends Controller
             $measurementHistories = $measurementProfile->measurementHistories()
                 ->with(['template:id,name', 'recorder:id,name', 'values'])
                 ->limit(12)->get();
+            $preferenceSourceKeys = collect(['necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
+                ->map(fn (string $key) => 'system.'.$key);
+            $measurementHistories->each(function ($history) use ($preferenceSourceKeys) {
+                $history->setRelation('values', $history->values
+                    ->reject(fn ($value) => $preferenceSourceKeys->contains($value->source_key)
+                        && in_array(strtolower(trim((string) $value->value)), ['', '0', 'none', 'null'], true))
+                    ->values());
+            });
         }
 
         $tabs = collect([

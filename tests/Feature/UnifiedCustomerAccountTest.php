@@ -75,7 +75,7 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertSeeText('Prefers evening collection');
         $this->actingAs($owner)->get(route('admin.Customers.index'))
             ->assertOk()
-            ->assertSeeText('Rs: 700');
+            ->assertSeeText('Rs. 700.00');
     }
 
     public function test_minimal_shop_customer_is_visible_in_shared_tailoring_customer_list(): void

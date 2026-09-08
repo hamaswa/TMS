@@ -862,9 +862,7 @@
                                 ادائیگی محفوظ کریں</button>
                         </form>
                     @else<div class="worker-zero-balance" role="status"><i
-                                class="fas fa-check-circle"></i><strong>کوئی رقم واجب الادا نہیں</strong><span>اس ورکر کی
-                                کوئی واجب الادا رقم نہیں۔ کام مکمل ہونے اور اجرت درج ہونے کے بعد ادائیگی یہاں دستیاب
-                                ہوگی۔</span></div>
+                                class="fas fa-check-circle"></i><strong>کوئی رقم واجب الادا نہیں</strong><span>اس ورکر کی کوئی واجب الادا رقم نہیں۔ کام مکمل ہونے اور اجرت درج ہونے کے بعد ادائیگی یہاں دستیاب ہوگی۔</span></div>
                     @endif
                 </aside>
             </div>

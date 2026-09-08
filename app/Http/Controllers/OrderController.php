@@ -59,6 +59,7 @@ class OrderController extends Controller
         $orderBalance = $orderTransaction?->remainingBalance ?? max(0, (float) $data->totalPayment - (float) $recivedPayment);
         $tailorRates = Tailorsalary::with('options')->where('tailor_id', $data->tailorId)->get();
         $measurementCustomer = $sub_customer ?: $customer;
+        $canEditMeasurements = $data->status === 'unassigned' && ! $data->tailorId;
         $measurementFields = $this->measurements->fieldsForTemplate(
             $this->measurements->activeFields(Auth::user()->businessOwnerId()),
             $data->measurementTemplate,
@@ -68,7 +69,7 @@ class OrderController extends Controller
                 ->filter(fn ($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
                 ->values()
             : collect(array_keys(MeasurementService::SYSTEM_FIELDS));
-        $useLatestMeasurements = request()->boolean('latest_measurements');
+        $useLatestMeasurements = $canEditMeasurements && request()->boolean('latest_measurements');
         $savedMeasurementValues = $useLatestMeasurements
             ? collect()
             : $data->measurementValues->keyBy('source_key');
@@ -90,13 +91,14 @@ class OrderController extends Controller
             'data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance',
             'recivedPayment', 'sub_customer', 'customer', 'measurementCustomer',
             'measurementFields', 'savedMeasurementValues', 'customerCustomValues',
-            'preferenceOptions', 'useLatestMeasurements', 'measurementSystemKeys'
+            'preferenceOptions', 'useLatestMeasurements', 'measurementSystemKeys', 'canEditMeasurements'
         ));
     }
 
     public function update(Request $request, $id)
     {
         $order = $this->ownedOrder($id);
+        $canEditMeasurements = $order->status === 'unassigned' && ! $order->tailorId;
         $measurementFields = $this->measurements->fieldsForTemplate(
             $this->measurements->activeFields(Auth::user()->businessOwnerId()),
             $order->measurementTemplate,
@@ -159,6 +161,13 @@ class OrderController extends Controller
             $this->ownedCustomer($validated['sub_id']);
         }
 
+        if (! $canEditMeasurements
+            && (int) ($validated['sub_id'] ?? $order->sub_customer) !== (int) $order->sub_customer) {
+            throw ValidationException::withMessages([
+                'sub_id' => 'درزی مقرر ہونے کے بعد آرڈر کا ناپ والا فرد تبدیل نہیں کیا جا سکتا۔',
+            ]);
+        }
+
         //new change
         $rateId = null;
         $tailorPrice = 0;
@@ -169,17 +178,21 @@ class OrderController extends Controller
         }
         $remainingBalance = max(0, $validated['totalPayment'] - $validated['recivedPayment']);
 
-        $measurementCustomerId = $validated['sub_id'] ?? $validated['customerId'];
+        $measurementCustomerId = $canEditMeasurements
+            ? ($validated['sub_id'] ?? $validated['customerId'])
+            : $order->sub_customer;
         $measurementChanged = (int) $order->sub_customer !== (int) $measurementCustomerId;
         $measurementCustomer = $this->ownedCustomer($measurementCustomerId);
         if ($measurementChanged) {
             $this->ensureRequiredMeasurements($measurementCustomer, $order->measurementTemplate);
         }
 
-        DB::transaction(function () use ($validated, $order, $tailor, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields, $measurementSystemKeys) {
+        DB::transaction(function () use ($validated, $order, $tailor, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields, $measurementSystemKeys, $canEditMeasurements) {
             $wasUnassigned = $order->status === 'unassigned' && ! $order->tailorId;
             $order->update([
-                "sub_customer" => $validated['sub_id'] ?? $validated['customerId'],
+                "sub_customer" => $canEditMeasurements
+                    ? ($validated['sub_id'] ?? $validated['customerId'])
+                    : $order->sub_customer,
                 "customerId" => $validated['customerId'],
                 "suitQuantity" => $validated['suitQuantity'],
                 "totalPayment" => $validated['totalPayment'],
@@ -216,7 +229,10 @@ class OrderController extends Controller
                 ]
             );
 
-            if ($measurementChanged) {
+            if (! $canEditMeasurements) {
+                // The snapshot issued to production is immutable once a tailor
+                // has been assigned or the order has moved beyond that stage.
+            } elseif ($measurementChanged) {
                 $this->measurements->snapshotOrder($order, $measurementCustomer);
             } else {
                 foreach ($measurementSystemKeys as $key) {

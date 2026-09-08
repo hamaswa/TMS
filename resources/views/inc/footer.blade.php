@@ -15,6 +15,7 @@
 
 <!-- JavaScript
 ================================================== -->
+@php($isSuperAdminFooter = request()->is('administrator') || request()->is('administrator/*') || (Auth::check() && Auth::user()->hasRole('administrative')))
 @include('components.confirmation-modal')
 <script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>
 <script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>
@@ -28,6 +29,7 @@
     'use strict';
 
     const isUrdu = document.documentElement.lang === 'ur';
+    @unless($isSuperAdminFooter)
     const urduLocale = {
         weekdays: {
             shorthand: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'],
@@ -44,6 +46,7 @@
         toggleTitle: 'کیلنڈر تبدیل کریں',
         time_24hr: false
     };
+    @endunless
 
     const datePickerSelector = 'input[type="date"], input#myflatpickr, input[data-flatpickr]';
 
