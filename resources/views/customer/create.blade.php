@@ -149,7 +149,10 @@
         }
 
         .measurement-grid label {
-            font-weight: 700
+            min-height: 2em;
+            margin-bottom: .55rem;
+            font-weight: 700;
+            line-height: 2
         }
 
         .preference-panel {
@@ -169,9 +172,11 @@
 
         .preference-grid label {
             display: block;
-            margin-bottom: .45rem;
+            min-height: 2em;
+            margin-bottom: .55rem;
             color: #243b53;
-            font-weight: 800
+            font-weight: 800;
+            line-height: 2
         }
 
         .preference-grid select.form-control {

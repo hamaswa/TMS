@@ -15,7 +15,7 @@
     .edit-section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.25rem}
     .edit-section-heading h2{font-size:1.18rem;font-weight:800;margin:0 0 .25rem}.edit-section-heading p{color:#718096;margin:0;font-size:.9rem}
     .section-icon{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:#eaf4fb;color:#1769aa;flex:0 0 42px}
-    .edit-field label{display:block;font-weight:700;color:#334e68;margin-bottom:.45rem}.edit-field .form-control{height:46px;border-color:#d8e2ec;border-radius:10px;background:#fff}
+    .edit-field label{display:block;font-weight:700;color:#334e68;line-height:2;margin-bottom:.55rem}.edit-field .form-control{min-height:50px;height:auto;border-color:#d8e2ec;border-radius:10px;background:#fff}
     .edit-field textarea.form-control{height:auto;min-height:120px;resize:vertical}.edit-field .form-control:focus{border-color:#1769aa;box-shadow:0 0 0 .18rem rgba(23,105,170,.12)}
     .measurement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}
     .measurement-template-picker{background:#f7fbff;border:1px solid #cfe3f3;border-radius:14px;padding:1rem 1.1rem}.measurement-template-picker select{border-radius:10px;border-color:#b9d5e8}

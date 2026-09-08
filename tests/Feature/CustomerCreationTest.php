@@ -222,6 +222,10 @@ class CustomerCreationTest extends TestCase
             'profile' => $profile->id,
         ]))->assertOk()
             ->assertSeeText('خاندان کے محفوظ ناپ')
+            ->assertSee('id="family-profile-select"', false)
+            ->assertSee('name="profile"', false)
+            ->assertSee('value="'.$profile->id.'" selected', false)
+            ->assertDontSee('family-profile-card', false)
             ->assertSeeText('Ali Aslam کی محفوظ شدہ پیمائش')
             ->assertSeeText('40');
 

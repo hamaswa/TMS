@@ -224,7 +224,8 @@
         }
 
         .customer-directory tbody td {
-            height: 82px;
+            height: auto;
+            min-height: 88px;
             padding: 18px !important;
             color: #273951;
             border-top: 0 !important;
@@ -267,6 +268,7 @@
             color: var(--customer-navy);
             font-size: 1.08rem;
             font-weight: 800;
+            line-height: 1.75;
             text-align: right;
             text-decoration: none;
             overflow: hidden;
@@ -274,7 +276,7 @@
         }
 
         .customer-link:hover { color: var(--customer-blue); text-decoration: underline; }
-        .customer-link small { display: block; margin-top: 5px; color: #8794a7; font-size: .78rem; font-weight: 500; }
+        .customer-link small { display: block; margin-top: 2px; color: #8794a7; font-size: .78rem; font-weight: 500; line-height: 2; }
 
         .customer-phone { direction: ltr; display: inline-block; color: #334b69; font-size: 1.05rem; font-weight: 700; }
         .customer-balance { direction: ltr; display: inline-block; font-size: 1.05rem; font-weight: 800; }
