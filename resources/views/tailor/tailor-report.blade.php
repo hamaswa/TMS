@@ -744,6 +744,24 @@
                             </div>
                         @endforelse
                     </div>
+                    <div class="tailor-record-list">
+                        <div class="tailor-record-list-title"><span>سیکیورٹی ڈپازٹ کی تاریخ</span><span
+                                class="tailor-count">{{ $tailor->securityDepositTransactions->count() }}</span></div>
+                        @forelse($tailor->securityDepositTransactions as $depositTransaction)
+                            <div class="tailor-record-item">
+                                <span class="tailor-record-badge {{ $depositTransaction->transaction_type === 'received' ? 'salary' : 'advance' }}">
+                                    {{ $depositTransaction->transaction_type === 'received' ? 'دکان نے وصول کیا' : 'درزی کو واپس کیا' }}
+                                </span>
+                                <span class="tailor-money">Rs. {{ number_format((float) $depositTransaction->amount, 2) }}</span>
+                                <small class="tailor-secondary">{{ $depositTransaction->transaction_date?->format('d-m-Y') }}</small>
+                                @if ($depositTransaction->note)
+                                    <small class="tailor-secondary" dir="auto">{{ $depositTransaction->note }}</small>
+                                @endif
+                            </div>
+                        @empty
+                            <div class="tailor-record-empty"><i class="fas fa-shield-alt"></i>سیکیورٹی ڈپازٹ کا کوئی لین دین موجود نہیں۔</div>
+                        @endforelse
+                    </div>
                     @if ($advanceCoveredFromMain > 0)
                         <div class="tailor-advance-note"><i class="fas fa-check-circle text-success ml-1"></i> ہفتہ وار
                             ایڈوانس میں سے <strong>Rs. {{ number_format($advanceCoveredFromMain, 2) }}</strong> مرکزی

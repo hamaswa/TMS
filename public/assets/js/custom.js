@@ -227,23 +227,49 @@ jQuery(document).ready(function ($) {
 
 
 
-    $(".search").keyup(function () {
-
-        var url = $(this).data('url');
-        var sub_search = $("#search").val();
-        $.ajax({
+    var measurementSearchTimer = null;
+    var measurementSearchRequest = null;
+    function syncMeasurementProfileSerial() {
+        var selectedProfile = $('#measurement-profile-select option:selected');
+        var serial = selectedProfile.attr('data-serial');
+        var profileName = selectedProfile.attr('data-name');
+        if (serial !== undefined && serial !== '') {
+            $('#order_serial_number').val(serial);
+        }
+        if (profileName !== undefined && profileName !== '') {
+            $('#order_customer_name').val(profileName);
+        }
+    }
+    $(document).on('input', '#search.search[data-url]', function () {
+        var input = this;
+        var url = $(input).data('url');
+        var sub_search = $(input).val();
+        var customer_id = $(input).data('customer-id');
+        clearTimeout(measurementSearchTimer);
+        if (measurementSearchRequest) {
+            measurementSearchRequest.abort();
+        }
+        measurementSearchTimer = setTimeout(function () {
+            measurementSearchRequest = $.ajax({
             type: 'GET',
             url: url,
             data: {
-                sub_search: sub_search
+                sub_search: sub_search,
+                customer_id: customer_id
             },
             success: function (data) {
-                // console.log(data);
                 $('#select').empty();
                 $('#select').append(data);
+                syncMeasurementProfileSerial();
+            },
+            complete: function () {
+                measurementSearchRequest = null;
             }
-        });
+            });
+        }, 250);
     });
+
+    $(document).on('change', '#measurement-profile-select', syncMeasurementProfileSerial);
 
     $('.status').change(function () {
         var suit_status = $(this).val();

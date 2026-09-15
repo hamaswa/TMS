@@ -80,6 +80,8 @@ class ExampleTest extends TestCase
         $header = file_get_contents(resource_path('views/inc/header.blade.php'));
 
         $this->assertStringContainsString("@stack('styles')", $header);
+        $this->assertStringContainsString('html[lang="ur"] .form-control', $header);
+        $this->assertStringContainsString('html[lang="ur"] .form-group>label:not(.custom-control-label)', $header);
         $this->assertStringContainsString("@stack('scripts')", file_get_contents(resource_path('views/inc/footer.blade.php')));
     }
 }

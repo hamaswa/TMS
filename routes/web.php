@@ -316,6 +316,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::post('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'store'])->name('orders.workforce.store');
         Route::patch('orders/{order}/workforce/{assignment}/status', [OrderWorkAssignmentController::class, 'updateStatus'])->name('orders.workforce.status');
         Route::patch('tailor-jobs/{order}/status', [TailorJobController::class, 'updateStatus'])->name('tailor-jobs.status');
+        Route::patch('tailor-jobs/{order}/assign', [TailorJobController::class, 'assignTailor'])->name('tailor-jobs.assign');
         Route::patch('tailor-jobs/{order}/payment', [TailorJobController::class, 'updatePayment'])->name('tailor-jobs.payment');
         Route::post('tailor-jobs/{order}/notifications/{delivery}/retry', [TailorJobController::class, 'retryNotification'])->name('tailor-jobs.notifications.retry');
         Route::post('order-status', [TailorJobController::class, 'updateLegacyStatus'])->name('order.status');

@@ -423,9 +423,10 @@ i[class*=h-icon-] {
 }
 
 [id^=cc-form__] .form-group label {
-  margin-bottom: 0.015rem;
+  display: block;
+  margin-bottom: 0.4rem;
+  line-height: 1.8;
   font-weight: 600;
-  text-transform: uppercase;
   font-size: 0.8rem;
   color: #4e4e4e;
   padding-left: 0.05rem;

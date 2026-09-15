@@ -64,7 +64,7 @@
             <div class="order-alert is-danger" role="alert"><i class="fas fa-exclamation-circle"></i><div><strong>آرڈر محفوظ نہیں ہو سکا:</strong><ul class="mb-0 mt-2">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div></div>
         @endif
         @if(!$data['hasReadyTailor'])
-            <div class="order-alert is-warning" role="alert"><i class="fas fa-user-cog"></i><div><strong>آرڈر بنانے سے پہلے درزی اور اس کی سلائی شرح مکمل کریں۔</strong><div class="mt-1">@if($data['tailors']->isEmpty()) ابھی کوئی درزی موجود نہیں۔ <a class="alert-link" href="{{ route('admin.Tailor.create') }}">نیا درزی شامل کریں</a>@else موجودہ درزی کے لیے کم از کم ایک سلائی شرح شامل کریں۔ <a class="alert-link" href="{{ route('admin.Tailor.index') }}">درزیوں کی فہرست کھولیں</a>@endif</div></div></div>
+            <div class="order-alert is-warning" role="alert"><i class="fas fa-user-cog"></i><div><strong>آپ آرڈر ابھی محفوظ کرکے درزی بعد میں مقرر کر سکتے ہیں۔</strong><div class="mt-1">درزی اور سلائی شرح ورکشاپ کی غیر مقرر شدہ فہرست سے شامل ہوگی۔</div></div></div>
         @endif
 
         <div class="order-customer-strip">
@@ -79,7 +79,7 @@
 
             <div class="order-search-card">
                 <div class="order-search-label"><strong>محفوظ ناپ تلاش کریں</strong><small>اسی گاہک یا متعلقہ فرد کا محفوظ ناپ منتخب کریں۔</small></div>
-                <div class="order-search-control"><i class="fas fa-search"></i><input class="search" type="text" placeholder="نام یا ناپ تلاش کریں" id="search" data-url="{{ url('admin/search') }}" aria-label="محفوظ ناپ تلاش کریں" autocomplete="off"><div id="select"></div></div>
+                <div class="order-search-control"><i class="fas fa-search"></i><input class="search" type="text" placeholder="نام یا ناپ تلاش کریں" id="search" data-url="{{ url('admin/search') }}" data-customer-id="{{ $data['customer']->id }}" aria-label="محفوظ ناپ تلاش کریں" autocomplete="off"><div id="select">@include('order.partials.measurement-profile-select', ['data' => collect([$data['selectedMeasurementProfile']])])</div></div>
             </div>
 
             <div class="order-form-grid">
@@ -91,7 +91,7 @@
                                 <div class="order-template mb-3"><label for="order-measurement-template">لباس کا پیمائش ٹیمپلیٹ</label><select id="order-measurement-template" class="form-control" name="measurement_template_id"><option value="">تمام محفوظ پیمائش</option>@foreach($data['measurementTemplates'] as $template)<option value="{{ $template->id }}" @selected((string)old('measurement_template_id',$data['measurementTemplateId'])===(string)$template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>@endforeach</select><small class="form-text text-muted">صرف منتخب ٹیمپلیٹ کی پیمائش آرڈر کے ساتھ محفوظ ہوگی؛ گاہک کی اصل پیمائش تبدیل نہیں ہوگی۔</small></div>
                             @endif
                             <div class="order-fields">
-                                <div class="order-field"><label for="order_customer_name">گاہک کا نام</label><div class="order-control"><i class="fas fa-user"></i><input id="order_customer_name" type="text" class="form-control" name="CustomerName" readonly value="{{ $data['customer']->name }}"></div></div>
+                                <div class="order-field"><label for="order_customer_name">ناپ والے فرد کا نام</label><div class="order-control"><i class="fas fa-user"></i><input id="order_customer_name" type="text" class="form-control" name="CustomerName" readonly value="{{ $data['selectedMeasurementProfile']->name }}"></div></div>
                                 <div class="order-field"><label for="order_serial_number">سیریل نمبر</label><div class="order-control" id="suitNumContainer"><i class="fas fa-hashtag"></i><input id="order_serial_number" type="text" class="form-control" name="serail" required value="{{ $data['serialNumber'] }}" readonly></div></div>
                                 <div class="order-field is-wide"><label for="suitQuantity">سوٹ کی تعداد <span class="order-required">*</span></label><div class="order-control"><i class="fas fa-tshirt"></i><input type="number" min="1" class="form-control" name="suitQuantity" id="suitQuantity" value="{{ old('suitQuantity',1) }}" required></div></div>
                             </div>
@@ -121,18 +121,18 @@
 
                 <div class="order-form-column">
                     <section class="order-section">
-                        <div class="order-section-head"><span class="order-section-number">4</span><div><h2>حوالگی اور درزی</h2><p>واپسی کی تاریخ، درزی اور اس کی سلائی شرح منتخب کریں۔</p></div></div>
+                        <div class="order-section-head"><span class="order-section-number">4</span><div><h2>حوالگی اور درزی</h2><p>واپسی کی تاریخ درج کریں؛ درزی اور سلائی شرح ابھی یا بعد میں منتخب کریں۔</p></div></div>
                         <div class="order-section-body"><div class="order-fields">
                             <div class="order-field is-wide"><label for="order_return_date">حوالگی کی تاریخ <span class="order-required">*</span></label><div class="order-control"><i class="fas fa-calendar-check"></i><input id="order_return_date" type="date" class="form-control" name="returnDate" value="{{ old('returnDate') }}" required></div></div>
-                            <div class="order-field is-wide"><label for="tailor-selected">درزی منتخب کریں <span class="order-required">*</span></label><div class="order-control"><i class="fas fa-user-tie"></i><select id="tailor-selected" class="form-control" name="tailorId" required style="padding:0px;"><option value="">درزی کو منتخب کریں</option>@foreach($data['tailors'] as $tailor)<option value="{{ $tailor->id }}" @selected((string)old('tailorId')===(string)$tailor->id) @disabled($tailor->tailorsalary->isEmpty())>{{ $tailor->name }}{{ $tailor->tailorsalary->isEmpty() ? ' — شرح شامل نہیں' : '' }}</option>@endforeach</select></div></div>
-                            <div class="order-field is-wide"><label>درزی کی فی سوٹ اجرت <span class="order-required">*</span></label><div id="tailor-rates"></div></div>
+                            <div class="order-field is-wide"><label for="tailor-selected">درزی منتخب کریں <small class="text-muted">(اختیاری)</small></label><div class="order-control"><i class="fas fa-user-tie"></i><select id="tailor-selected" class="form-control" name="tailorId" style="padding:0px;"><option value="">ابھی درزی مقرر نہ کریں</option>@foreach($data['tailors'] as $tailor)<option value="{{ $tailor->id }}" @selected((string)old('tailorId')===(string)$tailor->id) @disabled($tailor->tailorsalary->isEmpty())>{{ $tailor->name }}{{ $tailor->tailorsalary->isEmpty() ? ' — شرح شامل نہیں' : '' }}</option>@endforeach</select><small class="form-text text-muted">بعد میں ورکشاپ سے دستیابی اور جاری کام دیکھ کر مقرر کریں۔</small></div></div>
+                            <div class="order-field is-wide"><label>درزی کی فی سوٹ اجرت</label><div id="tailor-rates"></div></div>
                         </div></div>
                     </section>
 
                     <section class="order-section">
                         <div class="order-section-head"><span class="order-section-number">5</span><div><h2>نوٹ اور ہدایات</h2><p>سلائی، ڈیزائن یا حوالگی سے متعلق ضروری بات درج کریں۔</p></div></div>
                         <div class="order-section-body"><div class="order-field"><label for="order_remarks">آرڈر نوٹ</label><textarea id="order_remarks" class="form-control" name="remarks" dir="auto" placeholder="مثلاً کالر، کف، فوری حوالگی یا دوسری خاص ہدایت">{{ old('remarks',$data['customer']->note) }}</textarea></div></div>
-                        <div class="order-submit-bar"><div class="order-submit-note"><i class="fas fa-shield-alt"></i> محفوظ کرنے سے پہلے رقم اور حوالگی کی تاریخ دوبارہ دیکھ لیں۔</div><button type="submit" class="order-submit" @disabled(!$data['hasReadyTailor'])><i class="fas fa-check"></i> آرڈر محفوظ کریں</button></div>
+                        <div class="order-submit-bar"><div class="order-submit-note"><i class="fas fa-shield-alt"></i> محفوظ کرنے سے پہلے رقم اور حوالگی کی تاریخ دوبارہ دیکھ لیں۔</div><button type="submit" class="order-submit"><i class="fas fa-check"></i> آرڈر محفوظ کریں</button></div>
                     </section>
                 </div>
             </div>

@@ -110,11 +110,12 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertOk()
             ->assertViewIs('order.print')
             ->assertSeeText('Suit 1')
-            ->assertSeeText('اس آرڈر کا بقایا:')
-            ->assertSeeText('گزشتہ واجبات:')
-            ->assertSeeText('کل واجب الادا:')
-            ->assertSeeText('800.00')
-            ->assertDontSeeText('1,500.00');
+            ->assertSeeText('موجودہ ادائیگی واجب')
+            ->assertSeeText('دیگر آرڈرز کا موجودہ')
+            ->assertSeeText('کل ادائیگی واجب')
+            ->assertViewHas('orderBalance', fn ($balance) => (float) $balance === 500.0)
+            ->assertViewHas('previousBalance', fn ($balance) => (float) $balance === 1000.0)
+            ->assertViewHas('latestBalance', fn ($balance) => (float) $balance === 1500.0);
 
         $this->actingAs($owner)->get(route('admin.order-prints', $order))
             ->assertOk()
@@ -156,6 +157,10 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSee('order-note', false)
             ->assertSee('dir="auto"', false)
             ->assertSee('unicode-bidi: plaintext', false)
+            ->assertSee('body.tms-order-print #orderSection', false)
+            ->assertSee('grid-template-columns: minmax(0, 56%) minmax(0, 44%)', false)
+            ->assertSee('.measurement-row > .measurement-column-empty', false)
+            ->assertSee('@media screen and (max-width: 520px)', false)
             ->assertSee('TMS REF: '.$order->id)
             ->assertSee('<svg', false);
 

@@ -89,6 +89,61 @@ class MeasurementService
         }
     }
 
+    public function syncCustomerFromOrder(
+        Customers $customer,
+        int $ownerId,
+        Collection $fields,
+        array $systemValues,
+        array $customValues,
+        ?MeasurementTemplate $template,
+        ?int $recordedByUserId,
+    ): bool {
+        $previousTemplate = $customer->measurementTemplate;
+        $targetTemplate = $template ?: $previousTemplate;
+        $previousRows = $this->measurementRows($customer, $ownerId, $previousTemplate);
+        $previousFingerprint = $this->measurementFingerprint($previousRows, $previousTemplate);
+
+        foreach (self::SYSTEM_FIELDS as $key => $meta) {
+            if (! array_key_exists($key, $systemValues)) {
+                continue;
+            }
+
+            $value = $systemValues[$key];
+            $customer->{$key} = $value === null || $value === '' ? null : $value;
+        }
+
+        if ($template) {
+            $customer->measurement_template_id = $template->id;
+        }
+        $customer->save();
+        $this->syncCustomer($customer, $fields, $customValues);
+
+        $currentRows = $this->measurementRows($customer, $ownerId, $targetTemplate);
+        $currentFingerprint = $this->measurementFingerprint($currentRows, $targetTemplate);
+        if (hash_equals($previousFingerprint, $currentFingerprint)) {
+            return false;
+        }
+
+        if (! $customer->measurementHistories()->exists()) {
+            $this->recordHistoryRows(
+                $customer,
+                $previousRows,
+                $previousTemplate,
+                $recordedByUserId,
+                'baseline',
+            );
+        }
+        $this->recordHistoryRows(
+            $customer,
+            $currentRows,
+            $targetTemplate,
+            $recordedByUserId,
+            'order_update',
+        );
+
+        return true;
+    }
+
     public function snapshotOrder(Order $order, Customers $customer, ?MeasurementTemplate $template = null): void
     {
         $template ??= $order->measurementTemplate;

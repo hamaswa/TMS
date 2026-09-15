@@ -28,6 +28,12 @@ class CustomerCreationTest extends TestCase
             ->assertOk()
             ->assertSee(route('admin.Customers.create'), false)
             ->assertSeeText('نیا گاہک شامل کریں')
+            ->assertSee('href="'.route('admin.customers.statement', $customer).'"', false)
+            ->assertSeeText('پروفائل اور کھاتہ دیکھیں')
+            ->assertSeeText('حالیہ آرڈر دیکھیں')
+            ->assertSeeText('خاندان کا نیا ناپ شامل کریں')
+            ->assertSee('data-toggle="dropdown"', false)
+            ->assertSee('aria-label="'.$customer->name.' کی مزید کارروائیاں"', false)
             ->assertSee('aria-label="'.$customer->name.' کی ادائیگی درج کریں"', false);
     }
 
@@ -165,6 +171,70 @@ class CustomerCreationTest extends TestCase
         $this->assertNull($profile->phone_number1_normalized);
         $this->assertTrue($profile->phone_normalization_conflict);
         $this->assertSame($existing->id, Customers::findByPhoneForOwner($owner->id, '+92 300 1234567')?->id);
+    }
+
+    public function test_owner_can_manage_family_measurement_profiles_from_the_primary_customer(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create([
+            'tailoring_access' => true,
+            'is_business_owner' => true,
+        ]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Muhammad Aslam',
+            'phone_number1' => '03007771111',
+            'user_id' => $owner->id,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.Customers.create', ['parent' => $customer->id]))
+            ->assertOk()
+            ->assertSeeText('خاندان کا نیا ناپ شامل کریں')
+            ->assertSee('name="parent_customer_id" value="'.$customer->id.'"', false)
+            ->assertSee('value="03007771111" required dir="ltr" autocomplete="tel"', false)
+            ->assertSee('readonly', false)
+            ->assertDontSee('name="mobile_pin"', false);
+
+        $response = $this->actingAs($owner)->post(route('admin.Customers.store'), [
+            'name' => 'Ali Aslam',
+            'contact' => '03009999999',
+            'parent_customer_id' => $customer->id,
+            'length' => 40,
+            'arms' => 23,
+        ]);
+
+        $profile = Customers::where('parent_id', $customer->id)->firstOrFail();
+        $response->assertRedirect(route('admin.customers.statement', [
+            'id' => $customer->id,
+            'tab' => 'measurements',
+            'profile' => $profile->id,
+        ]));
+        $this->assertSame($customer->phone_number1, $profile->phone_number1);
+
+        $this->actingAs($owner)->getJson(route('admin.customers.search', ['search' => 'Ali Aslam']))
+            ->assertOk()
+            ->assertJsonPath('count', 1)
+            ->assertSeeText('Muhammad Aslam');
+
+        $this->actingAs($owner)->get(route('admin.customers.statement', [
+            'id' => $customer->id,
+            'tab' => 'measurements',
+            'profile' => $profile->id,
+        ]))->assertOk()
+            ->assertSeeText('خاندان کے محفوظ ناپ')
+            ->assertSee('id="family-profile-select"', false)
+            ->assertSee('name="profile"', false)
+            ->assertSee('value="'.$profile->id.'" selected', false)
+            ->assertDontSee('family-profile-card', false)
+            ->assertSeeText('Ali Aslam کی محفوظ شدہ پیمائش')
+            ->assertSeeText('40');
+
+        $this->actingAs($owner)->get(route('admin.Customers.edit', $profile))
+            ->assertOk()
+            ->assertSeeText('خاندانی پیمائش پروفائل')
+            ->assertSee('name="contact" value="03007771111"', false)
+            ->assertSee('readonly', false)
+            ->assertDontSee('name="mobile_pin"', false);
     }
 
     public function test_client_can_reset_customer_pin_and_existing_mobile_sessions_are_revoked(): void

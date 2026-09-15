@@ -8,6 +8,7 @@ use App\Models\OrderNotificationDelivery;
 use App\Models\OrderStatusHistory;
 use App\Models\Tailor;
 use App\Models\TailorRecord;
+use App\Models\Tailorsalary;
 use App\Services\OrderLifecycleNotificationService;
 use App\Services\ProductionWorkforceService;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class TailorJobController extends Controller
         $ownerId = Auth::user()->businessOwnerId();
         $detailedWorkflow = $this->usesDetailedWorkflow($ownerId);
         $filters = $request->validate([
-            'status' => ['nullable', Rule::in($detailedWorkflow ? Order::STATUSES : ['workshop', 'ready'])],
+            'status' => ['nullable', Rule::in($detailedWorkflow ? Order::STATUSES : ['unassigned', 'workshop', 'ready'])],
             'tailor_id' => ['nullable', 'integer'],
             'due' => ['nullable', Rule::in(['today', 'overdue'])],
             'q' => ['nullable', 'string', 'max:100'],
@@ -32,7 +33,7 @@ class TailorJobController extends Controller
             'per_page' => ['nullable', Rule::in(['15', '25', '50', '100'])],
         ]);
 
-        $tailors = Tailor::where('user_id', $ownerId)->orderBy('name')->get();
+        $tailors = Tailor::with(['tailorsalary.options'])->where('user_id', $ownerId)->orderBy('name')->get();
         if (! empty($filters['tailor_id'])) {
             $tailors->firstWhere('id', (int) $filters['tailor_id']) ?: abort(404);
         }
@@ -41,6 +42,8 @@ class TailorJobController extends Controller
             ->when($detailedWorkflow && filled($filters['status'] ?? null), fn ($query) => $query->where('status', $filters['status']))
             ->when(! $detailedWorkflow && ($filters['status'] ?? null) === 'workshop', fn ($query) => $query
                 ->whereIn('status', ['assigned', 'cutting', 'stitching', 'trial']))
+            ->when(! $detailedWorkflow && ($filters['status'] ?? null) === 'unassigned', fn ($query) => $query
+                ->where('status', 'unassigned'))
             ->when(! $detailedWorkflow && ($filters['status'] ?? null) === 'ready', fn ($query) => $query->where('status', 'ready'))
             ->when($filters['tailor_id'] ?? null, fn ($query, $tailorId) => $query->where('tailorId', $tailorId))
             ->when($filters['q'] ?? null, function ($query, $search) {
@@ -70,7 +73,57 @@ class TailorJobController extends Controller
             'detailedWorkflow' => $detailedWorkflow,
             'filters' => $filters,
             'stats' => $this->statsFor($ownerId),
+            'tailorWorkloads' => Order::where('userId', $ownerId)
+                ->whereNotNull('tailorId')
+                ->whereNotIn('status', ['ready', 'delivered'])
+                ->selectRaw('tailorId, count(*) as active_jobs')
+                ->groupBy('tailorId')
+                ->pluck('active_jobs', 'tailorId'),
         ]);
+    }
+
+    public function assignTailor(Request $request, int $order)
+    {
+        $validated = $request->validateWithBag('tailorAssignment'.$order, [
+            'tailor_id' => ['required', 'integer'],
+            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
+        ], [
+            'tailor_id.required' => 'درزی منتخب کریں۔',
+            'tailor_price.required' => 'سلائی کی شرح منتخب کریں۔',
+        ]);
+        $ownerId = Auth::user()->businessOwnerId();
+        $tailor = Tailor::where('user_id', $ownerId)->findOrFail($validated['tailor_id']);
+        [$rateId] = explode('-', $validated['tailor_price'], 2);
+        $tailorRate = Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+        $tailorPrice = $tailorRate->price;
+
+        DB::transaction(function () use ($order, $ownerId, $tailor, $rateId, $tailorPrice) {
+            $job = Order::where('userId', $ownerId)->lockForUpdate()->findOrFail($order);
+            if ($job->status !== 'unassigned' || $job->tailorId) {
+                throw ValidationException::withMessages([
+                    'tailor_id' => 'اس آرڈر کے لیے درزی پہلے ہی مقرر ہو چکا ہے۔ صفحہ تازہ کریں۔',
+                ]);
+            }
+            $job->update([
+                'tailorId' => $tailor->id,
+                'rateId' => $rateId,
+                'tailor_price' => $tailorPrice,
+                'status' => 'assigned',
+                'status_changed_at' => now(),
+            ]);
+            OrderStatusHistory::create([
+                'order_id' => $job->id,
+                'user_id' => Auth::id(),
+                'tailor_id' => $tailor->id,
+                'from_status' => 'unassigned',
+                'to_status' => 'assigned',
+                'changed_by_type' => 'shop_owner',
+                'note' => 'درزی اور سلائی شرح مقرر کی گئی۔',
+            ]);
+            app(ProductionWorkforceService::class)->syncOrder($job->fresh());
+        });
+
+        return back()->with('success', 'درزی کامیابی سے مقرر کر دیا گیا ہے۔');
     }
 
     public function tailorIndex()
@@ -176,6 +229,12 @@ class TailorJobController extends Controller
         $actor = Auth::check() ? 'shop_owner' : 'tailor';
         $ownerId = (int) $job->userId;
 
+        if ($job->status === 'unassigned' || ! $job->tailorId) {
+            throw ValidationException::withMessages([
+                'order_status' => 'کام شروع کرنے سے پہلے درزی مقرر کریں۔',
+            ]);
+        }
+
         if ($nextStatus === 'delivered' && $actor !== 'shop_owner') {
             throw ValidationException::withMessages([
                 'order_status' => 'صرف دکان کا مالک آرڈر گاہک کے حوالے شدہ کے طور پر محفوظ کر سکتا ہے۔',
@@ -241,6 +300,11 @@ class TailorJobController extends Controller
     public function updatePayment(Request $request, int $order)
     {
         $job = Order::where('userId', Auth::user()->businessOwnerId())->findOrFail($order);
+        if ($job->status === 'unassigned' || ! $job->tailorId) {
+            throw ValidationException::withMessages([
+                'paid_amount' => 'ادائیگی درج کرنے سے پہلے درزی مقرر کریں۔',
+            ]);
+        }
         $earned = $job->tailorAmountDue();
         $validated = $request->validateWithBag('tailorPayment'.$job->id, [
             'paid_amount' => ['required', 'numeric', 'min:' . (float) $job->tailor_paid_amount, 'max:' . $earned],
@@ -330,6 +394,7 @@ class TailorJobController extends Controller
 
         return [
             'active' => (clone $query)->where('status', '!=', 'delivered')->count(),
+            'unassigned' => (clone $query)->where('status', 'unassigned')->count(),
             'due_today' => (clone $query)->whereDate('returnDate', today())->where('status', '!=', 'delivered')->count(),
             'overdue' => (clone $query)->whereDate('returnDate', '<', today())->where('status', '!=', 'delivered')->count(),
             'ready' => (clone $query)->where('status', 'ready')->count(),

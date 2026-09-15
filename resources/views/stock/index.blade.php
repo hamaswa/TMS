@@ -141,6 +141,7 @@
                                                     <th scope="col" class="no-sort">کپڑے کا رنگ</th>
                                                     <th scope="col" class="no-sort">کپڑے کی لمبائی</th>
                                                     <th scope="col" class="no-sort">نیا ریٹ</th>
+                                                    <th scope="col" class="no-sort">موجودہ اسٹاک مالیت</th>
                                                     <th scope="col" class="no-sort">فروختی ریٹ</th>
                                                     <th scope="col" class="no-sort">آخری اسٹاک اضافہ</th>
                                                     <th scope="col" class="no-sort">کپڑے کی تصویر</th>
@@ -159,9 +160,9 @@
                                                     @foreach ($cloth->colors as $color)
                                                         @php
                                                             $latestStockAddition = $color->latestCostedStockAddition;
-                                                            $latestCost = $latestStockAddition
-                                                                ? (float) $latestStockAddition->unit_cost
-                                                                : (float) $cloth->price;
+                                                            $latestCost = (float) ($color->average_unit_cost
+                                                                ?: $latestStockAddition?->unit_cost
+                                                                ?: $cloth->price);
                                                             $latestStockAdditionDate = $latestStockAddition?->occurred_at
                                                                 ?? $color->created_at;
                                                         @endphp
@@ -188,6 +189,10 @@
 
                                                             <td style="font-size: 18px;font-weight:600;">
                                                                 Rs:{{ number_format($latestCost, 2) }}
+                                                            </td>
+
+                                                            <td style="font-size: 18px;font-weight:600;">
+                                                                Rs:{{ number_format((float) $color->length * $latestCost, 2) }}
                                                             </td>
 
                                                             <td style="font-size: 18px;font-weight:600;">

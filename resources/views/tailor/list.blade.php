@@ -594,7 +594,7 @@
                                 <th>درزی</th>
                                 <th>رابطہ نمبر</th>
                                 <th>سیکیورٹی ڈپازٹ</th>
-                                <th>قابلِ وصول ایڈوانس</th>
+                                <th>درزی کو دیا گیا ایڈوانس</th>
                                 <th>اس ہفتے کی اجرت</th>
                                 <th>کل آرڈرز</th>
                                 <th>حساب اور لین دین</th>
@@ -615,7 +615,7 @@
                                             class="td-phone">{{ $tailor->phone_number1 ?: '—' }}</span></td>
                                     <td data-label="سیکیورٹی ڈپازٹ"><span class="td-money is-success">Rs.
                                             {{ number_format((float) ($tailor->security_deposit ?? 0), 2) }}</span></td>
-                                    <td data-label="قابلِ وصول ایڈوانس"><span class="td-money is-warning">Rs.
+                                    <td data-label="درزی کو دیا گیا ایڈوانس"><span class="td-money is-warning">Rs.
                                             {{ number_format((float) ($tailor->advance ?? 0), 2) }}</span></td>
                                     <td data-label="اس ہفتے کی اجرت"><span class="td-money">Rs.
                                             {{ number_format((float) $weeklyEarnings->get($tailor->id, 0), 2) }}</span>

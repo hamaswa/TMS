@@ -11,6 +11,7 @@ use App\Models\TailorRecord;
 use App\Models\User;
 use App\Services\OrderLifecycleNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -18,6 +19,72 @@ use Tests\TestCase;
 class TailorJobLifecycleTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_order_can_wait_for_tailor_and_be_assigned_later_using_the_saved_rate(): void
+    {
+        [$owner, $tailor, $order] = $this->job([
+            'tailorId' => null,
+            'rateId' => null,
+            'tailor_price' => 0,
+            'status' => 'unassigned',
+        ]);
+        $rateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $tailor->id,
+            'options_id' => null,
+            'type' => 'Mens suit',
+            'price' => 650,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('admin.tailor-jobs.index', ['status' => 'unassigned']))
+            ->assertOk()
+            ->assertSeeText('دستیابی دیکھ کر درزی مقرر کریں')
+            ->assertSeeText('0 جاری کام');
+
+        $this->actingAs($owner)
+            ->from(route('admin.tailor-jobs.index'))
+            ->post(route('admin.order.status'), [
+                'order_id' => $order->id,
+                'order_status' => 'start',
+            ])
+            ->assertRedirect(route('admin.tailor-jobs.index'))
+            ->assertSessionHasErrors('order_status');
+        $this->assertSame('unassigned', $order->fresh()->status);
+
+        $this->actingAs($owner)->patch(route('admin.tailor-jobs.assign', $order), [
+            'tailor_id' => $tailor->id,
+            // The amount in the browser value is not trusted; the saved rate is authoritative.
+            'tailor_price' => $rateId.'-1',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $order->refresh();
+        $this->assertSame('assigned', $order->status);
+        $this->assertSame($tailor->id, (int) $order->tailorId);
+        $this->assertSame($rateId, (int) $order->rateId);
+        $this->assertEquals(650, (float) $order->tailor_price);
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'from_status' => 'unassigned',
+            'to_status' => 'assigned',
+            'tailor_id' => $tailor->id,
+        ]);
+        $this->assertDatabaseHas('order_work_assignments', [
+            'order_id' => $order->id,
+            'status' => 'assigned',
+            'rate' => 650,
+        ]);
+
+        $this->actingAs($owner)
+            ->from(route('admin.tailor-jobs.index'))
+            ->patch(route('admin.tailor-jobs.assign', $order), [
+                'tailor_id' => $tailor->id,
+                'tailor_price' => $rateId.'-650',
+            ])
+            ->assertRedirect(route('admin.tailor-jobs.index'))
+            ->assertSessionHasErrors('tailor_id');
+    }
 
     public function test_shop_owner_can_progress_a_job_and_an_audit_event_is_created(): void
     {

@@ -15,6 +15,7 @@ use App\Models\TailorRecord;
 use App\Models\Tailorsalary;
 use App\Models\TailorSecurityDepositTransaction;
 use App\Services\ProductionWorkforceService;
+use App\Services\SubscriptionEntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -32,26 +33,86 @@ class TailorController extends Controller
 
     public function login(Request $req)
     {
-        $password = $req->password;
-        $contact = $req->contact;
-        $data = Tailor::where('password', $password)->where('phone_number1', $contact)->first();
-        if (!$data) {
-            return redirect('tailor-login')->with('failed', 'Credentials Not Match!');
-        } else {
-            Auth::logout();
-            session()->put('tailor-login-success', $data->name);
-            session()->put('tailor', 'tailor');
-            session()->put('tailor_id', $data->id);
-            return redirect('tailor/tailor-dashboard');
+        $req->session()->forget(['tailor-login-success', 'tailor', 'tailor_id']);
+        $credentials = $req->validate([
+            'shop_code' => ['required', 'string', 'max:30'],
+            'contact' => ['required', 'string', 'max:50'],
+            'password' => ['required', 'string'],
+        ], [
+            'shop_code.required' => 'دکان کا کوڈ درج کریں۔',
+            'contact.required' => 'فون نمبر درج کریں۔',
+            'password.required' => 'پاس ورڈ درج کریں۔',
+        ]);
+
+        $business = Business::where('shop_code', strtoupper(trim($credentials['shop_code'])))
+            ->where('status', Business::STATUS_ACTIVE)
+            ->where('tailoring_enabled', true)
+            ->first();
+
+        if ($business && (! $business->hasActiveSubscriptionAccess()
+            || ! $business->subscriptionAllowsFeature('allow_tailoring'))) {
+            return back()->with('failed', 'دکان کی سبسکرپشن فعال نہیں ہے۔ مالک سے رابطہ کریں۔');
         }
+
+        $matches = $business
+            ? Tailor::where('user_id', $business->owner_user_id)
+                ->where('phone_number1', $credentials['contact'])
+                ->limit(2)
+                ->get()
+            : collect();
+
+        if ($matches->count() !== 1) {
+            return redirect('tailor-login')
+                ->withInput($req->only('shop_code', 'contact'))
+                ->with('failed', 'دکان کا کوڈ، فون نمبر یا پاس ورڈ درست نہیں ہے۔');
+        }
+
+        $data = $matches->first();
+        $storedPassword = (string) $data->password;
+        $isHashed = password_get_info($storedPassword)['algoName'] !== 'unknown';
+        $passwordMatches = $isHashed
+            ? Hash::check($credentials['password'], $storedPassword)
+            : hash_equals($storedPassword, $credentials['password']);
+
+        if (! $passwordMatches) {
+            return redirect('tailor-login')
+                ->withInput($req->only('shop_code', 'contact'))
+                ->with('failed', 'دکان کا کوڈ، فون نمبر یا پاس ورڈ درست نہیں ہے۔');
+        }
+
+        if (! $isHashed || Hash::needsRehash($storedPassword)) {
+            $data->forceFill(['password' => Hash::make($credentials['password'])])->save();
+        }
+
+        Auth::logout();
+        $req->session()->regenerate();
+        session()->put('tailor-login-success', $data->name);
+        session()->put('tailor', 'tailor');
+        session()->put('tailor_id', $data->id);
+
+        return redirect('tailor/tailor-dashboard');
     }
     public function tailor_dashboard()
     {
+        $tailorId = (int) session()->get('tailor_id');
+        $monthOrders = Order::where('tailorId', $tailorId)
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->get();
+        $suits = $monthOrders->sum(fn (Order $order) => max(1, (int) $order->suitQuantity));
+        $earnings = $monthOrders->sum(fn (Order $order) => $order->tailorAmountDue());
+        $paid = (float) $monthOrders->sum('tailor_paid_amount');
+        $outstanding = max(0, $earnings - $paid);
+        $activeJobs = Order::where('tailorId', $tailorId)
+            ->where('status', '!=', 'delivered')
+            ->count();
 
-        $val = pre_week();
-        $suits = $val[0];
-        $payments = $val[1];
-        return view('tailor-dashboard.tailor-card', compact('suits', 'payments'));
+        return view('tailor-dashboard.tailor-card', compact(
+            'suits',
+            'earnings',
+            'paid',
+            'outstanding',
+            'activeJobs',
+        ));
     }
 
     public function tailor_order_list()
@@ -99,8 +160,17 @@ class TailorController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(SubscriptionEntitlementService $entitlements)
     {
+        $business = Auth::user()->business;
+        if ($business) {
+            try {
+                $entitlements->assertCanAddTailor($business);
+            } catch (ValidationException $exception) {
+                return redirect()->route('admin.Tailor.index')->withErrors($exception->errors());
+            }
+        }
+
         return view('tailor.add');
     }
 
@@ -110,9 +180,10 @@ class TailorController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(Request $request, SubscriptionEntitlementService $entitlements)
     {
         $ownerId = Auth::user()->businessOwnerId();
+        $businessId = Auth::user()->business_id;
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'contact' => ['required', 'string', 'max:50', Rule::unique('tailors', 'phone_number1')->where('user_id', $ownerId)],
@@ -127,7 +198,12 @@ class TailorController extends Controller
             'initial_rate_price.required_with' => 'سلائی کی قسم کے ساتھ فی سوٹ اجرت بھی لکھیں۔',
         ]);
 
-        DB::transaction(function () use ($validated, $ownerId) {
+        DB::transaction(function () use ($validated, $ownerId, $businessId, $entitlements) {
+            if ($businessId) {
+                $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($businessId);
+                $entitlements->assertCanAddTailor($lockedBusiness);
+            }
+
             $tailor = Tailor::create([
                 'name' => $validated['name'],
                 'user_id' => $ownerId,
@@ -251,6 +327,9 @@ class TailorController extends Controller
     public function tailorReport($id, Request $request)
     {
         $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+        $tailor->load(['securityDepositTransactions' => fn ($query) => $query
+            ->latest('transaction_date')
+            ->latest('id')]);
 
         $filterType = $request->input('filterType') === 'monthly' ? 'monthly' : 'weekly';
         $startDate = Carbon::now()->startOfWeek(Carbon::SATURDAY)->startOfDay();
@@ -327,6 +406,48 @@ class TailorController extends Controller
         });
 
         return redirect()->back()->with('insert', 'درزی کا مرکزی ایڈوانس محفوظ کر دیا گیا ہے۔');
+    }
+
+    public function updateSecurityDeposit(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'transaction_type' => ['required', Rule::in([
+                TailorSecurityDepositTransaction::TYPE_RECEIVED,
+                TailorSecurityDepositTransaction::TYPE_REFUNDED,
+            ])],
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:999999999999.99'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        DB::transaction(function () use ($validated, $id) {
+            $tailor = Tailor::where('user_id', Auth::user()->businessOwnerId())
+                ->lockForUpdate()
+                ->findOrFail($id);
+            $currentDeposit = (float) $tailor->security_deposit;
+            $amount = (float) $validated['amount'];
+
+            if ($validated['transaction_type'] === TailorSecurityDepositTransaction::TYPE_REFUNDED
+                && $amount > $currentDeposit) {
+                throw ValidationException::withMessages([
+                    'amount' => 'واپس کی جانے والی رقم موجودہ سیکیورٹی ڈپازٹ سے زیادہ نہیں ہو سکتی۔',
+                ]);
+            }
+
+            $newDeposit = $validated['transaction_type'] === TailorSecurityDepositTransaction::TYPE_RECEIVED
+                ? $currentDeposit + $amount
+                : $currentDeposit - $amount;
+
+            $tailor->update(['security_deposit' => $newDeposit]);
+            $tailor->securityDepositTransactions()->create([
+                'user_id' => Auth::user()->businessOwnerId(),
+                'transaction_type' => $validated['transaction_type'],
+                'amount' => $amount,
+                'transaction_date' => now()->toDateString(),
+                'note' => $validated['note'] ?? null,
+            ]);
+        });
+
+        return redirect()->back()->with('insert', 'درزی کی سیکیورٹی ڈپازٹ کا ریکارڈ محفوظ کر دیا گیا ہے۔');
     }
 
     public function cutAdvanceRecord(Request $request, $id)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\rack;
 use App\Models\Business;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use PhpOption\Option;
 use App\Models\Design;
 use App\Models\Tailor;
@@ -58,8 +59,20 @@ class OrderController extends Controller
         $orderBalance = $orderTransaction?->remainingBalance ?? max(0, (float) $data->totalPayment - (float) $recivedPayment);
         $tailorRates = Tailorsalary::with('options')->where('tailor_id', $data->tailorId)->get();
         $measurementCustomer = $sub_customer ?: $customer;
-        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
-        $savedMeasurementValues = $data->measurementValues->keyBy('source_key');
+        $canEditMeasurements = $data->status === 'unassigned' && ! $data->tailorId;
+        $measurementFields = $this->measurements->fieldsForTemplate(
+            $this->measurements->activeFields(Auth::user()->businessOwnerId()),
+            $data->measurementTemplate,
+        );
+        $measurementSystemKeys = $data->measurementTemplate
+            ? collect($data->measurementTemplate->system_fields ?? [])
+                ->filter(fn ($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
+                ->values()
+            : collect(array_keys(MeasurementService::SYSTEM_FIELDS));
+        $useLatestMeasurements = $canEditMeasurements && request()->boolean('latest_measurements');
+        $savedMeasurementValues = $useLatestMeasurements
+            ? collect()
+            : $data->measurementValues->keyBy('source_key');
         $customerCustomValues = $measurementCustomer->measurementValues()
             ->whereIn('measurement_field_id', $measurementFields->pluck('id'))
             ->pluck('value', 'measurement_field_id');
@@ -78,18 +91,29 @@ class OrderController extends Controller
             'data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance',
             'recivedPayment', 'sub_customer', 'customer', 'measurementCustomer',
             'measurementFields', 'savedMeasurementValues', 'customerCustomValues',
-            'preferenceOptions'
+            'preferenceOptions', 'useLatestMeasurements', 'measurementSystemKeys', 'canEditMeasurements'
         ));
     }
 
     public function update(Request $request, $id)
     {
-        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $order = $this->ownedOrder($id);
+        $canEditMeasurements = $order->status === 'unassigned' && ! $order->tailorId;
+        $measurementFields = $this->measurements->fieldsForTemplate(
+            $this->measurements->activeFields(Auth::user()->businessOwnerId()),
+            $order->measurementTemplate,
+        );
+        $measurementSystemKeys = $order->measurementTemplate
+            ? collect($order->measurementTemplate->system_fields ?? [])
+                ->filter(fn ($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
+                ->values()
+            : collect(array_keys(MeasurementService::SYSTEM_FIELDS));
         $measurementRules = [
             'system_measurements' => ['nullable', 'array'],
             'custom_measurements' => ['nullable', 'array'],
         ];
-        foreach (MeasurementService::SYSTEM_FIELDS as $key => $meta) {
+        foreach ($measurementSystemKeys as $key) {
+            $meta = MeasurementService::SYSTEM_FIELDS[$key];
             $measurementRules['system_measurements.'.$key] = $meta['unit'] === 'inch'
                 ? ['nullable', 'numeric', 'min:0']
                 : ['nullable', 'string', 'max:500'];
@@ -120,49 +144,81 @@ class OrderController extends Controller
                 'max:255',
             ],
             'paid_on' => ['nullable', 'date'],
-            'tailorId' => ['required', 'integer'],
-            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
+            'tailorId' => [Rule::requiredIf((bool) $order->tailorId), 'nullable', 'integer'],
+            'tailor_price' => [Rule::requiredIf(fn () => $request->filled('tailorId')), 'nullable', 'regex:/^\d+-.+$/', 'max:255'],
             'returnDate' => ['required', 'date'],
             'remarks' => ['nullable', 'string', 'max:1000'],
             'return_to_statement' => ['nullable', 'boolean'],
             'return_customer' => ['nullable', 'integer'],
             'return_search' => ['nullable', 'string', 'max:200'],
+            'save_measurements_to_profile' => ['nullable', 'boolean'],
         ], $measurementRules), [
             'recivedPayment.lte' => 'وصول رقم کل قیمت سے زیادہ نہیں ہو سکتی۔',
         ], $this->measurements->attributes($measurementFields));
 
-        $order = $this->ownedOrder($id);
         $customer = $this->ownedCustomer($validated['customerId']);
-        $this->ownedTailor($validated['tailorId']);
+        $tailor = ! empty($validated['tailorId']) ? $this->ownedTailor($validated['tailorId']) : null;
         if (!empty($validated['sub_id'])) {
             $this->ownedCustomer($validated['sub_id']);
         }
 
+        if (! $canEditMeasurements
+            && (int) ($validated['sub_id'] ?? $order->sub_customer) !== (int) $order->sub_customer) {
+            throw ValidationException::withMessages([
+                'sub_id' => 'درزی مقرر ہونے کے بعد آرڈر کا ناپ والا فرد تبدیل نہیں کیا جا سکتا۔',
+            ]);
+        }
+
         //new change
-        [$rateId, $tailorPrice] = explode('-', $validated['tailor_price'], 2);
-        Tailorsalary::where('tailor_id', $validated['tailorId'])->findOrFail($rateId);
+        $rateId = null;
+        $tailorPrice = 0;
+        if ($tailor) {
+            [$rateId] = explode('-', $validated['tailor_price'], 2);
+            $tailorRate = Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+            $tailorPrice = $tailorRate->price;
+        }
         $remainingBalance = max(0, $validated['totalPayment'] - $validated['recivedPayment']);
 
-        $measurementCustomerId = $validated['sub_id'] ?? $validated['customerId'];
+        $measurementCustomerId = $canEditMeasurements
+            ? ($validated['sub_id'] ?? $validated['customerId'])
+            : $order->sub_customer;
         $measurementChanged = (int) $order->sub_customer !== (int) $measurementCustomerId;
         $measurementCustomer = $this->ownedCustomer($measurementCustomerId);
         if ($measurementChanged) {
             $this->ensureRequiredMeasurements($measurementCustomer, $order->measurementTemplate);
         }
 
-        DB::transaction(function () use ($validated, $order, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields) {
+        DB::transaction(function () use ($validated, $order, $tailor, $rateId, $tailorPrice, $remainingBalance, $measurementChanged, $measurementCustomer, $measurementFields, $measurementSystemKeys, $canEditMeasurements) {
+            $wasUnassigned = $order->status === 'unassigned' && ! $order->tailorId;
             $order->update([
-                "sub_customer" => $validated['sub_id'] ?? $validated['customerId'],
+                "sub_customer" => $canEditMeasurements
+                    ? ($validated['sub_id'] ?? $validated['customerId'])
+                    : $order->sub_customer,
                 "customerId" => $validated['customerId'],
                 "suitQuantity" => $validated['suitQuantity'],
                 "totalPayment" => $validated['totalPayment'],
-                "tailorId" => $validated['tailorId'],
+                "tailorId" => $tailor?->id,
                 "rateId" => $rateId,
                 "tailor_price" => $tailorPrice,
                 "userId" => Auth::user()->businessOwnerId(),
                 "returnDate" => $validated['returnDate'],
                 "remarks" => $validated['remarks'] ?? null,
+                "suitNum" => $measurementChanged ? (string) $measurementCustomer->id : $order->suitNum,
+                "status" => $order->status === 'unassigned' && $tailor ? 'assigned' : $order->status,
+                "status_changed_at" => $wasUnassigned && $tailor ? now() : $order->status_changed_at,
             ]);
+
+            if ($wasUnassigned && $tailor) {
+                OrderStatusHistory::create([
+                    'order_id' => $order->id,
+                    'user_id' => Auth::id(),
+                    'tailor_id' => $tailor->id,
+                    'from_status' => 'unassigned',
+                    'to_status' => 'assigned',
+                    'changed_by_type' => 'shop_owner',
+                    'note' => 'آرڈر میں ترمیم کے دوران درزی مقرر کیا گیا۔',
+                ]);
+            }
 
             Transaction::updateOrCreate(
                 ['orderId' => $order->id, 'userId' => Auth::user()->businessOwnerId()],
@@ -174,10 +230,14 @@ class OrderController extends Controller
                 ]
             );
 
-            if ($measurementChanged) {
+            if (! $canEditMeasurements) {
+                // The snapshot issued to production is immutable once a tailor
+                // has been assigned or the order has moved beyond that stage.
+            } elseif ($measurementChanged) {
                 $this->measurements->snapshotOrder($order, $measurementCustomer);
             } else {
-                foreach (MeasurementService::SYSTEM_FIELDS as $key => $meta) {
+                foreach ($measurementSystemKeys as $key) {
+                    $meta = MeasurementService::SYSTEM_FIELDS[$key];
                     $value = $validated['system_measurements'][$key] ?? null;
                     $sourceKey = 'system.'.$key;
                     if ($value === null || $value === '') {
@@ -211,6 +271,25 @@ class OrderController extends Controller
                             'unit' => $field->unit,
                             'sort_order' => 1000 + (int) $field->sort_order,
                         ]
+                    );
+                }
+
+                $preferenceSourceKeys = collect(['necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
+                    ->map(fn ($key) => 'system.'.$key);
+                $order->measurementValues()
+                    ->whereIn('source_key', $preferenceSourceKeys)
+                    ->where('value', '0')
+                    ->delete();
+
+                if (! empty($validated['save_measurements_to_profile'])) {
+                    $this->measurements->syncCustomerFromOrder(
+                        $measurementCustomer,
+                        Auth::user()->businessOwnerId(),
+                        $measurementFields,
+                        $validated['system_measurements'] ?? [],
+                        $validated['custom_measurements'] ?? [],
+                        $order->measurementTemplate,
+                        Auth::id(),
                     );
                 }
             }
@@ -258,8 +337,16 @@ class OrderController extends Controller
         $data['measurementTemplateId'] = $customer->measurement_template_id
             ?: $data['measurementTemplates']->firstWhere('is_default', true)?->id;
 
+        $requestedProfileId = (int) old('sub_id', $customer->id);
+        $data['selectedMeasurementProfile'] = Customers::where('user_id', auth()->user()->businessOwnerId())
+            ->whereKey($requestedProfileId)
+            ->where(function ($query) use ($customer) {
+                $query->whereKey($customer->id)->orWhere('parent_id', $customer->id);
+            })
+            ->first() ?: $customer;
+
         // Keep the customer's serial stable even when other customers are added.
-        $data['serialNumber'] = $customer->id;
+        $data['serialNumber'] = $data['selectedMeasurementProfile']->id;
         return view('order.create', compact('data'));
     }
 
@@ -275,10 +362,9 @@ class OrderController extends Controller
             'returnDate' => ['required', 'date'],
             'design' => ['nullable', 'string', 'max:255'],
             'designPrice' => ['nullable', 'numeric', 'min:0'],
-            'tailorId' => ['required', 'integer'],
-            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
+            'tailorId' => ['nullable', 'integer'],
+            'tailor_price' => [Rule::requiredIf(fn () => $req->filled('tailorId')), 'nullable', 'regex:/^\d+-.+$/', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:1000'],
-            'serail' => ['nullable', 'string', 'max:255'],
             'measurement_template_id' => ['nullable', 'integer', Rule::exists('measurement_templates', 'id')
                 ->where('user_id', Auth::user()->businessOwnerId())->where('is_active', true)],
         ], [
@@ -286,13 +372,18 @@ class OrderController extends Controller
         ]);
 
         $this->ownedCustomer($validated['customerId']);
-        $tailor = $this->ownedTailor($validated['tailorId']);
+        $tailor = ! empty($validated['tailorId']) ? $this->ownedTailor($validated['tailorId']) : null;
         if (!empty($validated['sub_id'])) {
             $this->ownedCustomer($validated['sub_id']);
         }
 
-        [$rateId, $tailorPrice] = explode('-', $validated['tailor_price'], 2);
-        Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+        $rateId = null;
+        $tailorPrice = 0;
+        if ($tailor) {
+            [$rateId] = explode('-', $validated['tailor_price'], 2);
+            $tailorRate = Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
+            $tailorPrice = $tailorRate->price;
+        }
         $remainingBalance = round((float) $validated['totalPayment'] - (float) $validated['recivedPayment'], 2);
         $designParts = explode('-', $validated['design'] ?? '', 2);
         $subCustomerId = $validated['sub_id'] ?? $validated['customerId'];
@@ -306,7 +397,7 @@ class OrderController extends Controller
                     ->where('is_default', true)
                     ->first());
         $this->ensureRequiredMeasurements($measurementCustomer, $measurementTemplate);
-        [$obj, $transaction] = DB::transaction(function () use ($validated, $rateId, $tailorPrice, $remainingBalance, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
+        [$obj, $transaction] = DB::transaction(function () use ($validated, $tailor, $rateId, $tailorPrice, $remainingBalance, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
             $obj = Order::create([
                 'customerId' => $validated['customerId'],
                 'sub_customer' => $subCustomerId,
@@ -315,14 +406,14 @@ class OrderController extends Controller
                 'totalPayment' => $validated['totalPayment'],
                 'returnDate' => $validated['returnDate'],
                 'design' => $designParts[0] ?: 0,
-                'tailorId' => $validated['tailorId'],
+                'tailorId' => $tailor?->id,
                 'rateId' => $rateId,
                 'userId' => Auth::user()->businessOwnerId(),
                 'remarks' => $validated['remarks'] ?? null,
                 'tailor_price' => $tailorPrice,
-                'suitNum' => $validated['serail'] ?? null,
+                'suitNum' => (string) $measurementCustomer->id,
                 'designPrice' => $validated['designPrice'] ?? 0,
-                'status' => 'assigned',
+                'status' => $tailor ? 'assigned' : 'unassigned',
                 'status_changed_at' => now(),
                 'tailor_paid_amount' => 0,
                 'tailor_payment_status' => 'unpaid',
@@ -377,7 +468,7 @@ class OrderController extends Controller
         try {
             $id = $req->id;
             $Orders = DB::table('orders')
-                ->join('tailors', 'orders.tailorId', '=', 'tailors.id')
+                ->leftJoin('tailors', 'orders.tailorId', '=', 'tailors.id')
                 ->select('orders.*', 'tailors.name as tailor_name')
                 ->where('orders.customerId', $id)
                 ->where('orders.userId', Auth::user()->businessOwnerId())
@@ -406,11 +497,13 @@ class OrderController extends Controller
                 $button = $detailedWorkflow
                     ? (Order::STATUS_LABELS[$currentStatus] ?? ucfirst($currentStatus))
                     : match ($currentStatus) {
+                        'unassigned' => 'درزی مقرر ہونا باقی',
                         'ready' => 'تیار ہے',
                         'delivered' => 'تیار ہے',
                         default => 'کارخانے میں ہے',
                     };
                 $btn = match ($currentStatus) {
+                    'unassigned' => 'order-stage-unassigned',
                     'assigned', 'cutting', 'stitching', 'trial' => 'order-stage-workshop',
                     'ready' => 'order-stage-ready',
                     'delivered' => $detailedWorkflow ? 'order-stage-delivered' : 'order-stage-ready',
@@ -427,7 +520,7 @@ class OrderController extends Controller
                     'created_at' => date('d-m-Y', strtotime($order->created_at)),
                     'returnDate' => date('d-m-Y', strtotime($order->returnDate)),
                     'suitQuantity' => $order->suitQuantity,
-                    'tailorName' => $order->tailor_name,
+                    'tailorName' => $order->tailor_name ?: 'ابھی مقرر نہیں',
                     'button' => $button,
                     'btnClass' => $btn,
                     'orderId' => $order->id,
@@ -438,6 +531,7 @@ class OrderController extends Controller
                     'nextStatuses' => $detailedWorkflow
                         ? Order::nextStatusOptionsFor($currentStatus)
                         : match ($currentStatus) {
+                            'unassigned' => [],
                             'delivered' => [],
                             default => [
                             ['value' => 'start', 'label' => 'کارخانے میں ہے'],
@@ -458,14 +552,13 @@ class OrderController extends Controller
     public function print($id)
     {
         $order = $this->ownedOrder($id);
-        $tailor_id = $order->tailorId;
-        $tailor = $this->ownedTailor($tailor_id);
+        $tailor = $order->tailorId ? $this->ownedTailor($order->tailorId) : null;
 
 
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = $order->load(['customers', 'measurementValues']);
+        $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
         
         // dd($orderDetail);
 
@@ -507,14 +600,13 @@ class OrderController extends Controller
     public function two_prints($id)
     {
         $order = $this->ownedOrder($id);
-        $tailor_id = $order->tailorId;
-        $tailor = $this->ownedTailor($tailor_id);
+        $tailor = $order->tailorId ? $this->ownedTailor($order->tailorId) : null;
 
 
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = $order->load(['customers', 'measurementValues']);
+        $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
         
         [$latestBalance, $previousBalance, $orderBalance] = $this->printBalanceSummary($order);
 
@@ -549,21 +641,34 @@ class OrderController extends Controller
 
     public function search(Request $req)
     {
-        $search = $req->validate(['sub_search' => ['nullable', 'string', 'max:255']])['sub_search'] ?? '';
+        $validated = $req->validate([
+            'sub_search' => ['nullable', 'string', 'max:255'],
+            'customer_id' => ['nullable', 'integer'],
+        ]);
+        $search = $validated['sub_search'] ?? '';
+        $primaryCustomer = null;
+        if (! empty($validated['customer_id'])) {
+            $primaryCustomer = $this->ownedCustomer((int) $validated['customer_id']);
+            if ($primaryCustomer->parent_id !== null) {
+                $primaryCustomer = $this->ownedCustomer((int) $primaryCustomer->parent_id);
+            }
+        }
         $data = Customers::where('user_id', Auth::user()->businessOwnerId())
+            ->when($primaryCustomer, fn ($query) => $query->where(function ($family) use ($primaryCustomer) {
+                $family->whereKey($primaryCustomer->id)
+                    ->orWhere('parent_id', $primaryCustomer->id);
+            }))
             ->where(function ($query) use ($search) {
                 $query->where('name', 'like', '%' . $search . '%')
                     ->orWhere('phone_number1', 'like', '%' . $search . '%')
                     ->orWhere('id', 'like', '%' . $search . '%');
             })
+            ->orderByRaw('parent_id is not null')
+            ->orderBy('name')
+            ->limit(25)
             ->get();
-        $html = "";
-        $html .= "<select class='form-control' style='height:50px' name='sub_id'>";
-        foreach ($data as $val) {
-            $html .= "<option value='" . $val->id . "'>" . $val->id . " - " . $val->name . " - " . $val->phone_number1 . "</option>";
-        }
-        $html .= "</select>";
-        return $html;
+
+        return view('order.partials.measurement-profile-select', compact('data'));
     }
 
     public function order_status(Request $req)

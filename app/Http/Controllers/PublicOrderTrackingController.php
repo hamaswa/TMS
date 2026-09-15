@@ -26,6 +26,7 @@ class PublicOrderTrackingController extends Controller
             ? $order->status
             : 'assigned';
         $simpleStatusLabels = [
+            'unassigned' => 'آرڈر درج ہو گیا ہے',
             'assigned' => 'کارخانے میں ہے',
             'cutting' => 'کارخانے میں ہے',
             'stitching' => 'کارخانے میں ہے',

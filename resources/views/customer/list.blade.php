@@ -205,11 +205,12 @@
 
         .customer-table-wrap { width: 100%; overflow-x: auto; }
         .customer-directory { width: 100% !important; min-width: 1080px; margin: 0 !important; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
-        .customer-list-table th:nth-child(1), .customer-list-table td:nth-child(1) { width: 5%; }
-        .customer-list-table th:nth-child(2), .customer-list-table td:nth-child(2) { width: 25%; }
-        .customer-list-table th:nth-child(3), .customer-list-table td:nth-child(3) { width: 17%; }
-        .customer-list-table th:nth-child(4), .customer-list-table td:nth-child(4) { width: 15%; }
-        .customer-list-table th:nth-child(5), .customer-list-table td:nth-child(5) { width: 38%; }
+        .customer-list-table { min-width: 780px; }
+        .customer-list-table th:nth-child(1), .customer-list-table td:nth-child(1) { width: 6%; }
+        .customer-list-table th:nth-child(2), .customer-list-table td:nth-child(2) { width: 32%; }
+        .customer-list-table th:nth-child(3), .customer-list-table td:nth-child(3) { width: 22%; }
+        .customer-list-table th:nth-child(4), .customer-list-table td:nth-child(4) { width: 20%; }
+        .customer-list-table th:nth-child(5), .customer-list-table td:nth-child(5) { width: 20%; }
         .customer-directory thead th {
             padding: 15px 18px !important;
             color: #53647b !important;
@@ -223,7 +224,8 @@
         }
 
         .customer-directory tbody td {
-            height: 82px;
+            height: auto;
+            min-height: 88px;
             padding: 18px !important;
             color: #273951;
             border-top: 0 !important;
@@ -236,6 +238,7 @@
 
         .customer-directory tbody tr:last-child td { border-bottom: 0 !important; }
         .customer-directory tbody tr:hover { background: #fbfdff; }
+        .customer-directory tbody tr.is-selected { background: #eef5ff; box-shadow: inset -4px 0 #1769e0; }
 
         .customer-identity {
             display: flex;
@@ -259,18 +262,21 @@
         }
 
         .customer-link {
+            display: block;
+            min-width: 0;
             padding: 0;
-            border: 0;
             color: var(--customer-navy);
-            background: transparent;
             font-size: 1.08rem;
             font-weight: 800;
+            line-height: 1.75;
             text-align: right;
-            cursor: pointer;
+            text-decoration: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .customer-link:hover { color: var(--customer-blue); text-decoration: underline; }
-        .customer-link small { display: block; margin-top: 5px; color: #8794a7; font-size: .78rem; font-weight: 500; }
+        .customer-link small { display: block; margin-top: 2px; color: #8794a7; font-size: .78rem; font-weight: 500; line-height: 2; }
 
         .customer-phone { direction: ltr; display: inline-block; color: #334b69; font-size: 1.05rem; font-weight: 700; }
         .customer-balance { direction: ltr; display: inline-block; font-size: 1.05rem; font-weight: 800; }
@@ -298,6 +304,13 @@
         .customer-row-action.is-blue { color: #fff; border-color: var(--customer-blue); background: var(--customer-blue); }
         .customer-row-action.is-blue:hover { color: #fff; background: #0d59c8; }
         .customer-row-action.is-green { color: #138455; border-color: #bce5d1; background: #effaf4; }
+        .customer-primary-action { white-space: nowrap; }
+        .customer-more-actions { position: relative; }
+        .customer-overflow-button { width: 42px; padding: 8px; font-size: 1rem; }
+        .customer-more-actions .dropdown-menu { min-width: 245px; padding: 7px; border: 1px solid #dce5f0; border-radius: 11px; box-shadow: 0 14px 35px rgba(31,45,61,.18); }
+        .customer-more-actions .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 0; border-radius: 8px; color: #334b69; background: transparent; font-size: .86rem; font-weight: 700; text-align: right; }
+        .customer-more-actions .dropdown-item i { width: 18px; color: #1769e0; text-align: center; }
+        .customer-more-actions .dropdown-item:hover, .customer-more-actions .dropdown-item:focus { color: #1769e0; background: #eef5ff; }
 
         .customer-workspace .dataTables_wrapper,
         .customer-workspace .dataTables_wrapper > .row,
@@ -331,6 +344,7 @@
         .order-payment-button { min-height: 32px; padding: 5px 9px; border: 1px solid #bce5d1; border-radius: 8px; color: #087747; background: #effaf4; font-size: .76rem; font-weight: 800; white-space: nowrap; }
         .order-payment-button:hover { border-color: #83cfaa; background: #ddf5e9; }
         .customer-order-status { min-width: 112px; border: 1px solid transparent; border-radius: 9px; font-weight: 900; box-shadow: 0 5px 14px rgba(25, 45, 75, .08); }
+        .customer-order-status.order-stage-unassigned { color: #6b4d08; border-color: #ead08c; background: #fff8df; }
         .customer-order-status.order-stage-workshop { color: #9b6200; border-color: #f2cf82; background: #fff3cf; }
         .customer-order-status.order-stage-ready { color: #fff; border-color: #1769e0; background: linear-gradient(135deg, #2478ec, #1159bd); }
         .customer-order-status.order-stage-delivered { color: #fff; border-color: #1769e0; background: linear-gradient(135deg, #2478ec, #1159bd); }
@@ -378,8 +392,9 @@
             .customer-directory tbody td.customer-serial-cell { display: none; }
             .customer-directory tbody td.customer-name-cell { padding-bottom: 13px !important; }
             .customer-directory tbody td.customer-actions-cell { padding-top: 12px !important; }
-            .customer-row-actions { flex-wrap: wrap; width: 100%; }
-            .customer-row-action { flex: 1 1 auto; }
+            .customer-row-actions { flex-wrap: nowrap; width: 100%; }
+            .customer-primary-action { flex: 1 1 auto; }
+            .customer-overflow-button { flex: 0 0 42px; }
         }
 
         @media (max-width: 480px) {
@@ -491,7 +506,7 @@
                 <div class="customer-panel__head">
                     <div class="customer-panel__title">
                         <h2 id="customer-directory-title">گاہکوں کی فہرست</h2>
-                        <p>نام پر کلک کرنے سے اسی گاہک کے سابقہ آرڈر نیچے دکھائی دیں گے۔</p>
+                        <p>نام پر کلک کرکے مکمل پروفائل کھولیں؛ مزید کارروائیوں کے لیے تین نقطے استعمال کریں۔</p>
                     </div>
                     <label class="customer-search" for="customerDirectorySearch">
                         <i class="fas fa-search"></i>
@@ -777,6 +792,8 @@
 
             $(document).on('click', '.getCustomer', function () {
                 selectedCustomerId = $(this).data('id');
+                $('.customer-list-table tbody tr').removeClass('is-selected');
+                $(this).closest('tr').addClass('is-selected');
                 setTimeout(function () {
                     var orderPanel = document.getElementById('orderDetail');
                     if (orderPanel) {

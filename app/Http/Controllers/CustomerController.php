@@ -52,8 +52,11 @@ class CustomerController extends Controller
 
     public function index()
     {
-        $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
-        $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
+        $user = Auth::user();
+        $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
+        $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
+        $detailedWorkflow = Business::tailoringStatusModeForOwner($user->businessOwnerId())
             === Business::TAILORING_STATUS_DETAILED;
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) request('search', ''))
             ->orderBy('id', 'desc')
@@ -62,7 +65,7 @@ class CustomerController extends Controller
         $stats = $this->customerDirectoryStats($canViewBalances);
 
         return view('customer.list', array_merge(
-            compact('customers', 'canViewBalances', 'detailedWorkflow'),
+            compact('customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements', 'detailedWorkflow'),
             $stats,
         ));
     }
@@ -72,14 +75,19 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
         ]);
-        $canViewBalances = Auth::user()->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $user = Auth::user();
+        $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
+        $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
+        $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) ($validated['search'] ?? ''))
             ->orderBy('id', 'desc')
             ->limit(25)
             ->get();
 
         return response()->json([
-            'html' => view('customer.partials.directory-rows', compact('customers', 'canViewBalances'))->render(),
+            'html' => view('customer.partials.directory-rows', compact(
+                'customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements'
+            ))->render(),
             'count' => $customers->count(),
         ]);
     }
@@ -131,13 +139,22 @@ class CustomerController extends Controller
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = collect();
         $measurementTemplates = $this->measurementTemplates();
+        $parentCustomer = null;
+        if (request()->filled('parent')) {
+            $parentCustomer = Customers::where('user_id', Auth::user()->businessOwnerId())
+                ->whereNull('parent_id')
+                ->findOrFail(request()->integer('parent'));
+        }
 
-        return view('customer.create', compact('data', 'measurementFields', 'measurementValues', 'measurementTemplates'));
+        return view('customer.create', compact('data', 'measurementFields', 'measurementValues', 'measurementTemplates', 'parentCustomer'));
     }
 
     public function statement($id)
     {
         $customer = $this->ownedCustomer($id);
+        if ($customer->parent_id !== null) {
+            $customer = $this->ownedCustomer($customer->parent_id);
+        }
         $user = Auth::user();
         $ownerId = $user->businessOwnerId();
         $tailoringEnabled = (bool) ($user->business?->tailoring_enabled ?? $user->tailoring_access);
@@ -160,7 +177,7 @@ class CustomerController extends Controller
             : null;
         $orders = $canViewTailoring
             ? $customer->orders()->where('userId', $ownerId)
-                ->with('tailor:id,name')
+                ->with(['tailor:id,name', 'customers:id,name', 'measurementTemplate:id,name'])
                 ->withSum(['transactions as outstanding_amount' => fn ($query) => $query->where('userId', $ownerId)], 'remainingBalance')
                 ->latest()->limit(50)->get()
             : collect();
@@ -222,20 +239,43 @@ class CustomerController extends Controller
         $systemMeasurements = collect();
         $customMeasurements = collect();
         $measurementHistories = collect();
+        $measurementProfiles = collect([$customer]);
+        $measurementProfile = $customer;
         if ($canManageMeasurements) {
+            $measurementProfiles = Customers::where('user_id', $ownerId)
+                ->where(function ($query) use ($customer) {
+                    $query->whereKey($customer->id)->orWhere('parent_id', $customer->id);
+                })
+                ->with('measurementTemplate:id,name')
+                ->withCount(['measurementValues', 'measurementHistories'])
+                ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$customer->id])
+                ->orderBy('name')
+                ->get();
+            $requestedProfileId = request()->integer('profile');
+            $measurementProfile = $measurementProfiles->firstWhere('id', $requestedProfileId) ?? $customer;
             $systemMeasurements = collect(MeasurementService::SYSTEM_FIELDS)
                 ->map(fn (array $meta, string $key) => [
                     'label' => $meta['label'],
-                    'value' => $customer->{$key},
+                    'value' => $measurementProfile->{$key},
                     'unit' => $meta['unit'],
-                ])->filter(fn (array $measurement) => $measurement['value'] !== null && $measurement['value'] !== '');
-            $customMeasurements = $customer->measurementValues()
+                ])->filter(fn (array $measurement) => $measurement['value'] !== null
+                    && $measurement['value'] !== ''
+                    && ! ($measurement['unit'] === '' && (string) $measurement['value'] === '0'));
+            $customMeasurements = $measurementProfile->measurementValues()
                 ->with('field')
                 ->whereHas('field', fn ($query) => $query->where('user_id', $ownerId)->where('is_active', true))
                 ->get()->sortBy(fn ($value) => [$value->field->sort_order, $value->field->label]);
-            $measurementHistories = $customer->measurementHistories()
+            $measurementHistories = $measurementProfile->measurementHistories()
                 ->with(['template:id,name', 'recorder:id,name', 'values'])
                 ->limit(12)->get();
+            $preferenceSourceKeys = collect(['necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
+                ->map(fn (string $key) => 'system.'.$key);
+            $measurementHistories->each(function ($history) use ($preferenceSourceKeys) {
+                $history->setRelation('values', $history->values
+                    ->reject(fn ($value) => $preferenceSourceKeys->contains($value->source_key)
+                        && in_array(strtolower(trim((string) $value->value)), ['', '0', 'none', 'null'], true))
+                    ->values());
+            });
         }
 
         $tabs = collect([
@@ -254,7 +294,7 @@ class CustomerController extends Controller
             'customer', 'totalBalance', 'transactions', 'orders', 'sales',
             'canViewBalances', 'canViewTailoring', 'canViewShop', 'canManageMeasurements',
             'totalReceived', 'systemMeasurements', 'customMeasurements', 'measurementHistories',
-            'tabs', 'activeTab', 'paymentRoute'
+            'measurementProfiles', 'measurementProfile', 'tabs', 'activeTab', 'paymentRoute'
         ));
     }
 
@@ -272,6 +312,14 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
+        $parentCustomer = null;
+        if ($request->filled('parent_customer_id')) {
+            $request->validate(['parent_customer_id' => ['integer']]);
+            $parentCustomer = Customers::where('user_id', Auth::user()->businessOwnerId())
+                ->whereNull('parent_id')
+                ->findOrFail($request->integer('parent_customer_id'));
+            $request->merge(['contact' => $parentCustomer->phone_number1]);
+        }
         $measurementTemplates = $this->measurementTemplates();
         $measurementTemplate = $measurementTemplates->firstWhere('id', (int) $request->input('measurement_template_id'));
         $measurementFields = $this->measurements->fieldsForTemplate(
@@ -284,6 +332,7 @@ class CustomerController extends Controller
                 'required', 'string', 'max:50', new PakistanMobileNumber,
             ],
             'duplicate_action' => ['nullable', Rule::in(['use_existing', 'create_profile'])],
+            'parent_customer_id' => ['nullable', 'integer'],
             'mobile_pin' => ['nullable', 'digits:6'],
             'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
             'length' => ['nullable', 'numeric', 'min:0'],
@@ -299,8 +348,8 @@ class CustomerController extends Controller
             'note' => ['nullable', 'string', 'max:2000'],
         ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
 
-        $existingCustomer = $this->existingRootCustomerByPhone($validated['contact']);
-        $duplicateAction = $validated['duplicate_action'] ?? null;
+        $existingCustomer = $parentCustomer ?: $this->existingRootCustomerByPhone($validated['contact']);
+        $duplicateAction = $parentCustomer ? 'create_profile' : ($validated['duplicate_action'] ?? null);
 
         if ($existingCustomer && ! $duplicateAction) {
             return redirect()->back()
@@ -402,12 +451,11 @@ class CustomerController extends Controller
         });
 
         if ($isSecondaryProfile) {
-            $query = http_build_query([
-                'customer' => $existingCustomer->id,
-                'search' => $existingCustomer->phone_number1,
-            ]);
-
-            return redirect(url('admin/Customers').'?'.$query.'#orderDetail')
+            return redirect()->route('admin.customers.statement', [
+                'id' => $existingCustomer->id,
+                'tab' => 'measurements',
+                'profile' => $obj->id,
+            ])
                 ->with('insert', "{$obj->name} کا نیا ناپ/پروفائل موجودہ گاہک کے ساتھ شامل کر دیا گیا ہے۔");
         }
 
@@ -444,8 +492,11 @@ class CustomerController extends Controller
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = $customer->measurementValues()->pluck('value', 'measurement_field_id');
         $measurementTemplates = $this->measurementTemplates();
+        $parentCustomer = $customer->parent_id !== null
+            ? $this->ownedCustomer($customer->parent_id)
+            : null;
 
-        return view('customer.edit', compact('customer', 'optionTypes', 'measurementFields', 'measurementValues', 'measurementTemplates'));
+        return view('customer.edit', compact('customer', 'optionTypes', 'measurementFields', 'measurementValues', 'measurementTemplates', 'parentCustomer'));
     }
 
     /**
@@ -456,6 +507,18 @@ class CustomerController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $obj = $this->ownedCustomer($id);
+        $parentCustomer = $obj->parent_id !== null
+            ? Customers::where('user_id', Auth::user()->businessOwnerId())
+                ->whereNull('parent_id')
+                ->findOrFail($obj->parent_id)
+            : null;
+        if ($parentCustomer) {
+            $request->merge([
+                'contact' => $parentCustomer->phone_number1,
+                'mobile_pin' => null,
+            ]);
+        }
         $measurementTemplates = $this->measurementTemplates();
         $measurementTemplate = $measurementTemplates->firstWhere('id', (int) $request->input('measurement_template_id'));
         $measurementFields = $this->measurements->fieldsForTemplate(
@@ -477,7 +540,6 @@ class CustomerController extends Controller
             'teraa' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:2000'],
         ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
-        $obj = $this->ownedCustomer($id);
         $previousTemplate = $obj->measurementTemplate;
         $previousRows = $this->measurements->measurementRows($obj, Auth::user()->businessOwnerId(), $previousTemplate);
         $previousFingerprint = $this->measurements->measurementFingerprint($previousRows, $previousTemplate);
@@ -813,7 +875,10 @@ class CustomerController extends Controller
                 $like = '%'.addcslashes($search, '%_\\').'%';
                 $query->where(function ($searchQuery) use ($search, $like) {
                     $searchQuery->where('name', 'like', $like)
-                        ->orWhere('phone_number1', 'like', $like);
+                        ->orWhere('phone_number1', 'like', $like)
+                        ->orWhereHas('familyMeasurementProfiles', fn ($profiles) => $profiles
+                            ->where('name', 'like', $like)
+                            ->orWhere('phone_number1', 'like', $like));
                     if (ctype_digit($search)) {
                         $searchQuery->orWhere('id', (int) $search);
                     }

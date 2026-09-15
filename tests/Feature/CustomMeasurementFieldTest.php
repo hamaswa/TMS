@@ -73,7 +73,7 @@ class CustomMeasurementFieldTest extends TestCase
 
         $this->actingAs($owner)->get(route('admin.Customers.edit', $customer))
             ->assertOk()
-            ->assertSeeText('کاروبار کے خصوصی پیمائشی خانے')
+            ->assertSeeText('کالر اونچائی')
             ->assertSee('data-measurement-field="custom.'.$field->id.'"', false)
             ->assertDontSee('<h2>اضافی پیمائش</h2>', false);
     }
