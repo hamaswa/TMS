@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ur" dir="rtl">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
-    <title>ٹیلرنگ آرڈر رسید</title>
+    <title>Tailor Managment Order Recipt</title>
     <style>
          @font-face {
     font-family: 'Noto Nastaliq Urdu';
@@ -302,6 +302,10 @@ body {
             justify-content: space-between;
             gap: 14px;
             min-height: 30px;
+            background-image: linear-gradient(to right, #b8b8b8, #b8b8b8);
+            background-position: left bottom;
+            background-repeat: no-repeat;
+            background-size: 100% 1px;
         }
 
         .order-detail-label {
@@ -429,16 +433,9 @@ body {
                 position: relative;
             } */
     </style>
-    @include('print.partials.document-styles')
-    <style>
-        body.tms-order-print .naap-button { display: none !important; }
-        html.tms-paper-a4 #orderSection,
-        html.tms-paper-a4 #sizeSection { max-width: none !important; }
-    </style>
 </head>
 
-<body class="tms-order-print">
-    @include('print.partials.toolbar')
+<body>
 
     <div id="invoice-POS">
 
@@ -453,31 +450,24 @@ body {
             </div><!--End Info-->
         </center><!--End InvoiceTop-->
         <div id="fullSection">
-            <div id="orderSection" class="ticket order-section">
-                @if($setting->logo_url)<p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>@endif
-                <h1 class="text-center receipt-shop-name">{{ $setting->name }}
+            <div id="orderSection" style="max-width: 350px; margin-top:-60px;" class="ticket order-section">
+                <p align="center"><img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
+                <h1 class="text-center"  style="font-size: 16px;font-weight: 600;text-align: center;margin-top:-20px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3">
                     <div class="d-flex justify-content-between ">
                         <div>
-                            <h2 style="font-size: 16px;font-weight:600;">رسید نمبر # {{ $orderDetail->id }}
+                            <h2 style="font-size: 16px;font-weight:600;">invoice No # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div>
-                            <h2 class="receipt-date" style="font-weight:900;">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h2>
+                            <h2 style="font-weight:900;">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h2>
                         </div>
                     </div>
                     <hr>
-                    <div class="order-summary-row">
                     <div class="order-detail-list">
                         <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong class="order-detail-value">{{ $orderDetail->suitQuantity }}</strong></div>
-                        @php
-                            $legacyGarments = json_decode((string) $orderDetail->suitNum, true);
-                            $garmentLabel = $orderDetail->measurementTemplate?->name
-                                ?: (is_array($legacyGarments) ? implode('، ', $legacyGarments) : 'تمام پیمائش');
-                        @endphp
-                        <div class="order-detail-row"><span class="order-detail-label">لباس:</span><strong class="order-detail-value">{{ $garmentLabel }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong class="order-detail-value">{{ $orderDetail->sub_customer }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">آرڈر کی رقم:</span><strong class="order-detail-value">{{ $orderDetail->totalPayment }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">موجودہ رقم کی ادائیگی:</span><strong class="order-detail-value">{{ $orderDetail->transactions->first()?->recivedPayment ?? 0 }}</strong></div>
@@ -485,21 +475,18 @@ body {
                             <div class="order-detail-row"><span class="order-detail-label">موجودہ ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $orderBalance }}</strong></div>
                         @endif
                         @if ($previousBalance > 0)
-                            <div class="order-detail-row"><span class="order-detail-label">دیگر آرڈرز کا موجودہ بقایا:</span><strong class="order-detail-value">{{ $previousBalance }}</strong></div>
+                            <div class="order-detail-row"><span class="order-detail-label">گزشتہ ادائیگی کے واجبات:</span><strong class="order-detail-value">{{ $previousBalance }}</strong></div>
                         @endif
                         @if ($latestBalance > 0)
                             <div class="order-detail-row"><span class="order-detail-label">کل ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $latestBalance }}</strong></div>
                         @endif
                         <div class="order-detail-row"><span class="order-detail-label">واپسی کی تاریخ:</span><strong class="order-detail-value order-detail-date">{{ $orderDetail->returnDate }}</strong></div>
                     </div>
-                    </div>
-                    @if(!empty($printConfig['show_qr']))
                     <aside class="order-tracking-qr" data-tracking-url="{{ $trackingUrl }}" aria-label="آرڈر کی صورتحال دیکھنے کا QR کوڈ">
                         {!! $trackingQrSvg !!}
-                        <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔<br><span dir="ltr">TMS REF: {{ $printConfig['reference'] }}</span></div>
+                        <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
                     </aside>
-                    @endif
-                    <div class="order-note" dir="auto">
+                    <div>
                         <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;">{{$orderDetail->remarks}}
                         </h3>
                     </div>
@@ -507,7 +494,7 @@ body {
                         <p>{!! $setting->address !!}</p>
                         <p class="order-footer-contact">{{ $setting->contact_no }}</p>
                         <p>{{ $setting->note }}</p>
-                        <p class="receipt-builder-credit">تیار کردہ: IT Linked</p>
+                        <p class="receipt-builder-credit">Built by IT Linked</p>
                     </div>
                     <hr>
                 </div>
@@ -517,23 +504,22 @@ body {
             </div>
             <div id="sizeSection" style="max-width: 350px;" class="ticket size-section">
                 <div class="measurement-header">
-                    @if($setting->logo_url)<p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو"></p>@endif
+                    <p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{asset('images/setting/' . $setting->logo)}}" alt=""></p>
                     <h1 class="text-center measurement-shop-name">{{$setting->name}}</h1>
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
                     <hr style="margin-top:4px;">
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell measurement-serial">
-                            سیریل نمبر: {{$orderDetail->sub_customer}}
+                            Serial num: {{$orderDetail->sub_customer}}
                         </div>
                         <div class="measurement-meta-cell" style="text-align:right;">
                             {{$orderDetail->customers->name}}
                         </div>
                     </div>
-                    <div class="text-center font-weight-bold mb-1">لباس: {{ $garmentLabel }}</div>
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell" style="text-align:left;">
-                            {{ $tailor?->name ?: 'بعد میں مقرر ہوگا' }}
+                            {{$tailor->name}}
                         </div>
                         <div class="measurement-meta-cell" style="text-align:right;">
                             درزی کا نام
@@ -549,10 +535,7 @@ body {
                     </div>
                     @if($order->measurementValues->count())
                     @php
-                        $preferenceSourceKeys = ['system.necktype', 'system.sleeve', 'system.Daaman', 'system.jeab', 'system.swingtype', 'system.button', 'system.plate_type'];
-                        $allMeasurements = $orderDetail->measurementValues
-                            ->reject(fn($item) => in_array($item->source_key, $preferenceSourceKeys, true) && trim((string) $item->value) === '0')
-                            ->keyBy('source_key');
+                        $allMeasurements = $orderDetail->measurementValues->keyBy('source_key');
 
                         // Older production snapshots can miss this field because the
                         // legacy database column is named `Chuta` instead of `chuta`.
@@ -600,37 +583,73 @@ body {
             ->values()
             ->toArray();
 
-        // Flow saved measurements into compact pairs so a sparse design column
-        // cannot leave the body measurements in a tall half-width stack.
-        $measurementRows = array_chunk(array_merge($rightFields, $leftFields, $customFields), 2);
+        // Keep the original system rows together, then print custom fields in pairs.
+        $systemRows = max(count($leftFields), count($rightFields));
+        $leftFields = array_pad($leftFields, $systemRows, null);
+        $rightFields = array_pad($rightFields, $systemRows, null);
+        foreach (array_chunk($customFields, 2) as $customPair) {
+            $leftFields[] = $customPair[0];
+            $rightFields[] = $customPair[1] ?? null;
+        }
+
+        $rows = max(count($leftFields), count($rightFields));
                     @endphp
 
                     <hr>
 
-                    @foreach($measurementRows as $measurementRow)
+                    @for($i = 0; $i < $rows; $i++)
 
                     <div class="row measurement-row" style="display:flex;justify-content:space-between;padding:0 10px;">
-                        @foreach([0, 1] as $column)
-                            @php($hasMeasurement = isset($measurementRow[$column]) && isset($allMeasurements[$measurementRow[$column]]))
-                            <div class="col-6 {{ $hasMeasurement ? '' : 'measurement-column-empty' }} {{ $hasMeasurement && count($measurementRow) === 1 ? 'measurement-column-full' : '' }}"
-                                style="width:45%;">
-                                @if($hasMeasurement)
-                                    @php($item = $allMeasurements[$measurementRow[$column]])
-                                    <div style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
-                                        <span class="measurement-label" style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
-                                            {{ $item->label }}
-                                        </span>
-                                        <span class="measurement-value" style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
-                                            {{ $item->value }}
-                                        </span>
-                                    </div>
-                                @endif
-                            </div>
-                        @endforeach
+
+                        {{-- LEFT COLUMN --}}
+                        <div class="col-6" style="width:45%;">
+
+                            @if(isset($leftFields[$i]) && isset($allMeasurements[$leftFields[$i]]))
+
+                                @php
+                                    $item = $allMeasurements[$leftFields[$i]];
+                                @endphp
+
+                                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
+
+                                    <span class="measurement-value measurement-preference-value">{{ $item->value }}</span>
+
+                                    <span class="measurement-label" style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
+
+                                </div>
+
+                            @endif
+
+                        </div>
+
+                        {{-- RIGHT COLUMN --}}
+                        <div class="col-6" style="width:45%;">
+
+                            @if(isset($rightFields[$i]) && isset($allMeasurements[$rightFields[$i]]))
+
+                                @php
+                                    $item = $allMeasurements[$rightFields[$i]];
+                                @endphp
+
+                                <div style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
+
+                                    <span class="measurement-value" style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
+                                        {{ $item->value }}
+                                    </span>
+
+                                    <span class="measurement-label" style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
+                                        {{ $item->label }}
+                                    </span>
+
+                                </div>
+
+                            @endif
+
+                        </div>
 
                     </div>
 
-                    @endforeach
+                    @endfor
                      @else
                     <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
                         <div class="col-6 mt-2 mb-2" style="width: 45%">
@@ -835,7 +854,7 @@ body {
                             <div class="measurement-footer">
                                 <p>{!! $setting->address !!}</p>
                                 <p class="measurement-footer-contact">{{$setting->contact_no}}</p>
-                                <p class="receipt-builder-credit">تیار کردہ: IT Linked</p>
+                                <p class="receipt-builder-credit">Built by IT Linked</p>
                             </div>
                         </div>
                     </div>

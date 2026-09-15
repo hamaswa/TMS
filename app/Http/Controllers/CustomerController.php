@@ -870,15 +870,16 @@ class CustomerController extends Controller
 
         return Customers::query()
             ->where('user_id', $ownerId)
-            ->whereNull('parent_id')
+            ->with(['primaryCustomer' => function ($query) use ($canViewBalances, $ownerId) {
+                $query->when($canViewBalances, fn ($account) => $account->withSum([
+                    'transactions as current_balance' => fn ($transactions) => $transactions->where('userId', $ownerId),
+                ], 'remainingBalance'));
+            }])
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%'.addcslashes($search, '%_\\').'%';
                 $query->where(function ($searchQuery) use ($search, $like) {
                     $searchQuery->where('name', 'like', $like)
-                        ->orWhere('phone_number1', 'like', $like)
-                        ->orWhereHas('familyMeasurementProfiles', fn ($profiles) => $profiles
-                            ->where('name', 'like', $like)
-                            ->orWhere('phone_number1', 'like', $like));
+                        ->orWhere('phone_number1', 'like', $like);
                     if (ctype_digit($search)) {
                         $searchQuery->orWhere('id', (int) $search);
                     }

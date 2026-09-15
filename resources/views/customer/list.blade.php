@@ -158,6 +158,11 @@
             box-shadow: 0 8px 28px rgba(21, 47, 81, .06);
         }
 
+        .customer-panel.has-open-customer-menu,
+        .customer-table-wrap.has-open-customer-menu {
+            overflow: visible !important;
+        }
+
         .customer-panel + .customer-panel { margin-top: 22px; }
 
         .customer-panel__head {
@@ -692,6 +697,20 @@
             var customerTableBody = customerTable.find('tbody');
             var customerSearchStatus = $('#customerSearchStatus');
 
+            function setCustomerMenuOverflow(menu, isOpen) {
+                var dropdown = $(menu);
+                dropdown.closest('.customer-table-wrap').toggleClass('has-open-customer-menu', isOpen);
+                dropdown.closest('.customer-panel').toggleClass('has-open-customer-menu', isOpen);
+            }
+
+            $(document).on('show.bs.dropdown', '.customer-more-actions', function () {
+                setCustomerMenuOverflow(this, true);
+            });
+
+            $(document).on('hidden.bs.dropdown', '.customer-more-actions', function () {
+                setCustomerMenuOverflow(this, false);
+            });
+
             function formatMoney(value) {
                 return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
@@ -708,6 +727,8 @@
                     dataType: 'json',
                     data: { search: search || '' },
                     success: function (response) {
+                        var tableWrap = customerTable.closest('.customer-table-wrap');
+                        tableWrap.add(tableWrap.closest('.customer-panel')).removeClass('has-open-customer-menu');
                         customerTableBody.html(response.html);
                         customerSearchStatus.removeClass('is-loading').text(
                             search

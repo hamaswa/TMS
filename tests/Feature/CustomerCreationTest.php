@@ -33,6 +33,8 @@ class CustomerCreationTest extends TestCase
             ->assertSeeText('حالیہ آرڈر دیکھیں')
             ->assertSeeText('خاندان کا نیا ناپ شامل کریں')
             ->assertSee('data-toggle="dropdown"', false)
+            ->assertSee('data-boundary="viewport"', false)
+            ->assertSee('show.bs.dropdown', false)
             ->assertSee('aria-label="'.$customer->name.' کی مزید کارروائیاں"', false)
             ->assertSee('aria-label="'.$customer->name.' کی ادائیگی درج کریں"', false);
     }
@@ -211,10 +213,34 @@ class CustomerCreationTest extends TestCase
         ]));
         $this->assertSame($customer->phone_number1, $profile->phone_number1);
 
-        $this->actingAs($owner)->getJson(route('admin.customers.search', ['search' => 'Ali Aslam']))
+        $newerCustomer = Customers::create([
+            'name' => 'Newer Customer',
+            'phone_number1' => '03008882222',
+            'user_id' => $owner->id,
+        ]);
+        $this->actingAs($owner)->get(route('admin.Customers.index'))
             ->assertOk()
-            ->assertJsonPath('count', 1)
-            ->assertSeeText('Muhammad Aslam');
+            ->assertSeeInOrder([
+                'data-customer-row="'.$newerCustomer->id.'"',
+                'data-customer-row="'.$profile->id.'"',
+                'data-customer-row="'.$customer->id.'"',
+            ], false);
+
+        $directoryResponse = $this->actingAs($owner)->getJson(route('admin.customers.search', ['search' => 'Ali Aslam']))
+            ->assertOk()
+            ->assertJsonPath('count', 1);
+        $directoryHtml = $directoryResponse->json('html');
+        $this->assertStringContainsString('Ali Aslam', $directoryHtml);
+        $this->assertStringContainsString('خاندانی ناپ', $directoryHtml);
+        $this->assertStringContainsString(e(route('admin.customers.statement', [
+            'id' => $customer->id,
+            'tab' => 'measurements',
+            'profile' => $profile->id,
+        ])), $directoryHtml);
+        $this->assertStringContainsString(e(route('admin.order.create', [
+            'id' => $customer->id,
+            'profile' => $profile->id,
+        ])), $directoryHtml);
 
         $this->actingAs($owner)->get(route('admin.customers.statement', [
             'id' => $customer->id,

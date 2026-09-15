@@ -337,7 +337,7 @@ class OrderController extends Controller
         $data['measurementTemplateId'] = $customer->measurement_template_id
             ?: $data['measurementTemplates']->firstWhere('is_default', true)?->id;
 
-        $requestedProfileId = (int) old('sub_id', $customer->id);
+        $requestedProfileId = (int) old('sub_id', request('profile', $customer->id));
         $data['selectedMeasurementProfile'] = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->whereKey($requestedProfileId)
             ->where(function ($query) use ($customer) {
