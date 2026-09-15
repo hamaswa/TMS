@@ -124,6 +124,7 @@ class OrderController extends Controller
             'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
             'returnDate' => ['required', 'date'],
             'remarks' => ['nullable', 'string', 'max:1000'],
+            'return_to_statement' => ['nullable', 'boolean'],
             'return_customer' => ['nullable', 'integer'],
             'return_search' => ['nullable', 'string', 'max:200'],
         ], $measurementRules), [
@@ -216,14 +217,22 @@ class OrderController extends Controller
             app(ProductionWorkforceService::class)->syncOrder($order->fresh());
         });
 
+        $returnToStatement = (bool) ($validated['return_to_statement'] ?? false);
         $returnToDirectory = (int) ($validated['return_customer'] ?? 0) === (int) $validated['customerId'];
         $returnSearch = trim((string) ($validated['return_search'] ?? ''));
-        $response = $returnToDirectory
-            ? redirect(url('admin/Customers').'?'.http_build_query([
+        if ($returnToStatement) {
+            $response = redirect()->route('admin.customers.statement', [
+                'id' => $validated['customerId'],
+                'tab' => 'tailoring',
+            ]);
+        } elseif ($returnToDirectory) {
+            $response = redirect(url('admin/Customers').'?'.http_build_query([
                 'customer' => $validated['customerId'],
                 'search' => $returnSearch !== '' ? $returnSearch : $customer->phone_number1,
-            ]).'#orderDetail')
-            : redirect('admin/Customers');
+            ]).'#orderDetail');
+        } else {
+            $response = redirect('admin/Customers');
+        }
 
         return $response->with('insert', 'آرڈر کامیابی سے اپ ڈیٹ کر دیا گیا ہے۔');
     }
