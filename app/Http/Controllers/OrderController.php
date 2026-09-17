@@ -50,6 +50,8 @@ class OrderController extends Controller
         $sub_customer = Customers::where('user_id', Auth::user()->businessOwnerId())->find($data->sub_customer);
         $customer = Customers::where('user_id', Auth::user()->businessOwnerId())->findOrFail($data->customerId);
         $tailors = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
+        $currentTailor = $this->findOwnedTailor($data->tailorId);
+        $missingTailor = ! empty($data->tailorId) && ! $currentTailor;
         $customerBalance = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
             ? Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->sum('remainingBalance')
             : null;
@@ -57,7 +59,9 @@ class OrderController extends Controller
             ->where('customerId', $data->customerId)->where('orderId', $data->id)->first();
         $recivedPayment = $orderTransaction?->recivedPayment ?? 0;
         $orderBalance = $orderTransaction?->remainingBalance ?? max(0, (float) $data->totalPayment - (float) $recivedPayment);
-        $tailorRates = Tailorsalary::with('options')->where('tailor_id', $data->tailorId)->get();
+        $tailorRates = $currentTailor
+            ? Tailorsalary::with('options')->where('tailor_id', $currentTailor->id)->get()
+            : collect();
         $measurementCustomer = $sub_customer ?: $customer;
         $canEditMeasurements = $data->status === 'unassigned' && ! $data->tailorId;
         $measurementFields = $this->measurements->fieldsForTemplate(
@@ -91,7 +95,8 @@ class OrderController extends Controller
             'data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance',
             'recivedPayment', 'sub_customer', 'customer', 'measurementCustomer',
             'measurementFields', 'savedMeasurementValues', 'customerCustomValues',
-            'preferenceOptions', 'useLatestMeasurements', 'measurementSystemKeys', 'canEditMeasurements'
+            'preferenceOptions', 'useLatestMeasurements', 'measurementSystemKeys', 'canEditMeasurements',
+            'missingTailor'
         ));
     }
 
@@ -552,7 +557,7 @@ class OrderController extends Controller
     public function print($id)
     {
         $order = $this->ownedOrder($id);
-        $tailor = $order->tailorId ? $this->ownedTailor($order->tailorId) : null;
+        $tailor = $this->findOwnedTailor($order->tailorId);
 
 
         $customerId = $order->customerId;
@@ -601,7 +606,7 @@ class OrderController extends Controller
     public function two_prints($id)
     {
         $order = $this->ownedOrder($id);
-        $tailor = $order->tailorId ? $this->ownedTailor($order->tailorId) : null;
+        $tailor = $this->findOwnedTailor($order->tailorId);
 
 
         $customerId = $order->customerId;
@@ -795,6 +800,15 @@ class OrderController extends Controller
     private function ownedTailor($id): Tailor
     {
         return Tailor::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+    }
+
+    private function findOwnedTailor($id): ?Tailor
+    {
+        if (empty($id)) {
+            return null;
+        }
+
+        return Tailor::where('user_id', Auth::user()->businessOwnerId())->find($id);
     }
 
     private function ensureRequiredMeasurements(

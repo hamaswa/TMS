@@ -20,6 +20,119 @@ class TailorRateWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_orders_remain_printable_and_can_be_reassigned_after_their_tailor_was_deleted(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Historical Customer',
+            'phone_number1' => '03005550020',
+            'user_id' => $owner->id,
+        ]);
+        $deletedTailor = Tailor::create([
+            'name' => 'Deleted Tailor',
+            'phone_number1' => '03001230020',
+            'user_id' => $owner->id,
+        ]);
+        $replacementTailor = Tailor::create([
+            'name' => 'Replacement Tailor',
+            'phone_number1' => '03001230021',
+            'user_id' => $owner->id,
+        ]);
+        $replacementRateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $replacementTailor->id,
+            'options_id' => null,
+            'type' => 'Replacement rate',
+            'price' => 750,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $order = Order::create([
+            'customerId' => $customer->id,
+            'sub_customer' => $customer->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 2500,
+            'tailorId' => $deletedTailor->id,
+            'tailor_price' => 600,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id,
+            'status' => 'assigned',
+        ]);
+
+        // Reproduce historical production data that still references a tailor
+        // which was removed before order detachment was introduced.
+        $deletedTailor->delete();
+
+        foreach (['admin.order-print', 'admin.order-prints'] as $route) {
+            $this->actingAs($owner)
+                ->get(route($route, $order))
+                ->assertOk()
+                ->assertSeeText('بعد میں مقرر ہوگا');
+        }
+
+        $this->actingAs($owner)
+            ->get(route('admin.order.edit', $order))
+            ->assertOk()
+            ->assertSeeText('اس آرڈر کا پرانا درزی حذف ہو چکا ہے۔')
+            ->assertSeeText('Replacement Tailor');
+
+        $this->actingAs($owner)->put(route('admin.order.update', $order), [
+            'sub_id' => $customer->id,
+            'customerId' => $customer->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 2500,
+            'recivedPayment' => 0,
+            'tailorId' => $replacementTailor->id,
+            'tailor_price' => $replacementRateId.'-750',
+            'returnDate' => now()->addWeek()->toDateString(),
+        ])->assertRedirect(url('admin/Customers'));
+
+        $order->refresh();
+        $this->assertSame($replacementTailor->id, (int) $order->tailorId);
+        $this->assertSame($replacementRateId, (int) $order->rateId);
+        $this->assertEquals(750, (float) $order->tailor_price);
+    }
+
+    public function test_deleting_a_tailor_detaches_their_orders_before_removal(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Detach Customer',
+            'phone_number1' => '03005550022',
+            'user_id' => $owner->id,
+        ]);
+        $tailor = Tailor::create([
+            'name' => 'Tailor To Delete',
+            'phone_number1' => '03001230022',
+            'user_id' => $owner->id,
+        ]);
+        $order = Order::create([
+            'customerId' => $customer->id,
+            'sub_customer' => $customer->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 2500,
+            'tailorId' => $tailor->id,
+            'rateId' => 123,
+            'tailor_price' => 600,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id,
+            'status' => 'assigned',
+        ]);
+
+        $this->actingAs($owner)
+            ->delete(route('admin.Tailor.destroy', $tailor))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('tailors', ['id' => $tailor->id]);
+        $order->refresh();
+        $this->assertNull($order->tailorId);
+        $this->assertNull($order->rateId);
+        $this->assertEquals(600, (float) $order->tailor_price);
+    }
+
     public function test_client_can_create_a_rate_for_their_own_sewing_option(): void
     {
         $this->seed(OptionTypesSeeder::class);

@@ -284,8 +284,20 @@ class TailorController extends Controller
      */
     public function destroy($id)
     {
-        $obj = Tailor::find($id);
-        $obj->delete();
+        $ownerId = Auth::user()->businessOwnerId();
+        $obj = Tailor::where('user_id', $ownerId)->findOrFail($id);
+
+        DB::transaction(function () use ($obj, $ownerId) {
+            Order::where('userId', $ownerId)
+                ->where('tailorId', $obj->id)
+                ->update([
+                    'tailorId' => null,
+                    'rateId' => null,
+                ]);
+
+            $obj->delete();
+        });
+
         return back()->with('delete', 'Tailor Data Delete');
     }
 

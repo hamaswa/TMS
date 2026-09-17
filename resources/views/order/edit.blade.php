@@ -172,6 +172,11 @@
             box-shadow: 0 7px 20px rgba(31, 45, 61, .05);
         }
 
+        #order-details,
+        #measurement-details {
+            scroll-margin-top: 100px;
+        }
+
         .order-measurement-panel-head {
             display: flex;
             align-items: flex-start;
@@ -327,7 +332,7 @@
                     @csrf
                     <div class="row justify-content-center">
                         <div class="col-12">
-                            <section class="order-basics-card">
+                            <section class="order-basics-card" id="order-details">
                                 <div class="order-basics-head">
                                     <div class="order-basics-title">
                                         <span class="order-basics-icon"><i class="fas fa-edit"></i></span>
@@ -366,6 +371,14 @@
                                             <span class="form-control order-field-readonly text-muted">بقایا دیکھنے کی اجازت نہیں</span>
                                         @endif
                                     </div>
+                                    @if($missingTailor)
+                                        <div class="order-field order-field-full">
+                                            <div class="alert alert-warning mb-0" role="alert">
+                                                <strong><i class="fas fa-exclamation-triangle"></i> اس آرڈر کا پرانا درزی حذف ہو چکا ہے۔</strong>
+                                                <div class="small mt-1">نیچے نیا درزی اور اس کی اجرت منتخب کر کے آرڈر محفوظ کریں۔</div>
+                                            </div>
+                                        </div>
+                                    @endif
                                     <div class="order-field">
                                         <label for="tailor-selected"><i class="fas fa-user-tie"></i> درزی</label>
                                         <select id="tailor-selected" class="form-control" name="tailorId" @if($data->tailorId) required @endif dir="rtl">
@@ -407,7 +420,7 @@
                                 $archivedMeasurements = $data->measurementValues
                                     ->reject(fn($measurement) => $editableSourceKeys->contains($measurement->source_key));
                             @endphp
-                            <div class="card bg-light mb-3" dir="rtl">
+                            <div class="card bg-light mb-3" id="measurement-details" dir="rtl">
                                 <div class="card-body">
                                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                                         <div>
