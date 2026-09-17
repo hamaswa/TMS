@@ -569,9 +569,9 @@
                     </div>
                     <hr>
 
-                    @if ($order->measurementValues->count())
+                    @if ($printMeasurements->count())
                         @php
-                            $allMeasurements = $orderDetail->measurementValues->keyBy('source_key');
+                            $allMeasurements = $printMeasurements->keyBy('source_key');
 
                             // Older production snapshots can miss this field because the
                             // legacy database column is named `Chuta` instead of `chuta`.
@@ -616,7 +616,7 @@
                                 array_filter($rightFields, fn($key) => isset($allMeasurements[$key])),
                             );
 
-                            $customFields = $orderDetail->measurementValues
+                            $customFields = $printMeasurements
                                 ->filter(fn($item) => str_starts_with($item->source_key, 'custom.'))
                                 ->sortBy('sort_order')
                                 ->pluck('source_key')

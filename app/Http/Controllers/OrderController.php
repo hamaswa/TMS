@@ -559,6 +559,7 @@ class OrderController extends Controller
 
         // Find the latest order for the customer
         $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
+        $printMeasurements = $this->measurements->displayValuesForOrder($orderDetail);
         
         // dd($orderDetail);
 
@@ -571,7 +572,7 @@ class OrderController extends Controller
         $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $order->id]);
         $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
 
-        return view('order.print', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
+        return view('order.print', compact('order', 'orderDetail', 'printMeasurements', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
     }
 
 
@@ -607,6 +608,7 @@ class OrderController extends Controller
 
         // Find the latest order for the customer
         $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
+        $printMeasurements = $this->measurements->displayValuesForOrder($orderDetail);
         
         [$latestBalance, $previousBalance, $orderBalance] = $this->printBalanceSummary($order);
 
@@ -617,7 +619,7 @@ class OrderController extends Controller
         $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $order->id]);
         $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
 
-        return view('order.prints', compact('order', 'orderDetail', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
+        return view('order.prints', compact('order', 'orderDetail', 'printMeasurements', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
     }
 
     private function printBalanceSummary(Order $order): array

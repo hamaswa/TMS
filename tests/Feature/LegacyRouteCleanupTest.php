@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Customers;
+use App\Models\MeasurementField;
 use App\Models\Order;
 use App\Models\Sale;
 use App\Models\Setting;
@@ -54,6 +55,38 @@ class LegacyRouteCleanupTest extends TestCase
         $this->assertDatabaseHas('settings', [
             'user_id' => $owner->id,
             'status' => 1,
+        ]);
+    }
+
+    public function test_old_order_receipts_show_new_customer_measurement_fields_missing_from_snapshot(): void
+    {
+        [$owner, $order] = $this->orderWithoutActiveSetting();
+        $field = MeasurementField::create([
+            'user_id' => $owner->id,
+            'label' => 'کہنی',
+            'key' => 'elbow',
+            'field_type' => 'number',
+            'unit' => 'inch',
+            'is_required' => false,
+            'is_active' => true,
+            'sort_order' => 10,
+        ]);
+        $order->customers->measurementValues()->create([
+            'measurement_field_id' => $field->id,
+            'value' => '8',
+        ]);
+
+        foreach (['admin.order-print', 'admin.order-prints'] as $route) {
+            $this->actingAs($owner)
+                ->get(route($route, $order))
+                ->assertOk()
+                ->assertSeeText('کہنی')
+                ->assertSeeText('8');
+        }
+
+        $this->assertDatabaseMissing('order_measurement_values', [
+            'order_id' => $order->id,
+            'source_key' => 'custom.'.$field->id,
         ]);
     }
 

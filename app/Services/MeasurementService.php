@@ -7,6 +7,7 @@ use App\Models\CustomerMeasurementHistory;
 use App\Models\MeasurementField;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
+use App\Models\OrderMeasurementValue;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
@@ -47,6 +48,55 @@ class MeasurementService
         $selected = array_map('intval', $template->custom_field_ids ?? []);
 
         return $fields->filter(fn ($field) => in_array((int) $field->id, $selected, true))->values();
+    }
+
+    /**
+     * Return the historical order snapshot plus newer customer fields that did
+     * not exist when the order was created. Existing snapshot values always win.
+     */
+    public function displayValuesForOrder(Order $order): Collection
+    {
+        $values = $order->measurementValues->keyBy('source_key');
+        $customer = $order->customers;
+
+        if (! $customer) {
+            return $values->sortBy('sort_order')->values();
+        }
+
+        $fields = $this->fieldsForTemplate(
+            $this->activeFields((int) $order->userId),
+            $order->measurementTemplate,
+        )->reject(fn ($field) => $values->has('custom.'.$field->id));
+
+        if ($fields->isEmpty()) {
+            return $values->sortBy('sort_order')->values();
+        }
+
+        $customer->measurementValues()
+            ->with('field')
+            ->whereIn('measurement_field_id', $fields->pluck('id'))
+            ->whereNotNull('value')
+            ->where('value', '!=', '')
+            ->get()
+            ->each(function ($customerValue) use ($values): void {
+                $field = $customerValue->field;
+                if (! $field) {
+                    return;
+                }
+
+                $sourceKey = 'custom.'.$field->id;
+                $values->put($sourceKey, new OrderMeasurementValue([
+                    'order_id' => null,
+                    'measurement_field_id' => $field->id,
+                    'source_key' => $sourceKey,
+                    'label' => $field->label,
+                    'value' => (string) $customerValue->value,
+                    'unit' => $field->unit,
+                    'sort_order' => 1000 + (int) $field->sort_order,
+                ]));
+            });
+
+        return $values->sortBy('sort_order')->values();
     }
 
     public function rules(Collection $fields): array
