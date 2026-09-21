@@ -132,7 +132,6 @@ jQuery(document).ready(function ($) {
 
                     row += '</select></td>' +
                         '<td><a class="btn btn-outline-primary btn-sm admin-order-status" href="/admin/order/edit/' + order.orderId + returnContext + '#measurement-details" aria-label="پیمائش میں تبدیلی کریں">تبدیلی</a></td>' +
-                        '<td><a class="btn btn-primary btn-sm admin-order-status" href="/admin/order/edit/' + order.orderId + returnContext + '#order-details" aria-label="آرڈر ایڈٹ کریں"><i class="fas fa-pen ml-1"></i> آرڈر ایڈٹ</a></td>' +
                         '<td><a class="btn btn-light btn-sm" href="/admin/order/prints/' + order.orderId + '" target="_blank" aria-label="آرڈر پرنٹ کریں"><i class="fa fa-print"></i></a></td>' +
                         '</tr>';
 

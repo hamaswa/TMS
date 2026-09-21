@@ -473,7 +473,7 @@ class TailorRateWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_measurements_are_locked_after_an_order_enters_production(): void
+    public function test_assigned_order_measurements_and_receipt_can_be_updated_while_the_measurement_person_stays_fixed(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true]);
@@ -505,9 +505,9 @@ class TailorRateWorkflowTest extends TestCase
         $this->actingAs($owner)->get(route('admin.order.edit', [
             'id' => $order->id, 'latest_measurements' => 1,
         ]))->assertOk()
-            ->assertSeeText('ناپ لاک ہے')
-            ->assertDontSeeText('تازہ محفوظ ناپ لوڈ کریں')
-            ->assertSee('fieldset disabled', false);
+            ->assertSeeText('ناپ والا فرد لاک ہے')
+            ->assertSee('name="system_measurements[length]" value="42"', false)
+            ->assertDontSee('fieldset disabled', false);
 
         $this->actingAs($owner)->put(route('admin.order.update', $order), [
             'sub_id' => $customer->id, 'customerId' => $customer->id,
@@ -518,10 +518,13 @@ class TailorRateWorkflowTest extends TestCase
             'save_measurements_to_profile' => 1,
         ])->assertRedirect();
 
-        $this->assertSame('42', (string) $customer->fresh()->length);
+        $this->assertSame('50', (string) $customer->fresh()->length);
         $this->assertDatabaseHas('order_measurement_values', [
-            'order_id' => $order->id, 'source_key' => 'system.length', 'value' => '42',
+            'order_id' => $order->id, 'source_key' => 'system.length', 'value' => '50',
         ]);
+        $this->actingAs($owner)->get(route('admin.order-print', $order))
+            ->assertOk()
+            ->assertSee('50');
     }
 
     public function test_failed_family_order_keeps_the_selected_profile_and_serial(): void

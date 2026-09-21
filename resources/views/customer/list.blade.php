@@ -560,7 +560,6 @@
                                 <th class="no-sort">مرحلہ</th>
                                 <th class="no-sort">ریک نمبر</th>
                                 <th class="no-sort">تبدیلی</th>
-                                <th class="no-sort">آرڈر ایڈٹ</th>
                                 <th class="no-sort">پرنٹ</th>
                             </tr>
                         </thead>

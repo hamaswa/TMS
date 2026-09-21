@@ -292,10 +292,10 @@
                     <input type="hidden" name="return_search" value="{{ old('return_search', request('return_search')) }}">
                     <div class="row justify-content-center">
                         <div class="col-12">
-                            @unless($canEditMeasurements)
+                            @unless($canChangeMeasurementProfile)
                                 <input type="hidden" name="sub_id" value="{{ $measurementCustomer->id }}">
                                 <div class="alert alert-warning" dir="rtl" role="status">
-                                    <strong>ناپ لاک ہے:</strong> یہ آرڈر ورکشاپ کے مرحلے میں داخل ہو چکا ہے، اس لیے ناپ والا فرد اور جاری شدہ پیمائش تبدیل نہیں کی جا سکتی۔
+                                    <strong>ناپ والا فرد لاک ہے:</strong> اس آرڈر کے لیے فرد تبدیل نہیں کیا جا سکتا، لیکن نیچے اسی آرڈر کی پیمائش تبدیل کی جا سکتی ہے۔
                                 </div>
                             @else
                             <div class="order-customer-picker">
@@ -434,16 +434,13 @@
                                             <strong>{{ $useLatestMeasurements ? 'گاہک کا تازہ محفوظ ناپ دکھایا جا رہا ہے۔' : 'اس آرڈر کے وقت محفوظ کیا گیا ناپ دکھایا جا رہا ہے۔' }}</strong>
                                             <div class="small mt-1">پرانے آرڈر کا ریکارڈ خودکار طور پر تبدیل نہیں کیا جاتا۔</div>
                                         </div>
-                                        @if($canEditMeasurements && ! $useLatestMeasurements)
+                                        @if(! $useLatestMeasurements)
                                             <a class="btn btn-sm btn-outline-primary mt-2 mt-md-0" href="{{ route('admin.order.edit', ['id' => $data->id, 'latest_measurements' => 1]) }}">
                                                 تازہ محفوظ ناپ لوڈ کریں
                                             </a>
                                         @endif
                                     </div>
-                                    @unless($canEditMeasurements)
-                                        <div class="alert alert-warning" role="status">جاری شدہ پیمائش صرف دیکھی جا سکتی ہے۔ نئی پیمائش آئندہ آرڈر میں استعمال کریں۔</div>
-                                    @endunless
-                                    <fieldset @disabled(! $canEditMeasurements)>
+                                    <fieldset>
                                     <div class="custom-control custom-checkbox mb-3">
                                         <input id="save-measurements-to-profile" type="checkbox" class="custom-control-input" name="save_measurements_to_profile" value="1" @checked(old('save_measurements_to_profile', false))>
                                         <label class="custom-control-label font-weight-bold" for="save-measurements-to-profile">یہ تبدیلی گاہک کے تازہ محفوظ ناپ میں بھی محفوظ کریں</label>
