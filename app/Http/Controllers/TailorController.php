@@ -150,9 +150,14 @@ class TailorController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $deletedTailors = Tailor::onlyTrashed()
+            ->where('user_id', $ownerId)
+            ->orderByDesc('deleted_at')
+            ->get(['id', 'name', 'phone_number1', 'deleted_at']);
+
         $business = $user->business ?? $user->ownedBusiness;
 
-        return view('tailor.list', compact('Tailors', 'business', 'weekStart', 'weekEnd'));
+        return view('tailor.list', compact('Tailors', 'deletedTailors', 'business', 'weekStart', 'weekEnd'));
     }
 
     /**
@@ -287,18 +292,24 @@ class TailorController extends Controller
         $ownerId = Auth::user()->businessOwnerId();
         $obj = Tailor::where('user_id', $ownerId)->findOrFail($id);
 
-        DB::transaction(function () use ($obj, $ownerId) {
-            Order::where('userId', $ownerId)
-                ->where('tailorId', $obj->id)
-                ->update([
-                    'tailorId' => null,
-                    'rateId' => null,
-                ]);
+        $obj->delete();
 
-            $obj->delete();
-        });
+        return back()->with('delete', 'درزی کو حذف شدہ فہرست میں منتقل کر دیا گیا ہے۔ ضرورت پڑنے پر بحال کیا جا سکتا ہے۔');
+    }
 
-        return back()->with('delete', 'Tailor Data Delete');
+    /**
+     * Restore a previously deleted tailor and all retained related records.
+     */
+    public function restore($id)
+    {
+        $ownerId = Auth::user()->businessOwnerId();
+        $tailor = Tailor::onlyTrashed()
+            ->where('user_id', $ownerId)
+            ->findOrFail($id);
+
+        $tailor->restore();
+
+        return back()->with('restore', 'درزی اور اس کا محفوظ ریکارڈ کامیابی سے بحال کر دیا گیا ہے۔');
     }
 
     public function tailorRecord($id)

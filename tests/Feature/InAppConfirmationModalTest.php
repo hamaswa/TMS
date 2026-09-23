@@ -29,7 +29,7 @@ class InAppConfirmationModalTest extends TestCase
             ->get(route('admin.Tailor.index'))
             ->assertOk()
             ->assertSee('id="tmsConfirmModal"', false)
-            ->assertSee('data-confirm="کیا آپ واقعی یہ درزی حذف کرنا چاہتے ہیں؟"', false)
+            ->assertSee('data-confirm="کیا آپ واقعی یہ درزی حذف شدہ فہرست میں منتقل کرنا چاہتے ہیں؟ درزی کا ریکارڈ محفوظ رہے گا اور بعد میں بحال کیا جا سکے گا۔"', false)
             ->assertSee('assets/js/confirm-modal.js', false)
             ->assertDontSee('return confirm(', false);
     }

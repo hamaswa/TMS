@@ -310,6 +310,9 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 
     // Tailor
     Route::resource('/Tailor', TailorController::class)->middleware('business.permission:tailoring.tailors');
+    Route::patch('/Tailor/{id}/restore', [TailorController::class, 'restore'])
+        ->middleware('business.permission:tailoring.tailors')
+        ->name('Tailor.restore');
     Route::middleware('business.permission:tailoring.workshop')->group(function () {
         Route::get('tailor-jobs', [TailorJobController::class, 'adminIndex'])->name('tailor-jobs.index');
         Route::get('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'index'])->name('orders.workforce.index');

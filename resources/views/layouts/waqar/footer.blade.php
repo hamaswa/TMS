@@ -27,7 +27,7 @@
 @include('components.confirmation-modal')
 <script src="{{ asset('public/assets/js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('assets/js/form-accessibility.js') }}?v=20260728"></script>
-<script src="{{ asset('assets/js/confirm-modal.js') }}"></script>
+<script src="{{ asset('assets/js/confirm-modal.js') }}?v=20260923b"></script>
 <script>
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {

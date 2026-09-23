@@ -94,7 +94,7 @@ class TailorRateWorkflowTest extends TestCase
         $this->assertEquals(750, (float) $order->tailor_price);
     }
 
-    public function test_deleting_a_tailor_detaches_their_orders_before_removal(): void
+    public function test_deleting_and_restoring_a_tailor_preserves_their_orders_and_rates(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true]);
@@ -109,13 +109,20 @@ class TailorRateWorkflowTest extends TestCase
             'phone_number1' => '03001230022',
             'user_id' => $owner->id,
         ]);
+        $rateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $tailor->id,
+            'type' => 'Preserved rate',
+            'price' => 600,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         $order = Order::create([
             'customerId' => $customer->id,
             'sub_customer' => $customer->id,
             'suitQuantity' => 1,
             'totalPayment' => 2500,
             'tailorId' => $tailor->id,
-            'rateId' => 123,
+            'rateId' => $rateId,
             'tailor_price' => 600,
             'returnDate' => now()->addWeek()->toDateString(),
             'userId' => $owner->id,
@@ -126,11 +133,50 @@ class TailorRateWorkflowTest extends TestCase
             ->delete(route('admin.Tailor.destroy', $tailor))
             ->assertRedirect();
 
-        $this->assertDatabaseMissing('tailors', ['id' => $tailor->id]);
+        $this->assertSoftDeleted('tailors', ['id' => $tailor->id]);
+        $this->assertDatabaseHas('tailorsalaries', [
+            'id' => $rateId,
+            'tailor_id' => $tailor->id,
+        ]);
         $order->refresh();
-        $this->assertNull($order->tailorId);
-        $this->assertNull($order->rateId);
+        $this->assertSame($tailor->id, (int) $order->tailorId);
+        $this->assertSame($rateId, (int) $order->rateId);
         $this->assertEquals(600, (float) $order->tailor_price);
+
+        $this->actingAs($owner)
+            ->patch(route('admin.Tailor.restore', $tailor->id))
+            ->assertRedirect();
+
+        $this->assertNotSoftDeleted('tailors', ['id' => $tailor->id]);
+        $this->assertDatabaseHas('tailorsalaries', [
+            'id' => $rateId,
+            'tailor_id' => $tailor->id,
+        ]);
+        $order->refresh();
+        $this->assertSame($tailor->id, (int) $order->tailorId);
+        $this->assertSame($rateId, (int) $order->rateId);
+    }
+
+    public function test_client_cannot_restore_another_clients_deleted_tailor(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $otherOwner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $otherOwner->assignRole($role);
+
+        $otherTailor = Tailor::create([
+            'name' => 'Other Shop Tailor',
+            'phone_number1' => '03001230023',
+            'user_id' => $otherOwner->id,
+        ]);
+        $otherTailor->delete();
+
+        $this->actingAs($owner)
+            ->patch(route('admin.Tailor.restore', $otherTailor->id))
+            ->assertNotFound();
+
+        $this->assertSoftDeleted('tailors', ['id' => $otherTailor->id]);
     }
 
     public function test_client_can_create_a_rate_for_their_own_sewing_option(): void

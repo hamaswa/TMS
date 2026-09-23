@@ -310,6 +310,105 @@
             min-width: 320px;
         }
 
+        .td-actions-cell {
+            width: 84px;
+            text-align: center !important;
+        }
+
+        .td-actions-dropdown {
+            position: relative;
+            display: inline-block;
+            direction: rtl;
+        }
+
+        .td-actions-trigger {
+            display: inline-grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            color: #425774;
+            background: #fff;
+            border: 1px solid #d5e0ed;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: .2s ease;
+        }
+
+        .td-actions-trigger:hover,
+        .td-actions-trigger:focus,
+        .td-actions-dropdown.show .td-actions-trigger {
+            color: var(--td-blue);
+            background: #f2f7ff;
+            border-color: #a9caf8;
+            box-shadow: 0 0 0 3px rgba(23, 105, 224, .1);
+            outline: none;
+        }
+
+        .td-actions-menu {
+            min-width: 225px;
+            margin-top: 7px;
+            padding: 7px;
+            color: #314762;
+            background: #fff;
+            border: 1px solid #dce5f0;
+            border-radius: 12px;
+            box-shadow: 0 15px 38px rgba(17, 42, 78, .18);
+            text-align: right;
+            z-index: 1080;
+        }
+
+        .td-actions-menu .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 40px;
+            padding: 9px 11px;
+            color: #354a67;
+            background: transparent;
+            border: 0;
+            border-radius: 8px;
+            font-size: .86rem;
+            font-weight: 700;
+            text-align: right;
+            cursor: pointer;
+        }
+
+        .td-actions-menu .dropdown-item i {
+            width: 18px;
+            color: #1769e0;
+            text-align: center;
+        }
+
+        .td-actions-menu .dropdown-item:hover,
+        .td-actions-menu .dropdown-item:focus {
+            color: #0e5fcf;
+            background: #eef5ff;
+            text-decoration: none;
+            outline: none;
+        }
+
+        .td-actions-menu .dropdown-item.is-danger,
+        .td-actions-menu .dropdown-item.is-danger i {
+            color: #dc3545;
+        }
+
+        .td-actions-menu .dropdown-item.is-danger:hover,
+        .td-actions-menu .dropdown-item.is-danger:focus {
+            background: #fff0f2;
+        }
+
+        .td-actions-menu form {
+            margin: 0;
+        }
+
+        .td-panel.has-open-actions,
+        .td-panel.has-open-actions .td-table-wrap {
+            overflow: visible;
+        }
+
         .td-action {
             display: inline-flex;
             align-items: center;
@@ -390,6 +489,71 @@
             color: #805800;
             background: #fff8e5;
             border-color: #f4dfaa;
+        }
+
+        .td-trash {
+            margin-top: 18px;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid var(--td-line);
+            border-radius: 14px;
+        }
+
+        .td-trash summary {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 15px 18px;
+            color: #596a82;
+            background: #f8fafc;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .td-trash summary::marker {
+            color: #8b99ab;
+        }
+
+        .td-trash__list {
+            padding: 0 18px;
+        }
+
+        .td-trash__row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 0;
+            border-top: 1px solid var(--td-line);
+        }
+
+        .td-trash__person strong,
+        .td-trash__person small {
+            display: block;
+        }
+
+        .td-trash__person strong {
+            color: var(--td-navy);
+        }
+
+        .td-trash__person small {
+            margin-top: 3px;
+            color: var(--td-muted);
+        }
+
+        .td-restore {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 38px;
+            padding: 7px 12px;
+            color: #087d50;
+            background: #effbf5;
+            border: 1px solid #bfe6d3;
+            border-radius: 9px;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
         }
 
         .td-modal {
@@ -527,6 +691,16 @@
             .td-empty {
                 display: block !important;
             }
+
+            .td-trash__row {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .td-restore {
+                justify-content: center;
+                width: 100%;
+            }
         }
     </style>
 
@@ -550,7 +724,7 @@
                 </div>
             </div>
 
-            @foreach (['insert' => 'success', 'update' => 'warning', 'delete' => 'danger'] as $key => $tone)
+            @foreach (['insert' => 'success', 'restore' => 'success', 'update' => 'warning', 'delete' => 'danger'] as $key => $tone)
                 @if (Session::has($key))
                     <div class="td-notice is-{{ $tone }}" role="alert"><i class="fas fa-info-circle"></i>
                         <div>{{ Session::get($key) }}</div>
@@ -597,8 +771,7 @@
                                 <th>درزی کو دیا گیا ایڈوانس</th>
                                 <th>اس ہفتے کی اجرت</th>
                                 <th>کل آرڈرز</th>
-                                <th>حساب اور لین دین</th>
-                                <th>مزید عمل</th>
+                                <th class="td-actions-cell">کارروائیاں</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -622,39 +795,48 @@
                                     </td>
                                     <td data-label="کل آرڈرز"><span class="td-count"><i class="fas fa-clipboard-list"></i>
                                             {{ number_format($tailor->orders_count) }}</span></td>
-                                    <td data-label="حساب اور لین دین">
-                                        <div class="td-row-actions">
-                                            <a class="td-action is-primary"
-                                                href="{{ route('admin.tailor-report', $tailor->id) }}"><i
-                                                    class="fas fa-file-invoice-dollar"></i> حساب دیکھیں</a>
-                                            <button type="button" class="td-action is-success" data-toggle="modal"
-                                                data-target="#addRecordModal_{{ $tailor->id }}"><i
-                                                    class="fas fa-plus-circle"></i> ایڈوانس دیں</button>
-                                            <button type="button" class="td-action" data-toggle="modal"
-                                                data-target="#securityDepositModal_{{ $tailor->id }}"><i
-                                                    class="fas fa-shield-alt"></i> سیکیورٹی</button>
-                                        </div>
-                                    </td>
-                                    <td data-label="مزید عمل">
-                                        <div class="td-row-actions">
-                                            <a class="td-action" href="{{ route('admin.tailor-orders', $tailor->id) }}"><i
-                                                    class="fas fa-tshirt"></i> آرڈرز</a>
-                                            <a class="td-action" href="{{ route('admin.tailor-rates', $tailor->id) }}"><i
-                                                    class="fas fa-tags"></i> نرخ</a>
-                                            <a class="td-action" href="{{ route('admin.Tailor.edit', $tailor->id) }}"
-                                                aria-label="درزی میں ترمیم کریں"><i class="fas fa-edit"></i> ترمیم</a>
-                                            <form action="{{ route('admin.Tailor.destroy', $tailor->id) }}" method="POST"
-                                                class="d-inline" data-confirm="کیا آپ واقعی یہ درزی حذف کرنا چاہتے ہیں؟">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="td-action is-danger delete-tr"
-                                                    aria-label="درزی حذف کریں"><i class="fas fa-trash-alt"></i></button>
-                                            </form>
+                                    <td data-label="کارروائیاں" class="td-actions-cell">
+                                        <div class="dropdown td-actions-dropdown">
+                                            <button type="button" class="td-actions-trigger" data-toggle="dropdown"
+                                                data-boundary="viewport" aria-haspopup="true" aria-expanded="false"
+                                                aria-label="{{ $tailor->name }} کی کارروائیاں">
+                                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                            </button>
+                                            <div class="dropdown-menu td-actions-menu">
+                                                <a class="dropdown-item"
+                                                    href="{{ route('admin.tailor-report', $tailor->id) }}"><i
+                                                        class="fas fa-file-invoice-dollar"></i> حساب دیکھیں</a>
+                                                <button type="button" class="dropdown-item" data-toggle="modal"
+                                                    data-target="#addRecordModal_{{ $tailor->id }}"><i
+                                                        class="fas fa-plus-circle"></i> ایڈوانس دیں</button>
+                                                <button type="button" class="dropdown-item" data-toggle="modal"
+                                                    data-target="#securityDepositModal_{{ $tailor->id }}"><i
+                                                        class="fas fa-shield-alt"></i> سیکیورٹی</button>
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item"
+                                                    href="{{ route('admin.tailor-orders', $tailor->id) }}"><i
+                                                        class="fas fa-tshirt"></i> آرڈرز</a>
+                                                <a class="dropdown-item"
+                                                    href="{{ route('admin.tailor-rates', $tailor->id) }}"><i
+                                                        class="fas fa-tags"></i> نرخ</a>
+                                                <a class="dropdown-item"
+                                                    href="{{ route('admin.Tailor.edit', $tailor->id) }}"><i
+                                                        class="fas fa-edit"></i> ترمیم</a>
+                                                <div class="dropdown-divider"></div>
+                                                <form action="{{ route('admin.Tailor.destroy', $tailor->id) }}"
+                                                    method="POST"
+                                                    data-confirm="کیا آپ واقعی یہ درزی حذف شدہ فہرست میں منتقل کرنا چاہتے ہیں؟ درزی کا ریکارڈ محفوظ رہے گا اور بعد میں بحال کیا جا سکے گا۔">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="dropdown-item is-danger delete-tr"><i
+                                                            class="fas fa-trash-alt"></i> حذف کریں</button>
+                                                </form>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="td-empty"><i class="fas fa-user-tie"></i><strong>ابھی کوئی
+                                    <td colspan="7" class="td-empty"><i class="fas fa-user-tie"></i><strong>ابھی کوئی
                                             درزی شامل نہیں ہے</strong><span>اپنا پہلا درزی شامل کر کے نرخ اور آرڈرز منظم
                                             کریں۔</span></td>
                                 </tr>
@@ -663,6 +845,32 @@
                     </table>
                 </div>
             </div>
+
+            @if ($deletedTailors->isNotEmpty())
+                <details class="td-trash">
+                    <summary><i class="fas fa-trash-restore"></i> حذف شدہ درزی
+                        ({{ number_format($deletedTailors->count()) }})</summary>
+                    <div class="td-trash__list">
+                        @foreach ($deletedTailors as $deletedTailor)
+                            <div class="td-trash__row">
+                                <div class="td-trash__person">
+                                    <strong>{{ $deletedTailor->name }}</strong>
+                                    <small dir="ltr">{{ $deletedTailor->phone_number1 ?: '—' }}</small>
+                                    <small>حذف کرنے کا وقت:
+                                        {{ $deletedTailor->deleted_at->format('d-m-Y h:i A') }}</small>
+                                </div>
+                                <form method="POST" action="{{ route('admin.Tailor.restore', $deletedTailor->id) }}"
+                                    data-confirm="کیا آپ '{{ $deletedTailor->name }}' اور اس کا محفوظ ریکارڈ بحال کرنا چاہتے ہیں؟"
+                                    data-confirm-variant="success">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="td-restore"><i class="fas fa-undo-alt"></i> بحال
+                                        کریں</button>
+                                </form>
+                            </div>
+                        @endforeach
+                    </div>
+                </details>
+            @endif
         </div>
     </section>
 
@@ -737,14 +945,23 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var search = document.getElementById('tailorDirectorySearch');
-            if (!search) return;
-            search.addEventListener('input', function() {
-                var query = this.value.toLocaleLowerCase().trim();
-                document.querySelectorAll('#tailorDirectoryTable [data-tailor-row]').forEach(function(row) {
-                    row.style.display = !query || row.textContent.toLocaleLowerCase().includes(
-                        query) ? '' : 'none';
+            if (search) {
+                search.addEventListener('input', function() {
+                    var query = this.value.toLocaleLowerCase().trim();
+                    document.querySelectorAll('#tailorDirectoryTable [data-tailor-row]').forEach(function(row) {
+                        row.style.display = !query || row.textContent.toLocaleLowerCase().includes(
+                            query) ? '' : 'none';
+                    });
                 });
-            });
+            }
+
+            $('.td-actions-dropdown')
+                .on('show.bs.dropdown', function() {
+                    $(this).closest('.td-panel').addClass('has-open-actions');
+                })
+                .on('hidden.bs.dropdown', function() {
+                    $(this).closest('.td-panel').removeClass('has-open-actions');
+                });
         });
     </script>
 @endpush

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 /**
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Tailor extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = ['name','phone_number1','updated_at','user_id','email','password','advance','security_deposit'];
 
