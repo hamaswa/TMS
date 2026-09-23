@@ -43,6 +43,13 @@
                 </div>
             </div>
 
+            @if(session('insert'))
+                <div class="alert alert-success customer-edit-card d-flex align-items-center" role="alert">
+                    <i class="fas fa-check-circle ml-2"></i>
+                    <div>{{ session('insert') }}</div>
+                </div>
+            @endif
+
             @if($errors->any())
                 <div class="alert alert-danger customer-edit-card">
                     <strong>براہ کرم درج ذیل معلومات درست کریں:</strong>

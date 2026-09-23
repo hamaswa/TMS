@@ -525,12 +525,14 @@ class CustomerController extends Controller
             $this->measurements->activeFields(Auth::user()->businessOwnerId()),
             $measurementTemplate,
         );
+        $contactRules = ['required', 'string', 'max:50', new PakistanMobileNumber];
+        if (! $parentCustomer) {
+            $contactRules[] = new UniqueCustomerPhone(Auth::user()->businessOwnerId(), (int) $id);
+        }
+
         $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
-            'contact' => [
-                'required', 'string', 'max:50', new PakistanMobileNumber,
-                new UniqueCustomerPhone(Auth::user()->businessOwnerId(), (int) $id),
-            ],
+            'contact' => $contactRules,
             'mobile_pin' => ['nullable', 'digits:6'],
             'return_customer' => ['nullable', 'integer'],
             'return_search' => ['nullable', 'string', 'max:200'],
@@ -619,14 +621,17 @@ class CustomerController extends Controller
             }
         });
         // dd($obj);
-        $returnToDirectory = (int) ($validated['return_customer'] ?? 0) === (int) $obj->id;
+        $returnCustomer = (int) ($validated['return_customer'] ?? 0);
         $returnSearch = trim((string) ($validated['return_search'] ?? ''));
-        $response = $returnToDirectory
-            ? redirect(url('admin/Customers').'?'.http_build_query([
-                'customer' => $obj->id,
-                'search' => $returnSearch !== '' ? $returnSearch : $obj->phone_number1,
-            ]).'#orderDetail')
-            : redirect('admin/Customers');
+        $returnContext = array_filter([
+            'return_customer' => $returnCustomer > 0 ? $returnCustomer : null,
+            'return_search' => $returnSearch !== '' ? $returnSearch : null,
+        ], fn ($value) => $value !== null);
+        $editUrl = route('admin.Customers.edit', $obj);
+        if ($returnContext !== []) {
+            $editUrl .= '?'.http_build_query($returnContext);
+        }
+        $response = redirect($editUrl);
         $response->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
 
         if (! empty($validated['mobile_pin'])) {

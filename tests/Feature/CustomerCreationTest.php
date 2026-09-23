@@ -261,6 +261,31 @@ class CustomerCreationTest extends TestCase
             ->assertSee('name="contact" value="03007771111"', false)
             ->assertSee('readonly', false)
             ->assertDontSee('name="mobile_pin"', false);
+
+        $this->actingAs($owner)->put(route('admin.Customers.update', $profile), [
+            'name' => 'Ali Aslam',
+            'contact' => '03009999999',
+            'length' => 42,
+            'arms' => 24,
+            'return_customer' => $profile->id,
+            'return_search' => '03007771111',
+        ])->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.Customers.edit', $profile).'?'.http_build_query([
+                'return_customer' => $profile->id,
+                'return_search' => '03007771111',
+            ]))
+            ->assertSessionHas('insert');
+
+        $profile->refresh();
+        $this->assertSame($customer->phone_number1, $profile->phone_number1);
+        $this->assertEquals(42, $profile->length);
+        $this->assertEquals(24, $profile->arms);
+
+        $this->actingAs($owner)
+            ->withSession(['insert' => 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔'])
+            ->get(route('admin.Customers.edit', $profile))
+            ->assertOk()
+            ->assertSeeText('گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
     }
 
     public function test_client_can_reset_customer_pin_and_existing_mobile_sessions_are_revoked(): void
@@ -288,7 +313,7 @@ class CustomerCreationTest extends TestCase
             'add_sewing_type' => '0 - 0',
             'add_shirt_button_type' => '0 - 0',
             'add_sleeve_opening_type' => '0 - 0',
-        ])->assertRedirect('admin/Customers')
+        ])->assertRedirect(route('admin.Customers.edit', $customer))
             ->assertSessionHas('customer_pin', '654321');
 
         $this->assertTrue(Hash::check('654321', $customer->fresh()->mobile_pin));
