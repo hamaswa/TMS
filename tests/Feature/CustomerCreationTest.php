@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Customers;
+use App\Models\Order;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -123,7 +125,7 @@ class CustomerCreationTest extends TestCase
             ->assertSeeInOrder(['name="chuta"', 'value="15"'], false);
     }
 
-    public function test_duplicate_mobile_prompts_the_owner_to_use_the_existing_customer_or_add_a_profile(): void
+    public function test_duplicate_mobile_automatically_creates_a_family_measurement_profile(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true]);
@@ -134,26 +136,21 @@ class CustomerCreationTest extends TestCase
             'user_id' => $owner->id,
         ]);
 
-        $this->actingAs($owner)->post(route('admin.Customers.store'), [
+        $response = $this->actingAs($owner)->post(route('admin.Customers.store'), [
             'name' => 'Duplicate Customer',
             'contact' => '+92 300 1234567',
-        ])->assertSessionHas('duplicate_customer', fn (array $customer) => $customer['id'] === $existing->id)
-            ->assertSessionHasInput('name', 'Duplicate Customer');
+        ]);
 
-        $this->assertDatabaseCount('customers', 1);
+        $profile = Customers::where('parent_id', $existing->id)->firstOrFail();
+        $response->assertRedirect(route('admin.customers.statement', [
+            'id' => $existing->id,
+            'tab' => 'measurements',
+            'profile' => $profile->id,
+        ]))->assertSessionHas('insert');
 
-        $expectedUrl = url('admin/Customers').'?'.http_build_query([
-            'customer' => $existing->id,
-            'search' => $existing->phone_number1,
-        ]).'#orderDetail';
-
-        $this->actingAs($owner)->post(route('admin.Customers.store'), [
-            'name' => 'Duplicate Customer',
-            'contact' => '+92 300 1234567',
-            'duplicate_action' => 'use_existing',
-        ])->assertRedirect($expectedUrl);
-
-        $this->assertDatabaseCount('customers', 1);
+        $this->assertSame('Duplicate Customer', $profile->name);
+        $this->assertSame($existing->phone_number1, $profile->phone_number1);
+        $this->assertDatabaseCount('customers', 2);
     }
 
     public function test_owner_can_add_a_secondary_measurement_profile_for_an_existing_phone(): void
@@ -170,7 +167,6 @@ class CustomerCreationTest extends TestCase
         $this->actingAs($owner)->post(route('admin.Customers.store'), [
             'name' => 'Second Measurement Profile',
             'contact' => '+92 300 1234567',
-            'duplicate_action' => 'create_profile',
             'length' => 44,
             'arms' => 25,
         ])->assertSessionHas('insert');
@@ -181,6 +177,76 @@ class CustomerCreationTest extends TestCase
         $this->assertNull($profile->phone_number1_normalized);
         $this->assertTrue($profile->phone_normalization_conflict);
         $this->assertSame($existing->id, Customers::findByPhoneForOwner($owner->id, '+92 300 1234567')?->id);
+    }
+
+    public function test_family_profiles_only_show_their_own_orders(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Main Customer',
+            'phone_number1' => '03001234567',
+            'user_id' => $owner->id,
+        ]);
+        $family = Customers::create([
+            'name' => 'Family Customer',
+            'parent_id' => $customer->id,
+            'phone_number1' => $customer->phone_number1,
+            'user_id' => $owner->id,
+        ]);
+        $mainOrder = Order::create([
+            'customerId' => $customer->id,
+            'sub_customer' => $customer->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 1200,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id,
+        ]);
+        $familyOrder = Order::create([
+            'customerId' => $customer->id,
+            'sub_customer' => $family->id,
+            'suitQuantity' => 2,
+            'totalPayment' => 2400,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id,
+        ]);
+        Transaction::create([
+            'customerId' => $customer->id,
+            'orderId' => $mainOrder->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Tailor',
+            'remainingBalance' => 1200,
+            'recivedPayment' => 0,
+        ]);
+
+        $directory = $this->actingAs($owner)->get(route('admin.Customers.index'));
+        $directory->assertOk();
+        $directoryHtml = $directory->getContent();
+        $familyRowStart = strpos($directoryHtml, 'data-customer-row="'.$family->id.'"');
+        $familyRowEnd = strpos($directoryHtml, '</tr>', $familyRowStart);
+        $familyRow = substr($directoryHtml, $familyRowStart, $familyRowEnd - $familyRowStart);
+        $this->assertStringContainsString('Rs. 0.00', $familyRow);
+        $this->assertStringContainsString('data-customer-balance="'.$family->id.'"', $familyRow);
+        $this->assertStringNotContainsString('customer_payment_paid', $familyRow);
+
+        $this->actingAs($owner)
+            ->get(route('admin.customer.orders', $family))
+            ->assertOk()
+            ->assertSee('data-profile-id="'.$family->id.'"', false);
+
+        $familyOrders = $this->actingAs($owner)->getJson(route('admin.getCustomer', [
+            'id' => $customer->id,
+            'profile_id' => $family->id,
+        ]));
+        $familyOrders->assertOk()->assertJsonCount(1)->assertJsonPath('0.orderId', $familyOrder->id);
+        $this->assertNotSame($mainOrder->id, $familyOrders->json('0.orderId'));
+
+        $mainOrders = $this->actingAs($owner)->getJson(route('admin.getCustomer', [
+            'id' => $customer->id,
+            'profile_id' => $customer->id,
+        ]));
+        $mainOrders->assertOk()->assertJsonCount(1)->assertJsonPath('0.orderId', $mainOrder->id);
     }
 
     public function test_owner_can_manage_family_measurement_profiles_from_the_primary_customer(): void

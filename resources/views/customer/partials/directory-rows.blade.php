@@ -2,7 +2,7 @@
     @php
         $isFamilyProfile = $customer->parent_id !== null;
         $accountCustomer = $customer->primaryCustomer ?? $customer;
-        $currentBalance = (float) ($accountCustomer->current_balance ?? 0);
+        $currentBalance = (float) ($customer->current_balance ?? 0);
         $initial = function_exists('mb_substr') ? mb_substr(trim($customer->name), 0, 1) : substr(trim($customer->name), 0, 1);
         $statementUrl = $isFamilyProfile
             ? route('admin.customers.statement', ['id' => $accountCustomer->id, 'tab' => 'measurements', 'profile' => $customer->id])
@@ -27,7 +27,7 @@
         <td data-label="فون نمبر"><span class="customer-phone">{{ $accountCustomer->phone_number1 ?: '—' }}</span></td>
         <td data-label="موجودہ بقایا">
             @if ($canViewBalances)
-                <span class="customer-balance {{ $currentBalance > 0 ? 'is-due' : 'is-clear' }}" data-customer-balance="{{ $accountCustomer->id }}">
+                <span class="customer-balance {{ $currentBalance > 0 ? 'is-due' : 'is-clear' }}" data-customer-balance="{{ $customer->id }}">
                     Rs. {{ number_format($currentBalance, 2) }}
                 </span>
             @else
@@ -65,7 +65,7 @@
                                 <i class="fas fa-user-plus"></i><span>خاندان کا نیا ناپ شامل کریں</span>
                             </a>
                         @endif
-                        @if ($canViewBalances)
+                        @if ($canViewBalances && ! $isFamilyProfile)
                             <div class="dropdown-divider"></div>
                             <button type="button" class="dropdown-item customer_payment_paid"
                                 aria-label="{{ $customer->name }} کی ادائیگی درج کریں"

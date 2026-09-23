@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
     {
         // Keep the base seed predictable: demo businesses belong in QaDemoSeeder.
         $admin = User::updateOrCreate(
-            ['email' => 'admin@gmail.com'],
+            ['email' => 'admintms@gmail.com'],
             [
                 'name' => 'Super Admin',
                 'password' => Hash::make('admin@1234'),

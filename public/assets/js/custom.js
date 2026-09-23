@@ -50,6 +50,7 @@ jQuery(document).ready(function ($) {
     // customer order display
     $(document).on('click', '.getCustomer', function () {
         var customer_id = $(this).data('id');
+        var profile_id = $(this).data('profile-id') || null;
         var name = $(this).data('name');
         $('#cus_name').text(name);
 
@@ -58,6 +59,7 @@ jQuery(document).ready(function ($) {
             url: '/admin/getCustomer',
             data: {
                 id: customer_id,
+                profile_id: profile_id,
             },
             dataType: 'json',
             success: function (data) {

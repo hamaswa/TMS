@@ -48,7 +48,7 @@
 
         <section id="orderDetail" class="customer-orders-panel" aria-live="polite">
             <div class="customer-orders-panel__head">
-                <div><h2>آرڈر ریکارڈ</h2><p>{{ $customer->name }} کے تمام ٹیلرنگ آرڈرز تازہ ترین ترتیب میں۔</p></div>
+                <div><h2>آرڈر ریکارڈ</h2><p>{{ $selectedCustomer->name }} کے تمام ٹیلرنگ آرڈرز تازہ ترین ترتیب میں۔</p></div>
                 <span class="customer-orders-panel__icon"><i class="fas fa-receipt"></i></span>
             </div>
             <div class="customer-orders-table-wrap">
@@ -63,7 +63,8 @@
             </div>
         </section>
 
-        <button type="button" id="loadCustomerOrders" class="getCustomer d-none" data-id="{{ $customer->id }}" data-name="{{ $selectedCustomer->name }}" aria-hidden="true"></button>
+        <button type="button" id="loadCustomerOrders" class="getCustomer d-none" data-id="{{ $customer->id }}"
+            data-profile-id="{{ $selectedCustomer->id }}" data-name="{{ $selectedCustomer->name }}" aria-hidden="true"></button>
     </div>
 
     <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-hidden="true">

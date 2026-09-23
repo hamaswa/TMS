@@ -473,12 +473,41 @@ class OrderController extends Controller
     public function getCustomer(Request $req)
     {
         try {
-            $id = $req->id;
+            $validated = $req->validate([
+                'id' => ['required', 'integer'],
+                'profile_id' => ['nullable', 'integer'],
+            ]);
+            $accountCustomer = $this->ownedCustomer((int) $validated['id']);
+            if ($accountCustomer->parent_id !== null) {
+                $accountCustomer = $this->ownedCustomer((int) $accountCustomer->parent_id);
+            }
+            $id = $accountCustomer->id;
+            $profileId = null;
+            if (! empty($validated['profile_id'])) {
+                $profile = $this->ownedCustomer((int) $validated['profile_id']);
+                abort_unless(
+                    (int) $profile->id === (int) $accountCustomer->id
+                        || (int) $profile->parent_id === (int) $accountCustomer->id,
+                    404
+                );
+                $profileId = $profile->id;
+            }
             $Orders = DB::table('orders')
                 ->leftJoin('tailors', 'orders.tailorId', '=', 'tailors.id')
                 ->select('orders.*', 'tailors.name as tailor_name')
                 ->where('orders.customerId', $id)
                 ->where('orders.userId', Auth::user()->businessOwnerId())
+                ->when($profileId, function ($query) use ($profileId, $accountCustomer) {
+                    if ($profileId === $accountCustomer->id) {
+                        $query->where(function ($rootOrders) use ($profileId) {
+                            $rootOrders->where('orders.sub_customer', $profileId)
+                                ->orWhereNull('orders.sub_customer')
+                                ->orWhere('orders.sub_customer', 0);
+                        });
+                    } else {
+                        $query->where('orders.sub_customer', $profileId);
+                    }
+                })
                 ->get();
             $racks = rack::where('user_id', auth()->user()->businessOwnerId())->get();
             $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())

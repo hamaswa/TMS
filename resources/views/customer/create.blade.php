@@ -209,36 +209,6 @@
             resize: vertical
         }
 
-        .duplicate-customer-card {
-            border: 1px solid #d9e5f3;
-            border-radius: 14px;
-            padding: 1rem;
-            background: #f8fbff
-        }
-
-        .duplicate-customer-card strong {
-            display: block;
-            color: #102a43;
-            font-size: 1.05rem
-        }
-
-        .duplicate-customer-card span {
-            color: #60758d
-        }
-
-        .duplicate-choice {
-            display: flex;
-            gap: .75rem;
-            justify-content: flex-start;
-            flex-wrap: wrap
-        }
-
-        .duplicate-choice .btn {
-            min-height: 44px;
-            border-radius: 10px;
-            font-weight: 800
-        }
-
         @media(max-width:1199px) {
             .preference-grid {
                 grid-template-columns: 1fr
@@ -309,7 +279,6 @@
                     </div>
 
                     <form id="customer-create-form" action="{{ route('admin.Customers.store') }}" method="post">@csrf
-                        <input id="duplicate-action" type="hidden" name="duplicate_action" value="">
                         @if($parentCustomer)<input type="hidden" name="parent_customer_id" value="{{ $parentCustomer->id }}">@endif
                         <section class="customer-step active" data-step="1" aria-labelledby="customer-step-one">
                             <div class="customer-section">
@@ -424,43 +393,6 @@
                                     کریں</button></div>
                         </section>
                     </form>
-                    @if (session('duplicate_customer'))
-                        @php($duplicateCustomer = session('duplicate_customer'))
-                        <div class="modal fade" id="duplicateCustomerModal" tabindex="-1" role="dialog"
-                            aria-labelledby="duplicateCustomerTitle" aria-hidden="true" data-backdrop="static">
-                            <div class="modal-dialog modal-dialog-centered" role="document">
-                                <div class="modal-content border-0" style="border-radius:18px;overflow:hidden">
-                                    <div class="modal-header align-items-center">
-                                        <h4 class="modal-title font-weight-bold" id="duplicateCustomerTitle"><i
-                                                class="fas fa-user-check text-primary ml-2"></i> یہ موبائل نمبر پہلے سے
-                                            محفوظ ہے</h4>
-                                        <button type="button" class="close mr-auto ml-0" data-dismiss="modal"
-                                            aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
-                                    </div>
-                                    <div class="modal-body p-4 text-right">
-                                        <p class="mb-3">اس نمبر کے ساتھ موجود گاہک ملا ہے۔ مطلوبہ کارروائی منتخب کریں:
-                                        </p>
-                                        <div class="duplicate-customer-card mb-4">
-                                            <strong>{{ $duplicateCustomer['name'] }}</strong>
-                                            <span dir="ltr">{{ $duplicateCustomer['phone'] }}</span>
-                                        </div>
-                                        <div class="duplicate-choice">
-                                            <button type="button" class="btn btn-primary duplicate-customer-choice"
-                                                data-action="use_existing"><i class="fas fa-user-check ml-1"></i> موجودہ
-                                                گاہک استعمال کریں</button>
-                                            <button type="button"
-                                                class="btn btn-outline-success duplicate-customer-choice"
-                                                data-action="create_profile"><i class="fas fa-copy ml-1"></i> نیا ریکارڈ
-                                                شامل کریں</button>
-                                        </div>
-                                        <small class="d-block text-muted mt-3">نیا ریکارڈ اسی مشترکہ گاہک اکاؤنٹ کے تحت الگ
-                                            نام اور ناپ کے طور پر محفوظ ہوگا؛ بقایا اور موبائل لاگ اِن مشترک رہیں
-                                            گے۔</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
                     <noscript>
                         <style>
                             .customer-step {
@@ -519,22 +451,6 @@
                 if (index <= current) showStep(index);
             }));
 
-            const duplicateModal = document.getElementById('duplicateCustomerModal');
-            if (duplicateModal) {
-                if (window.jQuery && typeof window.jQuery.fn.modal === 'function') {
-                    window.jQuery(duplicateModal).modal('show');
-                }
-
-                duplicateModal.querySelectorAll('.duplicate-customer-choice').forEach(button => {
-                    button.addEventListener('click', function() {
-                        document.getElementById('duplicate-action').value = this.dataset.action;
-                        if (window.jQuery && typeof window.jQuery.fn.modal === 'function') {
-                            window.jQuery(duplicateModal).modal('hide');
-                        }
-                        form.requestSubmit ? form.requestSubmit() : form.submit();
-                    });
-                });
-            }
         });
     </script>
 @endsection

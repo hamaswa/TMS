@@ -58,6 +58,7 @@ class CustomerController extends Controller
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) request('search', ''))
             ->orderBy('id', 'desc')
             ->get();
+        $this->applyFamilyProfileBalances($customers, $canViewBalances);
         $stats = $this->customerDirectoryStats($canViewBalances);
 
         return view('customer.list', array_merge(
@@ -78,6 +79,7 @@ class CustomerController extends Controller
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) ($validated['search'] ?? ''))
             ->orderBy('id', 'desc')
             ->get();
+        $this->applyFamilyProfileBalances($customers, $canViewBalances);
 
         return response()->json([
             'html' => view('customer.partials.directory-rows', compact(
@@ -326,7 +328,6 @@ class CustomerController extends Controller
             'contact' => [
                 'required', 'string', 'max:50', new PakistanMobileNumber,
             ],
-            'duplicate_action' => ['nullable', Rule::in(['use_existing', 'create_profile'])],
             'parent_customer_id' => ['nullable', 'integer'],
             'mobile_pin' => ['nullable', 'digits:6'],
             'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
@@ -344,31 +345,10 @@ class CustomerController extends Controller
         ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
 
         $existingCustomer = $parentCustomer ?: $this->existingRootCustomerByPhone($validated['contact']);
-        $duplicateAction = $parentCustomer ? 'create_profile' : ($validated['duplicate_action'] ?? null);
-
-        if ($existingCustomer && ! $duplicateAction) {
-            return redirect()->back()
-                ->withInput()
-                ->with('duplicate_customer', [
-                    'id' => $existingCustomer->id,
-                    'name' => $existingCustomer->name,
-                    'phone' => $existingCustomer->phone_number1,
-                ]);
-        }
-
-        if ($existingCustomer && $duplicateAction === 'use_existing') {
-            $query = http_build_query([
-                'customer' => $existingCustomer->id,
-                'search' => $existingCustomer->phone_number1,
-            ]);
-
-            return redirect(url('admin/Customers').'?'.$query.'#orderDetail')
-                ->with('insert', 'موجودہ گاہک کا ریکارڈ منتخب کر لیا گیا ہے۔');
-        }
 
         $obj = new Customers;
         $obj->name = $request->name;
-        $obj->phone_number1 = $request->contact;
+        $obj->phone_number1 = $existingCustomer?->phone_number1 ?? $request->contact;
         $obj->length = $request->length;
         $obj->arms = $request->arms;
         $obj->teraa = $request->teraa;
@@ -380,7 +360,7 @@ class CustomerController extends Controller
         $obj->shoulder = $request->monda;
         $obj->chuta = $request->chuta;
         $obj->note = $request->note;
-        if ($existingCustomer && $duplicateAction === 'create_profile') {
+        if ($existingCustomer) {
             $obj->parent_id = $existingCustomer->id;
         }
 
@@ -920,6 +900,36 @@ class CustomerController extends Controller
             'totalBalance' => (float) ($stats->total_balance ?? 0),
             'settledCustomers' => max(0, $customerCount - $customersWithBalance),
         ];
+    }
+
+    private function applyFamilyProfileBalances($customers, bool $canViewBalances): void
+    {
+        if (! $canViewBalances) {
+            return;
+        }
+
+        $familyProfiles = $customers->whereNotNull('parent_id');
+        if ($familyProfiles->isEmpty()) {
+            return;
+        }
+
+        $ownerId = Auth::user()->businessOwnerId();
+        $accountIds = $familyProfiles->pluck('parent_id')->map(fn ($id) => (int) $id)->unique()->values();
+        $ordersByProfile = Order::where('userId', $ownerId)
+            ->whereIn('customerId', $accountIds)
+            ->get(['id', 'customerId', 'sub_customer'])
+            ->groupBy(fn (Order $order) => (int) ($order->sub_customer ?: $order->customerId));
+        $balancesByAccount = $accountIds->mapWithKeys(fn (int $accountId) => [
+            $accountId => $this->customerLedger->orderBalances($ownerId, $accountId),
+        ]);
+
+        $familyProfiles->each(function (Customers $profile) use ($ordersByProfile, $balancesByAccount) {
+            $accountBalances = $balancesByAccount->get((int) $profile->parent_id, collect());
+            $profileBalance = $ordersByProfile->get((int) $profile->id, collect())
+                ->sum(fn (Order $order) => (float) $accountBalances->get((int) $order->id, 0));
+
+            $profile->setAttribute('current_balance', round($profileBalance, 2));
+        });
     }
 
     private function measurementTemplates()
