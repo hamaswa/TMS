@@ -31,15 +31,23 @@ class CustomerCreationTest extends TestCase
             ->assertSee('href="'.route('admin.customers.statement', $customer).'"', false)
             ->assertSeeText('پروفائل اور کھاتہ دیکھیں')
             ->assertSeeText('حالیہ آرڈر دیکھیں')
+            ->assertSee('href="'.route('admin.customer.orders', $customer).'"', false)
             ->assertSeeText('خاندان کا نیا ناپ شامل کریں')
             ->assertSee('data-toggle="dropdown"', false)
             ->assertSee('data-boundary="viewport"', false)
             ->assertSee('show.bs.dropdown', false)
             ->assertSee('aria-label="'.$customer->name.' کی مزید کارروائیاں"', false)
             ->assertSee('aria-label="'.$customer->name.' کی ادائیگی درج کریں"', false);
+
+        $this->actingAs($owner)->get(route('admin.customer.orders', $customer))
+            ->assertOk()
+            ->assertSeeText($customer->name.' کے حالیہ آرڈرز')
+            ->assertSee('id="cc-table-data-order-history"', false)
+            ->assertSee('data-return-orders="'.$customer->id.'"', false)
+            ->assertSee('id="loadCustomerOrders"', false);
     }
 
-    public function test_customer_directory_uses_a_limited_initial_list_and_ajax_server_search(): void
+    public function test_customer_directory_shows_all_customers_and_supports_ajax_server_search(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true, 'is_business_owner' => true]);
@@ -56,8 +64,8 @@ class CustomerCreationTest extends TestCase
         $this->actingAs($owner)->get(route('admin.Customers.index'))
             ->assertOk()
             ->assertSeeText('Directory Customer 26')
-            ->assertDontSeeText('Directory Customer 01')
-            ->assertSeeText('26');
+            ->assertSeeText('Directory Customer 01')
+            ->assertSeeText('کل 26 گاہک موجود ہیں۔ صفحات کے ذریعے تمام ریکارڈ دیکھیں۔');
 
         $response = $this->actingAs($owner)->getJson(route('admin.customers.search', [
             'search' => 'Directory Customer 01',

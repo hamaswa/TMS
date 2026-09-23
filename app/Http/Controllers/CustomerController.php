@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\BusinessRole;
-use App\Models\Business;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
@@ -56,16 +55,13 @@ class CustomerController extends Controller
         $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
         $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
         $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
-        $detailedWorkflow = Business::tailoringStatusModeForOwner($user->businessOwnerId())
-            === Business::TAILORING_STATUS_DETAILED;
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) request('search', ''))
             ->orderBy('id', 'desc')
-            ->limit(25)
             ->get();
         $stats = $this->customerDirectoryStats($canViewBalances);
 
         return view('customer.list', array_merge(
-            compact('customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements', 'detailedWorkflow'),
+            compact('customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements'),
             $stats,
         ));
     }
@@ -81,7 +77,6 @@ class CustomerController extends Controller
         $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) ($validated['search'] ?? ''))
             ->orderBy('id', 'desc')
-            ->limit(25)
             ->get();
 
         return response()->json([

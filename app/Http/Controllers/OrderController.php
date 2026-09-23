@@ -156,6 +156,7 @@ class OrderController extends Controller
             'return_to_statement' => ['nullable', 'boolean'],
             'return_customer' => ['nullable', 'integer'],
             'return_search' => ['nullable', 'string', 'max:200'],
+            'return_to_orders' => ['nullable', 'integer'],
             'save_measurements_to_profile' => ['nullable', 'boolean'],
         ], $measurementRules), [
             'recivedPayment.lte' => 'وصول رقم کل قیمت سے زیادہ نہیں ہو سکتی۔',
@@ -299,6 +300,7 @@ class OrderController extends Controller
         });
 
         $returnToStatement = (bool) ($validated['return_to_statement'] ?? false);
+        $returnToOrders = (int) ($validated['return_to_orders'] ?? 0);
         $returnToDirectory = (int) ($validated['return_customer'] ?? 0) === (int) $validated['customerId'];
         $returnSearch = trim((string) ($validated['return_search'] ?? ''));
         if ($returnToStatement) {
@@ -306,6 +308,9 @@ class OrderController extends Controller
                 'id' => $validated['customerId'],
                 'tab' => 'tailoring',
             ]);
+        } elseif ($returnToOrders > 0) {
+            $returnCustomer = $this->ownedCustomer($returnToOrders);
+            $response = redirect()->route('admin.customer.orders', $returnCustomer);
         } elseif ($returnToDirectory) {
             $response = redirect(url('admin/Customers').'?'.http_build_query([
                 'customer' => $validated['customerId'],
@@ -547,6 +552,20 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    public function customerOrders($id)
+    {
+        $selectedCustomer = $this->ownedCustomer($id);
+        $customer = $selectedCustomer->primaryCustomer ?? $selectedCustomer;
+        $customer = $this->ownedCustomer($customer->id);
+        $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
+            === Business::TAILORING_STATUS_DETAILED;
+        $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
+
+        return view('order.orders', compact(
+            'customer', 'selectedCustomer', 'detailedWorkflow', 'canViewBalances'
+        ));
     }
 
 

@@ -290,6 +290,7 @@
                     <input type="hidden" name="return_to_statement" value="{{ old('return_to_statement', request('return_to_statement')) }}">
                     <input type="hidden" name="return_customer" value="{{ old('return_customer', request('return_customer')) }}">
                     <input type="hidden" name="return_search" value="{{ old('return_search', request('return_search')) }}">
+                    <input type="hidden" name="return_to_orders" value="{{ old('return_to_orders', request('return_to_orders')) }}">
                     <div class="row justify-content-center">
                         <div class="col-12">
                             @unless($canChangeMeasurementProfile)

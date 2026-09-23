@@ -353,6 +353,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 
     // order
     Route::middleware('business.permission:tailoring.orders')->group(function () {
+        Route::get('/customers/{customer}/orders', [OrderController::class, 'customerOrders'])->name('customer.orders');
         Route::get('/order/edit/{id}', [OrderController::class, 'edit'])->name('order.edit');
         Route::put('/order/update/{id}', [OrderController::class, 'update'])->name('order.update');
         Route::get('/order/{id}', [OrderController::class, 'createOrder'])->name('order.create');

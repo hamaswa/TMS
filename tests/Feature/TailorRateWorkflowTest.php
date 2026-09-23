@@ -516,7 +516,8 @@ class TailorRateWorkflowTest extends TestCase
             'returnDate' => now()->addWeek()->toDateString(),
             'system_measurements' => ['length' => 50],
             'save_measurements_to_profile' => 1,
-        ])->assertRedirect();
+            'return_to_orders' => $customer->id,
+        ])->assertRedirect(route('admin.customer.orders', $customer));
 
         $this->assertSame('50', (string) $customer->fresh()->length);
         $this->assertDatabaseHas('order_measurement_values', [

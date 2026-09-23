@@ -53,12 +53,9 @@
                             <i class="fas fa-id-card"></i><span>پروفائل / کھاتہ کھولیں</span>
                         </a>
                         @if ($canCreateTailoringOrder)
-                            <button type="button" class="dropdown-item getCustomer"
-                                data-url="{{ route('admin.getCustomer') }}"
-                                data-id="{{ $accountCustomer->id }}"
-                                data-name="{{ $customer->name }}">
+                            <a href="{{ route('admin.customer.orders', $customer) }}" class="dropdown-item">
                                 <i class="fas fa-history"></i><span>حالیہ آرڈر دیکھیں</span>
-                            </button>
+                            </a>
                         @endif
                         @if ($canManageMeasurements)
                             <a href="{{ url('admin/Customers/' . $customer->id . '/edit') . '?' . http_build_query(['return_customer' => $customer->id, 'return_search' => request('search', '')]) }}" class="dropdown-item">

@@ -68,8 +68,11 @@ jQuery(document).ready(function ($) {
                 $('.tbody').empty();
                 $.each(data, function (index, order) {
                     var returnSearch = $('#customerDirectorySearch').val() || '';
-                    var returnContext = '?return_customer=' + encodeURIComponent(customer_id)
-                        + '&return_search=' + encodeURIComponent(returnSearch);
+                    var returnOrders = $('#cc-table-data-order-history').data('return-orders');
+                    var returnContext = returnOrders
+                        ? '?return_to_orders=' + encodeURIComponent(returnOrders)
+                        : '?return_customer=' + encodeURIComponent(customer_id)
+                            + '&return_search=' + encodeURIComponent(returnSearch);
                     var row = '<tr>' +
                         '<td>' + order.number + '</td>' +
                         '<td>' + order.totalPayment + '</td>' +

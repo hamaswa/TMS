@@ -334,34 +334,6 @@
 
         .customer-empty i { display: block; margin-bottom: 12px; color: #b3c0d2; font-size: 2rem; }
 
-        .customer-order-panel { scroll-margin-top: 90px; }
-        .customer-order-panel .customer-panel__head { background: linear-gradient(135deg, #f7faff, #fff); }
-        .customer-order-person { color: var(--customer-blue); }
-        .customer-order-table { min-width: 1500px; }
-        .order-money { direction: ltr; display: inline-block; font-weight: 800; white-space: nowrap; }
-        .order-money.is-paid { color: #138455; }
-        .order-money.is-due { color: #cf3f4d; }
-        .order-payment-cell { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
-        .order-payment-status { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 5px 9px; border-radius: 999px; font-size: .76rem; font-weight: 800; white-space: nowrap; }
-        .order-payment-status.is-paid { color: #087747; background: #e6f7ef; }
-        .order-payment-status.is-partial { color: #9a6500; background: #fff3d6; }
-        .order-payment-status.is-unpaid { color: #b12f3c; background: #ffecef; }
-        .order-payment-button { min-height: 32px; padding: 5px 9px; border: 1px solid #bce5d1; border-radius: 8px; color: #087747; background: #effaf4; font-size: .76rem; font-weight: 800; white-space: nowrap; }
-        .order-payment-button:hover { border-color: #83cfaa; background: #ddf5e9; }
-        .customer-order-status { min-width: 112px; border: 1px solid transparent; border-radius: 9px; font-weight: 900; box-shadow: 0 5px 14px rgba(25, 45, 75, .08); }
-        .customer-order-status.order-stage-unassigned { color: #6b4d08; border-color: #ead08c; background: #fff8df; }
-        .customer-order-status.order-stage-workshop { color: #9b6200; border-color: #f2cf82; background: #fff3cf; }
-        .customer-order-status.order-stage-ready { color: #fff; border-color: #1769e0; background: linear-gradient(135deg, #2478ec, #1159bd); }
-        .customer-order-status.order-stage-delivered { color: #fff; border-color: #1769e0; background: linear-gradient(135deg, #2478ec, #1159bd); }
-        .customer-order-status:not(.disabled):hover { transform: translateY(-1px); filter: brightness(.98); }
-        .customer-order-status.disabled { cursor: default; opacity: 1; }
-        .order-status-cell { display: flex; align-items: center; justify-content: center; gap: 7px; flex-wrap: wrap; }
-        .order-delivery-form { margin: 0; }
-        .order-delivery-action, .order-delivered-badge { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 10px; border-radius: 9px; font-size: .74rem; font-weight: 900; white-space: nowrap; }
-        .order-delivery-action { color: #087747; border: 1px solid #8bd0ad; background: #e9f8f0; cursor: pointer; }
-        .order-delivery-action:hover { color: #fff; border-color: #15945c; background: #15945c; }
-        .order-delivered-badge { color: #fff; border: 1px solid #15945c; background: linear-gradient(135deg, #1daa6a, #087747); box-shadow: 0 5px 14px rgba(8, 119, 71, .18); }
-
         .customer-workspace .modal-content { overflow: hidden; border: 0; border-radius: 15px; box-shadow: 0 20px 60px rgba(12, 35, 68, .22); }
         .customer-workspace .modal-header { align-items: center; border-bottom: 1px solid var(--customer-line); }
         .customer-workspace .modal-title { color: var(--customer-navy); font-size: 1.15rem; font-weight: 800; }
@@ -533,74 +505,9 @@
                         <tbody>@include('customer.partials.directory-rows')</tbody>
                     </table>
                 </div>
-                <div id="customerSearchStatus" class="customer-search-status">تازہ ترین 25 گاہک دکھائے جا رہے ہیں۔ مزید گاہک تلاش کرنے کے لیے نام، فون یا نمبر لکھیں۔</div>
+                <div id="customerSearchStatus" class="customer-search-status">کل {{ number_format($customers->count()) }} گاہک موجود ہیں۔ صفحات کے ذریعے تمام ریکارڈ دیکھیں۔</div>
             </section>
 
-            <section id="orderDetail" class="customer-panel customer-order-panel" style="display:none" aria-live="polite">
-                <div class="customer-panel__head">
-                    <div class="customer-panel__title">
-                        <h2><span id="cus_name" class="customer-order-person"></span> کے آرڈر</h2>
-                        <p>ہر آرڈر کی رقم، ادائیگی، بقایا، موجودہ مرحلہ اور ریک نمبر یہاں دیکھیں۔</p>
-                    </div>
-                    <span class="customer-stat__icon"><i class="fas fa-receipt"></i></span>
-                </div>
-                <div class="customer-table-wrap">
-                    <table class="table js-sortable-table customer-directory customer-order-table" id="cc-table-data-order-history">
-                        <thead>
-                            <tr>
-                                <th>نمبر</th>
-                                <th class="no-sort">کل رقم</th>
-                                <th class="no-sort">ادا شدہ</th>
-                                <th class="no-sort">بقایا</th>
-                                <th class="no-sort">ادائیگی</th>
-                                <th class="no-sort">آرڈر کی تاریخ</th>
-                                <th class="no-sort">واپسی کی تاریخ</th>
-                                <th class="no-sort">کپڑوں کی تعداد</th>
-                                <th class="no-sort">درزی</th>
-                                <th class="no-sort">مرحلہ</th>
-                                <th class="no-sort">ریک نمبر</th>
-                                <th class="no-sort">تبدیلی</th>
-                                <th class="no-sort">پرنٹ</th>
-                            </tr>
-                        </thead>
-                        <tbody class="tbody"></tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
-
-        <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content">
-                    <form id="orderStatusForm"
-                          action="{{ $detailedWorkflow ? '' : url('admin/order-status') }}"
-                          method="post"
-                          @if($detailedWorkflow) data-action-base="{{ url('admin/tailor-jobs') }}" @endif>
-                        @csrf
-                        @if($detailedWorkflow)
-                            @method('PATCH')
-                        @endif
-                        <input type="hidden" id="order_id" name="order_id">
-                        <div class="modal-header">
-                            <h4 class="modal-title"><i class="fas fa-tasks text-primary ml-2"></i> آرڈر کا اگلا مرحلہ</h4>
-                            <button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
-                        </div>
-                        <div class="modal-body">
-                            <label for="orderStatusSelect" class="font-weight-bold">نیا مرحلہ منتخب کریں</label>
-                            <select id="orderStatusSelect" class="form-control order-status" name="{{ $detailedWorkflow ? 'status' : 'order_status' }}" required style="padding-top: 0px;"></select>
-                            <small class="form-text text-muted mt-2">
-                                {{ $detailedWorkflow
-                                    ? 'صرف آرڈر کی موجودہ حالت کے بعد والا درست مرحلہ دکھایا گیا ہے۔'
-                                    : 'کام کی حالت کے لیے صرف کارخانے میں ہے یا تیار ہے منتخب کریں۔ حوالگی الگ سبز بٹن سے محفوظ ہوگی۔' }}
-                            </small>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary" id="submit-button"><i class="fas fa-check ml-1"></i> محفوظ کریں</button>
-                            <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
         </div>
 
         <div class="modal fade" id="myModalpayment" tabindex="-1" role="dialog" aria-hidden="true">
@@ -689,13 +596,16 @@
 
     <script>
         $(document).ready(function () {
-            var initialCustomerId = @json((int) request('customer'));
-            var selectedCustomerId = initialCustomerId || null;
             var customerSearchTimer = null;
-            var customerSearchRequest = null;
             var customerTable = $('#cc-table-data-customer-list');
-            var customerTableBody = customerTable.find('tbody');
             var customerSearchStatus = $('#customerSearchStatus');
+            var customerDataTable = customerTable.DataTable({
+                dom: 'lrtip',
+                pageLength: 10,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'تمام']],
+                order: [[0, 'desc']],
+                columnDefs: [{ targets: [2, 3, 4], orderable: false }]
+            });
 
             function setCustomerMenuOverflow(menu, isOpen) {
                 var dropdown = $(menu);
@@ -715,48 +625,26 @@
                 return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
 
-            function loadCustomers(search, reopenCustomerId) {
-                if (customerSearchRequest) {
-                    customerSearchRequest.abort();
-                }
-
-                customerSearchStatus.addClass('is-loading').text('گاہک تلاش کیے جا رہے ہیں۔۔۔');
-                customerSearchRequest = $.ajax({
-                    url: customerTable.data('search-url'),
-                    type: 'GET',
-                    dataType: 'json',
-                    data: { search: search || '' },
-                    success: function (response) {
-                        var tableWrap = customerTable.closest('.customer-table-wrap');
-                        tableWrap.add(tableWrap.closest('.customer-panel')).removeClass('has-open-customer-menu');
-                        customerTableBody.html(response.html);
-                        customerSearchStatus.removeClass('is-loading').text(
-                            search
-                                ? response.count + ' ملتے جلتے گاہک دکھائے جا رہے ہیں۔'
-                                : 'تازہ ترین ' + response.count + ' گاہک دکھائے جا رہے ہیں۔ مزید گاہک تلاش کرنے کے لیے نام، فون یا نمبر لکھیں۔'
-                        );
-
-                        if (reopenCustomerId) {
-                            var customerButton = $('.getCustomer[data-id="' + reopenCustomerId + '"]');
-                            if (customerButton.length) {
-                                customerButton.trigger('click');
-                            }
-                        }
-                    },
-                    error: function (xhr, status) {
-                        if (status !== 'abort') {
-                            customerSearchStatus.removeClass('is-loading').text('تلاش مکمل نہیں ہو سکی۔ دوبارہ کوشش کریں۔');
-                        }
-                    }
-                });
+            function updateCustomerStatus() {
+                var search = $('#customerDirectorySearch').val().trim();
+                var filtered = customerDataTable.rows({ search: 'applied' }).count();
+                var total = customerDataTable.rows().count();
+                customerSearchStatus.removeClass('is-loading').text(
+                    search
+                        ? filtered + ' ملتے جلتے گاہک دکھائے جا رہے ہیں۔'
+                        : 'کل ' + total + ' گاہک موجود ہیں۔ صفحات کے ذریعے تمام ریکارڈ دیکھیں۔'
+                );
             }
+
+            customerDataTable.on('draw', updateCustomerStatus);
+            updateCustomerStatus();
 
             $('#customerDirectorySearch').on('input', function () {
                 var search = this.value.trim();
                 clearTimeout(customerSearchTimer);
                 customerSearchTimer = setTimeout(function () {
-                    loadCustomers(search, null);
-                }, 300);
+                    customerDataTable.search(search).draw();
+                }, 200);
             });
 
             $('#myModalpayment form').on('submit', function (event) {
@@ -765,8 +653,6 @@
                 var form = $(this);
                 var submitButton = form.find('button[type="submit"]');
                 var feedback = $('#paymentAjaxFeedback');
-                var customerId = $('#customer_id').val();
-                var orderId = $('#payment_order_id').val();
                 feedback.hide().text('');
                 submitButton.prop('disabled', true);
 
@@ -778,10 +664,14 @@
                     headers: { Accept: 'application/json' },
                     success: function (response) {
                         var balance = Number(response.balance || 0);
-                        $('[data-customer-balance="' + response.customerId + '"]')
+                        var balanceElement = $('[data-customer-balance="' + response.customerId + '"]');
+                        balanceElement
                             .toggleClass('is-due', balance > 0)
                             .toggleClass('is-clear', balance <= 0)
                             .text('Rs. ' + formatMoney(balance));
+                        if (balanceElement.length) {
+                            customerDataTable.cell(balanceElement.closest('td')).invalidate('dom');
+                        }
 
                         if (response.stats) {
                             $('#customerStatCount').text(Number(response.stats.customerCount || 0).toLocaleString('en-US'));
@@ -793,13 +683,6 @@
                         $('#myModalpayment').modal('hide');
                         $('#customerAjaxAlert').show().find('div').text(response.message);
                         form[0].reset();
-
-                        if (orderId || ($('#orderDetail').is(':visible') && String(selectedCustomerId) === String(customerId))) {
-                            var selectedCustomerButton = $('.getCustomer[data-id="' + customerId + '"]');
-                            if (selectedCustomerButton.length) {
-                                selectedCustomerButton.trigger('click');
-                            }
-                        }
                     },
                     error: function (xhr) {
                         var response = xhr.responseJSON || {};
@@ -811,30 +694,6 @@
                 });
             });
 
-            $(document).on('click', '.getCustomer', function () {
-                selectedCustomerId = $(this).data('id');
-                $('.customer-list-table tbody tr').removeClass('is-selected');
-                $(this).closest('tr').addClass('is-selected');
-                setTimeout(function () {
-                    var orderPanel = document.getElementById('orderDetail');
-                    if (orderPanel) {
-                        orderPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }, 350);
-            });
-
-            if (initialCustomerId) {
-                var restoreCustomerContext = function () {
-                    var customerButton = $('.getCustomer[data-id="' + initialCustomerId + '"]');
-                    if (customerButton.length) {
-                        customerButton.trigger('click');
-                    } else {
-                        loadCustomers($('#customerDirectorySearch').val(), initialCustomerId);
-                    }
-                };
-
-                setTimeout(restoreCustomerContext, 100);
-            }
         });
     </script>
 @endsection
