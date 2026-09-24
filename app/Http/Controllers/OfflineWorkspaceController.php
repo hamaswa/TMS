@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
-use App\Models\BusinessRole;
 use App\Models\OfflineOperation;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
@@ -15,11 +14,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 
 class OfflineWorkspaceController extends Controller
 {
-    private const WORKSPACE_VERSION = '20260924f';
+    private const WORKSPACE_VERSION = '20260924m';
 
     public function fallback()
     {
@@ -34,7 +34,7 @@ class OfflineWorkspaceController extends Controller
             return response()->json([
                 'version' => self::WORKSPACE_VERSION,
                 'actor' => 'user:'.Auth::id(),
-                'pages' => $this->businessPages(Auth::user()),
+                ...$this->businessPageInventory(Auth::user()),
             ]);
         }
 
@@ -261,90 +261,126 @@ class OfflineWorkspaceController extends Controller
         ];
     }
 
-    private function businessPages(User $user): array
+    private function businessPageInventory(User $user): array
     {
         $pages = [];
-        $add = function (string $label, string $url) use (&$pages): void {
-            $pages[$url] = ['label' => $label, 'url' => $url];
+        $dynamicPatterns = 0;
+        $discoveredRoutes = 0;
+
+        foreach (Route::getRoutes() as $route) {
+            $methods = $route->methods();
+            $uri = $route->uri();
+            $name = $route->getName();
+            if (! in_array('GET', $methods, true) || ($uri !== 'admin' && ! str_starts_with($uri, 'admin/'))) {
+                continue;
+            }
+            if (! $name || ! $this->userCanAccessRoute($user, $route->gatherMiddleware())) {
+                continue;
+            }
+
+            $discoveredRoutes++;
+            if ($route->parameterNames()) {
+                $dynamicPatterns++;
+                continue;
+            }
+            if ($this->excludedOfflineRoute($name)) {
+                continue;
+            }
+            if ($name === 'admin.subscription.index' && ! $user->ownedBusiness()->exists()) {
+                continue;
+            }
+
+            $url = route($name);
+            $pages[$url] = [
+                'label' => $this->pageLabel($name, $uri),
+                'url' => $url,
+                'route' => $name,
+            ];
+        }
+
+        if ($user->hasBusinessPermission('storefront.manage')) {
+            foreach ($user->enabledModules() as $module) {
+                $url = route('admin.storefront.module-settings.edit', $module);
+                $pages[$url] = [
+                    'label' => $module === User::MODULE_TAILORING ? 'آن لائن ٹیلرنگ ترتیبات' : 'آن لائن دکان ترتیبات',
+                    'url' => $url,
+                    'route' => 'admin.storefront.module-settings.edit',
+                ];
+            }
+        }
+
+        return [
+            'pages' => array_values($pages),
+            'inventory' => [
+                'permitted_get_routes' => $discoveredRoutes,
+                'fixed_pages' => count($pages),
+                'record_route_patterns' => $dynamicPatterns,
+            ],
+        ];
+    }
+
+    private function userCanAccessRoute(User $user, array $middleware): bool
+    {
+        foreach ($middleware as $item) {
+            if (str_starts_with($item, 'module:')) {
+                $modules = explode('|', substr($item, strlen('module:')));
+                if (! collect($modules)->contains(fn (string $module) => $user->hasModule($module))) {
+                    return false;
+                }
+            }
+            if (str_starts_with($item, 'business.permission:')) {
+                $permissions = explode('|', substr($item, strlen('business.permission:')));
+                if (! collect($permissions)->contains(fn (string $permission) => $user->hasBusinessPermission($permission))) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function excludedOfflineRoute(string $name): bool
+    {
+        return in_array($name, [
+            'admin.home',
+            'admin.workspace.current',
+            'admin.offline.manifest',
+            'admin.language.change',
+            'admin.customers.search',
+            'admin.search',
+            'admin.getCustomer',
+            'admin.cloth-type.lookup',
+            'admin.getSale',
+            'admin.nmbr',
+            'admin.Id',
+            'admin.customercsv',
+            'admin.clothscsv',
+            'admin.activity.export',
+            'admin.payment-reconciliation.export',
+            'admin.notifications.index',
+            'admin.notify',
+            'admin.user',
+            'admin.OptionType.create',
+            'admin.Options.index',
+            'admin.Options.create',
+        ], true);
+    }
+
+    private function pageLabel(string $name, string $uri): string
+    {
+        return match ($name) {
+            'admin.dashboard.tailoring' => 'ٹیلرنگ ڈیش بورڈ',
+            'admin.dashboard.clothing' => 'دکان ڈیش بورڈ',
+            'admin.Customers.index' => 'گاہک اور پیمائش',
+            'admin.Customers.create' => 'نیا گاہک',
+            'admin.tailor-jobs.index' => 'ورکشاپ',
+            'admin.order.total' => 'ٹیلرنگ آرڈرز',
+            'admin.sellCloth' => 'نئی فروخت',
+            'admin.stock.index' => 'اسٹاک',
+            'admin.purchases.index' => 'خریداری',
+            'admin.suppliers.index' => 'سپلائرز',
+            default => str_replace(['admin/', '-', '_'], ['', ' ', ' '], $uri),
         };
-
-        if ($user->hasModule(User::MODULE_TAILORING)) {
-            $add('ٹیلرنگ ڈیش بورڈ', route('admin.dashboard.tailoring'));
-            if ($user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS)) {
-                $add('گاہک اور پیمائش', route('admin.Customers.index'));
-                $add('نیا گاہک', route('admin.Customers.create'));
-            }
-            if ($user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS)) {
-                $add('ٹیلرنگ آرڈرز', route('admin.order.total'));
-            }
-            if ($user->hasBusinessPermission(BusinessRole::TAILORING_WORKSHOP)) {
-                $add('ورکشاپ', route('admin.tailor-jobs.index'));
-            }
-            if ($user->hasBusinessPermission(BusinessRole::TAILORING_TAILORS)) {
-                $add('درزی', route('admin.Tailor.index'));
-                $add('پروڈکشن ورکرز', route('admin.production-workers.index'));
-                $add('نیا پروڈکشن ورکر', route('admin.production-workers.create'));
-            }
-            if ($user->hasBusinessPermission(BusinessRole::TAILORING_CONFIGURATION)) {
-                $add('ٹیلرنگ ورک فلو', route('admin.tailoring-workflow.edit'));
-                $add('پیمائش کے اختیارات', route('admin.OptionType.index'));
-                $add('پیمائش ٹیمپلیٹس', route('admin.measurement-templates.index'));
-                $add('اضافی پیمائش خانے', route('admin.measurement-fields.index'));
-                $add('سلائی ڈیزائن', route('admin.design.index'));
-                $add('نیا سلائی ڈیزائن', route('admin.design.create'));
-            }
-        }
-
-        if ($user->hasModule(User::MODULE_CLOTHING)) {
-            $add('دکان ڈیش بورڈ', route('admin.dashboard.clothing'));
-            if ($user->hasBusinessPermission(BusinessRole::CLOTHING_INVENTORY)) {
-                $add('اسٹاک', route('admin.stock.index'));
-                $add('کپڑے کی فہرست', route('admin.cloth.index'));
-                $add('کپڑے کی اقسام', route('admin.clothtype.index'));
-                $add('کپڑے کے برانڈز', route('admin.clothbrand.index'));
-                $add('اسٹاک کھاتہ', route('admin.inventory-ledger.index'));
-                $add('اسٹاک کی مالیت', route('admin.inventory-valuation.index'));
-            }
-            if ($user->hasBusinessPermission(BusinessRole::CLOTHING_SALES)) {
-                $add('نئی فروخت', route('admin.sellCloth'));
-                $add('فروخت کا ریکارڈ', route('admin.record'));
-                $add('تمام فروخت', route('admin.sales.total'));
-                $add('آن لائن آرڈرز', route('admin.storefront.orders.index'));
-            }
-            if ($user->hasBusinessPermission(BusinessRole::CLOTHING_PURCHASES)) {
-                $add('خریداری', route('admin.purchases.index'));
-                $add('نئی خریداری', route('admin.purchases.create'));
-            }
-            if ($user->hasBusinessPermission(BusinessRole::CLOTHING_SUPPLIERS)) {
-                $add('سپلائرز', route('admin.suppliers.index'));
-            }
-        }
-
-        if ($user->hasBusinessPermission(BusinessRole::FINANCE_VIEW)) {
-            $add('مالیاتی ڈیش بورڈ', route('admin.financial-reports.index'));
-            $add('ادائیگی کی پڑتال', route('admin.payment-reconciliation.index'));
-        }
-        if ($user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES)) {
-            $add('گاہکوں کے کھاتے', route('admin.customer-accounts.index'));
-        }
-        if ($user->hasBusinessPermission(BusinessRole::EXPENSES_MANAGE)) {
-            $add('ماہانہ اخراجات', route('admin.expense.index'));
-            $add('روزانہ اخراجات', route('admin.dailyexpense.index'));
-        }
-        if ($user->hasBusinessPermission(BusinessRole::TEAM_MANAGE)) {
-            $add('ملازمین اور اجازتیں', route('admin.team.index'));
-        }
-        if ($user->hasBusinessPermission(BusinessRole::ACTIVITY_VIEW)) {
-            $add('ملازمین کی سرگرمی', route('admin.activity.index'));
-        }
-        if ($user->hasBusinessPermission(BusinessRole::SETTINGS_MANAGE)) {
-            $add('دکان کی ترتیبات', route('admin.setting.index'));
-        }
-        if ($user->hasBusinessPermission(BusinessRole::STOREFRONT_MANAGE)) {
-            $add('آن لائن دکان', route('admin.storefront.edit'));
-        }
-
-        return array_values($pages);
     }
 
     private function isAheadOf(string $current, string $target): bool

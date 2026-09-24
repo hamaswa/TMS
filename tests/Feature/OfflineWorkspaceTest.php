@@ -42,12 +42,21 @@ class OfflineWorkspaceTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('actor', 'user:'.$owner->id)
-            ->assertJsonStructure(['version', 'actor', 'pages' => [['label', 'url']]]);
+            ->assertJsonStructure([
+                'version',
+                'actor',
+                'pages' => [['label', 'url', 'route']],
+                'inventory' => ['permitted_get_routes', 'fixed_pages', 'record_route_patterns'],
+            ]);
 
         $urls = collect($response->json('pages'))->pluck('url');
         $this->assertTrue($urls->contains(route('admin.dashboard.tailoring')));
         $this->assertTrue($urls->contains(route('admin.Customers.create')));
         $this->assertTrue($urls->contains(route('admin.tailor-jobs.index')));
+        $this->assertTrue($urls->contains(route('admin.design.create')));
+        $this->assertFalse($urls->contains(route('admin.notifications.index')));
+        $this->assertFalse($urls->contains(route('admin.OptionType.create')));
+        $this->assertFalse($urls->contains(route('admin.Options.index')));
         $this->assertFalse($urls->contains(route('admin.dashboard.clothing')));
     }
 
@@ -203,10 +212,28 @@ class OfflineWorkspaceTest extends TestCase
         $this->assertStringContainsString('CLEAR_PRIVATE_DATA', $worker);
         $this->assertStringContainsString('PREPARE_OFFLINE_WORKSPACE', $worker);
         $this->assertStringContainsString('OFFLINE_PREPARE_PROGRESS', $worker);
+        $this->assertStringContainsString('discoverRecordLinks', $worker);
+        $this->assertStringContainsString('/assets/js/jquery.dataTables.min.js', $worker);
+        $this->assertStringContainsString('/assets/js/form-accessibility.js', $worker);
+        $this->assertStringContainsString('NotoNastaliqUrdu-VariableFont_wght.woff2', $worker);
+        $this->assertStringContainsString('https://cdnjs.cloudflare.com', $worker);
+        $this->assertStringContainsString('https://cdn.jsdelivr.net', $worker);
+        $this->assertStringContainsString('isPrivatePageAsset', $worker);
+        $this->assertStringContainsString("url.pathname.startsWith('/storage/')", $worker);
 
         $client = file_get_contents(public_path('assets/js/offline-workspace.js'));
         $this->assertStringContainsString('tms-offline-manifest-url', $client);
         $this->assertStringContainsString('آف لائن ورک اسپیس تیار کریں', $client);
+    }
+
+    public function test_each_visited_page_is_cached_without_full_workspace_opt_in(): void
+    {
+        $client = file_get_contents(public_path('assets/js/offline-workspace.js'));
+
+        $this->assertStringContainsString(
+            "localStorage.setItem(ACTIVE_ACTOR_KEY, actorKey);\n                worker?.postMessage({ type: 'CACHE_CURRENT_PAGE', url: window.location.href });\n                if (readReadiness()?.enabled) {",
+            $client,
+        );
     }
 
     private function tailorOrder(): array

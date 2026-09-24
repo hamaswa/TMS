@@ -23,8 +23,8 @@
 <script src="{{ asset('assets/js/custom.js') }}?v=20260924d"></script>
 <script src="{{ asset('assets/js/form-accessibility.js') }}?v=20260728"></script>
 <script src="{{ asset('assets/js/confirm-modal.js') }}?v=20260923b"></script>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/service-worker.js?v=20260924f',{scope:'/',updateViaCache:'none'});}</script>
-<script src="{{ asset('assets/js/offline-workspace.js') }}?v=20260924f"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/service-worker.js?v=20260924m',{scope:'/',updateViaCache:'none'});}</script>
+<script src="{{ asset('assets/js/offline-workspace.js') }}?v=20260924m"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script>
 (function () {

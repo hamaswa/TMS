@@ -180,9 +180,14 @@
                 : `ضروری صفحات تیار کیے جا رہے ہیں (${completed}/${progressTotal})`;
         } else if (ready) {
             const preparedAt = readiness.prepared_at ? new Date(readiness.prepared_at).toLocaleString('ur-PK') : '';
-            readinessText.textContent = `یہ ورک اسپیس آف لائن استعمال کے لیے تیار ہے۔${preparedAt ? ` آخری تیاری: ${preparedAt}` : ''}`;
+            const fixedPages = readiness.inventory?.fixed_pages || readiness.pages || 0;
+            const recordPatterns = readiness.inventory?.record_route_patterns || 0;
+            readinessText.textContent = `${fixedPages} بنیادی صفحات آف لائن تیار ہیں۔${recordPatterns ? ` ریکارڈ کے ${recordPatterns} اقسام کے صفحات آن لائن کھلنے پر خود محفوظ ہوتے ہیں۔` : ''}${preparedAt ? ` آخری تیاری: ${preparedAt}` : ''}`;
         } else if (readiness?.status === 'partial') {
-            readinessText.textContent = `${readiness.failed || 0} صفحات محفوظ نہیں ہو سکے۔ انٹرنیٹ چیک کر کے دوبارہ کوشش کریں۔`;
+            const failedPages = Array.isArray(readiness.failed_pages)
+                ? readiness.failed_pages.map((page) => page.label).filter(Boolean).join('، ')
+                : '';
+            readinessText.textContent = `${readiness.failed || 0} صفحات محفوظ نہیں ہو سکے۔${failedPages ? ` مسئلہ: ${failedPages}` : ''}`;
         } else {
             readinessText.textContent = 'پہلی بار آن لائن رہتے ہوئے ضروری صفحات آلے پر محفوظ کریں۔';
         }
@@ -236,6 +241,7 @@
                 type: 'PREPARE_OFFLINE_WORKSPACE',
                 pages: manifest.pages,
                 version: manifest.version,
+                inventory: manifest.inventory || null,
                 actorKey: actorKey
             });
         } catch (error) {
@@ -267,17 +273,19 @@
                 enabled: true,
                 status: 'ready',
                 version: data.version,
-                pages: Number(data.total || 0),
+                pages: Number(data.completed || 0),
+                inventory: data.inventory || null,
                 prepared_at: new Date().toISOString()
             });
             sessionStorage.setItem(refreshKey, '1');
-            showToast(`${data.total} صفحات آف لائن استعمال کے لیے تیار ہیں۔`);
+            showToast(`${data.completed} صفحات آف لائن استعمال کے لیے تیار ہیں۔`);
         } else {
             writeReadiness({
                 enabled: false,
                 status: 'partial',
                 version: data.version,
                 failed: failedCount,
+                failed_pages: data.failed || [],
                 prepared_at: new Date().toISOString()
             });
             showToast(`${failedCount} صفحات محفوظ نہیں ہو سکے؛ دوبارہ کوشش کریں۔`);
@@ -413,7 +421,7 @@
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('message', handleWorkerMessage);
-        navigator.serviceWorker.register('/service-worker.js?v=20260924f', { scope: '/', updateViaCache: 'none' })
+        navigator.serviceWorker.register('/service-worker.js?v=20260924m', { scope: '/', updateViaCache: 'none' })
             .then(() => navigator.serviceWorker.ready)
             .then((registration) => {
                 const worker = navigator.serviceWorker.controller || registration.active;
@@ -422,8 +430,8 @@
                     worker?.postMessage({ type: 'CLEAR_PRIVATE_DATA' });
                 }
                 localStorage.setItem(ACTIVE_ACTOR_KEY, actorKey);
+                worker?.postMessage({ type: 'CACHE_CURRENT_PAGE', url: window.location.href });
                 if (readReadiness()?.enabled) {
-                    worker?.postMessage({ type: 'CACHE_CURRENT_PAGE', url: window.location.href });
                     if (navigator.onLine && !sessionStorage.getItem(refreshKey)) prepareWorkspace(true);
                 }
             })
