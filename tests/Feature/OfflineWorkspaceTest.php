@@ -34,6 +34,35 @@ class OfflineWorkspaceTest extends TestCase
             ->assertSee('data-base-status="assigned"', false);
     }
 
+    public function test_business_offline_manifest_contains_permitted_workspace_pages(): void
+    {
+        [$owner] = $this->tailorOrder();
+
+        $response = $this->actingAs($owner)->getJson(route('admin.offline.manifest'));
+
+        $response->assertOk()
+            ->assertJsonPath('actor', 'user:'.$owner->id)
+            ->assertJsonStructure(['version', 'actor', 'pages' => [['label', 'url']]]);
+
+        $urls = collect($response->json('pages'))->pluck('url');
+        $this->assertTrue($urls->contains(route('admin.dashboard.tailoring')));
+        $this->assertTrue($urls->contains(route('admin.Customers.create')));
+        $this->assertTrue($urls->contains(route('admin.tailor-jobs.index')));
+        $this->assertFalse($urls->contains(route('admin.dashboard.clothing')));
+    }
+
+    public function test_tailor_offline_manifest_is_limited_to_tailor_pages(): void
+    {
+        [, $tailor] = $this->tailorOrder();
+
+        $this->withSession($this->tailorSession($tailor))
+            ->getJson(route('tailor.offline.manifest'))
+            ->assertOk()
+            ->assertJsonPath('actor', 'tailor:'.$tailor->id)
+            ->assertJsonCount(2, 'pages')
+            ->assertJsonFragment(['url' => route('tailor.jobs.index')]);
+    }
+
     public function test_tailor_offline_status_command_is_applied_only_once(): void
     {
         [$owner, $tailor, $order] = $this->tailorOrder();
@@ -172,6 +201,12 @@ class OfflineWorkspaceTest extends TestCase
         $this->assertStringContainsString("addEventListener('fetch'", $worker);
         $this->assertStringContainsString("addEventListener('push'", $worker);
         $this->assertStringContainsString('CLEAR_PRIVATE_DATA', $worker);
+        $this->assertStringContainsString('PREPARE_OFFLINE_WORKSPACE', $worker);
+        $this->assertStringContainsString('OFFLINE_PREPARE_PROGRESS', $worker);
+
+        $client = file_get_contents(public_path('assets/js/offline-workspace.js'));
+        $this->assertStringContainsString('tms-offline-manifest-url', $client);
+        $this->assertStringContainsString('آف لائن ورک اسپیس تیار کریں', $client);
     }
 
     private function tailorOrder(): array

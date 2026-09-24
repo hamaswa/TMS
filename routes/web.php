@@ -170,6 +170,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 });
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner', 'subscription.active', 'business.activity'], 'as' => 'admin.'], function () {
+    Route::get('/offline/manifest', [OfflineWorkspaceController::class, 'manifest'])->name('offline.manifest');
     Route::get('/customer-accounts', [CustomerController::class, 'accounts'])
         ->middleware('business.permission:customers.balances')
         ->name('customer-accounts.index');
@@ -481,6 +482,7 @@ Route::group(['middleware' => 'Tailor', 'prefix' => 'tailor'], function () {
     Route::get('tailor-order-list', [TailorJobController::class, 'tailorIndex'])->name('tailor.jobs.index');
     Route::patch('jobs/{order}/status', [TailorJobController::class, 'updateStatus'])->name('tailor.jobs.status');
     Route::post('offline/sync', [OfflineWorkspaceController::class, 'sync'])->name('tailor.offline.sync');
+    Route::get('offline/manifest', [OfflineWorkspaceController::class, 'manifest'])->name('tailor.offline.manifest');
     Route::get('logout', [TailorController::class, 'logout']);
     Route::post('tailor-weakly-print/{id}', [TailorController::class, 'tailor_weekly']);
     // order-status

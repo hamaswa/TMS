@@ -18,6 +18,7 @@
 @php($isBusinessOfflineActor = Auth::check() && Auth::user()->isBusinessMember())
 @php($offlineCapable = ! $isSuperAdmin && ($isTailorOfflineActor || $isBusinessOfflineActor))
 @php($offlineSyncUrl = $isTailorOfflineActor ? route('tailor.offline.sync') : ($canTailorWorkshop ? route('admin.offline.sync') : null))
+@php($offlineManifestUrl = $isTailorOfflineActor ? route('tailor.offline.manifest') : ($isBusinessOfflineActor ? route('admin.offline.manifest') : null))
 @php($offlineActorKey = $isTailorOfflineActor ? 'tailor:'.session('tailor_id') : ($isBusinessOfflineActor ? 'user:'.Auth::id() : null))
 <!doctype html>
 <html lang="{{ $isSuperAdmin ? 'en' : 'ur' }}" dir="{{ $isSuperAdmin ? 'ltr' : 'rtl' }}">
@@ -29,6 +30,7 @@
         <meta name="theme-color" content="#174f78">
         <meta name="tms-offline-enabled" content="1">
         <meta name="tms-offline-actor" content="{{ $offlineActorKey }}">
+        @if($offlineManifestUrl)<meta name="tms-offline-manifest-url" content="{{ $offlineManifestUrl }}">@endif
         @if($offlineSyncUrl)<meta name="tms-offline-sync-url" content="{{ $offlineSyncUrl }}">@endif
         <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
         <link rel="apple-touch-icon" href="{{ asset('assets/images/web-app-manifest-192x192.png') }}">

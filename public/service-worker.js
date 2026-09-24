@@ -1,4 +1,4 @@
-const VERSION = '20260924d';
+const VERSION = '20260924f';
 const STATIC_CACHE = `tms-static-${VERSION}`;
 const PRIVATE_CACHE = `tms-private-${VERSION}`;
 const STATIC_ASSETS = [
@@ -53,6 +53,58 @@ self.addEventListener('message', (event) => {
             }
         })());
     }
+    if (event.data?.type === 'PREPARE_OFFLINE_WORKSPACE' && Array.isArray(event.data.pages)) {
+        event.waitUntil((async () => {
+            const source = event.source;
+            const pages = event.data.pages
+                .map((page) => ({ label: String(page.label || ''), url: new URL(page.url, self.location.origin) }))
+                .filter((page) => page.url.origin === self.location.origin && isOperationalPage(page.url));
+            const cache = await caches.open(PRIVATE_CACHE);
+            const failed = [];
+            let completed = 0;
+
+            source?.postMessage({
+                type: 'OFFLINE_PREPARE_PROGRESS',
+                status: 'preparing',
+                completed,
+                total: pages.length,
+            });
+
+            for (const page of pages) {
+                try {
+                    const response = await fetch(page.url.toString(), {
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                    });
+                    const contentType = response.headers.get('content-type') || '';
+                    if (!response.ok || response.redirected || !contentType.includes('text/html')) {
+                        throw new Error(`offline-page-${response.status}`);
+                    }
+                    page.url.hash = '';
+                    await cache.put(page.url.toString(), response);
+                } catch (error) {
+                    failed.push({ label: page.label, url: page.url.toString() });
+                }
+                completed += 1;
+                source?.postMessage({
+                    type: 'OFFLINE_PREPARE_PROGRESS',
+                    status: 'preparing',
+                    completed,
+                    total: pages.length,
+                    current: page.label,
+                });
+            }
+
+            source?.postMessage({
+                type: 'OFFLINE_PREPARE_COMPLETE',
+                status: failed.length ? 'partial' : 'ready',
+                completed: pages.length - failed.length,
+                total: pages.length,
+                failed,
+                version: event.data.version || VERSION,
+            });
+        })());
+    }
 });
 
 const isOperationalPage = (url) => {
@@ -96,15 +148,17 @@ self.addEventListener('fetch', (event) => {
 
     if (url.origin === self.location.origin && url.pathname.startsWith('/assets/')) {
         event.respondWith((async () => {
-            const cached = await caches.match(request, { ignoreSearch: true });
-            if (cached) return cached;
-
-            const response = await fetch(request);
-            if (response.ok) {
-                const cache = await caches.open(STATIC_CACHE);
-                await cache.put(url.pathname, response.clone());
+            try {
+                const response = await networkWithTimeout(request, 3000);
+                if (response.ok) {
+                    const cache = await caches.open(STATIC_CACHE);
+                    await cache.put(url.pathname, response.clone());
+                }
+                return response;
+            } catch (error) {
+                return (await caches.match(request, { ignoreSearch: true }))
+                    || new Response('', { status: 504, statusText: 'Offline asset unavailable' });
             }
-            return response;
         })());
     }
 });

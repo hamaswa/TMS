@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Business;
+use App\Models\BusinessRole;
 use App\Models\OfflineOperation;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\Tailor;
+use App\Models\User;
 use App\Services\OrderLifecycleNotificationService;
 use App\Services\ProductionWorkforceService;
 use Illuminate\Http\JsonResponse;
@@ -17,11 +19,36 @@ use Illuminate\Validation\Rule;
 
 class OfflineWorkspaceController extends Controller
 {
+    private const WORKSPACE_VERSION = '20260924f';
+
     public function fallback()
     {
         return response()
             ->view('offline')
             ->header('Cache-Control', 'public, max-age=300');
+    }
+
+    public function manifest(): JsonResponse
+    {
+        if (Auth::check()) {
+            return response()->json([
+                'version' => self::WORKSPACE_VERSION,
+                'actor' => 'user:'.Auth::id(),
+                'pages' => $this->businessPages(Auth::user()),
+            ]);
+        }
+
+        abort_unless(session()->has('tailor_id'), 403);
+        $tailor = Tailor::findOrFail((int) session('tailor_id'));
+
+        return response()->json([
+            'version' => self::WORKSPACE_VERSION,
+            'actor' => 'tailor:'.$tailor->id,
+            'pages' => [
+                ['label' => 'درزی ڈیش بورڈ', 'url' => url('/tailor/tailor-dashboard')],
+                ['label' => 'میرے کام', 'url' => route('tailor.jobs.index')],
+            ],
+        ]);
     }
 
     public function sync(Request $request): JsonResponse
@@ -232,6 +259,92 @@ class OfflineWorkspaceController extends Controller
             'id' => (int) $tailor->id,
             'owner_id' => (int) $tailor->user_id,
         ];
+    }
+
+    private function businessPages(User $user): array
+    {
+        $pages = [];
+        $add = function (string $label, string $url) use (&$pages): void {
+            $pages[$url] = ['label' => $label, 'url' => $url];
+        };
+
+        if ($user->hasModule(User::MODULE_TAILORING)) {
+            $add('ٹیلرنگ ڈیش بورڈ', route('admin.dashboard.tailoring'));
+            if ($user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS)) {
+                $add('گاہک اور پیمائش', route('admin.Customers.index'));
+                $add('نیا گاہک', route('admin.Customers.create'));
+            }
+            if ($user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS)) {
+                $add('ٹیلرنگ آرڈرز', route('admin.order.total'));
+            }
+            if ($user->hasBusinessPermission(BusinessRole::TAILORING_WORKSHOP)) {
+                $add('ورکشاپ', route('admin.tailor-jobs.index'));
+            }
+            if ($user->hasBusinessPermission(BusinessRole::TAILORING_TAILORS)) {
+                $add('درزی', route('admin.Tailor.index'));
+                $add('پروڈکشن ورکرز', route('admin.production-workers.index'));
+                $add('نیا پروڈکشن ورکر', route('admin.production-workers.create'));
+            }
+            if ($user->hasBusinessPermission(BusinessRole::TAILORING_CONFIGURATION)) {
+                $add('ٹیلرنگ ورک فلو', route('admin.tailoring-workflow.edit'));
+                $add('پیمائش کے اختیارات', route('admin.OptionType.index'));
+                $add('پیمائش ٹیمپلیٹس', route('admin.measurement-templates.index'));
+                $add('اضافی پیمائش خانے', route('admin.measurement-fields.index'));
+                $add('سلائی ڈیزائن', route('admin.design.index'));
+                $add('نیا سلائی ڈیزائن', route('admin.design.create'));
+            }
+        }
+
+        if ($user->hasModule(User::MODULE_CLOTHING)) {
+            $add('دکان ڈیش بورڈ', route('admin.dashboard.clothing'));
+            if ($user->hasBusinessPermission(BusinessRole::CLOTHING_INVENTORY)) {
+                $add('اسٹاک', route('admin.stock.index'));
+                $add('کپڑے کی فہرست', route('admin.cloth.index'));
+                $add('کپڑے کی اقسام', route('admin.clothtype.index'));
+                $add('کپڑے کے برانڈز', route('admin.clothbrand.index'));
+                $add('اسٹاک کھاتہ', route('admin.inventory-ledger.index'));
+                $add('اسٹاک کی مالیت', route('admin.inventory-valuation.index'));
+            }
+            if ($user->hasBusinessPermission(BusinessRole::CLOTHING_SALES)) {
+                $add('نئی فروخت', route('admin.sellCloth'));
+                $add('فروخت کا ریکارڈ', route('admin.record'));
+                $add('تمام فروخت', route('admin.sales.total'));
+                $add('آن لائن آرڈرز', route('admin.storefront.orders.index'));
+            }
+            if ($user->hasBusinessPermission(BusinessRole::CLOTHING_PURCHASES)) {
+                $add('خریداری', route('admin.purchases.index'));
+                $add('نئی خریداری', route('admin.purchases.create'));
+            }
+            if ($user->hasBusinessPermission(BusinessRole::CLOTHING_SUPPLIERS)) {
+                $add('سپلائرز', route('admin.suppliers.index'));
+            }
+        }
+
+        if ($user->hasBusinessPermission(BusinessRole::FINANCE_VIEW)) {
+            $add('مالیاتی ڈیش بورڈ', route('admin.financial-reports.index'));
+            $add('ادائیگی کی پڑتال', route('admin.payment-reconciliation.index'));
+        }
+        if ($user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES)) {
+            $add('گاہکوں کے کھاتے', route('admin.customer-accounts.index'));
+        }
+        if ($user->hasBusinessPermission(BusinessRole::EXPENSES_MANAGE)) {
+            $add('ماہانہ اخراجات', route('admin.expense.index'));
+            $add('روزانہ اخراجات', route('admin.dailyexpense.index'));
+        }
+        if ($user->hasBusinessPermission(BusinessRole::TEAM_MANAGE)) {
+            $add('ملازمین اور اجازتیں', route('admin.team.index'));
+        }
+        if ($user->hasBusinessPermission(BusinessRole::ACTIVITY_VIEW)) {
+            $add('ملازمین کی سرگرمی', route('admin.activity.index'));
+        }
+        if ($user->hasBusinessPermission(BusinessRole::SETTINGS_MANAGE)) {
+            $add('دکان کی ترتیبات', route('admin.setting.index'));
+        }
+        if ($user->hasBusinessPermission(BusinessRole::STOREFRONT_MANAGE)) {
+            $add('آن لائن دکان', route('admin.storefront.edit'));
+        }
+
+        return array_values($pages);
     }
 
     private function isAheadOf(string $current, string $target): bool
