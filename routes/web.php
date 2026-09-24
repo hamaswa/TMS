@@ -428,6 +428,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 
         // Cloth
         Route::resource('/cloth', ClothController::class);
+        Route::get('/cloth/{cloth}/qr-label', [ClothController::class, 'qrLabel'])->name('cloth.qr-label');
         Route::get('/edit-cloth/{id}/{color}', [ClothController::class, 'editCloth'])->name('edit-cloths');
         Route::post('/delete-cloth', [ClothController::class, 'deleteCloth'])->name('delete-cloths');
 

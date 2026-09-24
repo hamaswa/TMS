@@ -24,7 +24,9 @@ class PurchaseWorkflowTest extends TestCase
         $this->actingAs($owner)->get(route('admin.purchases.create'))
             ->assertOk()
             ->assertSee('<h1 class="h4 mb-0">', false)
-            ->assertSee('aria-label="کپڑا اور رنگ منتخب کریں"', false)
+            ->assertSee('id="purchase-stock-scan"', false)
+            ->assertSee('data-stock-code="', false)
+            ->assertSee('aria-label="کپڑے کا آئٹم منتخب کریں"', false)
             ->assertSee('aria-label="خریداری کی مقدار میٹر میں"', false)
             ->assertSee('aria-label="فی میٹر لاگت"', false)
             ->assertSee('aria-label="یہ آئٹم ہٹائیں"', false);

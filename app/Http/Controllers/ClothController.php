@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Services\InventoryService;
+use App\Services\PrintDocumentService;
 use Illuminate\Validation\ValidationException;
 
 class ClothController extends Controller
@@ -63,13 +64,13 @@ class ClothController extends Controller
             $validated = $request->validate([
                 'cloth_type_id' => ['required', 'integer'],
                 'cloth_brand_id' => ['required', 'integer'],
-                'length' => ['required', 'array', 'min:1'],
-                'length.*' => ['required', 'numeric', 'min:0'],
+                'length' => ['nullable', 'array'],
+                'length.*' => ['nullable', 'numeric', 'min:0'],
                 'length_colors' => ['nullable', 'array'],
                 'length_colors.*' => ['required', 'string', 'max:100'],
                 'price' => ['required', 'numeric', 'min:0'],
                 'sale_price' => ['required', 'numeric', 'min:0'],
-                'colors' => ['required', 'string'],
+                'colors' => ['nullable', 'string', 'max:1000'],
                 'images' => ['nullable', 'array'],
                 'images.*' => ['image', 'max:4096'],
                 'image_colors' => ['nullable', 'array'],
@@ -86,11 +87,15 @@ class ClothController extends Controller
                                 array_filter(
                                     array_map(
                                         'trim',
-                                        preg_split('/[,،]/u', $validated['colors'])
+                                        preg_split('/[,،]/u', $validated['colors'] ?? '')
                                     ),
                                     fn ($color) => $color !== ''
                                 )
                             );
+
+                            if ($colors === []) {
+                                $colors = ['عام'];
+                            }
 
                             $lengths = $validated['length'] ?? [];
 
@@ -128,12 +133,19 @@ class ClothController extends Controller
                                     $colors
                                 );
 
+                            } elseif ($lengths === []) {
+                                $lengths = array_fill(0, count($colors), 0);
                             } elseif (count($colors) !== count($lengths)) {
 
                                 throw ValidationException::withMessages([
                                     'length' => 'ہر رنگ کے لیے ایک لمبائی درج کریں۔'
                                 ]);
                             }
+
+                            $lengths = array_map(
+                                fn ($length) => (float) ($length ?? 0),
+                                $lengths
+                            );
             // $formData = $request->validate([
             //     'cloth_type_id' => 'required|string',
             //     'cloth_brand_id' => 'required',
@@ -213,6 +225,18 @@ class ClothController extends Controller
             return response()->json($e->getMessage());
             // dd($e->getMessage(), $e->getFile(), $e->getLine());
         }
+    }
+
+    public function qrLabel(int $cloth, PrintDocumentService $printDocuments)
+    {
+        $cloth = Cloth::where('user_id', Auth::user()->businessOwnerId())
+            ->with(['brand', 'type', 'colors'])
+            ->findOrFail($cloth);
+
+        return view('cloths.qr-label', [
+            'cloth' => $cloth,
+            'qrSvg' => $printDocuments->qrSvg($cloth->stock_code, 240),
+        ]);
     }
 
     /**

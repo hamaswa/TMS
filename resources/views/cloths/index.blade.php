@@ -51,15 +51,15 @@
                     $stockStatus = $length <= 0 ? 'empty' : ($length <= 10 ? 'low' : 'available');
                     $stockLabel = $stockStatus === 'empty' ? 'ختم' : ($stockStatus === 'low' ? 'کم اسٹاک' : 'دستیاب');
                 @endphp
-                <tr data-cloth-row data-brand="{{ $cloth->cloth_brand_id }}" data-stock="{{ $stockStatus }}" data-search="{{ Illuminate\Support\Str::lower(($cloth->type->name ?? '').' '.($cloth->brand->name ?? '').' '.$color->color) }}">
+                <tr data-cloth-row data-brand="{{ $cloth->cloth_brand_id }}" data-stock="{{ $stockStatus }}" data-search="{{ Illuminate\Support\Str::lower(($cloth->type->name ?? '').' '.($cloth->brand->name ?? '').' '.$color->color.' '.$cloth->stock_code) }}">
                     <td data-label="#"><span class="cloth-index">{{ $loop->iteration }}</span></td>
-                    <td data-label="کپڑا" class="cloth-main-cell"><div class="cloth-identity"><span class="cloth-thumb">@if($image)<img src="{{ asset('/'.$image->images) }}" alt="{{ $color->color }}">@else<i class="fas fa-image"></i>@endif</span><div><strong>{{ $cloth->brand->name ?? 'برانڈ' }}</strong><small>{{ $cloth->type->name ?? 'قسم درج نہیں' }}</small></div></div></td>
+                    <td data-label="کپڑا" class="cloth-main-cell"><div class="cloth-identity"><span class="cloth-thumb">@if($image)<img src="{{ asset('/'.$image->images) }}" alt="{{ $color->color }}">@else<i class="fas fa-image"></i>@endif</span><div><strong>{{ $cloth->brand->name ?? 'برانڈ' }}</strong><small>{{ $cloth->type->name ?? 'قسم درج نہیں' }}</small><small dir="ltr">{{ $cloth->stock_code }}</small></div></div></td>
                     <td data-label="رنگ"><span class="cloth-color">{{ $color->color }}</span></td>
                     <td data-label="دستیاب مقدار"><span class="cloth-number cloth-meter">{{ number_format($length, 2) }} میٹر</span></td>
                     <td data-label="اسٹاک حالت"><span class="cloth-stock-badge {{ $stockStatus === 'low' ? 'is-low' : ($stockStatus === 'empty' ? 'is-empty' : '') }}">{{ $stockLabel }}</span></td>
                     <td data-label="تازہ قیمت"><span class="cloth-number cloth-cost">Rs. {{ number_format($latestCost, 2) }}</span></td>
                     <td data-label="کل مالیت"><span class="cloth-number cloth-value">Rs. {{ number_format($row['value'], 2) }}</span></td>
-                    <td class="cloth-actions" data-label="عمل"><a href="{{ route('admin.edit-cloths', ['id' => $cloth->id, 'color' => $color->color]) }}" class="cloth-action" title="ترمیم کریں" aria-label="کپڑے میں ترمیم کریں"><i class="fas fa-pen"></i></a><button class="cloth-action is-danger delete-selected" type="button" data-id="{{ $cloth->id }}" data-color="{{ $color->color }}" title="حذف کریں" aria-label="کپڑے کا رنگ حذف کریں"><i class="fas fa-trash"></i></button></td>
+                    <td class="cloth-actions" data-label="عمل"><a href="{{ route('admin.cloth.qr-label', $cloth) }}" class="cloth-action" title="QR لیبل" aria-label="QR لیبل پرنٹ کریں"><i class="fas fa-qrcode"></i></a><a href="{{ route('admin.edit-cloths', ['id' => $cloth->id, 'color' => $color->color]) }}" class="cloth-action" title="ترمیم کریں" aria-label="کپڑے میں ترمیم کریں"><i class="fas fa-pen"></i></a><button class="cloth-action is-danger delete-selected" type="button" data-id="{{ $cloth->id }}" data-color="{{ $color->color }}" title="حذف کریں" aria-label="کپڑے کا رنگ حذف کریں"><i class="fas fa-trash"></i></button></td>
                 </tr>
             @empty<tr><td colspan="8" class="cloth-empty"><i class="fas fa-layer-group"></i>ابھی کوئی کپڑا شامل نہیں کیا گیا۔</td></tr>@endforelse
         </tbody></table></div>
