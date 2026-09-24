@@ -698,7 +698,8 @@
                                 <div class="tj-action-box">
                                     <h4><i class="fas fa-exchange-alt ml-1 text-primary"></i>کام کی حالت</h4>
                                     @if($detailedWorkflow && $nextStatusOptions->isNotEmpty())
-                                        <form class="tj-progress-form" method="POST" action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}">
+                                        <form class="tj-progress-form" method="POST" action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}"
+                                            data-offline-command="order.status.change" data-order-id="{{ $order->id }}" data-base-status="{{ $order->status }}">
                                             @csrf @method('PATCH')
                                             <select name="status" class="form-control" required>
                                                 @foreach($nextStatusOptions as $nextStatus)
@@ -709,7 +710,8 @@
                                         </form>
                                     @elseif(! $detailedWorkflow && ! $isDelivered)
                                         <form class="tj-progress-form" method="POST"
-                                            action="{{ $isTailor ? route('tailor.order.status') : route('admin.order.status') }}">
+                                            action="{{ $isTailor ? route('tailor.order.status') : route('admin.order.status') }}"
+                                            data-offline-command="order.status.change" data-order-id="{{ $order->id }}" data-base-status="{{ $order->status }}">
                                             @csrf
                                             <input type="hidden" name="order_id" value="{{ $order->id }}">
                                             <select name="order_status" class="form-control" required>
@@ -719,7 +721,8 @@
                                             <button class="tj-button tj-primary" type="submit"><i class="fas fa-check"></i> حالت بدلیں</button>
                                         </form>
                                         @if($isReady && ! $isTailor)
-                                            <form class="mt-2" method="POST" action="{{ route('admin.order.status') }}">
+                                            <form class="mt-2" method="POST" action="{{ route('admin.order.status') }}"
+                                                data-offline-command="order.status.change" data-order-id="{{ $order->id }}" data-base-status="{{ $order->status }}">
                                                 @csrf
                                                 <input type="hidden" name="order_id" value="{{ $order->id }}">
                                                 <button class="tj-button tj-success" type="submit" name="order_status" value="deliver"><i class="fas fa-handshake"></i> گاہک کے حوالے کریں</button>

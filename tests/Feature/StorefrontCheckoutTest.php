@@ -193,6 +193,9 @@ class StorefrontCheckoutTest extends TestCase
         $order = StorefrontOrder::firstOrFail();
 
         $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CONFIRMED,
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
             'status' => 'complete',
         ])->assertRedirect(route('admin.storefront.orders.index'));
 
@@ -311,9 +314,65 @@ class StorefrontCheckoutTest extends TestCase
             'decision' => StorefrontOrder::VERIFICATION_VERIFIED,
         ])->assertSessionHasErrors('payment_verification');
         $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CONFIRMED,
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
             'status' => StorefrontOrder::STATUS_COMPLETE,
         ])->assertRedirect(route('admin.storefront.orders.index'));
         $this->assertSame(StorefrontOrder::STATUS_COMPLETE, $order->fresh()->status);
+    }
+
+    public function test_shop_confirms_online_order_and_prints_dispatch_details(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 2);
+        $address = 'مکان 12، گلی 4، سیٹلائٹ ٹاؤن، راولپنڈی';
+        $note = 'نیلے پیکٹ میں محفوظ کریں';
+
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'delivery',
+            'delivery_address' => $address,
+            'customer_note' => $note,
+        ])->assertRedirect();
+        $order = StorefrontOrder::firstOrFail();
+
+        $this->actingAs($owner)->get(route('admin.storefront.orders.index'))
+            ->assertOk()
+            ->assertSeeText($order->reference)
+            ->assertSeeText($customer->name)
+            ->assertSeeText($address)
+            ->assertSeeText($note)
+            ->assertSeeText('آرڈر کی تصدیق کریں');
+        $this->actingAs($owner)->get(route('admin.storefront.orders.dispatch-print', $order))
+            ->assertStatus(409);
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CONFIRMED,
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+
+        $order->refresh();
+        $this->assertSame(StorefrontOrder::STATUS_CONFIRMED, $order->status);
+        $this->assertSame($owner->id, $order->confirmed_by_user_id);
+        $this->assertNotNull($order->confirmed_at);
+        $this->actingAs($owner)->get(route('admin.storefront.orders.dispatch-print', $order))
+            ->assertOk()
+            ->assertSeeText('تصدیق شدہ ڈسپیچ')
+            ->assertSeeText($order->reference)
+            ->assertSeeText($customer->name)
+            ->assertSeeText($customer->phone_number1)
+            ->assertSeeText($address)
+            ->assertSeeText($note)
+            ->assertSeeText('نیلا پریمیم کپڑا')
+            ->assertSeeText('2.00 میٹر')
+            ->assertSeeText('2,900.00');
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('تصدیق شدہ')
+            ->assertSeeText('دکان نے آرڈر تیاری اور ڈسپیچ کے لیے تصدیق کر دیا۔');
+
+        [$otherOwner] = $this->catalog();
+        $this->actingAs($otherOwner)->get(route('admin.storefront.orders.dispatch-print', $order))
+            ->assertNotFound();
     }
 
     public function test_paid_order_is_refunded_and_cancelled_once_with_inventory_and_cash_audit(): void

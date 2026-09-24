@@ -91,11 +91,19 @@ jQuery(document).ready(function ($) {
                         row += '<td>اجازت درکار ہے</td>';
                     }
 
+                    var tailorCell = $('<div>').text(order.tailorName || 'ابھی مقرر نہیں').html();
+                    if (order.canAssignTailor) {
+                        var tailorOptions = Array.isArray(order.tailorOptions) ? order.tailorOptions : [];
+                        tailorCell = tailorOptions.length
+                            ? '<button type="button" class="quick-tailor-open" data-toggle="modal" data-target="#tailorAssignmentModal" data-order-id="' + Number(order.orderId) + '" data-action="' + $('<div>').text(order.tailorAssignmentUrl).html() + '" data-options="' + encodeURIComponent(JSON.stringify(tailorOptions)) + '"><i class="fas fa-user-plus"></i> درزی مقرر کریں</button>'
+                            : '<small class="quick-tailor-empty">پہلے درزی کی سلائی شرح شامل کریں۔</small>';
+                    }
+
                     row +=
                         '<td>' + order.created_at + '</td>' +
                         '<td>' + order.returnDate + '</td>' +
                         '<td>' + order.suitQuantity + '</td>' +
-                        '<td>' + order.tailorName + '</td>';
+                        '<td>' + tailorCell + '</td>';
 
                     var buttonClass = 'customer-order-status ' + order.btnClass;
                     var buttonStatus = order.button.toLowerCase();
@@ -313,6 +321,59 @@ jQuery(document).ready(function ($) {
             select.append($('<option>', { value: status.value, text: status.label }));
         });
         $('#submit-button').prop('disabled', nextStatuses.length === 0);
+    });
+
+    $(document).on('click', '.quick-tailor-open', function () {
+        var button = $(this);
+        var options = [];
+        try {
+            options = JSON.parse(decodeURIComponent(button.attr('data-options') || ''));
+        } catch (error) {
+            options = [];
+        }
+
+        var form = $('#quickTailorAssignmentForm');
+        var tailorSelect = $('#quickTailorSelect');
+        form.attr('action', button.attr('data-action'));
+        form.data('tailor-options', options);
+        $('#tailorAssignmentOrderNumber').text('#' + button.data('order-id'));
+        tailorSelect.empty().append($('<option>', { value: '', text: 'درزی منتخب کریں' }));
+
+        var seenTailors = {};
+        $.each(options, function (_, option) {
+            if (!seenTailors[option.tailorId]) {
+                tailorSelect.append($('<option>', { value: option.tailorId, text: option.tailorName }));
+                seenTailors[option.tailorId] = true;
+            }
+        });
+        tailorSelect.val('').trigger('change');
+    });
+
+    $(document).on('change', '#quickTailorSelect', function () {
+        var tailorId = Number($(this).val());
+        var options = $('#quickTailorAssignmentForm').data('tailor-options') || [];
+        var rateSelect = $('#quickTailorRateSelect');
+        rateSelect.empty();
+
+        if (!tailorId) {
+            rateSelect.append($('<option>', { value: '', text: 'پہلے درزی منتخب کریں' })).prop('disabled', true);
+            $('#quickTailorSubmit').prop('disabled', true);
+            return;
+        }
+
+        rateSelect.append($('<option>', { value: '', text: 'سلائی کی شرح منتخب کریں' }));
+        $.each(options.filter(function (option) { return Number(option.tailorId) === tailorId; }), function (_, option) {
+            rateSelect.append($('<option>', {
+                value: option.rateValue,
+                text: option.rateName + ' — Rs. ' + Number(option.price).toFixed(2)
+            }));
+        });
+        rateSelect.prop('disabled', false).val('');
+        $('#quickTailorSubmit').prop('disabled', true);
+    });
+
+    $(document).on('change', '#quickTailorRateSelect', function () {
+        $('#quickTailorSubmit').prop('disabled', !$(this).val());
     });
 
     // now send notification for order complete to user

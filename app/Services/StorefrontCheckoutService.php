@@ -158,19 +158,32 @@ class StorefrontCheckoutService
         return [$order, $trackingToken];
     }
 
-    public function updateStatus(StorefrontOrder $order, string $status): StorefrontOrder
+    public function updateStatus(StorefrontOrder $order, string $status, ?int $actedByUserId = null): StorefrontOrder
     {
-        return DB::transaction(function () use ($order, $status) {
+        return DB::transaction(function () use ($order, $status, $actedByUserId) {
             $lockedOrder = StorefrontOrder::query()->lockForUpdate()->findOrFail($order->id);
-            if ($status === StorefrontOrder::STATUS_COMPLETE) {
+            if ($status === StorefrontOrder::STATUS_CONFIRMED) {
                 if ($lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
-                    throw ValidationException::withMessages(['status' => 'صرف زیرِ انتظار آرڈر مکمل کیا جا سکتا ہے۔']);
+                    throw ValidationException::withMessages(['status' => 'صرف زیرِ انتظار آرڈر کی تصدیق کی جا سکتی ہے۔']);
                 }
                 if (StorefrontOrder::requiresManualVerification($lockedOrder->payment_method)
                     && $lockedOrder->payment_verification_status !== StorefrontOrder::VERIFICATION_VERIFIED) {
                     throw ValidationException::withMessages([
-                        'status' => 'دستی ادائیگی کی تصدیق کے بعد ہی آرڈر مکمل کریں۔',
+                        'status' => 'دستی ادائیگی کی تصدیق کے بعد ہی آرڈر کی تصدیق کریں۔',
                     ]);
+                }
+                $lockedOrder->update([
+                    'status' => StorefrontOrder::STATUS_CONFIRMED,
+                    'confirmed_by_user_id' => $actedByUserId,
+                    'confirmed_at' => now(),
+                ]);
+
+                return $lockedOrder;
+            }
+
+            if ($status === StorefrontOrder::STATUS_COMPLETE) {
+                if ($lockedOrder->status !== StorefrontOrder::STATUS_CONFIRMED) {
+                    throw ValidationException::withMessages(['status' => 'آرڈر مکمل کرنے سے پہلے اس کی تصدیق کریں۔']);
                 }
                 $lockedOrder->update([
                     'status' => StorefrontOrder::STATUS_COMPLETE,
@@ -180,8 +193,9 @@ class StorefrontCheckoutService
                 return $lockedOrder;
             }
 
-            if ($status !== StorefrontOrder::STATUS_CANCELLED || $lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
-                throw ValidationException::withMessages(['status' => 'صرف زیرِ انتظار آرڈر منسوخ کیا جا سکتا ہے۔']);
+            if ($status !== StorefrontOrder::STATUS_CANCELLED
+                || ! in_array($lockedOrder->status, [StorefrontOrder::STATUS_PENDING, StorefrontOrder::STATUS_CONFIRMED], true)) {
+                throw ValidationException::withMessages(['status' => 'صرف زیرِ انتظار یا تصدیق شدہ آرڈر منسوخ کیا جا سکتا ہے۔']);
             }
             if ($lockedOrder->returns()->exists()) {
                 throw ValidationException::withMessages([
@@ -315,9 +329,9 @@ class StorefrontCheckoutService
             }
 
             $lockedOrder = StorefrontOrder::query()->lockForUpdate()->findOrFail($order->id);
-            if ($lockedOrder->status !== StorefrontOrder::STATUS_PENDING) {
+            if (! in_array($lockedOrder->status, [StorefrontOrder::STATUS_PENDING, StorefrontOrder::STATUS_CONFIRMED], true)) {
                 throw ValidationException::withMessages([
-                    'status' => 'صرف زیرِ انتظار آرڈر کی رقم واپس کر کے اسے منسوخ کیا جا سکتا ہے۔',
+                    'status' => 'صرف زیرِ انتظار یا تصدیق شدہ آرڈر کی رقم واپس کر کے اسے منسوخ کیا جا سکتا ہے۔',
                 ]);
             }
             if ((float) $lockedOrder->paid_amount <= 0) {

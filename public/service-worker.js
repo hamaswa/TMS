@@ -1,24 +1,131 @@
-self.addEventListener('push', (event) => {
-    if (!event.data) {
+const VERSION = '20260924d';
+const STATIC_CACHE = `tms-static-${VERSION}`;
+const PRIVATE_CACHE = `tms-private-${VERSION}`;
+const STATIC_ASSETS = [
+    '/offline',
+    '/manifest.webmanifest',
+    '/assets/css/bootstrap.min.css',
+    '/assets/css/main.css',
+    '/assets/css/responsive.css',
+    '/assets/js/jquery-3.5.1.min.js',
+    '/assets/js/popper.min.js',
+    '/assets/js/bootstrap.min.js',
+    '/assets/js/main.js',
+    '/assets/js/custom.js',
+    '/assets/js/offline-workspace.js',
+    '/assets/images/web-app-manifest-192x192.png'
+];
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(STATIC_CACHE)
+            .then((cache) => Promise.allSettled(STATIC_ASSETS.map((asset) => cache.add(asset))))
+            .then(() => self.skipWaiting())
+    );
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys()
+            .then((keys) => Promise.all(keys
+                .filter((key) => key.startsWith('tms-') && ![STATIC_CACHE, PRIVATE_CACHE].includes(key))
+                .map((key) => caches.delete(key))))
+            .then(() => self.clients.claim())
+    );
+});
+
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'CLEAR_PRIVATE_DATA') {
+        event.waitUntil(caches.delete(PRIVATE_CACHE));
+    }
+    if (event.data?.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+    if (event.data?.type === 'CACHE_CURRENT_PAGE' && event.data.url) {
+        event.waitUntil((async () => {
+            const url = new URL(event.data.url);
+            if (url.origin !== self.location.origin || !isOperationalPage(url)) return;
+            const response = await fetch(url.toString(), { credentials: 'same-origin' });
+            const contentType = response.headers.get('content-type') || '';
+            if (response.ok && !response.redirected && contentType.includes('text/html')) {
+                const cache = await caches.open(PRIVATE_CACHE);
+                await cache.put(url.toString(), response);
+            }
+        })());
+    }
+});
+
+const isOperationalPage = (url) => {
+    if (url.pathname.startsWith('/administrator') || url.pathname.includes('logout')) return false;
+
+    return url.pathname.startsWith('/admin/')
+        || url.pathname === '/admin'
+        || url.pathname.startsWith('/tailor/tailor-dashboard')
+        || url.pathname.startsWith('/tailor/tailor-order-list');
+};
+
+const networkWithTimeout = (request, timeout = 4500) => Promise.race([
+    fetch(request),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('network-timeout')), timeout))
+]);
+
+self.addEventListener('fetch', (event) => {
+    const request = event.request;
+    const url = new URL(request.url);
+
+    if (request.method !== 'GET') return;
+
+    if (request.mode === 'navigate' && url.origin === self.location.origin && isOperationalPage(url)) {
+        event.respondWith((async () => {
+            const cache = await caches.open(PRIVATE_CACHE);
+            try {
+                const response = await networkWithTimeout(request);
+                const contentType = response.headers.get('content-type') || '';
+                if (response.ok && !response.redirected && contentType.includes('text/html')) {
+                    await cache.put(request, response.clone());
+                }
+                return response;
+            } catch (error) {
+                return (await cache.match(request))
+                    || (await caches.match('/offline'))
+                    || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+            }
+        })());
         return;
     }
 
-    const notification = event.data.json();
+    if (url.origin === self.location.origin && url.pathname.startsWith('/assets/')) {
+        event.respondWith((async () => {
+            const cached = await caches.match(request, { ignoreSearch: true });
+            if (cached) return cached;
 
+            const response = await fetch(request);
+            if (response.ok) {
+                const cache = await caches.open(STATIC_CACHE);
+                await cache.put(url.pathname, response.clone());
+            }
+            return response;
+        })());
+    }
+});
+
+// Preserve the existing web-push behavior while this same worker also owns
+// the authenticated offline workspace cache.
+self.addEventListener('push', (event) => {
+    if (!event.data) return;
+
+    const notification = event.data.json();
     event.waitUntil(
         self.registration.showNotification(notification.title, {
             body: notification.body,
             icon: './assets/images/favicon.ico',
-            data: {
-                url: notification.url,
-            },
+            data: { url: notification.url },
         })
     );
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-
     if (event.notification.data?.url) {
         event.waitUntil(clients.openWindow(event.notification.data.url));
     }

@@ -38,7 +38,12 @@ class AdminStorefrontOrderController extends Controller
         $storefront = Auth::user()->business?->storefront;
         abort_unless($storefront, 404);
         $validated = $request->validate([
-            'status' => ['nullable', Rule::in(['pending', 'complete', 'cancelled'])],
+            'status' => ['nullable', Rule::in([
+                StorefrontOrder::STATUS_PENDING,
+                StorefrontOrder::STATUS_CONFIRMED,
+                StorefrontOrder::STATUS_COMPLETE,
+                StorefrontOrder::STATUS_CANCELLED,
+            ])],
             'search' => ['nullable', 'string', 'max:100'],
         ]);
         $orders = $storefront->orders()
@@ -49,6 +54,7 @@ class AdminStorefrontOrderController extends Controller
                 'items.cloth.colors:id,cloth_id,color,length',
                 'items.returnItems:id,storefront_order_item_id,quantity',
                 'paymentVerifier:id,name,username',
+                'confirmedBy:id,name,username',
                 'refunds:id,storefront_order_id,reference,amount,method,external_reference,refunded_at',
                 'returns:id,storefront_order_id,reference,type,refund_amount,refund_method,external_reference,processed_at',
                 'returns.items:id,storefront_order_return_id,storefront_order_item_id,quantity,line_total,restocked,replacement_cloth_color_id,replacement_quantity',
@@ -77,7 +83,11 @@ class AdminStorefrontOrderController extends Controller
         $storefront = Auth::user()->business?->storefront;
         abort_unless($storefront && $order->storefront_id === $storefront->id, 404);
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['complete', 'cancelled'])],
+            'status' => ['required', Rule::in([
+                StorefrontOrder::STATUS_CONFIRMED,
+                StorefrontOrder::STATUS_COMPLETE,
+                StorefrontOrder::STATUS_CANCELLED,
+            ])],
             'refund_method' => [
                 Rule::requiredIf(
                     $request->input('status') === StorefrontOrder::STATUS_CANCELLED
@@ -109,15 +119,35 @@ class AdminStorefrontOrderController extends Controller
                 (int) Auth::id(),
             );
         } else {
-            $checkout->updateStatus($order, $validated['status']);
+            $checkout->updateStatus($order, $validated['status'], (int) Auth::id());
         }
 
         return redirect()->route('admin.storefront.orders.index')
-            ->with('success', $validated['status'] === 'complete'
-                ? 'آن لائن آرڈر مکمل کر دیا گیا ہے۔'
-                : ($isPaidCancellation
+            ->with('success', $validated['status'] === StorefrontOrder::STATUS_CONFIRMED
+                ? 'آن لائن آرڈر کی تصدیق ہو گئی ہے۔ اب ڈسپیچ شیٹ پرنٹ کی جا سکتی ہے۔'
+                : ($validated['status'] === StorefrontOrder::STATUS_COMPLETE
+                    ? 'آن لائن آرڈر مکمل کر دیا گیا ہے۔'
+                    : ($isPaidCancellation
                     ? 'گاہک کی مکمل رقم واپس درج کر کے آرڈر منسوخ اور اسٹاک بحال کر دیا گیا ہے۔'
-                    : 'آن لائن آرڈر منسوخ کر کے اسٹاک اور گاہک کا بقایا درست کر دیا گیا ہے۔'));
+                    : 'آن لائن آرڈر منسوخ کر کے اسٹاک اور گاہک کا بقایا درست کر دیا گیا ہے۔')));
+    }
+
+    public function dispatchPrint(StorefrontOrder $order)
+    {
+        $storefront = Auth::user()->business?->storefront;
+        abort_unless($storefront && $order->storefront_id === $storefront->id, 404);
+        abort_unless(in_array($order->status, [
+            StorefrontOrder::STATUS_CONFIRMED,
+            StorefrontOrder::STATUS_COMPLETE,
+        ], true), 409, 'آرڈر کی تصدیق کے بعد ڈسپیچ شیٹ پرنٹ کریں۔');
+
+        $order->load([
+            'customer:id,name,phone_number1,phone_number2',
+            'items:id,storefront_order_id,item_name,color,quantity,unit_price,line_total',
+            'confirmedBy:id,name,username',
+        ]);
+
+        return view('storefront.admin.dispatch-print', compact('storefront', 'order'));
     }
 
     public function verifyPayment(

@@ -22,6 +22,7 @@
     .order-payment-button{min-height:32px;padding:5px 9px;border:1px solid #bce5d1;border-radius:8px;color:#087747;background:#effaf4;font-size:.76rem;font-weight:800}.order-payment-button:hover{border-color:#83cfaa;background:#ddf5e9}
     .customer-order-status{min-width:112px;border:1px solid transparent;border-radius:9px;font-weight:900;box-shadow:0 5px 14px rgba(25,45,75,.08)}.customer-order-status.order-stage-unassigned{color:#6b4d08;border-color:#ead08c;background:#fff8df}.customer-order-status.order-stage-workshop{color:#9b6200;border-color:#f2cf82;background:#fff3cf}.customer-order-status.order-stage-ready,.customer-order-status.order-stage-delivered{color:#fff;border-color:#1769e0;background:linear-gradient(135deg,#2478ec,#1159bd)}.customer-order-status.disabled{cursor:default;opacity:1}
     .order-delivery-form{margin:0}.order-delivery-action,.order-delivered-badge{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:6px 10px;border-radius:9px;font-size:.74rem;font-weight:900}.order-delivery-action{color:#087747;border:1px solid #8bd0ad;background:#e9f8f0}.order-delivery-action:hover{color:#fff;border-color:#15945c;background:#15945c}.order-delivered-badge{color:#fff;border:1px solid #15945c;background:linear-gradient(135deg,#1daa6a,#087747)}
+    .quick-tailor-open{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:6px 11px;border:1px solid #8ebbe9;border-radius:9px;color:#1769aa;background:#eef6ff;font-size:.76rem;font-weight:900}.quick-tailor-open:hover{color:#fff;background:#1769aa}.quick-tailor-empty{display:block;color:#9a6500;font-size:.72rem;font-weight:700}.tailor-assignment-context{display:flex;align-items:center;gap:9px;padding:11px 13px;margin-bottom:16px;color:#164e75;background:#eff8ff;border:1px solid #cbe8fa;border-radius:10px;font-weight:800}.tailor-assignment-rate-note{display:block;margin-top:6px;color:#718096;font-size:.76rem}
     .customer-orders-page .dataTables_wrapper{padding:14px}.customer-orders-page .dataTables_filter{float:left;text-align:left}.customer-orders-page .dataTables_length{float:right}.customer-orders-page .modal-content{overflow:hidden;border:0;border-radius:15px;box-shadow:0 20px 60px rgba(12,35,68,.22)}
     @media(max-width:1300px){.customer-order-table{min-width:1320px;table-layout:auto}.customer-order-table thead th{white-space:nowrap}}
     @media(max-width:767px){.customer-orders-page{padding-top:18px}.customer-orders-shell{width:min(100% - 20px,1720px)}.customer-orders-hero{align-items:stretch;flex-direction:column;padding:20px}.customer-orders-back{justify-content:center}.customer-orders-panel__head{padding:16px}}
@@ -75,6 +76,21 @@
                 <div class="modal-header"><h4 class="modal-title">آرڈر کا اگلا مرحلہ</h4><button type="button" class="close mr-auto ml-0" data-dismiss="modal"><span>&times;</span></button></div>
                 <div class="modal-body text-right"><label for="orderStatusSelect" class="font-weight-bold">نیا مرحلہ منتخب کریں</label><select id="orderStatusSelect" class="form-control order-status" name="{{ $detailedWorkflow ? 'status' : 'order_status' }}" required></select></div>
                 <div class="modal-footer"><button type="submit" class="btn btn-primary" id="submit-button">محفوظ کریں</button><button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button></div>
+            </form>
+        </div></div>
+    </div>
+
+    <div class="modal fade" id="tailorAssignmentModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+            <form id="quickTailorAssignmentForm" method="post">
+                @csrf @method('PATCH')
+                <div class="modal-header"><h4 class="modal-title">درزی مقرر کریں</h4><button type="button" class="close mr-auto ml-0" data-dismiss="modal"><span>&times;</span></button></div>
+                <div class="modal-body text-right">
+                    <div class="tailor-assignment-context"><i class="fas fa-receipt"></i><span>آرڈر <bdi id="tailorAssignmentOrderNumber"></bdi></span></div>
+                    <div class="form-group"><label for="quickTailorSelect" class="font-weight-bold">1. درزی منتخب کریں</label><select id="quickTailorSelect" class="form-control" name="tailor_id" required><option value="">درزی منتخب کریں</option></select></div>
+                    <div class="form-group mb-0"><label for="quickTailorRateSelect" class="font-weight-bold">2. سلائی کی شرح / رقم</label><select id="quickTailorRateSelect" class="form-control" name="tailor_price" required disabled><option value="">پہلے درزی منتخب کریں</option></select><small class="tailor-assignment-rate-note">یہ فی سوٹ درزی کی اجرت ہے؛ محفوظ شدہ شرح ہی آرڈر پر لاگو ہوگی۔</small></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary" id="quickTailorSubmit" disabled><i class="fas fa-user-check ml-1"></i> درزی مقرر کریں</button><button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button></div>
             </form>
         </div></div>
     </div>

@@ -76,6 +76,14 @@ class TailorJobLifecycleTest extends TestCase
             'rate' => 650,
         ]);
 
+        $customerOrders = $this->actingAs($owner)->getJson(route('admin.getCustomer', [
+            'id' => $order->customerId,
+            'profile_id' => $order->sub_customer,
+        ]))->assertOk();
+        $customerOrders
+            ->assertJsonPath('0.canAssignTailor', false)
+            ->assertJsonPath('0.tailorOptions', []);
+
         $this->actingAs($owner)
             ->from(route('admin.tailor-jobs.index'))
             ->patch(route('admin.tailor-jobs.assign', $order), [
@@ -84,6 +92,46 @@ class TailorJobLifecycleTest extends TestCase
             ])
             ->assertRedirect(route('admin.tailor-jobs.index'))
             ->assertSessionHasErrors('tailor_id');
+    }
+
+    public function test_customer_order_list_exposes_quick_tailor_and_rate_selection(): void
+    {
+        [$owner, $tailor, $order] = $this->job([
+            'tailorId' => null,
+            'rateId' => null,
+            'tailor_price' => 0,
+            'status' => 'unassigned',
+        ]);
+        $rateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $tailor->id,
+            'options_id' => null,
+            'type' => 'Mens suit',
+            'price' => 650,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($owner)->getJson(route('admin.getCustomer', [
+            'id' => $order->customerId,
+            'profile_id' => $order->sub_customer,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('0.canAssignTailor', true)
+            ->assertJsonPath('0.tailorOptions.0.tailorId', $tailor->id)
+            ->assertJsonPath('0.tailorOptions.0.tailorName', $tailor->name)
+            ->assertJsonPath('0.tailorOptions.0.rateName', 'Mens suit')
+            ->assertJsonPath('0.tailorOptions.0.price', 650)
+            ->assertJsonPath('0.tailorOptions.0.rateValue', $rateId.'-650')
+            ->assertJsonPath('0.tailorAssignmentUrl', route('admin.tailor-jobs.assign', $order));
+
+        $script = file_get_contents(public_path('assets/js/custom.js'));
+        $this->assertStringContainsString('quick-tailor-open', $script);
+        $this->assertStringContainsString('quickTailorRateSelect', $script);
+
+        $this->actingAs($owner)->get(route('admin.customer.orders', $order->sub_customer))
+            ->assertOk()
+            ->assertSee('id="tailorAssignmentModal"', false)
+            ->assertSeeText('سلائی کی شرح / رقم');
     }
 
     public function test_shop_owner_can_progress_a_job_and_an_audit_event_is_created(): void

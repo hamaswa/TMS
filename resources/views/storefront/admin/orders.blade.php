@@ -21,15 +21,26 @@
                 @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
                 <form method="GET" class="form-row mb-4">
                     <div class="col-md-6 mb-2"><label for="order_search">حوالہ، نام یا فون</label><input id="order_search" class="form-control" name="search" value="{{ request('search') }}"></div>
-                    <div class="col-md-4 mb-2"><label for="order_status">حالت</label><select id="order_status" class="form-control" name="status"><option value="">تمام</option><option value="pending" @selected(request('status')==='pending')>زیرِ انتظار</option><option value="complete" @selected(request('status')==='complete')>مکمل</option><option value="cancelled" @selected(request('status')==='cancelled')>منسوخ</option></select></div>
+                    <div class="col-md-4 mb-2"><label for="order_status">حالت</label><select id="order_status" class="form-control" name="status"><option value="">تمام</option><option value="pending" @selected(request('status')==='pending')>زیرِ انتظار</option><option value="confirmed" @selected(request('status')==='confirmed')>تصدیق شدہ</option><option value="complete" @selected(request('status')==='complete')>مکمل</option><option value="cancelled" @selected(request('status')==='cancelled')>منسوخ</option></select></div>
                     <div class="col-md-2 mb-2 d-flex align-items-end"><button class="btn btn-primary btn-block">تلاش کریں</button></div>
                 </form>
                 @forelse($orders as $order)
-                    @php $statusLabels=['pending'=>'زیرِ انتظار','complete'=>'مکمل','cancelled'=>'منسوخ']; @endphp
+                    @php
+                        $statusLabels=['pending'=>'زیرِ انتظار','confirmed'=>'تصدیق شدہ','complete'=>'مکمل','cancelled'=>'منسوخ'];
+                        $statusClasses=['pending'=>'warning','confirmed'=>'primary','complete'=>'success','cancelled'=>'secondary'];
+                    @endphp
                     <article class="border rounded p-3 mb-3">
                         <div class="d-flex flex-wrap justify-content-between">
                             <div><strong dir="ltr">{{ $order->reference }}</strong><div>{{ $order->customer->name }} · <span dir="ltr">{{ $order->customer->phone_number1 }}</span></div><small class="text-muted">{{ $order->placed_at->format('d-m-Y h:i A') }}</small></div>
-                            <div class="text-left"><span class="badge badge-{{ $order->status==='pending'?'warning':($order->status==='complete'?'success':'secondary') }}">{{ $statusLabels[$order->status] ?? $order->status }}</span><div class="h5 mt-2">Rs {{ number_format($order->subtotal,2) }}</div></div>
+                            <div class="text-left"><span class="badge badge-{{ $statusClasses[$order->status] ?? 'secondary' }}">{{ $statusLabels[$order->status] ?? $order->status }}</span><div class="h5 mt-2">Rs {{ number_format($order->subtotal,2) }}</div></div>
+                        </div>
+                        <div class="border rounded bg-light p-3 mt-3">
+                            <div><strong>وصولی:</strong> {{ $order->fulfillment_method === 'delivery' ? 'ڈیلیوری' : 'دکان سے وصولی' }}</div>
+                            @if($order->delivery_address)<div class="mt-1"><strong>ڈیلیوری پتہ:</strong> {{ $order->delivery_address }}</div>@endif
+                            @if($order->customer_note)<div class="mt-1"><strong>گاہک کا نوٹ:</strong> {{ $order->customer_note }}</div>@endif
+                            @if($order->confirmed_at)
+                                <small class="text-muted d-block mt-2">تصدیق: {{ $order->confirmed_at->format('d-m-Y h:i A') }}@if($order->confirmedBy) · {{ $order->confirmedBy->name ?: $order->confirmedBy->username }}@endif</small>
+                            @endif
                         </div>
                         <div class="mt-2"><strong>ادائیگی:</strong> {{ \App\Models\StorefrontOrder::paymentMethods()[$order->payment_method] ?? $order->payment_method }}
                             @if(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method))
@@ -146,9 +157,14 @@
                                 </div>
                             @endforeach
                         @endif
-                        @if($order->status==='pending')
+                        @if(in_array($order->status, [\App\Models\StorefrontOrder::STATUS_PENDING, \App\Models\StorefrontOrder::STATUS_CONFIRMED], true))
                             <div class="mt-3">
-                                <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success" @disabled(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method) && $order->payment_verification_status !== \App\Models\StorefrontOrder::VERIFICATION_VERIFIED)>مکمل کریں</button></form>
+                                @if($order->status === \App\Models\StorefrontOrder::STATUS_PENDING)
+                                    <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="confirmed"><button class="btn btn-primary" @disabled(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method) && $order->payment_verification_status !== \App\Models\StorefrontOrder::VERIFICATION_VERIFIED)>آرڈر کی تصدیق کریں</button></form>
+                                @else
+                                    <a class="btn btn-dark ml-2" target="_blank" rel="noopener" href="{{ route('admin.storefront.orders.dispatch-print', $order) }}"><i class="fas fa-print ml-1"></i> ڈسپیچ شیٹ پرنٹ کریں</a>
+                                    <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success">مکمل کریں</button></form>
+                                @endif
                                 @if($order->returns->isNotEmpty())
                                     <div class="alert alert-light mt-2 mb-0">اس آرڈر پر جزوی واپسی یا تبدیلی موجود ہے، اس لیے مکمل منسوخی دستیاب نہیں۔ باقی مقدار الگ واپسی یا تبدیلی سے درج کریں۔</div>
                                 @elseif((float) $order->paid_amount <= 0)

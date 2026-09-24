@@ -1,0 +1,20 @@
+{
+  "name": "TMS Offline Workspaces",
+  "short_name": "TMS",
+  "description": "Offline-first tailor and shop workspaces",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#174f78",
+  "lang": "ur",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/assets/images/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

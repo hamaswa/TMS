@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
 use App\Services\StorefrontPaymentEvidenceService;
+use App\Services\StorefrontTailoringBookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +93,14 @@ class AdminStorefrontTailoringController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
         ]);
         $inquiries = $storefront->inquiries()
-            ->with(['service:id,name', 'paymentVerifier:id,name,username'])
+            ->with([
+                'service:id,name,price_from,estimated_days',
+                'paymentVerifier:id,name,username',
+                'customer:id,name,phone_number1',
+                'order:id,customerId,status,returnDate,totalPayment',
+                'confirmedBy:id,name,username',
+                'rejectedBy:id,name,username',
+            ])
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['q'] ?? null, function ($query, $term) {
                 $query->where(function ($query) use ($term) {
@@ -117,6 +125,11 @@ class AdminStorefrontTailoringController extends Controller
     {
         $storefront = $this->storefront(false);
         abort_unless($inquiry->storefront_id === $storefront->id, 404);
+        if ($inquiry->isBooking()) {
+            throw ValidationException::withMessages([
+                'status' => 'آن لائن بکنگ کے لیے تصدیق یا مسترد کرنے کے بٹن استعمال کریں۔',
+            ]);
+        }
         $validated = $request->validate([
             'status' => ['required', Rule::in(array_keys(StorefrontInquiry::statuses()))],
             'admin_notes' => ['nullable', 'string', 'max:3000'],
@@ -137,6 +150,11 @@ class AdminStorefrontTailoringController extends Controller
     {
         $storefront = $this->storefront(false);
         abort_unless($inquiry->storefront_id === $storefront->id, 404);
+        if (in_array($inquiry->status, [StorefrontInquiry::STATUS_CONFIRMED, StorefrontInquiry::STATUS_REJECTED], true)) {
+            throw ValidationException::withMessages([
+                'payment_verification' => 'مکمل ہو چکی بکنگ کی ادائیگی کی تصدیق تبدیل نہیں کی جا سکتی۔',
+            ]);
+        }
         $validated = $request->validate([
             'decision' => ['required', Rule::in([
                 StorefrontInquiry::VERIFICATION_VERIFIED,
@@ -177,6 +195,66 @@ class AdminStorefrontTailoringController extends Controller
             ->with('success', $validated['decision'] === StorefrontInquiry::VERIFICATION_VERIFIED
                 ? 'دستی ادائیگی کا حوالہ تصدیق کر دیا گیا ہے۔'
                 : 'دستی ادائیگی کا حوالہ مسترد کر دیا گیا ہے۔');
+    }
+
+    public function confirmBooking(
+        Request $request,
+        StorefrontInquiry $inquiry,
+        StorefrontTailoringBookingService $bookings,
+    ) {
+        $storefront = $this->storefront(false);
+        abort_unless($inquiry->storefront_id === $storefront->id && $inquiry->isBooking(), 404);
+        $validated = $request->validate([
+            'final_price' => ['required', 'numeric', 'min:0', 'max:9999999999'],
+            'suit_quantity' => ['required', 'integer', 'min:1', 'max:20'],
+            'promised_date' => ['required', 'date', 'after_or_equal:today'],
+            'admin_notes' => ['nullable', 'string', 'max:3000'],
+        ]);
+        $bookings->confirm(
+            $inquiry,
+            (int) Auth::id(),
+            (float) $validated['final_price'],
+            (int) $validated['suit_quantity'],
+            $validated['promised_date'],
+            $validated['admin_notes'] ?? null,
+        );
+
+        return redirect()->route('admin.storefront.inquiries.index')
+            ->with('success', 'بکنگ منظور ہو گئی، ٹیلرنگ آرڈر اور مالی ریکارڈ بنا دیے گئے ہیں۔');
+    }
+
+    public function rejectBooking(
+        Request $request,
+        StorefrontInquiry $inquiry,
+        StorefrontTailoringBookingService $bookings,
+    ) {
+        $storefront = $this->storefront(false);
+        abort_unless($inquiry->storefront_id === $storefront->id && $inquiry->isBooking(), 404);
+        $validated = $request->validate([
+            'rejection_reason' => ['required', 'string', 'max:1000'],
+        ]);
+        $bookings->reject($inquiry, (int) Auth::id(), $validated['rejection_reason']);
+
+        return redirect()->route('admin.storefront.inquiries.index')
+            ->with('success', 'بکنگ مسترد کر دی گئی ہے۔');
+    }
+
+    public function bookingJobSheet(StorefrontInquiry $inquiry)
+    {
+        $storefront = $this->storefront(false);
+        abort_unless(
+            $inquiry->storefront_id === $storefront->id
+            && $inquiry->isBooking()
+            && $inquiry->status === StorefrontInquiry::STATUS_CONFIRMED
+            && $inquiry->order_id,
+            404
+        );
+        $inquiry->load(['service', 'customer', 'order.measurementValues.field', 'confirmedBy']);
+
+        return view('storefront.admin.tailoring-job-sheet', [
+            'storefront' => $storefront,
+            'booking' => $inquiry,
+        ]);
     }
 
     private function storefront(bool $requireTailoring = true)

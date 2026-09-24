@@ -46,6 +46,9 @@
                 <li>{{ __('storefront.order.history_time', ['event' => __('storefront.order.history_rejected'), 'time' => $order->payment_rejected_at->format('d-m-Y h:i A')]) }}</li>
             @endif
         @endif
+        @if($order->confirmed_at)
+            <li>{{ __('storefront.order.history_time', ['event' => __('storefront.order.history_confirmed'), 'time' => $order->confirmed_at->format('d-m-Y h:i A')]) }}</li>
+        @endif
         @foreach($order->refunds as $refund)
             <li>
                 {{ __('storefront.order.history_time', [

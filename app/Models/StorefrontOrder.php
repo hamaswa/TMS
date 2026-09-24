@@ -11,6 +11,8 @@ class StorefrontOrder extends Model
 
     public const STATUS_PENDING = 'pending';
 
+    public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_COMPLETE = 'complete';
 
     public const STATUS_CANCELLED = 'cancelled';
@@ -63,6 +65,8 @@ class StorefrontOrder extends Model
         'paid_amount',
         'balance_amount',
         'placed_at',
+        'confirmed_by_user_id',
+        'confirmed_at',
         'completed_at',
         'cancelled_at',
     ];
@@ -113,6 +117,7 @@ class StorefrontOrder extends Model
         'paid_amount' => 'decimal:2',
         'balance_amount' => 'decimal:2',
         'placed_at' => 'datetime',
+        'confirmed_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'payment_verified_at' => 'datetime',
@@ -149,6 +154,11 @@ class StorefrontOrder extends Model
     public function paymentVerifier()
     {
         return $this->belongsTo(User::class, 'payment_verified_by_user_id');
+    }
+
+    public function confirmedBy()
+    {
+        return $this->belongsTo(User::class, 'confirmed_by_user_id');
     }
 
     public function refunds()

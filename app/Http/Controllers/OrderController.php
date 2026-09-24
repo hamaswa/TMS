@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\rack;
 use App\Models\Business;
+use App\Models\BusinessRole;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use PhpOption\Option;
@@ -513,6 +514,24 @@ class OrderController extends Controller
             $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
                 === Business::TAILORING_STATUS_DETAILED;
             $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
+            $canAssignTailor = Auth::user()->hasBusinessPermission(BusinessRole::TAILORING_WORKSHOP);
+            $tailorOptions = $canAssignTailor
+                ? Tailor::query()
+                    ->with(['tailorsalary.options'])
+                    ->where('user_id', Auth::user()->businessOwnerId())
+                    ->orderBy('name')
+                    ->get()
+                    ->flatMap(fn (Tailor $tailor) => $tailor->tailorsalary->map(fn (Tailorsalary $rate) => [
+                        'tailorId' => (int) $tailor->id,
+                        'tailorName' => $tailor->name,
+                        'rateId' => (int) $rate->id,
+                        'rateValue' => $rate->id.'-'.$rate->price,
+                        'rateName' => $rate->options?->Name ?: ($rate->type ?: 'عام سلائی'),
+                        'price' => (float) $rate->price,
+                    ]))
+                    ->values()
+                    ->all()
+                : [];
             $orderBalances = $canViewBalances
                 ? $this->customerLedger->orderBalances(Auth::user()->businessOwnerId(), (int) $id)
                 : collect();
@@ -557,6 +576,11 @@ class OrderController extends Controller
                     'returnDate' => date('d-m-Y', strtotime($order->returnDate)),
                     'suitQuantity' => $order->suitQuantity,
                     'tailorName' => $order->tailor_name ?: 'ابھی مقرر نہیں',
+                    'canAssignTailor' => $canAssignTailor && $currentStatus === 'unassigned' && ! $order->tailorId,
+                    'tailorOptions' => $canAssignTailor && $currentStatus === 'unassigned' && ! $order->tailorId
+                        ? $tailorOptions
+                        : [],
+                    'tailorAssignmentUrl' => route('admin.tailor-jobs.assign', ['order' => $order->id]),
                     'button' => $button,
                     'btnClass' => $btn,
                     'orderId' => $order->id,

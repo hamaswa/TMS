@@ -10,37 +10,59 @@ class StorefrontInquiry extends Model
     use HasFactory;
 
     public const STATUS_NEW = 'new';
+
     public const STATUS_CONTACTED = 'contacted';
+
     public const STATUS_CLOSED = 'closed';
 
+    public const STATUS_CONFIRMED = 'confirmed';
+
+    public const STATUS_REJECTED = 'rejected';
+
     public const PAYMENT_UNPAID = 'unpaid';
+
     public const PAYMENT_COD = 'cod';
+
     public const PAYMENT_EASYPAISA = 'easypaisa';
+
     public const PAYMENT_JAZZCASH = 'jazzcash';
+
     public const PAYMENT_BANK_TRANSFER = 'bank_transfer';
+
     public const PAYMENT_RAAST = 'raast';
 
     public const VERIFICATION_NOT_REQUIRED = 'not_required';
+
     public const VERIFICATION_PENDING = 'pending';
+
     public const VERIFICATION_VERIFIED = 'verified';
+
     public const VERIFICATION_REJECTED = 'rejected';
 
     protected $fillable = [
         'storefront_id',
         'tailoring_service_id',
+        'customer_id',
+        'order_id',
         'customer_name',
         'phone',
+        'booking_pin_hash',
         'email',
         'city',
         'preferred_date',
         'measurement_method',
+        'suit_quantity',
+        'estimated_price',
         'service_deposit_type',
         'service_deposit_value',
         'service_deposit_amount',
+        'final_price',
+        'promised_date',
         'message',
         'payment_method',
         'payment_sender_phone',
         'payment_reference',
+        'payment_claimed_amount',
         'payment_evidence_path',
         'payment_evidence_original_name',
         'payment_evidence_mime_type',
@@ -53,9 +75,16 @@ class StorefrontInquiry extends Model
         'payment_rejected_at',
         'status',
         'admin_notes',
+        'confirmed_by_user_id',
+        'rejected_by_user_id',
+        'rejection_reason',
         'contacted_at',
+        'confirmed_at',
+        'rejected_at',
         'closed_at',
     ];
+
+    protected $hidden = ['booking_pin_hash'];
 
     public static function paymentMethods(): array
     {
@@ -93,7 +122,10 @@ class StorefrontInquiry extends Model
 
     protected $casts = [
         'preferred_date' => 'date',
+        'promised_date' => 'date',
         'contacted_at' => 'datetime',
+        'confirmed_at' => 'datetime',
+        'rejected_at' => 'datetime',
         'closed_at' => 'datetime',
         'payment_verified_at' => 'datetime',
         'payment_rejected_at' => 'datetime',
@@ -101,6 +133,10 @@ class StorefrontInquiry extends Model
         'payment_evidence_submitted_at' => 'datetime',
         'service_deposit_value' => 'decimal:2',
         'service_deposit_amount' => 'decimal:2',
+        'estimated_price' => 'decimal:2',
+        'payment_claimed_amount' => 'decimal:2',
+        'final_price' => 'decimal:2',
+        'suit_quantity' => 'integer',
     ];
 
     public static function statuses(): array
@@ -109,6 +145,8 @@ class StorefrontInquiry extends Model
             self::STATUS_NEW => 'نئی درخواست',
             self::STATUS_CONTACTED => 'رابطہ ہو گیا',
             self::STATUS_CLOSED => 'بند',
+            self::STATUS_CONFIRMED => 'تصدیق شدہ بکنگ',
+            self::STATUS_REJECTED => 'مسترد',
         ];
     }
 
@@ -127,6 +165,26 @@ class StorefrontInquiry extends Model
         return $this->belongsTo(User::class, 'payment_verified_by_user_id');
     }
 
+    public function customer()
+    {
+        return $this->belongsTo(Customers::class);
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function confirmedBy()
+    {
+        return $this->belongsTo(User::class, 'confirmed_by_user_id');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by_user_id');
+    }
+
     public static function verificationStatuses(): array
     {
         return [
@@ -139,6 +197,11 @@ class StorefrontInquiry extends Model
 
     public function getReferenceAttribute(): string
     {
-        return 'TMSI-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+        return ($this->booking_pin_hash ? 'TMSB-' : 'TMSI-').str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
+    public function isBooking(): bool
+    {
+        return filled($this->booking_pin_hash) && filled($this->tailoring_service_id);
     }
 }

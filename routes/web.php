@@ -27,6 +27,7 @@ use App\Http\Controllers\InventoryLedgerController;
 use App\Http\Controllers\MeasurementFieldController;
 use App\Http\Controllers\MeasurementTemplateController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OfflineWorkspaceController;
 use App\Http\Controllers\OptionsController;
 use App\Http\Controllers\OptionTypeController;
 use App\Http\Controllers\OrderController;
@@ -66,6 +67,8 @@ use Illuminate\Support\Facades\Route;
 
 Auth::routes(['register' => false]);
 
+Route::get('/offline', [OfflineWorkspaceController::class, 'fallback'])->name('offline.fallback');
+
 // Business accounts are provisioned by the super administrator and public
 // customers register inside a specific storefront. Keep the old URL useful
 // without allowing it to create an unscoped user account.
@@ -99,6 +102,13 @@ Route::get('/shops/{storefront:slug}/tailoring/{service}', [PublicStorefrontCont
 Route::post('/shops/{storefront:slug}/inquiries', [PublicStorefrontController::class, 'submitInquiry'])
     ->middleware(['public.locale', 'throttle:10,1'])
     ->name('storefront.inquiries.store');
+Route::post('/shops/{storefront:slug}/tailoring-bookings', [PublicStorefrontController::class, 'submitInquiry'])
+    ->middleware(['public.locale', 'throttle:10,1'])
+    ->name('storefront.tailoring.bookings.store');
+Route::get('/shops/{storefront:slug}/tailoring-bookings/{reference}', [PublicStorefrontController::class, 'showBooking'])
+    ->middleware('public.locale')->name('storefront.tailoring.bookings.show');
+Route::post('/shops/{storefront:slug}/tailoring-bookings/{reference}/access', [PublicStorefrontController::class, 'authenticateBooking'])
+    ->middleware(['public.locale', 'throttle:5,1'])->name('storefront.tailoring.bookings.authenticate');
 
 Route::get('/order-status/{order}', [PublicOrderTrackingController::class, 'show'])
     ->middleware(['signed', 'throttle:60,1'])
@@ -200,10 +210,18 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
             ->name('storefront.inquiries.payment-verification');
         Route::get('/storefront/inquiries/{inquiry}/payment-evidence', [AdminStorefrontTailoringController::class, 'inquiryPaymentEvidence'])
             ->name('storefront.inquiries.payment-evidence');
+        Route::patch('/storefront/inquiries/{inquiry}/confirm', [AdminStorefrontTailoringController::class, 'confirmBooking'])
+            ->name('storefront.inquiries.confirm');
+        Route::patch('/storefront/inquiries/{inquiry}/reject', [AdminStorefrontTailoringController::class, 'rejectBooking'])
+            ->name('storefront.inquiries.reject');
+        Route::get('/storefront/inquiries/{inquiry}/job-sheet', [AdminStorefrontTailoringController::class, 'bookingJobSheet'])
+            ->name('storefront.inquiries.job-sheet');
     });
     Route::middleware('business.permission:clothing.sales')->group(function () {
         Route::get('/storefront/orders', [AdminStorefrontOrderController::class, 'index'])->name('storefront.orders.index');
         Route::patch('/storefront/orders/{order}', [AdminStorefrontOrderController::class, 'update'])->name('storefront.orders.update');
+        Route::get('/storefront/orders/{order}/dispatch-print', [AdminStorefrontOrderController::class, 'dispatchPrint'])
+            ->name('storefront.orders.dispatch-print');
         Route::patch('/storefront/orders/{order}/payment-verification', [AdminStorefrontOrderController::class, 'verifyPayment'])
             ->name('storefront.orders.payment-verification');
         Route::get('/storefront/orders/{order}/payment-evidence', [AdminStorefrontOrderController::class, 'paymentEvidence'])
@@ -315,6 +333,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         ->name('Tailor.restore');
     Route::middleware('business.permission:tailoring.workshop')->group(function () {
         Route::get('tailor-jobs', [TailorJobController::class, 'adminIndex'])->name('tailor-jobs.index');
+        Route::post('offline/sync', [OfflineWorkspaceController::class, 'sync'])->name('offline.sync');
         Route::get('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'index'])->name('orders.workforce.index');
         Route::post('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'store'])->name('orders.workforce.store');
         Route::patch('orders/{order}/workforce/{assignment}/status', [OrderWorkAssignmentController::class, 'updateStatus'])->name('orders.workforce.status');
@@ -461,6 +480,7 @@ Route::group(['middleware' => 'Tailor', 'prefix' => 'tailor'], function () {
     Route::get('tailor-dashboard', [TailorController::class, 'tailor_dashboard']);
     Route::get('tailor-order-list', [TailorJobController::class, 'tailorIndex'])->name('tailor.jobs.index');
     Route::patch('jobs/{order}/status', [TailorJobController::class, 'updateStatus'])->name('tailor.jobs.status');
+    Route::post('offline/sync', [OfflineWorkspaceController::class, 'sync'])->name('tailor.offline.sync');
     Route::get('logout', [TailorController::class, 'logout']);
     Route::post('tailor-weakly-print/{id}', [TailorController::class, 'tailor_weekly']);
     // order-status

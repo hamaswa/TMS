@@ -14,12 +14,25 @@
 @php($canTailorConfiguration = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.configuration'))
 @php($canCustomerBalances = Auth::check() && Auth::user()->hasBusinessPermission('customers.balances'))
 @php($unreadNotificationCount = Auth::check() && Auth::user()->isBusinessOwner() ? Auth::user()->unreadNotifications()->count() : 0)
+@php($isTailorOfflineActor = Session::get('tailor') && session()->has('tailor_id'))
+@php($isBusinessOfflineActor = Auth::check() && Auth::user()->isBusinessMember())
+@php($offlineCapable = ! $isSuperAdmin && ($isTailorOfflineActor || $isBusinessOfflineActor))
+@php($offlineSyncUrl = $isTailorOfflineActor ? route('tailor.offline.sync') : ($canTailorWorkshop ? route('admin.offline.sync') : null))
+@php($offlineActorKey = $isTailorOfflineActor ? 'tailor:'.session('tailor_id') : ($isBusinessOfflineActor ? 'user:'.Auth::id() : null))
 <!doctype html>
 <html lang="{{ $isSuperAdmin ? 'en' : 'ur' }}" dir="{{ $isSuperAdmin ? 'ltr' : 'rtl' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @if($offlineCapable)
+        <meta name="theme-color" content="#174f78">
+        <meta name="tms-offline-enabled" content="1">
+        <meta name="tms-offline-actor" content="{{ $offlineActorKey }}">
+        @if($offlineSyncUrl)<meta name="tms-offline-sync-url" content="{{ $offlineSyncUrl }}">@endif
+        <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+        <link rel="apple-touch-icon" href="{{ asset('assets/images/web-app-manifest-192x192.png') }}">
+    @endif
     <title>{{ $isSuperAdmin ? 'TMS Super Admin' : 'ٹیلر مینجمنٹ سسٹم' }}</title>
     <link rel="icon" href="{{ asset('assets/images/favicon.ico') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">

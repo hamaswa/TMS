@@ -4,17 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\ClothBrand;
 use App\Models\ClothType;
+use App\Models\Customers;
 use App\Models\Storefront;
 use App\Models\StorefrontClothingListing;
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
+use App\Notifications\NewStorefrontTailoringBookingNotification;
 use App\Services\StorefrontPaymentEvidenceService;
+use App\Support\PakistanPhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\File;
+use Illuminate\Validation\ValidationException;
 
 class PublicStorefrontController extends Controller
 {
@@ -264,10 +269,10 @@ class PublicStorefrontController extends Controller
         Request $request,
         Storefront $storefront,
         StorefrontPaymentEvidenceService $evidenceService
-    )
-    {
+    ) {
         $this->ensureTailoringVisible($storefront);
         abort_unless($storefront->tailoringInquiriesEnabled(), 404);
+        $isBooking = $request->routeIs('storefront.tailoring.bookings.store');
         $request->mergeIfMissing(['payment_method' => StorefrontInquiry::PAYMENT_UNPAID]);
         $paymentMethod = $request->input('payment_method');
         $manualPayment = StorefrontInquiry::requiresManualVerification($paymentMethod);
@@ -276,7 +281,7 @@ class PublicStorefrontController extends Controller
             StorefrontInquiry::PAYMENT_JAZZCASH,
         ], true);
         $validated = $request->validate([
-            'tailoring_service_id' => ['nullable', 'integer'],
+            'tailoring_service_id' => [$isBooking ? 'required' : 'nullable', 'integer'],
             'customer_name' => ['required', 'string', 'max:150'],
             'phone' => ['required', 'string', 'min:7', 'max:50'],
             'email' => ['nullable', 'email', 'max:150'],
@@ -286,6 +291,9 @@ class PublicStorefrontController extends Controller
                 'nullable',
                 Rule::in(array_keys(StorefrontTailoringService::measurementMethodLabels())),
             ],
+            'suit_quantity' => [$isBooking ? 'required' : 'nullable', 'integer', 'min:1', 'max:20'],
+            'booking_pin' => [$isBooking ? 'required' : 'nullable', 'digits:6', 'confirmed'],
+            'payment_claimed_amount' => [$isBooking && $manualPayment ? 'required' : 'nullable', 'numeric', 'min:0', 'max:9999999999'],
             'message' => ['nullable', 'string', 'max:3000'],
             'payment_method' => ['required', Rule::in(array_keys($storefront->acceptedInquiryPaymentMethods()))],
             'payment_sender_phone' => [
@@ -336,6 +344,14 @@ class PublicStorefrontController extends Controller
                     'payment_method' => __('storefront.messages.deposit_payment_required'),
                 ]);
             }
+            if ($isBooking && $manualPayment
+                && (float) ($validated['payment_claimed_amount'] ?? 0) < (float) $service->depositAmount()) {
+                throw ValidationException::withMessages([
+                    'payment_claimed_amount' => __('storefront.messages.deposit_amount_required', [
+                        'amount' => number_format((float) $service->depositAmount(), 2),
+                    ]),
+                ]);
+            }
             if ($service->weekly_booking_limit) {
                 if (blank($validated['preferred_date'] ?? null)) {
                     throw ValidationException::withMessages([
@@ -344,11 +360,23 @@ class PublicStorefrontController extends Controller
                 }
             }
         }
+        $customer = null;
+        if ($isBooking) {
+            $customer = Customers::findByPhoneForOwner(
+                (int) $storefront->business->owner_user_id,
+                $validated['phone']
+            );
+            if ($customer && (! $customer->mobile_pin || ! Hash::check($validated['booking_pin'], $customer->mobile_pin))) {
+                throw ValidationException::withMessages([
+                    'booking_pin' => __('storefront.messages.existing_customer_pin_invalid'),
+                ]);
+            }
+        }
         $evidence = $request->hasFile('payment_evidence')
             ? $evidenceService->store($request->file('payment_evidence'), $storefront)
             : [];
         try {
-            $inquiry = DB::transaction(function () use ($storefront, $service, $validated, $evidence) {
+            $inquiry = DB::transaction(function () use ($storefront, $service, $validated, $evidence, $isBooking, $customer) {
                 $lockedService = $service
                     ? $storefront->tailoringServices()->lockForUpdate()->findOrFail($service->id)
                     : null;
@@ -375,9 +403,15 @@ class PublicStorefrontController extends Controller
                 }
 
                 return $storefront->inquiries()->create([
-                    ...collect($validated)->except(['website', 'tailoring_service_id', 'payment_evidence'])->all(),
+                    ...collect($validated)->except(['website', 'tailoring_service_id', 'payment_evidence', 'booking_pin', 'booking_pin_confirmation'])->all(),
                     ...$evidence,
                     'tailoring_service_id' => $lockedService?->id,
+                    'customer_id' => $customer?->id,
+                    'booking_pin_hash' => $isBooking ? Hash::make($validated['booking_pin']) : null,
+                    'payment_claimed_amount' => (float) ($validated['payment_claimed_amount'] ?? 0),
+                    'estimated_price' => $isBooking && $lockedService?->price_from !== null
+                        ? round((float) $lockedService->price_from * (int) $validated['suit_quantity'], 2)
+                        : null,
                     'service_deposit_type' => $lockedService?->deposit_type,
                     'service_deposit_value' => $lockedService?->deposit_value,
                     'service_deposit_amount' => $lockedService?->depositAmount(),
@@ -392,10 +426,67 @@ class PublicStorefrontController extends Controller
             throw $exception;
         }
 
+        if ($isBooking) {
+            $request->session()->put($this->bookingSessionKey($inquiry), true);
+            try {
+                Notification::send(
+                    $storefront->business->owner,
+                    new NewStorefrontTailoringBookingNotification($inquiry->load('service'))
+                );
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+
+            return redirect()->route('storefront.tailoring.bookings.show', [$storefront, $inquiry->reference])
+                ->with('success', __('storefront.messages.booking_saved'));
+        }
+
         return redirect()->route('storefront.tailoring.index', $storefront)
             ->with('inquiry_success', __('storefront.messages.inquiry_saved', [
                 'reference' => $inquiry->reference,
             ]));
+    }
+
+    public function showBooking(Request $request, Storefront $storefront, string $reference)
+    {
+        $this->ensureTailoringVisible($storefront);
+        $booking = $this->findBooking($storefront, $reference);
+        $authorized = $request->session()->get($this->bookingSessionKey($booking), false);
+
+        return view('storefront.public.tailoring.booking', compact('storefront', 'booking', 'authorized'));
+    }
+
+    public function authenticateBooking(Request $request, Storefront $storefront, string $reference)
+    {
+        $this->ensureTailoringVisible($storefront);
+        $validated = $request->validate([
+            'phone' => ['required', 'string', 'max:50'],
+            'pin' => ['required', 'digits:6'],
+        ]);
+        $booking = $this->findBooking($storefront, $reference);
+        if (PakistanPhoneNumber::normalize($validated['phone']) !== PakistanPhoneNumber::normalize($booking->phone)
+            || ! Hash::check($validated['pin'], $booking->booking_pin_hash)) {
+            throw ValidationException::withMessages(['phone' => __('storefront.messages.identity_invalid')]);
+        }
+        $request->session()->put($this->bookingSessionKey($booking), true);
+
+        return redirect()->route('storefront.tailoring.bookings.show', [$storefront, $booking->reference]);
+    }
+
+    private function findBooking(Storefront $storefront, string $reference): StorefrontInquiry
+    {
+        abort_unless(preg_match('/^TMSB-(\d{6})$/', strtoupper($reference), $matches), 404);
+        $booking = $storefront->inquiries()
+            ->with(['service', 'order', 'customer'])
+            ->findOrFail((int) $matches[1]);
+        abort_unless($booking->isBooking(), 404);
+
+        return $booking;
+    }
+
+    private function bookingSessionKey(StorefrontInquiry $booking): string
+    {
+        return 'storefront_tailoring_booking_access_'.$booking->id;
     }
 
     private function ensureTailoringVisible(Storefront $storefront): void
