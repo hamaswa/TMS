@@ -2,10 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\ClothBrand;
+use App\Models\ClothType;
 use App\Models\Options;
 use App\Models\OptionType;
 use App\Models\User;
+use App\Services\ClothingBrandDefaultsService;
+use App\Services\ClothingTypeDefaultsService;
 use App\Services\TailoringOptionDefaultsService;
+use Database\Seeders\ClothingShopBrandsSeeder;
+use Database\Seeders\ClothingShopTypesSeeder;
 use Database\Seeders\OptionTypesSeeder;
 use Database\Seeders\TailoringShopOptionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -84,6 +90,28 @@ class ClientModuleAccessTest extends TestCase
         $this->assertTrue($client->clothing_access);
         $this->assertTrue($client->hasRole('shop_owner'));
         $this->assertDatabaseCount('options', 0);
+        $this->assertSame(
+            ClothingBrandDefaultsService::BRANDS,
+            ClothBrand::where('user_id', $client->id)->orderBy('id')->pluck('name')->all()
+        );
+
+        $this->seed(ClothingShopBrandsSeeder::class);
+        $this->seed(ClothingShopBrandsSeeder::class);
+        $this->assertSame(
+            count(ClothingBrandDefaultsService::BRANDS),
+            ClothBrand::where('user_id', $client->id)->count()
+        );
+        $this->assertSame(
+            ClothingTypeDefaultsService::TYPES,
+            ClothType::where('user_id', $client->id)->orderBy('id')->pluck('name')->all()
+        );
+
+        $this->seed(ClothingShopTypesSeeder::class);
+        $this->seed(ClothingShopTypesSeeder::class);
+        $this->assertSame(
+            count(ClothingTypeDefaultsService::TYPES),
+            ClothType::where('user_id', $client->id)->count()
+        );
 
         $this->actingAs($admin)->post(route('administrator.update', $client), [
             'name' => $client->name, 'email' => $client->email,

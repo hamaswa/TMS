@@ -11,6 +11,8 @@ use App\Models\StorefrontOrder;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Notifications\AdminNotification;
+use App\Services\ClothingBrandDefaultsService;
+use App\Services\ClothingTypeDefaultsService;
 use App\Services\TailoringOptionDefaultsService;
 use Exception;
 use Illuminate\Http\Request;
@@ -24,9 +26,11 @@ use Spatie\Permission\Models\Role;
 
 class AdministratorController extends Controller
 {
-    public function __construct(private TailoringOptionDefaultsService $tailoringOptionDefaults)
-    {
-    }
+    public function __construct(
+        private TailoringOptionDefaultsService $tailoringOptionDefaults,
+        private ClothingBrandDefaultsService $clothingBrandDefaults,
+        private ClothingTypeDefaultsService $clothingTypeDefaults,
+    ) {}
 
     public function showData(Request $request)
     {
@@ -102,6 +106,11 @@ class AdministratorController extends Controller
             if ($user->tailoring_access) {
                 $this->tailoringOptionDefaults->seedForOwner($user->id);
             }
+
+            if ($user->clothing_access) {
+                $this->clothingBrandDefaults->seedForOwner($user->id);
+                $this->clothingTypeDefaults->seedForOwner($user->id);
+            }
         }
 
         return redirect()->route('administrator.clients.show', $user)->with('success', 'Client account created and is awaiting approval.');
@@ -145,6 +154,11 @@ class AdministratorController extends Controller
 
         if ($user->tailoring_access) {
             $this->tailoringOptionDefaults->seedForOwner($user->id);
+        }
+
+        if ($user->clothing_access) {
+            $this->clothingBrandDefaults->seedForOwner($user->id);
+            $this->clothingTypeDefaults->seedForOwner($user->id);
         }
     }
 
