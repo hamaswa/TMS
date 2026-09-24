@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             OptionTypesSeeder::class,
             QaDemoSeeder::class,
+            TailoringShopOptionsSeeder::class,
         ]);
     }
 }

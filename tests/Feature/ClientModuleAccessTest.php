@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\Options;
+use App\Models\OptionType;
 use App\Models\User;
+use App\Services\TailoringOptionDefaultsService;
+use Database\Seeders\OptionTypesSeeder;
+use Database\Seeders\TailoringShopOptionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
-use Database\Seeders\OptionTypesSeeder;
 
 class ClientModuleAccessTest extends TestCase
 {
@@ -79,6 +83,7 @@ class ClientModuleAccessTest extends TestCase
         $this->assertFalse($client->tailoring_access);
         $this->assertTrue($client->clothing_access);
         $this->assertTrue($client->hasRole('shop_owner'));
+        $this->assertDatabaseCount('options', 0);
 
         $this->actingAs($admin)->post(route('administrator.update', $client), [
             'name' => $client->name, 'email' => $client->email,
@@ -88,6 +93,51 @@ class ClientModuleAccessTest extends TestCase
         $client->refresh();
         $this->assertTrue($client->tailoring_access);
         $this->assertTrue($client->clothing_access);
+        $sewingTypeId = OptionType::where('slug', TailoringOptionDefaultsService::SEWING_TYPE_SLUG)->value('id');
+        $this->assertSame(
+            TailoringOptionDefaultsService::SEWING_TYPE_CHOICES,
+            Options::where('user_id', $client->id)
+                ->where('option_id', $sewingTypeId)
+                ->orderBy('id')
+                ->pluck('Name')
+                ->all()
+        );
+
+        $this->seed(TailoringShopOptionsSeeder::class);
+        $this->seed(TailoringShopOptionsSeeder::class);
+        $this->assertSame(
+            $this->defaultTailoringChoiceCount(),
+            Options::where('user_id', $client->id)->count()
+        );
+    }
+
+    public function test_each_new_tailoring_shop_receives_its_own_default_tailoring_choices(): void
+    {
+        $adminRole = Role::firstOrCreate(['name' => 'administrative', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $admin = User::factory()->create();
+        $admin->assignRole($adminRole);
+
+        foreach (['first@example.com', 'second@example.com'] as $index => $email) {
+            $this->actingAs($admin)->post(route('administrator.insert'), [
+                'name' => 'Tailoring Client '.($index + 1),
+                'email' => $email,
+                'password' => 'secure-password',
+                'role' => 'shop_owner',
+                'modules' => ['tailoring'],
+            ])->assertSessionHasNoErrors();
+
+            $owner = User::where('email', $email)->firstOrFail();
+            $this->assertSame(
+                $this->defaultTailoringChoiceCount(),
+                Options::where('user_id', $owner->id)->count()
+            );
+        }
+
+        $this->assertDatabaseCount(
+            'options',
+            $this->defaultTailoringChoiceCount() * 2
+        );
     }
 
     public function test_shop_owner_client_must_have_at_least_one_module(): void
@@ -161,5 +211,11 @@ class ClientModuleAccessTest extends TestCase
         $user->assignRole($role);
 
         return $user;
+    }
+
+    private function defaultTailoringChoiceCount(): int
+    {
+        return collect(app(TailoringOptionDefaultsService::class)->defaultOptionTypes())
+            ->sum(fn ($defaults) => count(array_unique($defaults['choices'])));
     }
 }

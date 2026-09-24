@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Business;
-use App\Models\User;
+use App\Models\Options;
+use App\Models\OptionType;
 use App\Models\Setting;
+use App\Models\User;
+use App\Services\TailoringOptionDefaultsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -31,6 +34,15 @@ class SuperAdminClientLifecycleTest extends TestCase
         $business = $owner->ownedBusiness;
         $response->assertRedirect(route('administrator.clients.show', $owner));
         $this->assertSame(Business::STATUS_PENDING, $business->status);
+        $sewingTypeId = OptionType::where('slug', TailoringOptionDefaultsService::SEWING_TYPE_SLUG)->value('id');
+        $this->assertSame(
+            TailoringOptionDefaultsService::SEWING_TYPE_CHOICES,
+            Options::where('user_id', $owner->id)
+                ->where('option_id', $sewingTypeId)
+                ->orderBy('id')
+                ->pluck('Name')
+                ->all()
+        );
         $this->assertDatabaseHas('business_status_histories', [
             'business_id' => $business->id,
             'from_status' => null,

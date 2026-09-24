@@ -2,27 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use Exception;
 use App\Models\Business;
+use App\Models\BusinessStatusHistory;
+use App\Models\ServerNotifications;
+use App\Models\Setting;
 use App\Models\Storefront;
 use App\Models\StorefrontOrder;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
-use App\Models\ServerNotifications;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use App\Notifications\AdminNotification;
-use Spatie\Permission\Models\Permission;
+use App\Services\TailoringOptionDefaultsService;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
-use App\Models\BusinessStatusHistory;
-use App\Models\Setting;
-use App\Models\SubscriptionPlan;
-use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class AdministratorController extends Controller
 {
+    public function __construct(private TailoringOptionDefaultsService $tailoringOptionDefaults)
+    {
+    }
+
     public function showData(Request $request)
     {
         $filters = $request->validate([
@@ -93,6 +98,10 @@ class AdministratorController extends Controller
                 'created_at' => now(),
             ]);
             $user->forceFill(['business_id' => $business->id, 'is_business_owner' => true])->save();
+
+            if ($user->tailoring_access) {
+                $this->tailoringOptionDefaults->seedForOwner($user->id);
+            }
         }
 
         return redirect()->route('administrator.clients.show', $user)->with('success', 'Client account created and is awaiting approval.');
@@ -133,6 +142,10 @@ class AdministratorController extends Controller
             'clothing_enabled' => $user->clothing_access,
         ]);
         $user->forceFill(['business_id' => $business->id, 'is_business_owner' => true])->save();
+
+        if ($user->tailoring_access) {
+            $this->tailoringOptionDefaults->seedForOwner($user->id);
+        }
     }
 
     return redirect()->route('administrator.index')->with('success', 'Client access updated.');
