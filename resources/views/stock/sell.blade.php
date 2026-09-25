@@ -6,9 +6,9 @@
     .counter-sale-shell{max-width:1560px;margin:auto;padding:0 24px}.counter-sale-breadcrumb{margin-bottom:12px;color:var(--sale-muted);font-size:.84rem}.counter-sale-breadcrumb a{color:inherit}.counter-sale-header{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}.counter-sale-heading{display:flex;align-items:center;gap:14px}.counter-sale-heading-icon{display:grid;place-items:center;width:52px;height:52px;border:1px solid var(--sale-line);border-radius:13px;background:#fff;color:var(--sale-blue);font-size:21px;box-shadow:0 5px 18px rgba(25,67,120,.06)}.counter-sale-heading h1{margin:0 0 4px;font-size:1.6rem;font-weight:800}.counter-sale-heading p{margin:0;color:var(--sale-muted)}
     .counter-sale-panel{margin-bottom:14px;border:1px solid var(--sale-line);border-radius:13px;background:#fff;box-shadow:0 5px 20px rgba(28,63,105,.045)}.counter-sale-section-head{display:flex;align-items:center;gap:10px;padding:15px 19px 0;color:var(--sale-blue);font-size:1.04rem;font-weight:800}.counter-sale-panel-body{padding:18px 19px}.counter-sale-page label{display:block;margin-bottom:7px;color:#52627b;font-weight:700}.counter-sale-page .required{color:#e53e3e}.counter-sale-page .form-control{min-height:44px;border-color:#d8e1ed;border-radius:7px;background:#fff}.counter-sale-page select.form-control{height:50px;min-height:50px;padding-top:4px;padding-bottom:10px;line-height:1.8}.counter-sale-page .form-control:focus{border-color:#7aafff;box-shadow:0 0 0 3px rgba(23,105,239,.1)}.counter-input{position:relative}.counter-input>i{position:absolute;z-index:2;top:50%;right:14px;transform:translateY(-50%);color:#8492a7}.counter-input .form-control{padding-right:42px}.counter-input .has-suffix{padding-left:48px}.counter-input-suffix{position:absolute;z-index:2;top:1px;bottom:1px;left:1px;display:flex;align-items:center;padding:0 13px;border-right:1px solid var(--sale-line);border-radius:7px 0 0 7px;background:#f8fafc;color:#66758d;font-weight:700}
     .counter-customer-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}.counter-customer-mode{margin:0!important;cursor:pointer}.counter-customer-mode input{position:absolute;opacity:0;pointer-events:none}.counter-customer-mode>span{display:flex;align-items:center;gap:10px;min-height:58px;padding:10px 13px;border:1px solid #d8e1ed;border-radius:10px;background:#fbfcfe;color:#52627b}.counter-customer-mode i{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:9px;color:#75869d;background:#edf2f7}.counter-customer-mode strong{display:block;color:#344a67}.counter-customer-mode small{display:block;margin-top:2px;color:#8190a3;font-size:.7rem}.counter-customer-mode input:checked+span{border-color:#86b5f8;background:#edf5ff;box-shadow:0 0 0 2px rgba(23,105,239,.08)}.counter-customer-mode input:checked+span i{color:#fff;background:var(--sale-blue)}.counter-customer-fields[hidden]{display:none!important}.counter-customer-note{margin:8px 0 0;color:#718096;font-size:.73rem}
-    .counter-sale-item{position:relative;padding:17px;margin-bottom:13px;border:1px solid #e4eaf3;border-radius:11px;background:#fbfcfe}.counter-item-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.counter-item-title{display:flex;align-items:center;gap:8px;color:#53647d;font-weight:800}.counter-item-number{display:grid;place-items:center;width:27px;height:27px;border-radius:7px;background:#eaf2ff;color:var(--sale-blue);font-family:Arial,sans-serif}.counter-line-total{padding:9px 12px;border-radius:7px;background:#eef4ff;color:var(--sale-blue);font:800 .9rem Arial,sans-serif;direction:ltr}.counter-remove-item{border:0;background:transparent;color:#dc3545}.counter-add-item{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:8px 15px;border:1px solid var(--sale-blue);border-radius:7px;background:#fff;color:var(--sale-blue);font-weight:800}.counter-add-item:hover{background:#edf4ff;color:#0f5ddf}
+    .counter-sale-item{position:relative;padding:17px;margin-bottom:13px;border:1px solid #e4eaf3;border-radius:11px;background:#fbfcfe}.counter-item-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.counter-item-title{display:flex;align-items:center;gap:8px;color:#53647d;font-weight:800}.counter-item-number{display:grid;place-items:center;width:27px;height:27px;border-radius:7px;background:#eaf2ff;color:var(--sale-blue);font-family:Arial,sans-serif}.counter-line-total{padding:9px 12px;border-radius:7px;background:#eef4ff;color:var(--sale-blue);font:800 .9rem Arial,sans-serif;direction:ltr}.counter-remove-item{border:0;background:transparent;color:#dc3545}.counter-add-item{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:8px 15px;border:1px solid var(--sale-blue);border-radius:7px;background:#fff;color:var(--sale-blue);font-weight:800}.counter-add-item:hover{background:#edf4ff;color:#0f5ddf}.counter-scan-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-bottom:16px;padding:15px;border:1px dashed #9fc3ed;border-radius:11px;background:#f5f9ff}.counter-scan-box label{margin-bottom:4px}.counter-scan-feedback{grid-column:1/-1;min-height:22px;margin:0;font-weight:700}.counter-scan-feedback.is-success{color:#138a53}.counter-scan-feedback.is-error{color:#c0392b}.counter-scan-feedback.is-warning{color:#a56a00}
     .counter-summary-line{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px;font-weight:800}.counter-summary-line strong{color:var(--sale-blue);font:800 1rem Arial,sans-serif;direction:ltr}.counter-payment-panel{border-color:#d9eee1;background:linear-gradient(135deg,#fbfffc,#f1fbf5)}.counter-payment-panel .counter-sale-section-head{color:#1a9b57}.counter-balance-line{display:flex;align-items:center;gap:18px;margin-top:10px;color:#52627b;font-weight:700}.counter-balance-line strong{color:#1a9b57;font:800 1rem Arial,sans-serif;direction:ltr}.counter-sale-submit{display:flex;justify-content:center;padding-top:4px}.counter-sale-submit button{min-width:280px;min-height:48px;border:0;border-radius:8px;background:linear-gradient(135deg,#1769ef,#287fff);color:#fff;font-weight:800;box-shadow:0 9px 23px rgba(23,105,239,.22)}.counter-sale-back{min-height:43px;padding:9px 16px;border-radius:8px;font-weight:700}.counter-sale-alert{border-radius:10px}
-    @media(max-width:767.98px){.counter-sale-shell{padding:0 12px}.counter-sale-header{align-items:stretch;flex-direction:column}.counter-sale-back{width:100%}.counter-sale-panel-body{padding:15px 13px}.counter-customer-modes{grid-template-columns:1fr}.counter-sale-item{padding:14px 11px}.counter-sale-submit button{width:100%;min-width:0}.counter-balance-line{align-items:flex-start;flex-direction:column;gap:5px}}
+    @media(max-width:767.98px){.counter-sale-shell{padding:0 12px}.counter-sale-header{align-items:stretch;flex-direction:column}.counter-sale-back{width:100%}.counter-sale-panel-body{padding:15px 13px}.counter-customer-modes,.counter-scan-box{grid-template-columns:1fr}.counter-scan-feedback{grid-column:auto}.counter-sale-item{padding:14px 11px}.counter-sale-submit button{width:100%;min-width:0}.counter-balance-line{align-items:flex-start;flex-direction:column;gap:5px}}
 </style>
 @endpush
 
@@ -52,6 +52,11 @@
         <section class="counter-sale-panel">
             <div class="counter-sale-section-head"><i class="fas fa-plus-square"></i> فروخت کے آئٹمز شامل کریں</div>
             <div class="counter-sale-panel-body">
+                <div class="counter-scan-box">
+                    <div><label for="counter-stock-scan">QR / اسٹاک کوڈ اسکین کریں</label><input type="text" id="counter-stock-scan" class="form-control" autocomplete="off" placeholder="QR اسکین کریں یا اسٹاک کوڈ لکھیں" aria-describedby="counter-scan-feedback"></div>
+                    <button type="button" id="counter-scan-add" class="btn btn-primary"><i class="fas fa-qrcode ml-1"></i> آئٹم شامل کریں</button>
+                    <p id="counter-scan-feedback" class="counter-scan-feedback text-muted">ہر اسکین سے برانڈ، قسم اور رنگ خود منتخب ہوں گے؛ میٹر اور قیمت آپ درج کریں گے۔</p>
+                </div>
                 <div id="stockDataContainer" aria-live="polite">
                     <article class="stock-data counter-sale-item">
                         <div class="counter-item-head"><div class="counter-item-title"><span class="counter-item-number">1</span><span>کپڑے کی تفصیل</span></div><div class="d-flex align-items-center"><span class="counter-line-total">Rs. 0.00</span></div></div>
@@ -111,6 +116,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const method = document.getElementById('counter_sale_method');
     const reference = document.getElementById('counter_sale_reference');
     const referenceHint = document.getElementById('counter_sale_reference_hint');
+    const scanInput = document.getElementById('counter-stock-scan');
+    const scanFeedback = document.getElementById('counter-scan-feedback');
     const inventoryOptions = @json($inventoryOptions);
 
     const money = value => 'Rs. ' + value.toFixed(2);
@@ -177,6 +184,73 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     bindItem(container.querySelector('.stock-data'));
 
+    const createItem = function () {
+        const item = container.querySelector('.stock-data').cloneNode(true);
+        item.querySelectorAll('input').forEach(input => { input.value = input.classList.contains('js-rate-per-meter') ? 'Rs. 0.00' : (input.name === 'per_meter[]' ? '0' : ''); });
+        item.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
+        item.querySelector('.js-cloth-type').innerHTML = '<option value="" disabled selected>پہلے برانڈ منتخب کریں</option>';
+        item.querySelector('.js-color').innerHTML = '<option value="" disabled selected>پہلے کپڑے کی قسم منتخب کریں</option>';
+        item.querySelector('.counter-line-total').textContent = 'Rs. 0.00';
+        const actionWrap = item.querySelector('.counter-item-head .d-flex');
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'counter-remove-item mr-2'; remove.setAttribute('aria-label','یہ آئٹم ہٹائیں'); remove.innerHTML = '<i class="fas fa-trash"></i>'; actionWrap.appendChild(remove);
+        container.appendChild(item); bindItem(item); refreshItemNumbers(); calculateTotals();
+        return item;
+    };
+
+    const selectScannedItem = function () {
+        const code = scanInput.value.trim().toUpperCase();
+        if (!code) {
+            scanFeedback.textContent = 'پہلے QR اسکین کریں یا اسٹاک کوڈ درج کریں۔';
+            scanFeedback.className = 'counter-scan-feedback is-error';
+            scanInput.focus();
+            return;
+        }
+        const match = inventoryOptions.find(entry => String(entry.stock_code || '').trim().toUpperCase() === code);
+        if (!match) {
+            scanFeedback.textContent = 'اس اسٹاک کوڈ کا کپڑا نہیں ملا: ' + scanInput.value.trim();
+            scanFeedback.className = 'counter-scan-feedback is-error';
+            scanInput.select();
+            return;
+        }
+        const availableColors = (match.colors || []).filter(entry => Number(entry.length) > 0);
+        if (!availableColors.length) {
+            scanFeedback.textContent = 'اس کپڑے کا اسٹاک دستیاب نہیں ہے۔';
+            scanFeedback.className = 'counter-scan-feedback is-error';
+            scanInput.select();
+            return;
+        }
+
+        let item = Array.from(container.querySelectorAll('.stock-data')).find(row => !row.querySelector('.js-brand').value);
+        if (!item) item = createItem();
+        item.querySelector('.js-brand').value = match.brand_id;
+        item.querySelector('.js-cloth-type').innerHTML = '<option value="' + match.type_id + '" selected>' + (match.type_name || '') + '</option>';
+        const colorSelect = item.querySelector('.js-color');
+        colorSelect.innerHTML = '<option value="" disabled selected>رنگ منتخب کریں</option>';
+        availableColors.forEach(function (entry) {
+            const option = document.createElement('option');
+            option.value = entry.name;
+            option.textContent = entry.name + ' (' + entry.length + ' میٹر)';
+            colorSelect.appendChild(option);
+        });
+        const preferredColor = availableColors.find(entry => entry.name === 'عام') || (availableColors.length === 1 ? availableColors[0] : null);
+        if (preferredColor) colorSelect.value = preferredColor.name;
+        item.querySelector('[name="length[]"]').value = '';
+        item.querySelector('[name="item_total[]"]').value = '';
+        calculateTotals();
+        scanInput.value = '';
+        if (preferredColor) {
+            scanFeedback.textContent = 'آئٹم شامل ہو گیا: ' + (match.brand_name || '') + ' / ' + (match.type_name || '') + ' / ' + preferredColor.name;
+            scanFeedback.className = 'counter-scan-feedback is-success';
+            item.querySelector('[name="length[]"]').focus();
+        } else {
+            scanFeedback.textContent = 'برانڈ اور قسم شامل ہو گئے؛ اس کپڑے کے متعدد رنگ ہیں، رنگ منتخب کریں۔';
+            scanFeedback.className = 'counter-scan-feedback is-warning';
+            colorSelect.focus();
+        }
+    };
+    document.getElementById('counter-scan-add').addEventListener('click', selectScannedItem);
+    scanInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); selectScannedItem(); } });
+
     const syncCustomerMode = function () {
         const mode = form.querySelector('[name="customer_mode"]:checked')?.value || 'regular';
         const isRegular = mode === 'regular';
@@ -199,17 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!customerId) return;
         try { const response = await fetch(form.dataset.customerUrl + '?id=' + encodeURIComponent(customerId), {headers:{'Accept':'application/json'}}); if (!response.ok) throw new Error(); const payload = await response.json(); phone.value = payload.data?.phone_number1 || ''; } catch (error) { phone.value = ''; }
     });
-    addButton.addEventListener('click', function () {
-        const item = container.querySelector('.stock-data').cloneNode(true);
-        item.querySelectorAll('input').forEach(input => { input.value = input.classList.contains('js-rate-per-meter') ? 'Rs. 0.00' : (input.name === 'per_meter[]' ? '0' : ''); });
-        item.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
-        item.querySelector('.js-cloth-type').innerHTML = '<option value="" disabled selected>پہلے برانڈ منتخب کریں</option>';
-        item.querySelector('.js-color').innerHTML = '<option value="" disabled selected>پہلے کپڑے کی قسم منتخب کریں</option>';
-        item.querySelector('.counter-line-total').textContent = 'Rs. 0.00';
-        const actionWrap = item.querySelector('.counter-item-head .d-flex');
-        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'counter-remove-item mr-2'; remove.setAttribute('aria-label','یہ آئٹم ہٹائیں'); remove.innerHTML = '<i class="fas fa-trash"></i>'; actionWrap.appendChild(remove);
-        container.appendChild(item); bindItem(item); refreshItemNumbers(); item.querySelector('.js-brand').focus();
-    });
+    addButton.addEventListener('click', function () { createItem().querySelector('.js-brand').focus(); });
     const syncReference = function () { const required = !['cash','other'].includes(method.value); reference.required = required; reference.setAttribute('aria-required', required ? 'true' : 'false'); referenceHint.textContent = required ? 'منتخب ادائیگی کے طریقے کے لیے حوالہ نمبر ضروری ہے۔' : 'نقد ادائیگی کے لیے اختیاری ہے۔'; };
     method.addEventListener('change', syncReference); payment.addEventListener('input', calculateTotals); syncCustomerMode(); syncReference(); calculateTotals();
 });

@@ -163,13 +163,16 @@ class ClothStockController extends Controller
             // }
 
             // Get all the cloth brands,types and colths table table
-            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with('colors')->get();
+            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with(['brand', 'type', 'colors'])->get();
             $id = auth()->user()->businessOwnerId();
             // dd($id);
             $customers = Customers::where('user_id', $id)->get();
             $inventoryOptions = $cloths->map(fn ($cloth) => [
+                'stock_code' => $cloth->stock_code,
                 'brand_id' => (string) $cloth->cloth_brand_id,
+                'brand_name' => $cloth->brand?->name,
                 'type_id' => (string) $cloth->cloth_type_id,
+                'type_name' => $cloth->type?->name,
                 'colors' => $cloth->colors->map(fn ($color) => [
                     'name' => $color->color,
                     'length' => (float) $color->length,

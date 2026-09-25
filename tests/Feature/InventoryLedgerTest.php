@@ -124,6 +124,16 @@ class InventoryLedgerTest extends TestCase
             'recivedPayment' => 500,
             'remainingBalance' => 0,
         ]);
+        $this->actingAs($owner)->get(route('admin.printStock', [
+            'id' => $sale->id,
+            'customerId' => $customer->id,
+        ]))->assertOk()
+            ->assertSee('class="stock-item-heading"', false)
+            ->assertSee('class="stock-item-calculation"', false)
+            ->assertSee('class="stock-order-row is-grand-total"', false)
+            ->assertSeeText('Rs. 500.00')
+            ->assertSeeText('Built by IT Linked')
+            ->assertDontSee('class="btn printbtn"', false);
     }
 
     public function test_counter_sale_rejects_color_that_does_not_belong_to_selected_cloth_without_a_404(): void
@@ -321,12 +331,20 @@ class InventoryLedgerTest extends TestCase
             ->assertSeeText('کل قیمت')
             ->assertSeeText('ریٹ فی میٹر')
             ->assertSeeText('مزید کپڑا شامل کریں')
+            ->assertSee('id="counter-stock-scan"', false)
+            ->assertSee('id="counter-scan-add"', false)
+            ->assertSeeText($this->stockCodeForOwner($owner))
             ->assertSee('assets/js/form-accessibility.js', false)
             ->assertDontSee('width: 120%', false)
             ->assertDontSee('width: 150%', false);
 
         $this->assertSame(1, substr_count($response->getContent(), 'name="c_name"'));
         $this->assertSame(1, substr_count($response->getContent(), 'name="phone"'));
+    }
+
+    private function stockCodeForOwner(User $owner): string
+    {
+        return Cloth::where('user_id', $owner->id)->firstOrFail()->stock_code;
     }
 
     public function test_counter_sale_derives_balance_server_side_and_receipt_works_without_settings(): void

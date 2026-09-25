@@ -275,23 +275,6 @@
 
     <div id="invoice-POS" @class(['cancelled-receipt' => $receipt?->status === 'cancelled'])>
 
-        <!--Print Button-->
-        <div class="btn printbtn">
-            <button class="btn btn-primary"
-                style="position: absolute; top: 5%; left: 0; padding: 0px 10px; text-align: center;">
-                <span style="display: inline-block; vertical-align: middle; line-height: normal;font-size:18px;">رسید
-                    پرنٹ کریں۔</span>
-            </button>
-            <button class="btn btn-primary go"
-                style="position: absolute; top: 5%; left: 14.5%; padding: 0px 10px; text-align: center;">
-                <span style="display: inline-block; vertical-align: middle; line-height: normal;font-size:18px;"> فروخت
-                    پر واپس جائیں</span>
-            </button>
-
-        </div>
-
-
-
         <div id="fullSection">
 
             <div id="orderSection" style="max-width: 380px; margin-top: -25px;" class="ticket order-section">
@@ -316,25 +299,22 @@
                                 $totalAmount += $itemTotal;
                             @endphp
                             <div class="stock-item-card">
-                                <div class="stock-order-row"><span class="stock-order-label">برانڈ:</span><strong class="stock-order-value">{{ $sellstock->brand->name }}</strong></div>
-                                <div class="stock-order-row"><span class="stock-order-label">قسم:</span><strong class="stock-order-value">{{ $sellstock->type->name }}</strong></div>
-                                <div class="stock-order-row"><span class="stock-order-label">رنگ:</span><strong class="stock-order-value">{{ $sellstock->color }}</strong></div>
-                                <div class="stock-order-row"><span class="stock-order-label">میٹر:</span><strong class="stock-order-value">{{ $sellstock->length }}</strong></div>
-                                <div class="stock-order-row"><span class="stock-order-label">ٹوٹل:</span><strong class="stock-order-value">{{ number_format($itemTotal, 2) }}</strong></div>
-                                <div class="stock-order-row"><span class="stock-order-label">ریک:</span><strong class="stock-order-value">{{ $sellstock->clothes_rack }}</strong></div>
+                                <div class="stock-item-heading"><span class="stock-item-number">#{{ $loop->iteration }}</span><strong>{{ $sellstock->brand->name }} — {{ $sellstock->type->name }}</strong></div>
+                                <div class="stock-item-meta"><span>رنگ: <strong>{{ $sellstock->color }}</strong></span>@if($sellstock->clothes_rack)<span>ریک: <strong>{{ $sellstock->clothes_rack }}</strong></span>@endif</div>
+                                <div class="stock-item-calculation"><span>{{ number_format((float) $sellstock->length, 2) }} m</span><span>×</span><span>Rs. {{ number_format((float) $sellstock->selling_price, 2) }}</span><span>=</span><strong>Rs. {{ number_format($itemTotal, 2) }}</strong></div>
                             </div>
                         @endforeach
                     </div>
                     <div class="stock-order-summary">
-                        <div class="stock-order-row"><span class="stock-order-label">ٹوٹل:</span><strong class="stock-order-value">{{ $totalAmount }}</strong></div>
-                        <div class="stock-order-row"><span class="stock-order-label">ادائیگی:</span><strong class="stock-order-value">{{ $payment }}</strong></div>
-                        <div class="stock-order-row"><span class="stock-order-label">ادائیگی واجب الادا:</span><strong class="stock-order-value">{{ $remaining }}</strong></div>
+                        <div class="stock-order-row is-grand-total"><span class="stock-order-label">کل رقم:</span><strong class="stock-order-value">Rs. {{ number_format($totalAmount, 2) }}</strong></div>
+                        <div class="stock-order-row"><span class="stock-order-label">وصول شدہ:</span><strong class="stock-order-value">Rs. {{ number_format((float) $payment, 2) }}</strong></div>
+                        <div class="stock-order-row is-balance"><span class="stock-order-label">موجودہ بقایا:</span><strong class="stock-order-value">Rs. {{ number_format((float) $remaining, 2) }}</strong></div>
                         @if ($tailortransactions && $previousBalance > 0)
-                            <div class="stock-order-row"><span class="stock-order-label">ٹیلرنگ اور فروخت:</span><strong class="stock-order-value">{{ $previousBalance + $tailortransactions->Balance }}</strong></div>
+                            <div class="stock-order-row"><span class="stock-order-label">ٹیلرنگ اور سابقہ بقایا:</span><strong class="stock-order-value">Rs. {{ number_format($previousBalance + $tailortransactions->Balance, 2) }}</strong></div>
                         @elseif ($tailortransactions)
-                            <div class="stock-order-row"><span class="stock-order-label">ٹیلرنگ:</span><strong class="stock-order-value">{{ $tailortransactions->Balance }}</strong></div>
+                            <div class="stock-order-row"><span class="stock-order-label">ٹیلرنگ بقایا:</span><strong class="stock-order-value">Rs. {{ number_format((float) $tailortransactions->Balance, 2) }}</strong></div>
                         @elseif ($previousBalance > 0)
-                            <div class="stock-order-row"><span class="stock-order-label">سابقہ ادائیگیاں:</span><strong class="stock-order-value">{{ $previousBalance }}</strong></div>
+                            <div class="stock-order-row"><span class="stock-order-label">سابقہ بقایا:</span><strong class="stock-order-value">Rs. {{ number_format((float) $previousBalance, 2) }}</strong></div>
                         @endif
                     </div>
                 </div>
@@ -346,8 +326,11 @@
             <div style="width: 100%;font-weight:900;" align="center">
                 @if($setting?->address)<p><b style="font-size: 16px;">{{ $setting->address }}</b></p>@endif
                 @if($setting?->contact_no)<p><b style="font-size: 16px;">{{ $setting->contact_no }}</b></p>@endif
+                @if($setting?->note)<p>{{ $setting->note }}</p>@endif
+                <p class="stock-built-by">Built by IT Linked</p>
             </div>
         </div>
+        @include('print.partials.qr')
         {{-- <p style="text-align:center">{{$setting->note}}</p> --}}
     </div>
     <div id="google_translate_element"></div>
@@ -371,7 +354,6 @@
 
 
 
-    @include('print.partials.qr')
     @include('components.confirmation-modal')
     <script src="{{ asset('assets/js/confirm-modal.js') }}"></script>
 </body>
