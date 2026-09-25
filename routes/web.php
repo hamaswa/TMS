@@ -425,6 +425,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 
         // ClothBrand
         Route::resource('/clothbrand', ClothBrandController::class);
+        Route::get('/clothbrand/{clothBrand}/qr-label', [ClothBrandController::class, 'qrLabel'])->name('clothbrand.qr-label');
 
         // Cloth
         Route::resource('/cloth', ClothController::class);

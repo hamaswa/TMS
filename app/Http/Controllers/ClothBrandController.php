@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClothBrand;
+use App\Services\PrintDocumentService;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -90,6 +91,18 @@ class ClothBrandController extends Controller
         $clothBrand = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
 
         return redirect()->route('admin.clothbrand.edit', $clothBrand->id);
+    }
+
+    public function qrLabel(int $clothBrand, PrintDocumentService $printDocuments)
+    {
+        $clothBrand = ClothBrand::where('user_id', Auth::user()->businessOwnerId())
+            ->withCount('cloths')
+            ->findOrFail($clothBrand);
+
+        return view('clothbrand.qr-label', [
+            'clothBrand' => $clothBrand,
+            'qrSvg' => $printDocuments->qrSvg($clothBrand->bundle_code, 240),
+        ]);
     }
 
     /**

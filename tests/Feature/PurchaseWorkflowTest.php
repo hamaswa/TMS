@@ -26,6 +26,12 @@ class PurchaseWorkflowTest extends TestCase
             ->assertSee('<h1 class="h4 mb-0">', false)
             ->assertSee('id="purchase-stock-scan"', false)
             ->assertSee('data-stock-code="', false)
+            ->assertSee(
+                'data-brand-code="'.$this->brandBundleCodeForOwner($owner).'"',
+                false
+            )
+            ->assertSee("row.querySelector('.purchase-quantity').value = '4'", false)
+            ->assertSee("row.querySelector('.purchase-cost').value = '0'", false)
             ->assertSee('aria-label="کپڑے کا آئٹم منتخب کریں"', false)
             ->assertSee('aria-label="خریداری کی مقدار میٹر میں"', false)
             ->assertSee('aria-label="فی میٹر لاگت"', false)
@@ -61,6 +67,23 @@ class PurchaseWorkflowTest extends TestCase
         $this->actingAs($owner)->patch(route('admin.purchases.receive', $purchase))->assertStatus(422);
         $this->assertEquals(15, (float) $color->fresh()->length);
         $this->assertDatabaseCount('inventory_movements', 1);
+    }
+
+    public function test_purchase_cannot_be_saved_with_zero_unit_cost(): void
+    {
+        [$owner, $supplier, $color] = $this->draftPurchase();
+        Purchase::query()->delete();
+
+        $this->actingAs($owner)->from(route('admin.purchases.create'))->post(route('admin.purchases.store'), [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => now()->toDateString(),
+            'cloth_color_id' => [$color->id],
+            'quantity' => [4],
+            'unit_cost' => [0],
+        ])->assertRedirect(route('admin.purchases.create'))
+            ->assertSessionHasErrors(['unit_cost.0' => 'ہر شامل شدہ کپڑے کی اصل فی میٹر لاگت درج کریں۔']);
+
+        $this->assertDatabaseCount('purchases', 0);
     }
 
     public function test_purchase_return_reduces_stock_payable_and_writes_negative_ledger_entry(): void
@@ -210,5 +233,10 @@ class PurchaseWorkflowTest extends TestCase
         $purchase = Purchase::where('user_id', $owner->id)->firstOrFail();
 
         return [$owner, $supplier, $color, $purchase];
+    }
+
+    private function brandBundleCodeForOwner(User $owner): string
+    {
+        return ClothBrand::where('user_id', $owner->id)->firstOrFail()->bundle_code;
     }
 }

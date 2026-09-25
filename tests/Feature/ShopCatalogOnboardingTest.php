@@ -34,11 +34,20 @@ class ShopCatalogOnboardingTest extends TestCase
 
         $this->actingAs($owner)->get(route('admin.clothbrand.index'))
             ->assertOk()
-            ->assertSee('assets/images/logo.jpg');
+            ->assertSee('assets/images/logo.jpg')
+            ->assertSee('id="brandDirectorySearch"', false)
+            ->assertSee('class="dropdown brand-actions"', false)
+            ->assertSeeText('برانڈ QR پرنٹ کریں')
+            ->assertSeeText('برانڈ میں ترمیم کریں');
 
         $brand = ClothBrand::where('user_id', $owner->id)->firstOrFail();
+        $this->assertSame(sprintf('BRD-%d-%06d', $owner->id, $brand->id), $brand->bundle_code);
         $this->actingAs($owner)->get(route('admin.clothbrand.show', $brand))
             ->assertRedirect(route('admin.clothbrand.edit', $brand));
+        $this->actingAs($owner)->get(route('admin.clothbrand.qr-label', $brand))
+            ->assertOk()
+            ->assertSeeText($brand->bundle_code)
+            ->assertSee('<svg', false);
     }
 
     public function test_client_can_create_cloth_without_media_using_urdu_commas(): void
@@ -61,6 +70,13 @@ class ShopCatalogOnboardingTest extends TestCase
         $owner->update(['business_id' => $business->id]);
         $brand = ClothBrand::create(['name' => 'صدیقی فیبرکس', 'user_id' => $owner->id]);
         $type = ClothType::create(['name' => 'واش اینڈ ویئر', 'user_id' => $owner->id]);
+
+        $this->actingAs($owner->fresh())->get(route('admin.clothtype.index'))
+            ->assertOk()
+            ->assertSee('id="clothTypeDirectorySearch"', false)
+            ->assertSee('class="dropdown cloth-type-actions"', false)
+            ->assertSeeText('قسم میں ترمیم کریں')
+            ->assertSeeText('قسم حذف کریں');
 
         $this->actingAs($owner->fresh())->get(route('admin.cloth.create'))
             ->assertOk()

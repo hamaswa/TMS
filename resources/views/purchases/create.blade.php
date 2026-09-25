@@ -2,7 +2,7 @@
 @push('styles')
     @include('purchases._styles')
     <style>
-        .purchase-create-grid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:20px}.purchase-order-summary{position:sticky;top:88px;height:max-content;padding:22px}.purchase-order-summary .total{direction:ltr;color:#1769ef;font:800 1.55rem Arial,sans-serif}.purchase-item-table input,.purchase-item-table select{min-width:130px}.purchase-remove{display:grid;place-items:center;width:42px;height:42px;border-radius:8px}.purchase-add-row{border-style:dashed!important}.purchase-scan-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;padding:15px;border:1px dashed #9fc3ed;border-radius:12px;background:#f5f9ff}.purchase-scan-feedback{grid-column:1/-1;min-height:22px;margin:0;font-weight:700}.purchase-scan-feedback.is-success{color:#138a53}.purchase-scan-feedback.is-error{color:#c0392b}@media(max-width:991.98px){.purchase-create-grid{grid-template-columns:1fr}.purchase-order-summary{position:static}}@media(max-width:575.98px){.purchase-scan-box{grid-template-columns:1fr}.purchase-scan-feedback{grid-column:auto}}
+        .purchase-create-grid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:20px}.purchase-order-summary{position:sticky;top:88px;height:max-content;padding:22px}.purchase-order-summary .total{direction:ltr;color:#1769ef;font:800 1.55rem Arial,sans-serif}.purchase-item-table input,.purchase-item-table select{min-width:130px}.purchase-remove{display:grid;place-items:center;width:42px;height:42px;border-radius:8px}.purchase-add-row{border-style:dashed!important}.purchase-scan-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;padding:15px;border:1px dashed #9fc3ed;border-radius:12px;background:#f5f9ff}.purchase-scan-feedback{grid-column:1/-1;min-height:22px;margin:0;font-weight:700}.purchase-scan-feedback.is-success{color:#138a53}.purchase-scan-feedback.is-error{color:#c0392b}.purchase-scan-feedback.is-warning{color:#a56a00}@media(max-width:991.98px){.purchase-create-grid{grid-template-columns:1fr}.purchase-order-summary{position:static}}@media(max-width:575.98px){.purchase-scan-box{grid-template-columns:1fr}.purchase-scan-feedback{grid-column:auto}}
     </style>
 @endpush
 @section('content')
@@ -23,10 +23,10 @@
                     <div class="purchase-scan-box mb-3">
                         <div><label for="purchase-stock-scan" class="mb-1">QR / اسٹاک کوڈ اسکین کریں</label><input type="text" id="purchase-stock-scan" class="form-control" autocomplete="off" placeholder="QR اسکین کریں یا اسٹاک کوڈ لکھیں" aria-describedby="purchase-scan-feedback"></div>
                         <button type="button" id="purchase-scan-add" class="btn btn-primary"><i class="fas fa-qrcode ml-1"></i> آئٹم شامل کریں</button>
-                        <p id="purchase-scan-feedback" class="purchase-scan-feedback text-muted">اسکینر کے بعد Enter دبائیں؛ آئٹم خود منتخب ہو جائے گا۔</p>
+                        <p id="purchase-scan-feedback" class="purchase-scan-feedback text-muted">کپڑے کا QR ایک آئٹم اور برانڈ QR اس برانڈ کی تمام اقسام شامل کرے گا۔</p>
                     </div>
                     <div class="table-responsive"><table class="table purchase-item-table" id="items-table"><thead class="thead-light"><tr><th>کپڑے کا آئٹم</th><th style="width:18%">میٹر</th><th style="width:18%">فی میٹر لاگت</th><th style="width:16%">کل</th><th style="width:7%"></th></tr></thead><tbody id="purchase-items">
-                        <tr class="purchase-item"><td><select name="cloth_color_id[]" class="form-control purchase-cloth-select" required aria-label="کپڑے کا آئٹم منتخب کریں"><option value="">اسٹاک آئٹم منتخب کریں</option>@foreach($colors as $color)<option value="{{ $color->id }}" data-stock-code="{{ $color->cloth->stock_code }}">{{ $color->cloth->brand->name ?? 'برانڈ' }} / {{ $color->cloth->type->name ?? 'قسم' }} / {{ $color->color }} ({{ number_format($color->length,2) }} میٹر) — {{ $color->cloth->stock_code }}</option>@endforeach</select></td><td><input type="number" step="0.01" min="0.01" name="quantity[]" class="form-control purchase-quantity" required aria-label="خریداری کی مقدار میٹر میں"></td><td><input type="number" step="0.01" min="0" name="unit_cost[]" class="form-control purchase-cost" required aria-label="فی میٹر لاگت"></td><td><strong class="purchase-line-total" dir="ltr">Rs. 0.00</strong></td><td><button type="button" class="btn btn-outline-danger purchase-remove remove-item" aria-label="یہ آئٹم ہٹائیں"><i class="fas fa-trash-alt"></i></button></td></tr>
+                        <tr class="purchase-item"><td><select name="cloth_color_id[]" class="form-control purchase-cloth-select" required aria-label="کپڑے کا آئٹم منتخب کریں"><option value="">اسٹاک آئٹم منتخب کریں</option>@foreach($colors as $color)<option value="{{ $color->id }}" data-stock-code="{{ $color->cloth->stock_code }}" data-brand-code="{{ $color->cloth->brand?->bundle_code }}">{{ $color->cloth->brand->name ?? 'برانڈ' }} / {{ $color->cloth->type->name ?? 'قسم' }} / {{ $color->color }} ({{ number_format($color->length,2) }} میٹر) — {{ $color->cloth->stock_code }}</option>@endforeach</select></td><td><input type="number" step="0.01" min="0.01" name="quantity[]" class="form-control purchase-quantity" required aria-label="خریداری کی مقدار میٹر میں"></td><td><input type="number" step="0.01" min="0.01" name="unit_cost[]" class="form-control purchase-cost" required aria-label="فی میٹر لاگت"></td><td><strong class="purchase-line-total" dir="ltr">Rs. 0.00</strong></td><td><button type="button" class="btn btn-outline-danger purchase-remove remove-item" aria-label="یہ آئٹم ہٹائیں"><i class="fas fa-trash-alt"></i></button></td></tr>
                     </tbody></table></div>
                     <button type="button" id="add-item" class="btn btn-outline-primary purchase-add-row"><i class="fas fa-plus ml-1"></i> نئی قطار شامل کریں</button>
                 </div>
@@ -68,12 +68,49 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const sourceSelect = body.querySelector('.purchase-cloth-select');
-        const matchingOption = Array.from(sourceSelect.options).find(function (option) {
+        const allOptions = Array.from(sourceSelect.options);
+        const brandOptions = allOptions.filter(function (option) {
+            return (option.dataset.brandCode || '').trim().toUpperCase() === code;
+        });
+        if (brandOptions.length) {
+            const selectedIds = new Set(Array.from(body.querySelectorAll('.purchase-cloth-select')).map(select => select.value).filter(Boolean));
+            const newOptions = brandOptions.filter(option => !selectedIds.has(option.value));
+            if (!newOptions.length) {
+                scanFeedback.textContent = 'اس برانڈ کی تمام اقسام پہلے ہی شامل ہیں۔';
+                scanFeedback.className = 'purchase-scan-feedback is-warning';
+                scanInput.select();
+                return;
+            }
+            let firstCost = null;
+            newOptions.forEach(function (option) {
+                let row = Array.from(body.querySelectorAll('.purchase-item')).find(itemRow => !itemRow.querySelector('.purchase-cloth-select').value);
+                if (!row) row = addRow();
+                row.querySelector('.purchase-cloth-select').value = option.value;
+                row.querySelector('.purchase-quantity').value = '4';
+                row.querySelector('.purchase-cost').value = '0';
+                if (!firstCost) firstCost = row.querySelector('.purchase-cost');
+            });
+            scanFeedback.textContent = newOptions.length + ' اقسام شامل ہو گئیں۔ مقدار 4 رکھی گئی ہے؛ ہر قطار کی اصل لاگت درج کریں۔';
+            scanFeedback.className = 'purchase-scan-feedback is-success';
+            scanInput.value = '';
+            updateTotals();
+            firstCost?.focus();
+            return;
+        }
+
+        const matchingOption = allOptions.find(function (option) {
             return (option.dataset.stockCode || '').trim().toUpperCase() === code;
         });
         if (!matchingOption) {
             scanFeedback.textContent = 'اس اسٹاک کوڈ کا کپڑا نہیں ملا: ' + scanInput.value.trim();
             scanFeedback.className = 'purchase-scan-feedback is-error';
+            scanInput.select();
+            return;
+        }
+
+        if (Array.from(body.querySelectorAll('.purchase-cloth-select')).some(select => select.value === matchingOption.value)) {
+            scanFeedback.textContent = 'یہ کپڑا پہلے ہی خریداری میں شامل ہے۔';
+            scanFeedback.className = 'purchase-scan-feedback is-warning';
             scanInput.select();
             return;
         }
@@ -96,6 +133,14 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('add-item').addEventListener('click', function () { addRow(); updateTotals(); });
     body.addEventListener('click', function(event){const button=event.target.closest('.remove-item');if(button && body.querySelectorAll('.purchase-item').length>1){button.closest('tr').remove();updateTotals();}});
     body.addEventListener('input', updateTotals); updateTotals();
+    document.getElementById('purchase-create-form').addEventListener('submit', function (event) {
+        const invalidCost = Array.from(body.querySelectorAll('.purchase-cost')).find(input => (parseFloat(input.value) || 0) <= 0);
+        if (!invalidCost) return;
+        event.preventDefault();
+        scanFeedback.textContent = 'خریداری محفوظ کرنے سے پہلے ہر آئٹم کی اصل فی میٹر لاگت درج کریں۔';
+        scanFeedback.className = 'purchase-scan-feedback is-error';
+        invalidCost.focus();
+    });
 });
 </script>
 @endsection

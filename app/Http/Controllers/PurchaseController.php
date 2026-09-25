@@ -83,7 +83,9 @@ class PurchaseController extends Controller
             'quantity' => ['required', 'array'],
             'quantity.*' => ['required', 'numeric', 'gt:0'],
             'unit_cost' => ['required', 'array'],
-            'unit_cost.*' => ['required', 'numeric', 'min:0'],
+            'unit_cost.*' => ['required', 'numeric', 'gt:0'],
+        ], [
+            'unit_cost.*.gt' => 'ہر شامل شدہ کپڑے کی اصل فی میٹر لاگت درج کریں۔',
         ]);
         abort_unless(count($validated['cloth_color_id']) === count($validated['quantity']) && count($validated['quantity']) === count($validated['unit_cost']), 422);
         $supplier = $this->ownedSupplier($validated['supplier_id']);
