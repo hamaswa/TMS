@@ -174,7 +174,7 @@ class CustomerController extends Controller
             : null;
         $orders = $canViewTailoring
             ? $customer->orders()->where('userId', $ownerId)
-                ->with(['tailor:id,name', 'customers:id,name', 'measurementTemplate:id,name'])
+                ->with(['tailor:id,name', 'customers:id,name,serial_number', 'measurementTemplate:id,name'])
                 ->withSum(['transactions as outstanding_amount' => fn ($query) => $query->where('userId', $ownerId)], 'remainingBalance')
                 ->latest()->limit(50)->get()
             : collect();
@@ -861,7 +861,7 @@ class CustomerController extends Controller
                     $searchQuery->where('name', 'like', $like)
                         ->orWhere('phone_number1', 'like', $like);
                     if (ctype_digit($search)) {
-                        $searchQuery->orWhere('id', (int) $search);
+                        $searchQuery->orWhere('serial_number', (int) $search);
                     }
                 });
             })

@@ -210,7 +210,9 @@ class OrderController extends Controller
                 "userId" => Auth::user()->businessOwnerId(),
                 "returnDate" => $validated['returnDate'],
                 "remarks" => $validated['remarks'] ?? null,
-                "suitNum" => $measurementChanged ? (string) $measurementCustomer->id : $order->suitNum,
+                "suitNum" => $measurementChanged
+                    ? (string) ($measurementCustomer->serial_number ?? $measurementCustomer->id)
+                    : $order->suitNum,
                 "status" => $order->status === 'unassigned' && $tailor ? 'assigned' : $order->status,
                 "status_changed_at" => $wasUnassigned && $tailor ? now() : $order->status_changed_at,
             ]);
@@ -353,8 +355,9 @@ class OrderController extends Controller
             })
             ->first() ?: $customer;
 
-        // Keep the customer's serial stable even when other customers are added.
-        $data['serialNumber'] = $data['selectedMeasurementProfile']->id;
+        // Display the shop-scoped customer serial while keeping IDs for relationships.
+        $data['serialNumber'] = $data['selectedMeasurementProfile']->serial_number
+            ?? $data['selectedMeasurementProfile']->id;
         return view('order.create', compact('data'));
     }
 
@@ -419,7 +422,7 @@ class OrderController extends Controller
                 'userId' => Auth::user()->businessOwnerId(),
                 'remarks' => $validated['remarks'] ?? null,
                 'tailor_price' => $tailorPrice,
-                'suitNum' => (string) $measurementCustomer->id,
+                'suitNum' => (string) ($measurementCustomer->serial_number ?? $measurementCustomer->id),
                 'designPrice' => $validated['designPrice'] ?? 0,
                 'status' => $tailor ? 'assigned' : 'unassigned',
                 'status_changed_at' => now(),
@@ -771,7 +774,7 @@ class OrderController extends Controller
 
         $orders = Order::where('userId', $ownerId)
             ->whereBetween('returnDate', [$weekStart->toDateString(), $weekEnd->toDateString()])
-            ->with(['customers:id,name,phone_number1', 'tailor:id,name'])
+            ->with(['customers:id,name,phone_number1,serial_number', 'tailor:id,name'])
             ->orderBy('returnDate')
             ->orderBy('id')
             ->get();

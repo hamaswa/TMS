@@ -12,7 +12,7 @@
             : route('admin.order.create', $accountCustomer);
     @endphp
     <tr data-customer-row="{{ $customer->id }}" @class(['family-profile-row' => $isFamilyProfile])>
-        <td class="customer_serial customer-serial-cell" data-label="نمبر">{{ $customer->id }}</td>
+        <td class="customer_serial customer-serial-cell" data-label="نمبر">{{ $customer->serial_number ?? $customer->id }}</td>
         <td class="customer-name-cell" data-label="گاہک">
             <div class="customer-identity">
                 <span class="customer-avatar">{{ $initial ?: 'گ' }}</span>
