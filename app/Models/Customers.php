@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\CustomerSerialNumberService;
 use App\Support\PakistanPhoneNumber;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -131,6 +132,18 @@ class Customers extends Authenticatable
         $matches = $matches->concat($legacyConflicts)->unique('id');
 
         return $matches->count() === 1 ? $matches->first() : null;
+    }
+
+    /**
+     * Hide anonymous counter-sale placeholders from customer pickers while
+     * retaining legitimate named customers that do not have a phone number.
+     */
+    public function scopeSelectableForSales(Builder $query): Builder
+    {
+        return $query
+            ->whereNotNull('name')
+            ->whereRaw("TRIM(name) <> ''")
+            ->whereRaw("LOWER(TRIM(name)) NOT IN ('walk-in customer', 'walk in customer', 'walk-in', 'walk in')");
     }
 
     /**

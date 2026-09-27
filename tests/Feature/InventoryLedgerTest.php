@@ -13,17 +13,25 @@ use App\Models\OnlineOrder;
 use App\Models\Purchase;
 use App\Models\SaleStock;
 use App\Models\Setting;
+use App\Models\Stock;
 use App\Models\Supplier;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\FinancialReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class InventoryLedgerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_legacy_stock_model_has_its_required_soft_delete_column(): void
+    {
+        $this->assertTrue(Schema::hasColumn('stocks', 'deleted_at'));
+        $this->assertSame(0, Stock::query()->count());
+    }
 
     public function test_purchase_receipt_updates_moving_weighted_average_cost(): void
     {
@@ -88,6 +96,60 @@ class InventoryLedgerTest extends TestCase
             ->assertViewHas('sales', fn ($sales) => $sales->count() === 1
                 && $sales->first()->id === $sale->id
                 && $sales->first()->items_count === 1);
+    }
+
+    public function test_counter_sale_preserves_fractional_length_and_receipt_uses_its_own_payment(): void
+    {
+        [$owner, $cloth, $color] = $this->stock(10, 100);
+        $customer = Customers::create([
+            'name' => 'Fractional Buyer',
+            'phone_number1' => '03001119999',
+            'user_id' => $owner->id,
+        ]);
+
+        // Legacy sales and counter sales historically shared the sale_id column,
+        // so the same numeric ID must not make a receipt pick an older payment.
+        Transaction::create([
+            'remainingBalance' => 100,
+            'recivedPayment' => 50,
+            'customerId' => $customer->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Sale',
+            'sale_id' => 1,
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$cloth->cloth_brand_id],
+            'cloth_type' => [$cloth->cloth_type_id],
+            'color' => [$color->color],
+            'item_total' => [300],
+            'clothes_rack' => [null],
+            'length' => [1.5],
+            'customer_mode' => 'regular',
+            'existing_customer_id' => $customer->id,
+            'payment' => 300,
+            'payment_method' => 'cash',
+        ]);
+
+        $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
+        $receipt = CounterSaleReceipt::where('user_id', $owner->id)->firstOrFail();
+        $response->assertRedirect(route('admin.printStock', [
+            'id' => $sale->id,
+            'customerId' => $customer->id,
+        ]));
+        $this->assertEquals(1.5, (float) $sale->length);
+        $this->assertDatabaseHas('transactions', [
+            'counter_sale_receipt_id' => $receipt->id,
+            'recivedPayment' => 300,
+            'remainingBalance' => 0,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.printStock', [
+            'id' => $sale->id,
+            'customerId' => $customer->id,
+        ]))->assertOk()
+            ->assertSeeText('1.50 m')
+            ->assertSeeText('Rs. 300.00');
     }
 
     public function test_counter_sale_allows_unidentified_color_and_allocates_available_stock(): void

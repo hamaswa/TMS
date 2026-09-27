@@ -28,6 +28,16 @@
     <div class="control-panel mb-3">
         <h3 class="h6 mb-3">پیمائش کے دستیاب طریقے</h3>
         <div class="row">@foreach($measurementMethods as $value => $label)<div class="col-md-4 mb-2"><label class="choice-tile"><input type="checkbox" name="measurement_methods[]" value="{{ $value }}" @checked(in_array($value, $measurementValues, true))><span><strong>{{ $label }}</strong></span></label></div>@endforeach</div>
+        <div class="form-group mt-3 mb-0">
+            <label for="measurement-template-{{ $formKey }}">اس خدمت کا پیمائش ٹیمپلیٹ</label>
+            <select id="measurement-template-{{ $formKey }}" name="measurement_template_id" class="form-control">
+                <option value="">بکنگ منظور کرتے وقت منتخب کریں</option>
+                @foreach($measurementTemplates as $template)
+                    <option value="{{ $template->id }}" @selected((string) old('measurement_template_id', $service?->measurement_template_id) === (string) $template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>
+                @endforeach
+            </select>
+            <small class="form-text text-muted">آن لائن بکنگ کے ساتھ یہی ٹیمپلیٹ محفوظ ہوگا؛ منظوری کے وقت اسے بدلا بھی جا سکتا ہے۔</small>
+        </div>
     </div>
 
     <div class="control-panel mb-3">

@@ -23,7 +23,7 @@
                 reloadingForWorker = true;
                 location.reload();
             });
-            navigator.serviceWorker.register('/service-worker.js?v=20260927b', {scope: '/', updateViaCache: 'none'})
+            navigator.serviceWorker.register('/service-worker.js?v=20260927c', {scope: '/', updateViaCache: 'none'})
                 .then(function (registration) { return registration.update(); })
                 .catch(function () { /* The retry button remains available when truly offline. */ });
         }

@@ -1,4 +1,4 @@
-const VERSION = '20260927b';
+const VERSION = '20260927c';
 const STATIC_CACHE = `tms-static-${VERSION}`;
 const PRIVATE_CACHE = `tms-private-${VERSION}`;
 const STATIC_ASSETS = [
@@ -219,7 +219,9 @@ self.addEventListener('fetch', (event) => {
                 // Navigation is always network-first while the server is reachable. A slow
                 // Laravel response is not an offline condition; fetch rejects when the
                 // network/server is genuinely unavailable and only then do we use cache.
-                const response = await fetch(request);
+                // Bypass the browser HTTP cache as well as the service-worker cache.
+                // When online, authenticated dashboard HTML must always come from Laravel.
+                const response = await fetch(request, { cache: 'no-store' });
                 const contentType = response.headers.get('content-type') || '';
                 if (response.ok && !response.redirected && contentType.includes('text/html')) {
                     await cache.put(request, response.clone());

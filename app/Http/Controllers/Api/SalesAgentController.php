@@ -66,9 +66,7 @@ class SalesAgentController extends Controller
         $query = trim((string) $request->query('q'));
         $customers = Customers::where('user_id', $request->user()->businessOwnerId())
             ->whereNull('parent_id')
-            ->whereNotNull('name')
-            ->whereRaw("TRIM(name) <> ''")
-            ->whereRaw("LOWER(TRIM(name)) NOT IN ('walk-in customer', 'walk in customer', 'walk-in', 'walk in')")
+            ->selectableForSales()
             ->when($query, fn ($builder) => $builder->where(function ($nested) use ($query) {
                 $nested->where('name', 'like', "%{$query}%")->orWhere('phone_number1', 'like', "%{$query}%");
             }))

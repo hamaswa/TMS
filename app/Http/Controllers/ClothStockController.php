@@ -169,7 +169,10 @@ class ClothStockController extends Controller
             $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with(['brand', 'type', 'colors'])->get();
             $id = auth()->user()->businessOwnerId();
             // dd($id);
-            $customers = Customers::where('user_id', $id)->get();
+            $customers = Customers::where('user_id', $id)
+                ->selectableForSales()
+                ->orderBy('name')
+                ->get();
             $inventoryOptions = $cloths->map(fn ($cloth) => [
                 'stock_code' => $cloth->stock_code,
                 'brand_id' => (string) $cloth->cloth_brand_id,
@@ -476,11 +479,22 @@ class ClothStockController extends Controller
         $id = $customers->id;
         // dd($id);
 
+        $receipt = $latestSaleStock->receipt;
         $gettransactions = Transaction::where('customerId', $id)
             ->where('Order_type', 'Sale')
             ->where('userId', auth()->user()->businessOwnerId())
-            ->where('sale_id', $sale_id)
-            ->first();
+            ->when(
+                $receipt,
+                fn ($query) => $query->where(function ($linked) use ($receipt, $sale_id) {
+                    $linked->where('counter_sale_receipt_id', $receipt->id)
+                        ->orWhere(function ($legacy) use ($sale_id) {
+                            $legacy->whereNull('counter_sale_receipt_id')->where('sale_id', $sale_id);
+                        });
+                }),
+                fn ($query) => $query->where('sale_id', $sale_id)
+            )
+            ->latest('id')
+            ->firstOrFail();
 
         $remaining = $gettransactions->remainingBalance;
         $payment = $gettransactions->recivedPayment;
@@ -513,7 +527,6 @@ class ClothStockController extends Controller
         if ($latestSaleStock) {
             $customerName = $latestSaleStock->c_name;
             $phone = $latestSaleStock->phone;
-            $receipt = $latestSaleStock->receipt;
             $sellStock = $receipt
                 ? SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('counter_sale_receipt_id', $receipt->id)->orderBy('id')->get()
                 : SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('created_at', $latestSaleStock->created_at)->orderBy('id')->get();
@@ -641,9 +654,16 @@ class ClothStockController extends Controller
                 ]);
             }
             $original = Transaction::where('userId', $ownerId)
-                ->where('sale_id', $receipt->first_sale_stock_id)
                 ->where('Order_type', 'Sale')
+                ->where(function ($linked) use ($receipt) {
+                    $linked->where('counter_sale_receipt_id', $receipt->id)
+                        ->orWhere(function ($legacy) use ($receipt) {
+                            $legacy->whereNull('counter_sale_receipt_id')
+                                ->where('sale_id', $receipt->first_sale_stock_id);
+                        });
+                })
                 ->lockForUpdate()
+                ->latest('id')
                 ->first();
             $received = (float) ($original?->recivedPayment ?? 0);
             $balance = (float) ($original?->remainingBalance ?? 0);
@@ -677,6 +697,7 @@ class ClothStockController extends Controller
                 'recivedPayment' => -$received,
                 'Order_type' => 'Sale Cancellation',
                 'sale_id' => $receipt->first_sale_stock_id,
+                'counter_sale_receipt_id' => $receipt->id,
                 'customerId' => $receipt->customer_id ?? $original?->customerId,
                 'userId' => $ownerId,
                 'payment_method' => $refundMethod ?? $original?->payment_method ?? 'cash',

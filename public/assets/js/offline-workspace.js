@@ -420,7 +420,7 @@
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('message', handleWorkerMessage);
-        navigator.serviceWorker.register('/service-worker.js?v=20260927b', { scope: '/', updateViaCache: 'none' })
+        navigator.serviceWorker.register('/service-worker.js?v=20260927c', { scope: '/', updateViaCache: 'none' })
             .then(() => navigator.serviceWorker.ready)
             .then((registration) => {
                 const worker = navigator.serviceWorker.controller || registration.active;

@@ -19,6 +19,7 @@ class StorefrontTailoringService extends Model
 
     protected $fillable = [
         'storefront_id',
+        'measurement_template_id',
         'name',
         'description',
         'price_from',
@@ -56,6 +57,11 @@ class StorefrontTailoringService extends Model
     public function inquiries()
     {
         return $this->hasMany(StorefrontInquiry::class, 'tailoring_service_id');
+    }
+
+    public function measurementTemplate()
+    {
+        return $this->belongsTo(MeasurementTemplate::class);
     }
 
     public static function depositTypes(): array

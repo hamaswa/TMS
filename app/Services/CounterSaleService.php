@@ -190,6 +190,7 @@ class CounterSaleService
                 'customerId' => $customer->id,
                 'Order_type' => 'Sale',
                 'sale_id' => $firstSale->id,
+                'counter_sale_receipt_id' => $receipt->id,
                 'userId' => $ownerId,
                 'payment_method' => $validated['payment_method'] ?? 'cash',
                 'payment_reference' => $validated['payment_reference'] ?? null,

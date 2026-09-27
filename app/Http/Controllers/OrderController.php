@@ -355,6 +355,16 @@ class OrderController extends Controller
             })
             ->first() ?: $customer;
 
+        $data['measurementTemplateRequirements'] = $data['measurementTemplates']->mapWithKeys(
+            fn (MeasurementTemplate $template) => [
+                $template->id => $this->measurements->missingRequiredMeasurements(
+                    $data['selectedMeasurementProfile'],
+                    auth()->user()->businessOwnerId(),
+                    $template,
+                )->all(),
+            ]
+        );
+
         // Display the shop-scoped customer serial while keeping IDs for relationships.
         $data['serialNumber'] = $data['selectedMeasurementProfile']->serial_number
             ?? $data['selectedMeasurementProfile']->id;

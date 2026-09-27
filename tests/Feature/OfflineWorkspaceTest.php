@@ -205,7 +205,7 @@ class OfflineWorkspaceTest extends TestCase
     {
         $this->get(route('offline.fallback'))->assertOk()
             ->assertSeeText('انٹرنیٹ دستیاب نہیں ہے')
-            ->assertSee('service-worker.js?v=20260927b', false);
+            ->assertSee('service-worker.js?v=20260927c', false);
         $this->assertFileExists(public_path('service-worker.js'));
         $this->assertFileExists(public_path('manifest.webmanifest'));
         $worker = file_get_contents(public_path('service-worker.js'));
@@ -222,7 +222,7 @@ class OfflineWorkspaceTest extends TestCase
         $this->assertStringContainsString('https://cdn.jsdelivr.net', $worker);
         $this->assertStringContainsString('isPrivatePageAsset', $worker);
         $this->assertStringContainsString("url.pathname.startsWith('/storage/')", $worker);
-        $this->assertStringContainsString('const response = await fetch(request);', $worker);
+        $this->assertStringContainsString("const response = await fetch(request, { cache: 'no-store' });", $worker);
         $this->assertStringNotContainsString('const response = await networkWithTimeout(request);', $worker);
 
         $client = file_get_contents(public_path('assets/js/offline-workspace.js'));

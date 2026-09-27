@@ -95,21 +95,6 @@ export function useSaleDraft() {
   const addScannedLine = useCallback(
     (patch: Partial<SaleLine>) => {
       mutate((current) => {
-        const onlyLine = current.lines.length === 1 ? current.lines[0] : null;
-        const onlyLineIsBlank = onlyLine
-          && !onlyLine.setCode
-          && !onlyLine.brandId
-          && !onlyLine.brand
-          && !onlyLine.clothTypeId
-          && !onlyLine.clothType
-          && !onlyLine.color
-          && !onlyLine.length
-          && !onlyLine.unitPrice;
-
-        if (onlyLineIsBlank) {
-          return { ...current, lines: [{ ...onlyLine, ...patch }] };
-        }
-
         return { ...current, lines: [...current.lines, { ...createSaleLine(), ...patch }] };
       });
     },
@@ -120,7 +105,7 @@ export function useSaleDraft() {
     (localId: string) => {
       mutate((current) => {
         const lines = current.lines.filter((line) => line.localId !== localId);
-        return { ...current, lines: lines.length ? lines : [createSaleLine()] };
+        return { ...current, lines };
       });
     },
     [mutate],

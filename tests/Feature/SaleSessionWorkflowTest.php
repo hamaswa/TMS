@@ -146,6 +146,13 @@ class SaleSessionWorkflowTest extends TestCase
             'user_id' => $otherOwner->id,
         ]);
 
+        $this->actingAs($owner)->get(route('admin.sellCloth'))
+            ->assertOk()
+            ->assertSeeText('Current Shop Buyer')
+            ->assertSeeText('Named Counter Buyer')
+            ->assertDontSeeText('Walk-in Customer')
+            ->assertDontSeeText('Other Shop Buyer');
+
         $token = $this->login($agent);
 
         $this->withToken($token)->getJson('/api/sales-agent/inventory')
@@ -231,10 +238,23 @@ class SaleSessionWorkflowTest extends TestCase
             'paid_on' => now()->toDateString(),
         ])->assertRedirect();
 
-        $this->assertSame(SaleSession::STATUS_COMPLETED, $session->fresh()->status);
+        $completedSession = $session->fresh('receipt');
+        $this->assertSame(SaleSession::STATUS_COMPLETED, $completedSession->status);
         $this->assertEquals(7, (float) $color->fresh()->length);
         $this->assertDatabaseCount('counter_sale_receipts', 1);
         Notification::assertSentTo($agent, SaleSessionCompletedNotification::class);
+
+        $this->actingAs($owner)->get(route('admin.sales-sessions.index'))
+            ->assertOk()
+            ->assertSeeText('مکمل')
+            ->assertSeeText('رسید دیکھیں')
+            ->assertSee('data-label="آخری تبدیلی"', false);
+        $this->actingAs($owner)->get(route('admin.sales-sessions.show', $completedSession))
+            ->assertRedirect(route('admin.printStock', [
+                'id' => $completedSession->receipt->first_sale_stock_id,
+                'customerId' => $completedSession->receipt->customer_id,
+            ]));
+
         auth('web')->logout();
         $this->app['auth']->forgetGuards();
         $this->withToken($token)->getJson("/api/sales-agent/sessions/{$uuid}")

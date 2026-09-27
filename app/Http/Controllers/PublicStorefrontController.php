@@ -483,6 +483,7 @@ class PublicStorefrontController extends Controller
                     ...collect($validated)->except(['website', 'tailoring_service_id', 'payment_evidence', 'booking_pin', 'booking_pin_confirmation'])->all(),
                     ...$evidence,
                     'tailoring_service_id' => $lockedService?->id,
+                    'measurement_template_id' => $lockedService?->measurement_template_id,
                     'customer_id' => $customer?->id,
                     'booking_pin_hash' => $isBooking ? Hash::make($validated['booking_pin']) : null,
                     'payment_claimed_amount' => (float) ($validated['payment_claimed_amount'] ?? 0),

@@ -42,6 +42,7 @@ class StorefrontInquiry extends Model
     protected $fillable = [
         'storefront_id',
         'tailoring_service_id',
+        'measurement_template_id',
         'customer_id',
         'order_id',
         'customer_name',
@@ -158,6 +159,11 @@ class StorefrontInquiry extends Model
     public function service()
     {
         return $this->belongsTo(StorefrontTailoringService::class, 'tailoring_service_id');
+    }
+
+    public function measurementTemplate()
+    {
+        return $this->belongsTo(MeasurementTemplate::class);
     }
 
     public function paymentVerifier()

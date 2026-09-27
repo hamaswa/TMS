@@ -27,6 +27,8 @@ class DatabaseSeeder extends Seeder
             TailoringShopOptionsSeeder::class,
             ClothingShopBrandsSeeder::class,
             ClothingShopTypesSeeder::class,
+            PakistanComprehensiveQaSeeder::class,
+            MultiClientInventoryQaSeeder::class,
         ]);
     }
 }

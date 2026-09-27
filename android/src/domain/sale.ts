@@ -60,7 +60,7 @@ export const createSaleDraft = (): SaleDraft => ({
   customerSearch: '',
   newCustomerName: '',
   newCustomerPhone: '',
-  lines: [createSaleLine()],
+  lines: [],
   paymentMethod: 'Cash',
   receivedAmount: '',
   paymentReference: '',

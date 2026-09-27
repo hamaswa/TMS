@@ -22,6 +22,7 @@
                     'service' => null,
                     'depositTypes' => $depositTypes,
                     'measurementMethods' => $measurementMethods,
+                    'measurementTemplates' => $measurementTemplates,
                     'formKey' => 'new',
                 ])
                 <div class="text-left"><button class="btn btn-primary px-4"><i class="fas fa-plus ml-1"></i> خدمت شامل کریں</button></div>
@@ -45,6 +46,7 @@
                     'service' => $service,
                     'depositTypes' => $depositTypes,
                     'measurementMethods' => $measurementMethods,
+                    'measurementTemplates' => $measurementTemplates,
                     'formKey' => 'service-'.$service->id,
                 ])
                 <div class="d-flex justify-content-between align-items-center">

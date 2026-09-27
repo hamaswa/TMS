@@ -127,6 +127,10 @@ export function SaleDraftScreen() {
   );
 
   const forwardToAdmin = async () => {
+    if (draft.lines.length === 0) {
+      Alert.alert('Cart is empty', 'Scan a QR code or add an item from shop inventory first.');
+      return;
+    }
     setForwarding(true);
     setSyncState('syncing');
     try {
@@ -144,6 +148,10 @@ export function SaleDraftScreen() {
   };
 
   const finishSale = async () => {
+    if (draft.lines.length === 0) {
+      Alert.alert('Cart is empty', 'Scan a QR code or add an item from shop inventory first.');
+      return;
+    }
     setCompleting(true);
     setSyncState('syncing');
     try {
@@ -298,22 +306,28 @@ export function SaleDraftScreen() {
 
           <View style={styles.cartHeading}>
             <Text style={styles.cartTitle}>Items added</Text>
-            <Text style={styles.cartCount}>
-              {draft.lines.filter((line) => line.setCode || line.brand || line.clothType).length} in cart
-            </Text>
+            <Text style={styles.cartCount}>{draft.lines.length} in cart</Text>
           </View>
 
-          {draft.lines.map((line, index) => (
-            <SaleLineCard
-              key={line.localId}
-              line={line}
-              number={index + 1}
-              canRemove={draft.lines.length > 1}
-              onChange={(patch) => updateLine(line.localId, patch)}
-              onRemove={() => removeLine(line.localId)}
-              onChooseStock={openManualPicker}
-            />
-          ))}
+          {draft.lines.length === 0 ? (
+            <View style={styles.emptyCart}>
+              <Text style={styles.emptyCartTitle}>Your cart is empty</Text>
+              <Text style={styles.emptyCartHelp}>Scan a cloth-set QR or choose an item from shop inventory.</Text>
+              <SecondaryButton label="Add cloth without QR" onPress={openManualPicker} fullWidth />
+            </View>
+          ) : (
+            draft.lines.map((line, index) => (
+              <SaleLineCard
+                key={line.localId}
+                line={line}
+                number={index + 1}
+                canRemove
+                onChange={(patch) => updateLine(line.localId, patch)}
+                onRemove={() => removeLine(line.localId)}
+                onChooseStock={openManualPicker}
+              />
+            ))
+          )}
 
           <Section title="Payment">
             <Text style={styles.fieldLabel}>Payment method</Text>
@@ -860,6 +874,9 @@ const styles = StyleSheet.create({
   cartHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2, marginTop: 2 },
   cartTitle: { color: BLUE, fontSize: 18, fontWeight: '900' },
   cartCount: { color: GREEN, fontSize: 12, fontWeight: '800' },
+  emptyCart: { gap: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: '#b9c6cf', borderRadius: 14, backgroundColor: '#fff', padding: 16 },
+  emptyCartTitle: { color: BLUE, fontWeight: '900', fontSize: 16 },
+  emptyCartHelp: { color: '#687986', lineHeight: 20, fontSize: 13 },
   primaryButton: { flex: 1, backgroundColor: GREEN, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   primaryButtonText: { color: '#fff', fontWeight: '900' },
   secondaryButton: { flex: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: BLUE, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
@@ -899,7 +916,15 @@ const styles = StyleSheet.create({
   inventoryPriceWrap: { alignItems: 'flex-end', gap: 4 },
   inventoryPrice: { color: BLUE, fontWeight: '900', fontSize: 13 },
   inventoryAdd: { color: GREEN, fontWeight: '900', fontSize: 12 },
-  scanFloatingButton: { position: 'absolute', left: 18, right: 18, bottom: 16, minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, borderRadius: 18, backgroundColor: GREEN, borderWidth: 2, borderColor: '#fff', shadowColor: '#0b2f24', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 14, elevation: 9 },
+  scanFloatingButton: {
+    position: 'absolute', left: 18, right: 18, bottom: 16, minHeight: 58,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
+    borderRadius: 18, backgroundColor: GREEN, borderWidth: 2, borderColor: '#fff',
+    ...Platform.select({
+      web: { boxShadow: '0 8px 28px rgba(11, 47, 36, 0.28)' },
+      default: { shadowColor: '#0b2f24', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 14, elevation: 9 },
+    }),
+  },
   scanFloatingIcon: { color: '#fff', fontWeight: '900', fontSize: 22 },
   scanFloatingText: { color: '#fff', fontWeight: '900', fontSize: 16 },
 });

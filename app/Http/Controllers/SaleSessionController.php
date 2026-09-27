@@ -23,6 +23,24 @@ class SaleSessionController extends Controller
     {
         $this->authorizeTenant($request, $saleSession);
 
+        if ($saleSession->status === SaleSession::STATUS_COMPLETED) {
+            $receipt = $saleSession->receipt;
+            if ($receipt) {
+                return redirect()->route('admin.printStock', [
+                    'id' => $receipt->first_sale_stock_id,
+                    'customerId' => $receipt->customer_id,
+                ]);
+            }
+
+            return redirect()->route('admin.sales-sessions.index')
+                ->with('warning', 'مکمل فروخت کی رسید دستیاب نہیں ہے۔');
+        }
+
+        if ($saleSession->status === SaleSession::STATUS_CANCELLED) {
+            return redirect()->route('admin.sales-sessions.index')
+                ->with('warning', 'یہ سیلز سیشن منسوخ ہو چکا ہے۔');
+        }
+
         return redirect()->route('admin.sellCloth', ['sale_session' => $saleSession->uuid]);
     }
 

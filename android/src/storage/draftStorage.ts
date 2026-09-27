@@ -17,7 +17,23 @@ export async function loadDraft(userId: number): Promise<SaleDraft | null> {
     return null;
   }
 
-  return draft as SaleDraft;
+  return {
+    ...draft,
+    // Drafts saved by the earlier UI contained one invisible placeholder row.
+    // Remove it once so a fresh cart is genuinely empty after an upgrade.
+    lines: draft.lines.filter((line) =>
+      Boolean(
+        line.setCode
+        || line.brandId
+        || line.brand
+        || line.clothTypeId
+        || line.clothType
+        || line.color
+        || line.length
+        || line.unitPrice,
+      ),
+    ),
+  } as SaleDraft;
 }
 
 export async function saveDraft(userId: number, draft: SaleDraft): Promise<void> {
