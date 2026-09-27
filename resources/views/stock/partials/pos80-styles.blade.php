@@ -7,8 +7,8 @@
 
     html.tms-paper-receipt_80 body.tms-stock-print #invoice-POS {
         box-sizing: border-box !important;
-        width: 74mm !important;
-        padding: 1.5mm !important;
+        width: 72mm !important;
+        padding: 2mm !important;
         margin: 10px auto !important;
         color: #000;
         background: #fff;
@@ -45,7 +45,7 @@
     .stock-receipt-shop {
         margin: 1px 0 2px !important;
         color: #000 !important;
-        font-size: 18px !important;
+        font-size: 17px !important;
         font-weight: 900 !important;
         line-height: 1.5 !important;
         text-align: center;
@@ -64,9 +64,9 @@
 
     .stock-customer-info {
         display: grid;
-        gap: 3px;
+        gap: 1px;
         margin: 0 0 6px;
-        padding: 5px 2px;
+        padding: 4px 1px;
         border-top: 1px solid #bbb;
         border-bottom: 1px solid #bbb;
     }
@@ -78,9 +78,9 @@
         gap: 8px;
         min-width: 0;
         color: #000;
-        font-size: 13px;
+        font-size: 11.5px;
         font-weight: 900;
-        line-height: 1.7;
+        line-height: 1.55;
     }
 
     .stock-customer-row span {
@@ -99,7 +99,7 @@
     .stock-customer-row.is-ltr strong {
         direction: ltr;
         font-family: Arial, sans-serif;
-        font-size: 12px;
+        font-size: 10.5px;
     }
 
     html.tms-paper-receipt_80 body.tms-stock-print .stock-items-table {
@@ -158,21 +158,66 @@
     .stock-item-card {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding: 7px 0;
+        gap: 3px;
+        padding: 5px 1px;
         border-top: 1px solid #999;
+        break-inside: avoid;
+        page-break-inside: avoid;
     }
 
     .stock-item-card:last-child {
         border-bottom: 1px solid #999;
     }
 
-    .stock-item-card .stock-order-label {
-        flex-basis: 42%;
+    .stock-item-heading {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        min-width: 0;
+        color: #000;
+        font-size: 12.5px;
+        font-weight: 900;
+        line-height: 1.55;
     }
 
-    .stock-item-card .stock-order-value {
-        flex-basis: 58%;
+    .stock-item-heading strong {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .stock-item-number {
+        direction: ltr;
+        flex: 0 0 auto;
+        font: 900 10px/1.3 Arial, sans-serif;
+    }
+
+    .stock-item-meta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 2px 10px;
+        color: #000;
+        font-size: 10.5px;
+        font-weight: 800;
+        line-height: 1.5;
+    }
+
+    .stock-item-calculation {
+        direction: ltr;
+        display: grid;
+        grid-template-columns: auto auto auto auto minmax(0, 1fr);
+        align-items: baseline;
+        gap: 5px;
+        color: #000;
+        font: 800 10.5px/1.45 Arial, sans-serif;
+        text-align: left;
+    }
+
+    .stock-item-calculation strong {
+        font-size: 12px;
+        font-weight: 900;
+        overflow-wrap: anywhere;
+        text-align: right;
     }
 
     .stock-items-empty {
@@ -188,49 +233,60 @@
     .stock-order-summary {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        margin-top: 7px;
-        padding: 7px 0;
+        gap: 1px;
+        margin-top: 5px;
+        padding: 5px 1px;
         border-top: 1px solid #999;
         border-bottom: 1px solid #999;
         direction: rtl;
     }
 
     .stock-order-row {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 14px;
-        min-height: 30px;
+        display: grid;
+        grid-template-columns: minmax(0, 55%) minmax(0, 45%);
+        align-items: baseline;
+        gap: 6px;
+        min-height: 0;
+        padding: 1px 0;
     }
 
     .stock-order-label {
-        flex: 0 0 66%;
+        min-width: 0;
         color: #000;
         font-family: 'Noto Nastaliq Urdu', serif;
-        font-size: 18px;
+        font-size: 12px;
         font-weight: 900;
-        line-height: 1.65;
+        line-height: 1.55;
         text-align: right;
         white-space: nowrap;
     }
 
     .stock-order-value {
-        flex: 1 1 34%;
         min-width: 0;
         color: #000;
         direction: ltr;
         font-family: Arial, sans-serif;
-        font-size: 18px;
+        font-size: 11px;
         font-weight: 900;
-        line-height: 1.5;
+        line-height: 1.4;
         overflow-wrap: anywhere;
         text-align: left;
     }
 
+    .stock-order-row.is-grand-total {
+        padding-top: 2px;
+    }
+
+    .stock-order-row.is-grand-total .stock-order-label,
+    .stock-order-row.is-grand-total .stock-order-value,
+    .stock-order-row.is-balance .stock-order-label,
+    .stock-order-row.is-balance .stock-order-value {
+        font-size: 13px;
+    }
+
     .stock-receipt-footer {
         width: 100%;
-        padding-top: 5px;
+        padding-top: 4px;
         color: #000;
         text-align: center;
     }
@@ -239,15 +295,39 @@
     .stock-receipt-footer b {
         margin: 1px 0 !important;
         color: #000 !important;
-        font-size: 11px !important;
+        font-size: 10px !important;
         font-weight: 900 !important;
-        line-height: 1.55 !important;
+        line-height: 1.45 !important;
+    }
+
+    .stock-built-by {
+        direction: ltr;
+        margin-top: 4px !important;
+        padding-top: 3px;
+        border-top: 1px dotted #aaa;
+        font-family: Arial, sans-serif;
+        font-size: 8.5px !important;
+        letter-spacing: .15px;
+    }
+
+    html.tms-paper-receipt_80 body.tms-stock-print .tms-print-qr {
+        gap: 5px;
+        margin: 5px auto 0;
+    }
+
+    html.tms-paper-receipt_80 body.tms-stock-print .tms-print-qr svg {
+        width: 54px;
+        height: 54px;
+    }
+
+    html.tms-paper-receipt_80 body.tms-stock-print .tms-print-qr-reference {
+        font-size: 8px;
     }
 
     @media print {
         @page tms-receipt {
             size: 80mm auto;
-            margin: 3mm;
+            margin: 2mm 4mm;
         }
 
         html.tms-paper-receipt_80 body.tms-stock-print #invoice-POS {

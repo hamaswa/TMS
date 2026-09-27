@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CustomerSerialNumberService;
 use App\Support\PakistanPhoneNumber;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -11,6 +12,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property int $id
+ * @property int|null $serial_number
  * @property string $name
  * @property string $phone_number1
  * @property string $phone_number2
@@ -76,6 +78,7 @@ class Customers extends Authenticatable
     protected $hidden = ['mobile_pin', 'pin_failed_attempts', 'pin_locked_until'];
 
     protected $casts = [
+        'serial_number' => 'integer',
         'pin_locked_until' => 'datetime',
         'pin_changed_at' => 'datetime',
         'self_registered_at' => 'datetime',
@@ -85,6 +88,13 @@ class Customers extends Authenticatable
 
     protected static function booted(): void
     {
+        static::creating(function (Customers $customer) {
+            if (! $customer->serial_number && $customer->user_id) {
+                $customer->serial_number = app(CustomerSerialNumberService::class)
+                    ->nextFor((int) $customer->user_id);
+            }
+        });
+
         static::saving(function (Customers $customer) {
             if ($customer->isDirty('phone_number1') || $customer->isDirty('parent_id')) {
                 if ($customer->parent_id !== null) {

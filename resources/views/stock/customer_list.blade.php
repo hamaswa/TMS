@@ -263,7 +263,7 @@
                                     $initial = function_exists('mb_substr') ? mb_substr(trim($customer->name), 0, 1) : substr(trim($customer->name), 0, 1);
                                 @endphp
                                 <tr>
-                                    <td class="customer_id sales-serial-cell" data-label="سیریل نمبر">{{ $customer->id }}</td>
+                                    <td class="customer_id sales-serial-cell" data-label="سیریل نمبر">{{ $customer->serial_number ?? $customer->id }}</td>
                                     <td class="sales-name-cell" data-label="گاہک">
                                         <div class="sales-customer-identity">
                                             <span class="sales-customer-avatar">{{ $initial ?: 'گ' }}</span>

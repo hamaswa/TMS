@@ -4,13 +4,17 @@
 <style>
     .counter-sale-page{--sale-blue:#1769ef;--sale-ink:#14213d;--sale-muted:#718096;--sale-line:#e1e8f2;min-height:calc(100vh - 65px);padding:26px 0 46px;background:#f7f9fc;color:var(--sale-ink)}
     .counter-sale-shell{max-width:1560px;margin:auto;padding:0 24px}.counter-sale-breadcrumb{margin-bottom:12px;color:var(--sale-muted);font-size:.84rem}.counter-sale-breadcrumb a{color:inherit}.counter-sale-header{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}.counter-sale-heading{display:flex;align-items:center;gap:14px}.counter-sale-heading-icon{display:grid;place-items:center;width:52px;height:52px;border:1px solid var(--sale-line);border-radius:13px;background:#fff;color:var(--sale-blue);font-size:21px;box-shadow:0 5px 18px rgba(25,67,120,.06)}.counter-sale-heading h1{margin:0 0 4px;font-size:1.6rem;font-weight:800}.counter-sale-heading p{margin:0;color:var(--sale-muted)}
-    .counter-sale-panel{margin-bottom:14px;border:1px solid var(--sale-line);border-radius:13px;background:#fff;box-shadow:0 5px 20px rgba(28,63,105,.045)}.counter-sale-section-head{display:flex;align-items:center;gap:10px;padding:15px 19px 0;color:var(--sale-blue);font-size:1.04rem;font-weight:800}.counter-sale-panel-body{padding:18px 19px}.counter-sale-page label{display:block;margin-bottom:7px;color:#52627b;font-weight:700}.counter-sale-page .required{color:#e53e3e}.counter-sale-page .form-control{min-height:44px;border-color:#d8e1ed;border-radius:7px;background:#fff}.counter-sale-page select.form-control{height:50px;min-height:50px;padding-top:4px;padding-bottom:10px;line-height:1.8}.counter-sale-page .form-control:focus{border-color:#7aafff;box-shadow:0 0 0 3px rgba(23,105,239,.1)}.counter-input{position:relative}.counter-input>i{position:absolute;z-index:2;top:50%;right:14px;transform:translateY(-50%);color:#8492a7}.counter-input .form-control{padding-right:42px}.counter-input .has-suffix{padding-left:48px}.counter-input-suffix{position:absolute;z-index:2;top:1px;bottom:1px;left:1px;display:flex;align-items:center;padding:0 13px;border-right:1px solid var(--sale-line);border-radius:7px 0 0 7px;background:#f8fafc;color:#66758d;font-weight:700}
+    .counter-sale-form{display:grid;gap:14px;align-items:start}.counter-sale-panel{margin-bottom:0;border:1px solid var(--sale-line);border-radius:13px;background:#fff;box-shadow:0 5px 20px rgba(28,63,105,.045)}.counter-sale-section-head{display:flex;align-items:center;gap:10px;padding:15px 19px 0;color:var(--sale-blue);font-size:1.04rem;font-weight:800}.counter-sale-panel-body{padding:18px 19px}.counter-sale-page label{display:block;margin-bottom:7px;color:#52627b;font-weight:700}.counter-sale-page .required{color:#e53e3e}.counter-sale-page .form-control{min-height:44px;border-color:#d8e1ed;border-radius:7px;background:#fff}.counter-sale-page select.form-control{height:50px;min-height:50px;padding-top:4px;padding-bottom:10px;line-height:1.8}.counter-sale-page .form-control:focus{border-color:#7aafff;box-shadow:0 0 0 3px rgba(23,105,239,.1)}.counter-input{position:relative}.counter-input>i{position:absolute;z-index:2;top:50%;right:14px;transform:translateY(-50%);color:#8492a7}.counter-input .form-control{padding-right:42px}.counter-input .has-suffix{padding-left:48px}.counter-input-suffix{position:absolute;z-index:2;top:1px;bottom:1px;left:1px;display:flex;align-items:center;padding:0 13px;border-right:1px solid var(--sale-line);border-radius:7px 0 0 7px;background:#f8fafc;color:#66758d;font-weight:700}
     .counter-customer-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}.counter-customer-mode{margin:0!important;cursor:pointer}.counter-customer-mode input{position:absolute;opacity:0;pointer-events:none}.counter-customer-mode>span{display:flex;align-items:center;gap:10px;min-height:58px;padding:10px 13px;border:1px solid #d8e1ed;border-radius:10px;background:#fbfcfe;color:#52627b}.counter-customer-mode i{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:9px;color:#75869d;background:#edf2f7}.counter-customer-mode strong{display:block;color:#344a67}.counter-customer-mode small{display:block;margin-top:2px;color:#8190a3;font-size:.7rem}.counter-customer-mode input:checked+span{border-color:#86b5f8;background:#edf5ff;box-shadow:0 0 0 2px rgba(23,105,239,.08)}.counter-customer-mode input:checked+span i{color:#fff;background:var(--sale-blue)}.counter-customer-fields[hidden]{display:none!important}.counter-customer-note{margin:8px 0 0;color:#718096;font-size:.73rem}
     .counter-sale-item{position:relative;display:grid;grid-template-columns:140px 42px minmax(145px,1.15fr) minmax(145px,1fr) minmax(145px,1fr) minmax(105px,.65fr) minmax(125px,.75fr) minmax(120px,.7fr);align-items:end;gap:10px;padding:13px;margin-bottom:10px;border:1px solid #e4eaf3;border-radius:11px;background:#fbfcfe}.counter-sale-item .form-group{min-width:0;margin:0}.counter-sale-item label{overflow:hidden;margin-bottom:5px;white-space:nowrap;text-overflow:ellipsis;font-size:.78rem}.counter-item-identity{display:flex;align-items:center;justify-content:center;height:44px}.counter-item-number{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:#eaf2ff;color:var(--sale-blue);font-family:Arial,sans-serif;font-weight:800}.counter-item-summary{display:flex;align-items:center;justify-content:center;flex-direction:column;align-self:stretch;gap:4px;padding:8px;border-left:1px solid #dfe7f0;border-radius:8px;background:#f3f7fd}.counter-item-summary small{color:#75869d;font-size:.68rem;font-weight:800}.counter-item-actions{display:flex;align-items:center;gap:5px}.counter-line-total{color:var(--sale-blue);font:800 .86rem Arial,sans-serif;direction:ltr;white-space:nowrap}.counter-remove-item{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:7px;background:#fff0f1;color:#dc3545}.counter-add-item{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:8px 15px;border:1px solid var(--sale-blue);border-radius:7px;background:#fff;color:var(--sale-blue);font-weight:800}.counter-add-item:hover{background:#edf4ff;color:#0f5ddf}
     .counter-summary-line{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:8px;font-weight:800}.counter-summary-line strong{color:var(--sale-blue);font:800 1rem Arial,sans-serif;direction:ltr}.counter-payment-panel{border-color:#d9eee1;background:linear-gradient(135deg,#fbfffc,#f1fbf5)}.counter-payment-panel .counter-sale-section-head{color:#1a9b57}.counter-balance-line{display:flex;align-items:center;gap:18px;margin-top:10px;color:#52627b;font-weight:700}.counter-balance-line strong{color:#1a9b57;font:800 1rem Arial,sans-serif;direction:ltr}.counter-sale-submit{display:flex;justify-content:center;padding-top:4px}.counter-sale-submit button{min-width:280px;min-height:48px;border:0;border-radius:8px;background:linear-gradient(135deg,#1769ef,#287fff);color:#fff;font-weight:800;box-shadow:0 9px 23px rgba(23,105,239,.22)}.counter-sale-back{min-height:43px;padding:9px 16px;border-radius:8px;font-weight:700}.counter-sale-alert{border-radius:10px}
     .live-sale-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;padding:14px 18px;border:1px solid #b9dcce;border-radius:12px;background:#eefaf5;color:#235e49}.live-sale-banner strong{display:block;color:#145d43}.live-sale-banner small{color:#527666}
     @media(max-width:1199.98px){.counter-sale-item{grid-template-columns:120px 42px repeat(3,minmax(150px,1fr));align-items:end}.counter-sale-item .counter-item-summary,.counter-sale-item .counter-item-identity{grid-row:span 2}.counter-sale-item .counter-item-summary{border-left:0;border-bottom:1px solid #dfe7f0}.counter-sale-item .js-rate-wrap{grid-column:auto}}
     @media(max-width:767.98px){.counter-sale-shell{padding:0 12px}.counter-sale-header{align-items:stretch;flex-direction:column}.counter-sale-back{width:100%}.counter-sale-panel-body{padding:15px 13px}.counter-customer-modes{grid-template-columns:1fr}.counter-sale-item{grid-template-columns:1fr 42px;padding:12px}.counter-sale-item .counter-item-summary{grid-column:1;grid-row:1;align-self:auto;align-items:flex-start;border-bottom:0}.counter-sale-item .counter-item-identity{grid-column:2;grid-row:1}.counter-sale-item .form-group{grid-column:1/-1}.counter-sale-submit button{width:100%;min-width:0}.counter-balance-line{align-items:flex-start;flex-direction:column;gap:5px}}
+    .counter-scan-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-bottom:16px;padding:15px;border:1px dashed #9fc3ed;border-radius:11px;background:#f5f9ff}.counter-scan-box label{margin-bottom:4px}.counter-scan-feedback{grid-column:1/-1;min-height:22px;margin:0;font-weight:700}.counter-scan-feedback.is-success{color:#138a53}.counter-scan-feedback.is-error{color:#c0392b}.counter-scan-feedback.is-warning{color:#a56a00}
+    .counter-customer-panel{border-color:#dce8f8;background:linear-gradient(145deg,#fff,#f8fbff)}.counter-payment-column{display:flex;flex-direction:column;gap:12px;min-width:0}
+    @media(min-width:1200px){.counter-sale-form{grid-template-columns:minmax(0,1fr) 400px;grid-template-rows:auto auto;gap:16px}.counter-customer-panel{grid-column:1/-1;grid-row:1}.counter-items-panel{grid-column:1;grid-row:2;min-width:0}.counter-payment-column{position:sticky;top:82px;grid-column:2;grid-row:2;align-self:start;max-height:calc(100vh - 98px);overflow-y:auto;padding:1px 3px 12px;scrollbar-width:thin}.counter-payment-panel .form-group{flex:0 0 50%;max-width:50%;margin-bottom:12px!important}.counter-payment-panel .counter-sale-panel-body{padding-bottom:16px}.counter-payment-panel label{font-size:.76rem;white-space:nowrap}.counter-payment-panel .form-control{font-size:.8rem}.counter-sale-submit{padding:0}.counter-sale-submit button{width:100%;min-width:0}}
+    @media(max-width:767.98px){.counter-scan-box{grid-template-columns:1fr}.counter-scan-feedback{grid-column:auto}}
 </style>
 @endpush
 
@@ -53,11 +57,11 @@
         </div>
     @endif
 
-    <form action="{{ route('admin.sellStock') }}" method="post" id="sellStockForm" data-customer-url="{{ url('/admin/getNmbr') }}" data-types-url="{{ url('/admin/getType') }}">
+    <form action="{{ route('admin.sellStock') }}" method="post" id="sellStockForm" class="counter-sale-form" data-customer-url="{{ url('/admin/getNmbr') }}" data-types-url="{{ url('/admin/getType') }}">
         @csrf
         @if($saleSession)<input type="hidden" name="sale_session_uuid" value="{{ $saleSession->uuid }}">@endif
 
-        <section class="counter-sale-panel">
+        <section class="counter-sale-panel counter-customer-panel">
             <div class="counter-sale-section-head"><i class="far fa-file-alt"></i> بنیادی معلومات — گاہک کی معلومات</div>
             <div class="counter-sale-panel-body">
                 <div class="counter-customer-modes" role="radiogroup" aria-label="گاہک کی قسم">
@@ -66,7 +70,7 @@
                 </div>
                 <input type="hidden" name="c_name" id="legacy_c_name" value="{{ old('c_name') }}">
                 <div class="counter-customer-fields" id="regularCustomerFields" @if($saleCustomerMode !== 'regular') hidden @endif><div class="form-row">
-                    <div class="form-group col-md-6 mb-md-0"><label for="existing_customer_id">گاہک کا نام <span class="required">*</span></label><div class="counter-input"><i class="far fa-user"></i><select name="existing_customer_id" class="form-control custom-select" id="existing_customer_id"><option value="">گاہک منتخب کریں</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-legacy="{{ $customer->name.'|'.$customer->id }}" @selected((string) old('existing_customer_id', $sessionDefaults['customer_id'] ?? '') === (string) $customer->id)>{{ $customer->name }} (#{{ $customer->id }})</option>@endforeach</select></div>@error('existing_customer_id')<div class="text-danger mt-1">{{ $message }}</div>@enderror</div>
+                    <div class="form-group col-md-6 mb-md-0"><label for="existing_customer_id">گاہک کا نام <span class="required">*</span></label><div class="counter-input"><i class="far fa-user"></i><select name="existing_customer_id" class="form-control custom-select" id="existing_customer_id"><option value="">گاہک منتخب کریں</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-legacy="{{ $customer->name.'|'.$customer->id }}" @selected((string) old('existing_customer_id', $sessionDefaults['customer_id'] ?? '') === (string) $customer->id)>{{ $customer->name }} (#{{ $customer->serial_number ?? $customer->id }})</option>@endforeach</select></div>@error('existing_customer_id')<div class="text-danger mt-1">{{ $message }}</div>@enderror</div>
                     <div class="form-group col-md-6 mb-md-0"><label for="nmbr">رابطہ نمبر</label><div class="counter-input"><i class="fas fa-phone"></i><input type="tel" inputmode="tel" class="form-control" name="phone" id="nmbr" value="{{ old('phone') }}" placeholder="منتخب گاہک کا رابطہ نمبر" autocomplete="tel" readonly></div></div>
                 </div></div>
                 <div class="counter-customer-fields" id="randomCustomerFields" @if($saleCustomerMode !== 'random') hidden @endif><div class="form-row">
@@ -76,9 +80,14 @@
             </div>
         </section>
 
-        <section class="counter-sale-panel">
+        <section class="counter-sale-panel counter-items-panel">
             <div class="counter-sale-section-head"><i class="fas fa-plus-square"></i> فروخت کے آئٹمز شامل کریں</div>
             <div class="counter-sale-panel-body">
+                <div class="counter-scan-box">
+                    <div><label for="counter-stock-scan">QR / اسٹاک کوڈ اسکین کریں</label><input type="text" id="counter-stock-scan" class="form-control" autocomplete="off" placeholder="QR اسکین کریں یا اسٹاک کوڈ لکھیں" aria-describedby="counter-scan-feedback"></div>
+                    <button type="button" id="counter-scan-add" class="btn btn-primary"><i class="fas fa-qrcode ml-1"></i> آئٹم شامل کریں</button>
+                    <p id="counter-scan-feedback" class="counter-scan-feedback text-muted">ہر اسکین سے برانڈ اور قسم منتخب ہوں گے؛ رنگ اختیاری ہے۔</p>
+                </div>
                 <div id="stockDataContainer" aria-live="polite">
                     @foreach($saleItems as $itemIndex => $saleItem)
                     @php
@@ -105,6 +114,7 @@
             </div>
         </section>
 
+        <div class="counter-payment-column">
         <section class="counter-sale-panel counter-payment-panel">
             <div class="counter-sale-section-head"><i class="fas fa-wallet"></i> ادائیگی کی تفصیل</div>
             <div class="counter-sale-panel-body">
@@ -121,6 +131,7 @@
         </section>
 
         <div class="counter-sale-submit"><button type="submit"><i class="far fa-save ml-2"></i> فروخت محفوظ کریں</button></div>
+        </div>
     </form>
 </div>
 </section>
@@ -145,6 +156,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const method = document.getElementById('counter_sale_method');
     const reference = document.getElementById('counter_sale_reference');
     const referenceHint = document.getElementById('counter_sale_reference_hint');
+    const scanInput = document.getElementById('counter-stock-scan');
+    const scanFeedback = document.getElementById('counter-scan-feedback');
     const inventoryOptions = @json($inventoryOptions);
 
     const money = value => 'Rs. ' + value.toFixed(2);
@@ -211,6 +224,73 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     container.querySelectorAll('.stock-data').forEach(bindItem);
 
+    const createItem = function () {
+        const item = container.querySelector('.stock-data').cloneNode(true);
+        item.querySelectorAll('input').forEach(input => { input.value = input.classList.contains('js-rate-per-meter') ? 'Rs. 0.00' : (input.name === 'per_meter[]' ? '0' : ''); });
+        item.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
+        item.querySelector('.js-cloth-type').innerHTML = '<option value="" disabled selected>پہلے برانڈ منتخب کریں</option>';
+        item.querySelector('.js-color').innerHTML = '<option value="" selected>رنگ معلوم نہیں</option>';
+        item.querySelector('.counter-line-total').textContent = 'Rs. 0.00';
+        const actionWrap = item.querySelector('.counter-item-actions');
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'counter-remove-item'; remove.setAttribute('aria-label','یہ آئٹم ہٹائیں'); remove.innerHTML = '<i class="fas fa-trash"></i>'; actionWrap.appendChild(remove);
+        container.appendChild(item); bindItem(item); refreshItemNumbers(); calculateTotals();
+        return item;
+    };
+
+    const selectScannedItem = function () {
+        const code = scanInput.value.trim().toUpperCase();
+        if (!code) {
+            scanFeedback.textContent = 'پہلے QR اسکین کریں یا اسٹاک کوڈ درج کریں۔';
+            scanFeedback.className = 'counter-scan-feedback is-error';
+            scanInput.focus();
+            return;
+        }
+        const match = inventoryOptions.find(entry => String(entry.stock_code || '').trim().toUpperCase() === code);
+        if (!match) {
+            scanFeedback.textContent = 'اس اسٹاک کوڈ کا کپڑا نہیں ملا: ' + scanInput.value.trim();
+            scanFeedback.className = 'counter-scan-feedback is-error';
+            scanInput.select();
+            return;
+        }
+        const availableColors = (match.colors || []).filter(entry => Number(entry.length) > 0);
+        if (!availableColors.length) {
+            scanFeedback.textContent = 'اس کپڑے کا اسٹاک دستیاب نہیں ہے۔';
+            scanFeedback.className = 'counter-scan-feedback is-error';
+            scanInput.select();
+            return;
+        }
+
+        let item = Array.from(container.querySelectorAll('.stock-data')).find(row => !row.querySelector('.js-brand').value);
+        if (!item) item = createItem();
+        item.querySelector('.js-brand').value = match.brand_id;
+        item.querySelector('.js-cloth-type').innerHTML = '<option value="' + match.type_id + '" selected>' + (match.type_name || '') + '</option>';
+        const colorSelect = item.querySelector('.js-color');
+        colorSelect.innerHTML = '<option value="" selected>رنگ معلوم نہیں</option>';
+        availableColors.forEach(function (entry) {
+            const option = document.createElement('option');
+            option.value = entry.name;
+            option.textContent = entry.name + ' (' + entry.length + ' میٹر)';
+            colorSelect.appendChild(option);
+        });
+        const preferredColor = availableColors.find(entry => entry.name === 'عام') || (availableColors.length === 1 ? availableColors[0] : null);
+        if (preferredColor) colorSelect.value = preferredColor.name;
+        item.querySelector('[name="length[]"]').value = '';
+        item.querySelector('[name="item_total[]"]').value = '';
+        calculateTotals();
+        scanInput.value = '';
+        if (preferredColor) {
+            scanFeedback.textContent = 'آئٹم شامل ہو گیا: ' + (match.brand_name || '') + ' / ' + (match.type_name || '') + ' / ' + preferredColor.name;
+            scanFeedback.className = 'counter-scan-feedback is-success';
+            item.querySelector('[name="length[]"]').focus();
+        } else {
+            scanFeedback.textContent = 'برانڈ اور قسم شامل ہو گئے؛ اس کپڑے کے متعدد رنگ ہیں، رنگ منتخب کریں۔';
+            scanFeedback.className = 'counter-scan-feedback is-warning';
+            colorSelect.focus();
+        }
+    };
+    document.getElementById('counter-scan-add').addEventListener('click', selectScannedItem);
+    scanInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); selectScannedItem(); } });
+
     const syncCustomerMode = function () {
         const mode = form.querySelector('[name="customer_mode"]:checked')?.value || 'regular';
         const isRegular = mode === 'regular';
@@ -233,17 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!customerId) return;
         try { const response = await fetch(form.dataset.customerUrl + '?id=' + encodeURIComponent(customerId), {headers:{'Accept':'application/json'}}); if (!response.ok) throw new Error(); const payload = await response.json(); phone.value = payload.data?.phone_number1 || ''; } catch (error) { phone.value = ''; }
     });
-    addButton.addEventListener('click', function () {
-        const item = container.querySelector('.stock-data').cloneNode(true);
-        item.querySelectorAll('input').forEach(input => { input.value = input.classList.contains('js-rate-per-meter') ? 'Rs. 0.00' : (input.name === 'per_meter[]' ? '0' : ''); });
-        item.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
-        item.querySelector('.js-cloth-type').innerHTML = '<option value="" disabled selected>پہلے برانڈ منتخب کریں</option>';
-        item.querySelector('.js-color').innerHTML = '<option value="" selected>رنگ معلوم نہیں</option>';
-        item.querySelector('.counter-line-total').textContent = 'Rs. 0.00';
-        const actionWrap = item.querySelector('.counter-item-actions');
-        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'counter-remove-item'; remove.setAttribute('aria-label','یہ آئٹم ہٹائیں'); remove.innerHTML = '<i class="fas fa-trash"></i>'; actionWrap.appendChild(remove);
-        container.appendChild(item); bindItem(item); refreshItemNumbers(); item.querySelector('.js-brand').focus();
-    });
+    addButton.addEventListener('click', function () { createItem().querySelector('.js-brand').focus(); });
     const syncReference = function () { const required = !['cash','other'].includes(method.value); reference.required = required; reference.setAttribute('aria-required', required ? 'true' : 'false'); referenceHint.textContent = required ? 'منتخب ادائیگی کے طریقے کے لیے حوالہ نمبر ضروری ہے۔' : 'نقد ادائیگی کے لیے اختیاری ہے۔'; };
     method.addEventListener('change', syncReference); payment.addEventListener('input', calculateTotals); syncCustomerMode(); syncReference(); calculateTotals();
 });

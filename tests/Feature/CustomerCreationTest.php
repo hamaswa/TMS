@@ -77,6 +77,65 @@ class CustomerCreationTest extends TestCase
         $this->assertStringNotContainsString('Directory Customer 02', $response->json('html'));
     }
 
+    public function test_customer_serial_numbers_are_sequential_within_each_shop(): void
+    {
+        $firstOwner = User::factory()->create();
+        $secondOwner = User::factory()->create();
+
+        $firstCustomer = Customers::create([
+            'user_id' => $firstOwner->id,
+            'name' => 'First Shop Customer',
+            'phone_number1' => '03001111111',
+        ]);
+        $otherShopCustomer = Customers::create([
+            'user_id' => $secondOwner->id,
+            'name' => 'Other Shop Customer',
+            'phone_number1' => '03002222222',
+        ]);
+        $secondCustomer = Customers::create([
+            'user_id' => $firstOwner->id,
+            'name' => 'Second Shop Customer',
+            'phone_number1' => '03003333333',
+        ]);
+
+        $this->assertSame(1, $firstCustomer->serial_number);
+        $this->assertSame(1, $otherShopCustomer->serial_number);
+        $this->assertSame(2, $secondCustomer->serial_number);
+        $this->assertNotSame($secondCustomer->id, $secondCustomer->serial_number);
+    }
+
+    public function test_customer_directory_searches_and_displays_the_shop_serial_number(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true, 'is_business_owner' => true]);
+        $otherOwner = User::factory()->create();
+        $owner->assignRole($role);
+
+        Customers::create([
+            'user_id' => $owner->id,
+            'name' => 'Serial One',
+            'phone_number1' => '03004444444',
+        ]);
+        Customers::create([
+            'user_id' => $otherOwner->id,
+            'name' => 'Global Gap',
+            'phone_number1' => '03005555555',
+        ]);
+        $serialTwo = Customers::create([
+            'user_id' => $owner->id,
+            'name' => 'Serial Two',
+            'phone_number1' => '03006666666',
+        ]);
+
+        $response = $this->actingAs($owner)->getJson(route('admin.customers.search', [
+            'search' => '2',
+        ]))->assertOk()->assertJsonPath('count', 1);
+
+        $this->assertSame(2, $serialTwo->serial_number);
+        $this->assertStringContainsString('Serial Two', $response->json('html'));
+        $this->assertStringNotContainsString('Global Gap', $response->json('html'));
+    }
+
     public function test_tailoring_client_can_create_a_customer_with_default_design_options(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

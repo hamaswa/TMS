@@ -517,7 +517,7 @@ body {
                     <hr style="margin-top:4px;">
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell measurement-serial">
-                            Serial num: {{$orderDetail->sub_customer}}
+                            Serial num: {{ $orderDetail->sub_customer }}
                         </div>
                         <div class="measurement-meta-cell" style="text-align:right;">
                             {{$orderDetail->customers->name}}
