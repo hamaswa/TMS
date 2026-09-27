@@ -414,14 +414,13 @@
     window.addEventListener('online', async function () {
         await renderStatus();
         await flush();
-        if (readReadiness()?.enabled && !sessionStorage.getItem(refreshKey)) await prepareWorkspace(true);
     });
     window.addEventListener('offline', renderStatus);
     setInterval(flush, 30000);
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('message', handleWorkerMessage);
-        navigator.serviceWorker.register('/service-worker.js?v=20260924m', { scope: '/', updateViaCache: 'none' })
+        navigator.serviceWorker.register('/service-worker.js?v=20260927b', { scope: '/', updateViaCache: 'none' })
             .then(() => navigator.serviceWorker.ready)
             .then((registration) => {
                 const worker = navigator.serviceWorker.controller || registration.active;
@@ -431,9 +430,6 @@
                 }
                 localStorage.setItem(ACTIVE_ACTOR_KEY, actorKey);
                 worker?.postMessage({ type: 'CACHE_CURRENT_PAGE', url: window.location.href });
-                if (readReadiness()?.enabled) {
-                    if (navigator.onLine && !sessionStorage.getItem(refreshKey)) prepareWorkspace(true);
-                }
             })
             .catch(function () { showToast('آف لائن سروس شروع نہیں ہو سکی۔'); });
     }

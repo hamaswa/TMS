@@ -8,6 +8,7 @@ use App\Models\ClothVideo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 
 class Cloth extends Model
 {
@@ -15,6 +16,7 @@ class Cloth extends Model
 
     protected $fillable=[
         'name',
+        'set_code',
         'cloth_type_id',
         'cloth_brand_id',
         'length',
@@ -22,6 +24,17 @@ class Cloth extends Model
         'sale_price',
         'user_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Cloth $cloth) {
+            if (! $cloth->set_code) {
+                $cloth->forceFill([
+                    'set_code' => 'BNS-'.str_pad((string) ($cloth->user_id ?? 0), 4, '0', STR_PAD_LEFT).'-'.str_pad((string) $cloth->id, 6, '0', STR_PAD_LEFT).'-'.Str::upper(Str::random(6)),
+                ])->saveQuietly();
+            }
+        });
+    }
 
     public function type()
     {

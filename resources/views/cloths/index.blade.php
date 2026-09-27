@@ -28,7 +28,7 @@
     <div class="cloth-breadcrumb"><a href="{{ route('admin.home') }}">ڈیش بورڈ</a><span class="mx-2">‹</span>انوینٹری<span class="mx-2">‹</span>کپڑوں کی فہرست</div>
     <header class="cloth-header">
         <div class="cloth-heading"><span class="cloth-heading-icon"><i class="fas fa-layer-group"></i></span><div><h1>کپڑوں کی فہرست</h1><p>کپڑے، رنگ، دستیاب مقدار اور تازہ قیمت ایک جگہ دیکھیں</p></div></div>
-        <div class="cloth-header-actions"><a href="{{ route('admin.cloth.create') }}" class="btn cloth-primary"><i class="fas fa-plus"></i> نیا کپڑا شامل کریں</a><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#clothesCsvModal"><i class="fas fa-file-import"></i> ایکسل درآمد</button><a href="{{ route('admin.clothscsv') }}" class="btn btn-outline-success"><i class="fas fa-file-excel"></i> ایکسل برآمد</a></div>
+        <div class="cloth-header-actions"><a href="{{ route('admin.cloth.create') }}" class="btn cloth-primary"><i class="fas fa-plus"></i> نیا کپڑا شامل کریں</a><a href="{{ route('admin.cloth.qr-labels') }}" class="btn btn-outline-dark"><i class="fas fa-qrcode"></i> سیٹ QR لیبل</a><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#clothesCsvModal"><i class="fas fa-file-import"></i> ایکسل درآمد</button><a href="{{ route('admin.clothscsv') }}" class="btn btn-outline-success"><i class="fas fa-file-excel"></i> ایکسل برآمد</a></div>
     </header>
 
     @include('inc.message')
@@ -59,7 +59,7 @@
                     <td data-label="اسٹاک حالت"><span class="cloth-stock-badge {{ $stockStatus === 'low' ? 'is-low' : ($stockStatus === 'empty' ? 'is-empty' : '') }}">{{ $stockLabel }}</span></td>
                     <td data-label="تازہ قیمت"><span class="cloth-number cloth-cost">Rs. {{ number_format($latestCost, 2) }}</span></td>
                     <td data-label="کل مالیت"><span class="cloth-number cloth-value">Rs. {{ number_format($row['value'], 2) }}</span></td>
-                    <td class="cloth-actions" data-label="عمل"><a href="{{ route('admin.edit-cloths', ['id' => $cloth->id, 'color' => $color->color]) }}" class="cloth-action" title="ترمیم کریں" aria-label="کپڑے میں ترمیم کریں"><i class="fas fa-pen"></i></a><button class="cloth-action is-danger delete-selected" type="button" data-id="{{ $cloth->id }}" data-color="{{ $color->color }}" title="حذف کریں" aria-label="کپڑے کا رنگ حذف کریں"><i class="fas fa-trash"></i></button></td>
+                    <td class="cloth-actions" data-label="عمل"><a href="{{ route('admin.cloth.qr-labels') }}#cloth-set-{{ $cloth->id }}" class="cloth-action" title="سیٹ QR دیکھیں" aria-label="سیٹ QR دیکھیں"><i class="fas fa-qrcode"></i></a><a href="{{ route('admin.edit-cloths', ['id' => $cloth->id, 'color' => $color->color]) }}" class="cloth-action" title="ترمیم کریں" aria-label="کپڑے میں ترمیم کریں"><i class="fas fa-pen"></i></a><button class="cloth-action is-danger delete-selected" type="button" data-id="{{ $cloth->id }}" data-color="{{ $color->color }}" title="حذف کریں" aria-label="کپڑے کا رنگ حذف کریں"><i class="fas fa-trash"></i></button></td>
                 </tr>
             @empty<tr><td colspan="8" class="cloth-empty"><i class="fas fa-layer-group"></i>ابھی کوئی کپڑا شامل نہیں کیا گیا۔</td></tr>@endforelse
         </tbody></table></div>

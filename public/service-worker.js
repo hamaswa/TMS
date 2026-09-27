@@ -1,4 +1,4 @@
-const VERSION = '20260924m';
+const VERSION = '20260927b';
 const STATIC_CACHE = `tms-static-${VERSION}`;
 const PRIVATE_CACHE = `tms-private-${VERSION}`;
 const STATIC_ASSETS = [
@@ -216,7 +216,10 @@ self.addEventListener('fetch', (event) => {
         event.respondWith((async () => {
             const cache = await caches.open(PRIVATE_CACHE);
             try {
-                const response = await networkWithTimeout(request);
+                // Navigation is always network-first while the server is reachable. A slow
+                // Laravel response is not an offline condition; fetch rejects when the
+                // network/server is genuinely unavailable and only then do we use cache.
+                const response = await fetch(request);
                 const contentType = response.headers.get('content-type') || '';
                 if (response.ok && !response.redirected && contentType.includes('text/html')) {
                     await cache.put(request, response.clone());

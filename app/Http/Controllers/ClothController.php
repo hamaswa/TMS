@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Services\InventoryService;
+use App\Services\PrintDocumentService;
 use Illuminate\Validation\ValidationException;
 
 class ClothController extends Controller
@@ -21,17 +22,33 @@ class ClothController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-   public function index()
-   {
-    try {
-        $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
-        ->with(['type', 'brand', 'colors.latestCostedStockAddition', 'images', 'videos'])
-        ->latest()
-        ->get();
-        return view('cloths.index', compact('cloths'));
+    public function index()
+    {
+        try {
+            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
+                ->with(['type', 'brand', 'colors.latestCostedStockAddition', 'images', 'videos'])
+                ->latest()
+                ->get();
+
+            return view('cloths.index', compact('cloths'));
         } catch (\Throwable $th) {
             throw $th;
-            }
+        }
+    }
+
+    public function qrLabels(PrintDocumentService $documents)
+    {
+        $cloths = Cloth::where('user_id', Auth::user()->businessOwnerId())
+            ->with(['type', 'brand', 'colors'])
+            ->orderBy('id')
+            ->get()
+            ->map(function (Cloth $cloth) use ($documents) {
+                $cloth->qr_svg = $documents->qrSvg('BNS-SET:'.$cloth->set_code, 220);
+
+                return $cloth;
+            });
+
+        return view('cloths.qr-labels', compact('cloths'));
     }
 
     /**

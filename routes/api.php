@@ -1,9 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\SalesAgentController;
+use App\Http\Controllers\ReactNativeController\ReactNativeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ReactNativeController\ReactNativeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,19 +21,33 @@ use App\Http\Controllers\ReactNativeController\ReactNativeController;
 //     return $request->user();
 // });
 
-Route::post('/login',[ReactNativeController::class,'login'])->middleware('throttle:5,1');
-Route::post('/v2/login',[ReactNativeController::class,'login'])->middleware('throttle:5,1');
+Route::post('/login', [ReactNativeController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/v2/login', [ReactNativeController::class, 'login'])->middleware('throttle:5,1');
 
-Route::get('/shops',[ReactNativeController::class,'AllShops']);
+Route::prefix('sales-agent')->group(function () {
+    Route::post('/login', [SalesAgentController::class, 'login'])->middleware('throttle:5,1');
+    Route::middleware(['auth:sanctum', 'abilities:sales-agent', 'sales.agent'])->group(function () {
+        Route::post('/logout', [SalesAgentController::class, 'logout']);
+        Route::get('/customers', [SalesAgentController::class, 'customers']);
+        Route::get('/inventory', [SalesAgentController::class, 'inventory']);
+        Route::get('/inventory/sets/{code}', [SalesAgentController::class, 'inventorySet']);
+        Route::get('/sessions/{uuid}', [SalesAgentController::class, 'show']);
+        Route::put('/sessions/{uuid}', [SalesAgentController::class, 'sync']);
+        Route::post('/sessions/{uuid}/attention', [SalesAgentController::class, 'requestAttention']);
+        Route::post('/sessions/{uuid}/complete', [SalesAgentController::class, 'complete']);
+    });
+});
+
+Route::get('/shops', [ReactNativeController::class, 'AllShops']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
-    Route::get('/orders',[ReactNativeController::class,'AllOrders']);
-    Route::get('/transactions',[ReactNativeController::class,'AllTransactions']);
-    Route::get('/notifications',[ReactNativeController::class,'notifications']);
-    Route::post('/mark-read',[ReactNativeController::class,'markasRead']);
-    Route::post('/logout',[ReactNativeController::class,'logout']);
-    Route::post('/change-pin',[ReactNativeController::class,'changePin'])->middleware('throttle:5,1');
+    Route::get('/orders', [ReactNativeController::class, 'AllOrders']);
+    Route::get('/transactions', [ReactNativeController::class, 'AllTransactions']);
+    Route::get('/notifications', [ReactNativeController::class, 'notifications']);
+    Route::post('/mark-read', [ReactNativeController::class, 'markasRead']);
+    Route::post('/logout', [ReactNativeController::class, 'logout']);
+    Route::post('/change-pin', [ReactNativeController::class, 'changePin'])->middleware('throttle:5,1');
 });
 
 // for server stream (SSE) route

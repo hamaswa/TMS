@@ -12,12 +12,15 @@ use App\Models\Customers;
 use App\Models\DaliyExpenses;
 use App\Models\Expenses;
 use App\Models\SaleStock;
+use App\Models\SaleSession;
 use App\Models\Setting;
 use App\Models\Stock;
 use App\Models\Transaction;
 use App\Models\Workers;
 use App\Services\InventoryService;
+use App\Services\CounterSaleService;
 use App\Services\PrintDocumentService;
+use App\Services\SaleSessionService;
 use App\Support\PaymentMethods;
 use Carbon\Carbon;
 use DateTime;
@@ -153,7 +156,7 @@ class ClothStockController extends Controller
 
     public function show($id) {}
 
-    public function sellCloth($id = null)
+    public function sellCloth(Request $request)
     {
         try {
             // if ($id) {
@@ -176,8 +179,55 @@ class ClothStockController extends Controller
                 ])->values(),
             ])->values();
 
+            $saleSession = null;
+            $saleForm = null;
+            if ($request->filled('sale_session')) {
+                $saleSession = SaleSession::where('user_id', $id)
+                    ->where('uuid', $request->string('sale_session'))
+                    ->with('agent:id,name')
+                    ->firstOrFail();
+                abort_if($saleSession->isTerminal(), 409, 'This sale session is already closed.');
+
+                $items = collect($saleSession->items ?? [])->map(function (array $item) use ($cloths) {
+                    $cloth = $cloths->first(function (Cloth $candidate) use ($item) {
+                        if (! empty($item['brandId']) && ! empty($item['clothTypeId'])) {
+                            return (string) $candidate->cloth_brand_id === (string) $item['brandId']
+                                && (string) $candidate->cloth_type_id === (string) $item['clothTypeId'];
+                        }
+
+                        return (! ($item['brand'] ?? null) || $candidate->brand?->name === $item['brand'])
+                            && (! ($item['clothType'] ?? null) || $candidate->type?->name === $item['clothType']);
+                    });
+
+                    $quantity = (float) ($item['quantity'] ?? 1);
+                    $unitPrice = (float) ($item['unitPrice'] ?? 0);
+
+                    return [
+                        'brand_id' => $item['brandId'] ?? $cloth?->cloth_brand_id,
+                        'type_id' => $item['clothTypeId'] ?? $cloth?->cloth_type_id,
+                        'color' => $item['color'] ?? '',
+                        'length' => ($item['length'] ?? '') ?: ($item['quantity'] ?? ''),
+                        'item_total' => round($quantity * $unitPrice, 2),
+                        'rack' => $item['rack'] ?? '',
+                    ];
+                })->values()->all();
+
+                $customer = $saleSession->customer_data ?? [];
+                $payment = $saleSession->payment_data ?? [];
+                $saleForm = [
+                    'customer_mode' => $saleSession->customer_mode === 'existing' ? 'regular' : 'random',
+                    'customer_id' => $saleSession->customer_id,
+                    'customer_name' => $customer['name'] ?? ($saleSession->customer_mode === 'walk-in' ? 'Walk-in Customer' : ''),
+                    'customer_phone' => $customer['phone'] ?? '',
+                    'items' => $items ?: [[]],
+                    'payment_method' => strtolower(str_replace(' ', '_', $payment['method'] ?? 'cash')),
+                    'payment' => $payment['receivedAmount'] ?? '',
+                    'payment_reference' => $payment['reference'] ?? '',
+                ];
+            }
+
             // dd($customers);
-            return view('stock.sell', compact('customers', 'cloths', 'inventoryOptions'));
+            return view('stock.sell', compact('customers', 'cloths', 'inventoryOptions', 'saleSession', 'saleForm'));
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -207,9 +257,27 @@ class ClothStockController extends Controller
         }
     }
 
-    public function sellStock(Request $request)
+    public function sellStock(Request $request, CounterSaleService $counterSales, SaleSessionService $saleSessions)
     {
-        return $this->processStockSale($request);
+        $validated = $counterSales->validate($request->all());
+        if ($request->filled('sale_session_uuid')) {
+            $session = SaleSession::where('user_id', Auth::user()->businessOwnerId())
+                ->where('uuid', $request->string('sale_session_uuid'))
+                ->firstOrFail();
+            $completed = $saleSessions->completeWithValidated($session, Auth::user(), $validated);
+
+            return redirect()->route('admin.printStock', [
+                'id' => $completed->receipt->first_sale_stock_id,
+                'customerId' => $completed->receipt->customer_id,
+            ]);
+        }
+
+        $result = $counterSales->complete(Auth::user(), $validated);
+
+        return redirect()->route('admin.printStock', [
+            'id' => $result['first_sale']->id,
+            'customerId' => $result['customer']->id,
+        ]);
 
         // Retrieve the stock based on the selected brand name
         $brandNames = $request->input('brand_name');

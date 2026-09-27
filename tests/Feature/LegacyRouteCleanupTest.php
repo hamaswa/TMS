@@ -102,11 +102,11 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSeeText($owner->name);
     }
 
-    public function test_active_order_print_routes_render_decoded_serials_and_their_intended_views(): void
+    public function test_active_order_print_routes_render_measurement_profile_serials_and_their_intended_views(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();
         $order->update([
-            'suitNum' => json_encode(['Suit 1']),
+            'suitNum' => (string) $order->sub_customer,
             'remarks' => 'Bring matching buttons - کالر نرم رکھیں',
         ]);
         Setting::forceCreate([
@@ -142,9 +142,9 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)->get(route('admin.order-print', $order))
             ->assertOk()
             ->assertViewIs('order.print')
-            ->assertSeeText('Suit 1')
+            ->assertSeeText('Serial num: '.$order->sub_customer)
             ->assertSeeText('موجودہ ادائیگی واجب')
-            ->assertSeeText('دیگر آرڈرز کا موجودہ')
+            ->assertSeeText('گزشتہ ادائیگی کے')
             ->assertSeeText('کل ادائیگی واجب')
             ->assertViewHas('orderBalance', fn ($balance) => (float) $balance === 500.0)
             ->assertViewHas('previousBalance', fn ($balance) => (float) $balance === 1000.0)
@@ -153,7 +153,7 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)->get(route('admin.order-prints', $order))
             ->assertOk()
             ->assertViewIs('order.prints')
-            ->assertSeeText('Suit 1');
+            ->assertSeeText('Serial num: '.$order->sub_customer);
     }
 
     public function test_print_documents_support_safe_paper_overrides_and_qr_references(): void
@@ -186,7 +186,7 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertOk()
             ->assertSee('tms-paper-a4', false)
             ->assertSee('class="receipt-date"', false)
-            ->assertSee('class="order-summary-row"', false)
+            ->assertSee('order-summary-row', false)
             ->assertSee('order-note', false)
             ->assertSee('dir="auto"', false)
             ->assertSee('unicode-bidi: plaintext', false)

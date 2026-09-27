@@ -203,7 +203,9 @@ class OfflineWorkspaceTest extends TestCase
 
     public function test_offline_fallback_and_worker_assets_are_publicly_available(): void
     {
-        $this->get(route('offline.fallback'))->assertOk()->assertSeeText('انٹرنیٹ دستیاب نہیں ہے');
+        $this->get(route('offline.fallback'))->assertOk()
+            ->assertSeeText('انٹرنیٹ دستیاب نہیں ہے')
+            ->assertSee('service-worker.js?v=20260927b', false);
         $this->assertFileExists(public_path('service-worker.js'));
         $this->assertFileExists(public_path('manifest.webmanifest'));
         $worker = file_get_contents(public_path('service-worker.js'));
@@ -220,6 +222,8 @@ class OfflineWorkspaceTest extends TestCase
         $this->assertStringContainsString('https://cdn.jsdelivr.net', $worker);
         $this->assertStringContainsString('isPrivatePageAsset', $worker);
         $this->assertStringContainsString("url.pathname.startsWith('/storage/')", $worker);
+        $this->assertStringContainsString('const response = await fetch(request);', $worker);
+        $this->assertStringNotContainsString('const response = await networkWithTimeout(request);', $worker);
 
         $client = file_get_contents(public_path('assets/js/offline-workspace.js'));
         $this->assertStringContainsString('tms-offline-manifest-url', $client);
@@ -231,7 +235,11 @@ class OfflineWorkspaceTest extends TestCase
         $client = file_get_contents(public_path('assets/js/offline-workspace.js'));
 
         $this->assertStringContainsString(
-            "localStorage.setItem(ACTIVE_ACTOR_KEY, actorKey);\n                worker?.postMessage({ type: 'CACHE_CURRENT_PAGE', url: window.location.href });\n                if (readReadiness()?.enabled) {",
+            "localStorage.setItem(ACTIVE_ACTOR_KEY, actorKey);\n                worker?.postMessage({ type: 'CACHE_CURRENT_PAGE', url: window.location.href });",
+            $client,
+        );
+        $this->assertStringNotContainsString(
+            "if (readReadiness()?.enabled && !sessionStorage.getItem(refreshKey)) await prepareWorkspace(true);",
             $client,
         );
     }

@@ -50,6 +50,11 @@ class StorefrontClothingListing extends Model
         return $this->belongsTo(Cloth::class);
     }
 
+    public function orderItems()
+    {
+        return $this->hasMany(StorefrontOrderItem::class, 'clothing_listing_id');
+    }
+
     public function scopeWithReservableStock(Builder $query): Builder
     {
         $now = now();

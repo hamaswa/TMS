@@ -9,6 +9,7 @@
     .dash-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(340px,.7fr);gap:18px;margin-bottom:18px}.dash-panel{overflow:hidden;border:1px solid var(--dash-line);border-radius:13px;background:#fff;box-shadow:0 5px 20px rgba(28,63,105,.045)}.dash-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 20px;border-bottom:1px solid var(--dash-line)}.dash-panel-title{display:flex;align-items:center;gap:9px;margin:0;color:var(--dash-ink);font-size:1.05rem;font-weight:800}.dash-panel-title i{color:#1769ef}.dash-panel-link{color:#1769ef;font-size:.82rem;font-weight:800}.dash-chart{height:270px;padding:24px 22px 18px}.dash-chart-bars{display:flex;align-items:flex-end;justify-content:space-around;gap:12px;height:205px;border-bottom:1px solid #dfe6ef;background:repeating-linear-gradient(to top,transparent 0,transparent 50px,#eef2f7 51px)}.dash-chart-column{display:flex;flex:1;align-items:center;justify-content:flex-end;flex-direction:column;height:100%}.dash-chart-value{margin-bottom:7px;color:#60718a;font:700 .7rem Arial,sans-serif;direction:ltr}.dash-chart-bar{width:min(42px,70%);min-height:4px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,#36a0fb,#1769ef);transition:.2s ease}.dash-chart-column:hover .dash-chart-bar{filter:brightness(.94)}.dash-chart-day{margin-top:9px;color:#718096;font-size:.74rem}.dash-chart-summary{display:flex;align-items:center;justify-content:space-between;margin-top:14px;color:var(--dash-muted);font-size:.82rem}.dash-chart-summary strong{color:#1769ef;font-family:Arial,sans-serif;direction:ltr}
     .dash-alert-list{padding:8px 18px}.dash-alert-item{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #edf1f6}.dash-alert-item:last-child{border-bottom:0}.dash-alert-icon{display:grid;place-items:center;flex:0 0 38px;height:38px;border-radius:9px;background:#fff3e8;color:#e77817}.dash-alert-copy{min-width:0;flex:1}.dash-alert-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dash-alert-copy small{display:block;margin-top:2px;color:var(--dash-muted)}.dash-alert-qty{padding:5px 8px;border-radius:999px;background:#fff0f1;color:#c93643;font:800 .75rem Arial,sans-serif;direction:ltr}.dash-empty{padding:38px 20px;text-align:center;color:#8b98aa}.dash-empty i{display:block;margin-bottom:9px;color:#c4cfdb;font-size:29px}
     .dash-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.dash-table{margin:0}.dash-table thead th{padding:12px 15px;border:0;border-bottom:1px solid var(--dash-line);background:#f8fafd;color:#52627b;font-weight:800;white-space:nowrap}.dash-table td{padding:13px 15px;vertical-align:middle;border-color:#edf1f6}.dash-primary-text{display:block;color:var(--dash-ink);font-weight:800}.dash-secondary-text{display:block;margin-top:2px;color:var(--dash-muted);font-size:.76rem}.dash-money{display:inline-block;font:800 .82rem Arial,sans-serif;direction:ltr}.dash-status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:.72rem;font-weight:800}.dash-status-draft{background:#fff4dc;color:#a66d00}.dash-status-received{background:#e8f9ef;color:#168452}.dash-status-cancelled{background:#eef1f5;color:#6c7585}
+    .dash-live-sales{margin-bottom:18px;border-color:#a9cdfd}.dash-live-count{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 8px;border-radius:999px;background:#1769ef;color:#fff;font:800 .78rem Arial,sans-serif}.dash-live-row-needs_attention{background:#fff9e8}.dash-live-status{display:inline-flex;padding:4px 8px;border-radius:999px;background:#eaf2ff;color:#1769ef;font-size:.72rem;font-weight:800}.dash-live-row-needs_attention .dash-live-status{background:#fff0c7;color:#966200}.dash-live-row-claimed .dash-live-status{background:#e7f8fa;color:#137989}
     @media(max-width:1250px){.dash-metrics{grid-template-columns:repeat(3,1fr)}.dash-actions{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:991.98px){.dash-layout,.dash-bottom-grid{grid-template-columns:1fr}.shop-dashboard-hero{align-items:flex-start;flex-direction:column}}
     @media(max-width:767.98px){.shop-dashboard-shell{padding:0 12px}.shop-dashboard-hero{padding:23px 19px}.shop-dashboard-hero-actions{width:100%;flex-direction:column}.shop-dashboard-hero-actions a{width:100%;justify-content:center}.dash-metrics,.dash-actions{grid-template-columns:1fr}.dash-metric{min-height:96px}.dash-chart{padding:20px 10px}.dash-chart-bars{gap:5px}.dash-chart-value{display:none}.dash-chart-bar{width:65%}.dash-table,.dash-table tbody,.dash-table tr,.dash-table td{display:block;width:100%}.dash-table thead{display:none}.dash-table tr{margin:8px;border:1px solid var(--dash-line);border-radius:9px;padding:6px;width:calc(100% - 16px)}.dash-table td{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px;border-top:1px solid #edf1f6}.dash-table td:first-child{border-top:0}.dash-table td::before{content:attr(data-label);color:var(--dash-muted);font-weight:800}}
@@ -41,6 +42,29 @@
         @if(Auth::user()->hasBusinessPermission('clothing.suppliers'))<a class="dash-action" href="{{ route('admin.suppliers.index') }}"><span class="dash-action-icon"><i class="fas fa-truck"></i></span><span><strong>سپلائرز</strong><small>سپلائر کھاتے منظم کریں</small></span><i class="fas fa-chevron-left dash-action-chevron"></i></a>@endif
     </nav>
 
+    @if($canSales)
+    <section class="dash-panel dash-live-sales">
+        <div class="dash-panel-head">
+            <h2 class="dash-panel-title"><i class="fas fa-mobile-alt"></i> سیلز ایجنٹ کی لائیو فروخت</h2>
+            <div><span class="dash-live-count" id="dashboard-live-sale-count">{{ $liveSaleSessions->count() }}</span> <a class="dash-panel-link mr-2" href="{{ route('admin.sales-sessions.index') }}">سیلز اِن باکس</a></div>
+        </div>
+        <div class="table-responsive"><table class="table dash-table"><thead><tr><th>ایجنٹ</th><th>گاہک</th><th>اسکین شدہ آئٹمز</th><th>حالت</th><th>آخری تبدیلی</th><th></th></tr></thead><tbody id="dashboard-live-sale-list">
+            @forelse($liveSaleSessions as $session)
+            <tr class="dash-live-row-{{ $session->status }}">
+                <td data-label="ایجنٹ">{{ $session->agent?->name ?? '—' }}</td>
+                <td data-label="گاہک">{{ data_get($session->customer_data, 'name', $session->customer_mode === 'walk-in' ? 'Walk-in' : '—') }}</td>
+                <td data-label="اسکین شدہ آئٹمز">{{ collect($session->items)->filter(fn ($item) => filled($item['setCode'] ?? null))->count() }}</td>
+                <td data-label="حالت"><span class="dash-live-status">{{ str_replace('_', ' ', $session->status) }}</span></td>
+                <td data-label="آخری تبدیلی">{{ $session->updated_at?->diffForHumans() }}</td>
+                <td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.sales-sessions.show', $session) }}">کھولیں</a></td>
+            </tr>
+            @empty
+            <tr><td colspan="6" class="dash-empty"><i class="fas fa-mobile-alt"></i>موبائل سے کوئی لائیو فروخت شروع نہیں ہوئی</td></tr>
+            @endforelse
+        </tbody></table></div>
+    </section>
+    @endif
+
     @if($canSales || $canInventory)
     <div class="dash-layout">
         @if($canSales)<section class="dash-panel"><div class="dash-panel-head"><h2 class="dash-panel-title"><i class="fas fa-chart-bar"></i> گزشتہ 7 دن کی فروخت</h2><span class="dash-panel-link">آج: Rs. {{ number_format($clothing['today_sales'], 0) }}</span></div><div class="dash-chart"><div class="dash-chart-bars">@foreach($salesTrend as $point)<div class="dash-chart-column"><span class="dash-chart-value">{{ number_format($point['total'], 0) }}</span><span class="dash-chart-bar" style="height:{{ max(2, round(($point['total'] / $trendMax) * 100)) }}%"></span><span class="dash-chart-day">{{ $point['date']->format('D') }}</span></div>@endforeach</div><div class="dash-chart-summary"><span>سات دن کی کل فروخت</span><strong>Rs. {{ number_format($trendTotal, 2) }}</strong></div></div></section>@endif
@@ -55,3 +79,44 @@
 </div>
 </section>
 @endsection
+
+@if($canSales)
+@push('scripts')
+<script>
+(function () {
+    const body = document.getElementById('dashboard-live-sale-list');
+    const count = document.getElementById('dashboard-live-sale-count');
+    const showUrl = @json(route('admin.sales-sessions.show', '__UUID__'));
+    const openStatuses = new Set(['active', 'needs_attention', 'claimed']);
+
+    window.addEventListener('sales-session-feed', function (event) {
+        const sessions = (event.detail?.data || []).filter(session => openStatuses.has(session.status));
+        count.textContent = String(sessions.length);
+        body.innerHTML = '';
+        if (!sessions.length) {
+            const row = body.insertRow(); const cell = row.insertCell(); cell.colSpan = 6;
+            cell.className = 'dash-empty'; cell.textContent = 'موبائل سے کوئی لائیو فروخت شروع نہیں ہوئی';
+            return;
+        }
+        sessions.forEach(function (session) {
+            const row = body.insertRow(); row.className = 'dash-live-row-' + session.status;
+            const scannedItems = (session.items || []).filter(item => item.setCode).length;
+            const values = [
+                session.agent?.name || '—',
+                session.customer?.name || (session.customerMode === 'walk-in' ? 'Walk-in' : '—'),
+                String(scannedItems), session.status.replaceAll('_', ' '),
+                session.updatedAt ? new Date(session.updatedAt).toLocaleTimeString() : '—',
+            ];
+            values.forEach(function (value, index) {
+                const cell = row.insertCell(); cell.textContent = value;
+                if (index === 3) cell.className = 'dash-live-status';
+            });
+            const action = row.insertCell(); const link = document.createElement('a');
+            link.className = 'btn btn-sm btn-outline-primary'; link.textContent = 'کھولیں';
+            link.href = showUrl.replace('__UUID__', encodeURIComponent(session.uuid)); action.appendChild(link);
+        });
+    });
+})();
+</script>
+@endpush
+@endif

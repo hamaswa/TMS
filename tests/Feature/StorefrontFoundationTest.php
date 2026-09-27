@@ -124,7 +124,7 @@ class StorefrontFoundationTest extends TestCase
             ->assertOk()
             ->assertSee('lang="en"', false)
             ->assertSee('dir="ltr"', false)
-            ->assertSeeText('Public shops');
+            ->assertSeeText('Find the right fabric. Book the right tailor.');
 
         $this->get(route('public.locale.update', [
             'locale' => 'en',
@@ -132,6 +132,30 @@ class StorefrontFoundationTest extends TestCase
         ]))->assertRedirect('/');
 
         $this->get('/language/fr')->assertNotFound();
+    }
+
+    public function test_business_landing_page_separates_business_and_customer_journeys_in_both_languages(): void
+    {
+        $this->get(route('storefront.business'))
+            ->assertOk()
+            ->assertViewIs('storefront.public.business')
+            ->assertSee('dir="rtl"', false)
+            ->assertSeeText('کپڑے کی دکانوں، درزیوں اور مشترک کاروبار کے لیے')
+            ->assertSee(route('storefront.index'), false)
+            ->assertSee(route('login'), false);
+
+        $this->withSession(['public_locale' => 'en'])
+            ->get(route('storefront.business'))
+            ->assertOk()
+            ->assertSee('dir="ltr"', false)
+            ->assertSeeText('For cloth shops, tailors and combined businesses')
+            ->assertSeeText('Everything needed to manage and grow');
+
+        $this->withSession(['public_locale' => 'en'])
+            ->get(route('storefront.index'))
+            ->assertOk()
+            ->assertSee(route('storefront.business'), false)
+            ->assertDontSeeText('Everything needed to manage and grow');
     }
 
     public function test_storefront_uses_client_default_locale_until_visitor_chooses(): void

@@ -86,6 +86,30 @@ class InventoryLedgerTest extends TestCase
                 && $sales->first()->items_count === 1);
     }
 
+    public function test_counter_sale_allows_unidentified_color_and_allocates_available_stock(): void
+    {
+        [$owner, $cloth, $color] = $this->stock(10, 100);
+        $customer = Customers::create(['name' => 'Unknown Color Buyer', 'phone_number1' => '', 'user_id' => $owner->id]);
+
+        $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$cloth->cloth_brand_id],
+            'cloth_type' => [$cloth->cloth_type_id],
+            'color' => [''],
+            'item_total' => [300],
+            'clothes_rack' => [null],
+            'length' => [2],
+            'customer_mode' => 'regular',
+            'existing_customer_id' => $customer->id,
+            'payment' => 300,
+            'payment_method' => 'cash',
+        ])->assertRedirect();
+
+        $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
+        $this->assertNull($sale->color);
+        $this->assertSame($color->id, $sale->cloth_color_id);
+        $this->assertEquals(8, (float) $color->fresh()->length);
+    }
+
     public function test_counter_sale_creates_random_customer_and_derives_rate_from_item_total(): void
     {
         [$owner, $cloth, $color] = $this->stock(10, 100);
