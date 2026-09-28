@@ -60,9 +60,12 @@ class CustomerController extends Controller
             ->get();
         $this->applyFamilyProfileBalances($customers, $canViewBalances);
         $stats = $this->customerDirectoryStats($canViewBalances);
+        $createdCustomer = request()->filled('created')
+            ? Customers::where('user_id', $user->businessOwnerId())->find(request()->integer('created'))
+            : null;
 
         return view('customer.list', array_merge(
-            compact('customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements'),
+            compact('customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements', 'createdCustomer'),
             $stats,
         ));
     }
@@ -435,7 +438,7 @@ class CustomerController extends Controller
         }
 
         // dd($obj);
-        return redirect('admin/Customers')
+        return redirect()->route('admin.Customers.index', ['created' => $obj->id])
             ->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔')
             ->with('customer_pin', $plainPin)
             ->with('customer_pin_name', $obj->name);

@@ -409,10 +409,10 @@
                 </div>
             </div>
 
-            @if (Session::has('insert'))
+            @if (Session::has('insert') || $createdCustomer)
                 <div class="customer-alert is-success" role="alert">
                     <i class="fas fa-check-circle"></i>
-                    <div>{{ Session::get('insert') }}</div>
+                    <div>{{ Session::get('insert') ?: $createdCustomer->name.' کامیابی سے شامل کر دیا گیا ہے۔' }}</div>
                 </div>
             @endif
 

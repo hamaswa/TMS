@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -104,6 +105,29 @@ class CustomerCreationTest extends TestCase
         $this->assertNotSame($secondCustomer->id, $secondCustomer->serial_number);
     }
 
+    public function test_restored_customers_with_missing_or_stale_serials_are_repaired_in_record_order(): void
+    {
+        $owner = User::factory()->create();
+        $first = Customers::create(['user_id' => $owner->id, 'name' => 'First', 'phone_number1' => '03001111111']);
+        $second = Customers::create(['user_id' => $owner->id, 'name' => 'Second', 'phone_number1' => '03002222222']);
+        $third = Customers::create(['user_id' => $owner->id, 'name' => 'Third', 'phone_number1' => '03003333333']);
+
+        DB::table('customers')->where('id', $second->id)->update(['serial_number' => null]);
+        DB::table('customers')->where('id', $third->id)->update(['serial_number' => 2]);
+        DB::table('customer_serial_sequences')->where('user_id', $owner->id)->update(['next_number' => 2]);
+
+        $migration = require database_path('migrations/2026_09_28_000000_repair_restored_customer_serial_numbers.php');
+        $migration->up();
+
+        $this->assertSame(1, $first->fresh()->serial_number);
+        $this->assertSame(2, $second->fresh()->serial_number);
+        $this->assertSame(3, $third->fresh()->serial_number);
+        $this->assertDatabaseHas('customer_serial_sequences', ['user_id' => $owner->id, 'next_number' => 4]);
+
+        $fourth = Customers::create(['user_id' => $owner->id, 'name' => 'Fourth', 'phone_number1' => '03004444444']);
+        $this->assertSame(4, $fourth->serial_number);
+    }
+
     public function test_customer_directory_searches_and_displays_the_shop_serial_number(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
@@ -153,7 +177,7 @@ class CustomerCreationTest extends TestCase
             ->assertDontSee('data-step="3"', false)
             ->assertSeeText('مشترکہ گاہک اکاؤنٹ');
 
-        $this->actingAs($owner)->post(route('admin.Customers.store'), [
+        $response = $this->actingAs($owner)->post(route('admin.Customers.store'), [
             'name' => 'QA Urdu Customer',
             'contact' => '03001234567',
             'length' => 42,
@@ -168,8 +192,7 @@ class CustomerCreationTest extends TestCase
             'chuta' => 15,
             'note' => 'اردو ٹیسٹ ریکارڈ',
             'mobile_pin' => '482913',
-        ])->assertRedirect('admin/Customers')
-            ->assertSessionHas('customer_pin', '482913');
+        ])->assertSessionHas('customer_pin', '482913');
 
         $this->assertDatabaseHas('customers', [
             'name' => 'QA Urdu Customer',
@@ -179,6 +202,11 @@ class CustomerCreationTest extends TestCase
         ]);
         $this->assertTrue(Hash::check('482913', Customers::firstOrFail()->mobile_pin));
         $customer = Customers::firstOrFail();
+        $response->assertRedirect(route('admin.Customers.index', ['created' => $customer->id]));
+        $this->followRedirects($response)
+            ->assertSeeText('گاہک کامیابی سے شامل کر دیا گیا ہے۔')
+            ->assertSee('data-customer-row="'.$customer->id.'"', false)
+            ->assertSee('data-order="'.$customer->id.'"', false);
         $this->actingAs($owner)->get(route('admin.Customers.edit', $customer))
             ->assertOk()
             ->assertSeeInOrder(['name="chuta"', 'value="15"'], false);
