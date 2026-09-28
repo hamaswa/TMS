@@ -74,6 +74,7 @@ class SaleSessionWorkflowTest extends TestCase
     {
         [$owner, $agent] = $this->businessUsers();
         [$cloth, $color] = $this->stock($owner);
+        $cloth->update(['color_tracking_mode' => Cloth::COLOR_TRACKING_NONE]);
         $customer = Customers::create(['name' => 'Direct Buyer', 'phone_number1' => '', 'user_id' => $owner->id]);
         $token = $this->login($agent);
         $uuid = 'direct-mobile-completion';
@@ -319,7 +320,9 @@ class SaleSessionWorkflowTest extends TestCase
         $brand = ClothBrand::create(['name' => 'Summer', 'user_id' => $owner->id]);
         $cloth = Cloth::create([
             'cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id,
-            'price' => 100, 'sale_price' => 150, 'user_id' => $owner->id,
+            'price' => 100, 'sale_price' => 150,
+            'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR,
+            'user_id' => $owner->id,
         ]);
         $color = ClothColor::create([
             'cloth_id' => $cloth->id, 'color' => 'Blue', 'length' => 10,

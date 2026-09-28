@@ -12,6 +12,7 @@ export type SaleLine = {
   clothTypeId: number | null;
   color: string;
   availableColors: string[];
+  requiresColor: boolean;
   quantity: string;
   length: string;
   unitPrice: string;
@@ -46,6 +47,7 @@ export const createSaleLine = (): SaleLine => ({
   clothTypeId: null,
   color: '',
   availableColors: [],
+  requiresColor: false,
   quantity: '1',
   length: '',
   unitPrice: '',

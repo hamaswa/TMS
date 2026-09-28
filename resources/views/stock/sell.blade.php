@@ -66,17 +66,19 @@
             <div class="counter-sale-panel-body">
                 <div class="counter-customer-modes" role="radiogroup" aria-label="گاہک کی قسم">
                     <label class="counter-customer-mode"><input type="radio" name="customer_mode" value="regular" @checked($saleCustomerMode === 'regular')><span><i class="fas fa-users"></i><span><strong>ریگولر گاہک</strong><small>موجودہ گاہکوں کی فہرست سے منتخب کریں</small></span></span></label>
-                    <label class="counter-customer-mode"><input type="radio" name="customer_mode" value="random" @checked($saleCustomerMode === 'random')><span><i class="fas fa-user-plus"></i><span><strong>رینڈم / نیا گاہک</strong><small>نام لکھیں، نمبر اختیاری ہے</small></span></span></label>
+                    <label class="counter-customer-mode"><input type="radio" name="customer_mode" value="new" @checked(in_array($saleCustomerMode, ['new','random'], true))><span><i class="fas fa-user-plus"></i><span><strong>نیا گاہک</strong><small>محفوظ کریں اور آئندہ فروخت میں استعمال کریں</small></span></span></label>
+                    <label class="counter-customer-mode"><input type="radio" name="customer_mode" value="walk_in" @checked($saleCustomerMode === 'walk_in')><span><i class="fas fa-walking"></i><span><strong>واک اِن فروخت</strong><small>بغیر نام، مکمل ادائیگی کے ساتھ</small></span></span></label>
                 </div>
                 <input type="hidden" name="c_name" id="legacy_c_name" value="{{ old('c_name') }}">
                 <div class="counter-customer-fields" id="regularCustomerFields" @if($saleCustomerMode !== 'regular') hidden @endif><div class="form-row">
                     <div class="form-group col-md-6 mb-md-0"><label for="existing_customer_id">گاہک کا نام <span class="required">*</span></label><div class="counter-input"><i class="far fa-user"></i><select name="existing_customer_id" class="form-control custom-select" id="existing_customer_id"><option value="">گاہک منتخب کریں</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" data-legacy="{{ $customer->name.'|'.$customer->id }}" @selected((string) old('existing_customer_id', $sessionDefaults['customer_id'] ?? '') === (string) $customer->id)>{{ $customer->name }} (#{{ $customer->serial_number ?? $customer->id }})</option>@endforeach</select></div>@error('existing_customer_id')<div class="text-danger mt-1">{{ $message }}</div>@enderror</div>
                     <div class="form-group col-md-6 mb-md-0"><label for="nmbr">رابطہ نمبر</label><div class="counter-input"><i class="fas fa-phone"></i><input type="tel" inputmode="tel" class="form-control" name="phone" id="nmbr" value="{{ old('phone') }}" placeholder="منتخب گاہک کا رابطہ نمبر" autocomplete="tel" readonly></div></div>
                 </div></div>
-                <div class="counter-customer-fields" id="randomCustomerFields" @if($saleCustomerMode !== 'random') hidden @endif><div class="form-row">
+                <div class="counter-customer-fields" id="randomCustomerFields" @if(!in_array($saleCustomerMode, ['new','random'], true)) hidden @endif><div class="form-row">
                     <div class="form-group col-md-6 mb-md-0"><label for="random_customer_name">نئے گاہک کا نام <span class="required">*</span></label><div class="counter-input"><i class="far fa-user"></i><input type="text" class="form-control" name="random_customer_name" id="random_customer_name" value="{{ old('random_customer_name', $sessionDefaults['customer_name'] ?? '') }}" maxlength="255" placeholder="گاہک کا نام لکھیں" autocomplete="name"></div>@error('random_customer_name')<div class="text-danger mt-1">{{ $message }}</div>@enderror</div>
                     <div class="form-group col-md-6 mb-md-0"><label for="random_customer_phone">رابطہ نمبر <small>(اختیاری)</small></label><div class="counter-input"><i class="fas fa-phone"></i><input type="tel" inputmode="tel" class="form-control" name="random_customer_phone" id="random_customer_phone" value="{{ old('random_customer_phone', $sessionDefaults['customer_phone'] ?? '') }}" maxlength="30" placeholder="نمبر ہو تو لکھیں" autocomplete="tel"></div>@error('random_customer_phone')<div class="text-danger mt-1">{{ $message }}</div>@enderror</div>
                 </div><p class="counter-customer-note"><i class="fas fa-info-circle ml-1"></i>فروخت محفوظ ہونے پر یہ گاہک خود بخود گاہکوں کی فہرست میں شامل ہو جائے گا۔</p></div>
+                <div class="counter-customer-fields" id="walkInCustomerFields" @if($saleCustomerMode !== 'walk_in') hidden @endif><p class="counter-customer-note mb-0"><i class="fas fa-info-circle ml-1"></i>واک اِن فروخت گاہکوں کی فہرست یا نئے گاہکوں کے اعداد میں شامل نہیں ہوگی، اور مکمل رقم وصول کرنا ضروری ہے۔</p></div>
             </div>
         </section>
 
@@ -86,23 +88,25 @@
                 <div class="counter-scan-box">
                     <div><label for="counter-stock-scan">QR / اسٹاک کوڈ اسکین کریں</label><input type="text" id="counter-stock-scan" class="form-control" autocomplete="off" placeholder="QR اسکین کریں یا اسٹاک کوڈ لکھیں" aria-describedby="counter-scan-feedback"></div>
                     <button type="button" id="counter-scan-add" class="btn btn-primary"><i class="fas fa-qrcode ml-1"></i> آئٹم شامل کریں</button>
-                    <p id="counter-scan-feedback" class="counter-scan-feedback text-muted">ہر اسکین سے برانڈ اور قسم منتخب ہوں گے؛ رنگ اختیاری ہے۔</p>
+                    <p id="counter-scan-feedback" class="counter-scan-feedback text-muted">رنگ کے حساب سے محفوظ سیٹ میں رنگ لازمی ہوگا؛ مجموعی سیٹ میں رنگ نظر نہیں آئے گا۔</p>
                 </div>
                 <div id="stockDataContainer" aria-live="polite">
                     @foreach($saleItems as $itemIndex => $saleItem)
                     @php
                         $selectedBrand = (string) ($saleItem['brand_id'] ?? '');
+                        $selectedClothId = (string) ($saleItem['cloth_id'] ?? '');
                         $selectedType = (string) ($saleItem['type_id'] ?? '');
                         $selectedColor = (string) ($saleItem['color'] ?? '');
                         $typeCloths = $cloths->where('cloth_brand_id', $selectedBrand)->unique('cloth_type_id');
-                        $colorCloth = $cloths->first(fn ($cloth) => (string) $cloth->cloth_brand_id === $selectedBrand && (string) $cloth->cloth_type_id === $selectedType);
+                        $colorCloth = $selectedClothId !== '' ? $cloths->firstWhere('id', (int) $selectedClothId) : $cloths->first(fn ($cloth) => (string) $cloth->cloth_brand_id === $selectedBrand && (string) $cloth->cloth_type_id === $selectedType);
                     @endphp
                     <article class="stock-data counter-sale-item">
                         <div class="counter-item-summary"><small>آئٹم کا خلاصہ</small><div class="counter-item-actions"><span class="counter-line-total">Rs. {{ number_format((float) ($saleItem['item_total'] ?? 0), 2) }}</span>@if($itemIndex > 0)<button type="button" class="counter-remove-item" aria-label="یہ آئٹم ہٹائیں"><i class="fas fa-trash"></i></button>@endif</div></div>
                         <div class="counter-item-identity"><span class="counter-item-number">{{ $itemIndex + 1 }}</span></div>
+                        <input type="hidden" class="js-cloth-id" name="cloth_id[]" value="{{ $colorCloth?->id }}">
                         <div class="form-group"><label>برانڈ <span class="required">*</span></label><select class="form-control js-brand" name="brand_name[]" required><option value="" disabled @selected($selectedBrand === '')>برانڈ منتخب کریں</option>@foreach($cloths->unique('cloth_brand_id') as $cloth)<option value="{{ $cloth->cloth_brand_id }}" @selected($selectedBrand === (string) $cloth->cloth_brand_id)>{{ $cloth->brand->name }}</option>@endforeach</select></div>
                         <div class="form-group"><label>کپڑے کی قسم <span class="required">*</span></label><select class="form-control js-cloth-type" name="cloth_type[]" required><option value="" disabled @selected($selectedType === '')>پہلے برانڈ منتخب کریں</option>@foreach($typeCloths as $cloth)<option value="{{ $cloth->cloth_type_id }}" @selected($selectedType === (string) $cloth->cloth_type_id)>{{ $cloth->type->name }}</option>@endforeach</select></div>
-                        <div class="form-group"><label>رنگ <small>(اختیاری)</small></label><select class="form-control js-color" name="color[]"><option value="" @selected($selectedColor === '')>رنگ معلوم نہیں</option>@foreach(($colorCloth?->colors ?? collect())->where('length', '>', 0) as $color)<option value="{{ $color->color }}" @selected($selectedColor === (string) $color->color)>{{ $color->color }} ({{ (float) $color->length }} میٹر)</option>@endforeach</select></div>
+                        <div class="form-group js-color-group" @if(!$colorCloth?->tracksColors()) hidden @endif><label>رنگ <span class="required">*</span></label><select class="form-control js-color" name="color[]" @required($colorCloth?->tracksColors())><option value="" disabled @selected($selectedColor === '')>رنگ منتخب کریں</option>@foreach(($colorCloth?->tracksColors() ? $colorCloth->colors : collect())->where('length', '>', 0) as $color)<option value="{{ $color->color }}" @selected($selectedColor === (string) $color->color)>{{ $color->color }} ({{ (float) $color->length }} میٹر)</option>@endforeach</select></div>
                         <div class="form-group"><label>میٹر / گز <span class="required">*</span></label><div class="counter-input"><i class="fas fa-ruler"></i><input type="number" class="form-control" name="length[]" value="{{ $saleItem['length'] ?? '' }}" min="0.01" step="0.01" placeholder="مقدار" required></div></div>
                         <div class="form-group"><label>کل قیمت <span class="required">*</span></label><div class="counter-input"><i class="fas fa-money-bill-wave"></i><input type="number" class="form-control has-suffix" name="item_total[]" value="{{ $saleItem['item_total'] ?? '' }}" min="0" step="0.01" placeholder="کل قیمت" required><input type="hidden" name="per_meter[]" value="0"><input type="hidden" name="clothes_rack[]" value=""><span class="counter-input-suffix">Rs.</span></div></div>
                         <div class="form-group js-rate-wrap"><label>ریٹ فی میٹر <small>(خودکار)</small></label><input type="text" class="form-control js-rate-per-meter" value="Rs. 0.00" readonly></div>
@@ -148,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const legacyCustomer = document.getElementById('legacy_c_name');
     const regularCustomerFields = document.getElementById('regularCustomerFields');
     const randomCustomerFields = document.getElementById('randomCustomerFields');
+    const walkInCustomerFields = document.getElementById('walkInCustomerFields');
     const randomCustomerName = document.getElementById('random_customer_name');
     const phone = document.getElementById('nmbr');
     const total = document.getElementById('total');
@@ -189,8 +194,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const brand = item.querySelector('.js-brand');
         const clothType = item.querySelector('.js-cloth-type');
         const color = item.querySelector('.js-color');
+        item.querySelector('.js-cloth-id').value = '';
         clothType.innerHTML = '<option value="" disabled selected>لوڈ ہو رہا ہے…</option>';
-        color.innerHTML = '<option value="" selected>رنگ معلوم نہیں</option>';
+        color.innerHTML = '<option value="" disabled selected>رنگ منتخب کریں</option>';
         try {
             const response = await fetch(form.dataset.typesUrl + '?id=' + encodeURIComponent(brand.value), {headers:{'Accept':'application/json'}});
             if (!response.ok) throw new Error();
@@ -204,15 +210,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const typeId = item.querySelector('.js-cloth-type').value;
         const color = item.querySelector('.js-color');
         const match = inventoryOptions.find(entry => entry.brand_id === brandId && entry.type_id === typeId);
-        color.innerHTML = '<option value="" selected>رنگ معلوم نہیں</option>';
-        (match?.colors || []).filter(entry => entry.length > 0).forEach(function (entry) {
+        const group = item.querySelector('.js-color-group');
+        item.querySelector('.js-cloth-id').value = match?.cloth_id || '';
+        group.hidden = !match?.tracks_colors;
+        color.required = Boolean(match?.tracks_colors);
+        color.innerHTML = match?.tracks_colors ? '<option value="" disabled selected>رنگ منتخب کریں</option>' : '<option value="" selected>رنگ لاگو نہیں</option>';
+        (match?.tracks_colors ? match.colors : []).filter(entry => entry.length > 0).forEach(function (entry) {
             const option = document.createElement('option');
             option.value = entry.name;
             option.textContent = entry.name + ' (' + entry.length + ' میٹر)';
             color.appendChild(option);
         });
-        if (!match || !match.colors.some(entry => entry.length > 0)) {
-            color.innerHTML = '<option value="" selected>اس کپڑے کا کوئی رنگ اسٹاک میں نہیں</option>';
+        if (match?.tracks_colors && !match.colors.some(entry => entry.length > 0)) {
+            color.innerHTML = '<option value="" disabled selected>اس کپڑے کا کوئی رنگ اسٹاک میں نہیں</option>';
         }
     };
     const bindItem = function (item) {
@@ -229,7 +239,10 @@ document.addEventListener('DOMContentLoaded', function () {
         item.querySelectorAll('input').forEach(input => { input.value = input.classList.contains('js-rate-per-meter') ? 'Rs. 0.00' : (input.name === 'per_meter[]' ? '0' : ''); });
         item.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
         item.querySelector('.js-cloth-type').innerHTML = '<option value="" disabled selected>پہلے برانڈ منتخب کریں</option>';
-        item.querySelector('.js-color').innerHTML = '<option value="" selected>رنگ معلوم نہیں</option>';
+        item.querySelector('.js-cloth-id').value = '';
+        item.querySelector('.js-color-group').hidden = true;
+        item.querySelector('.js-color').required = false;
+        item.querySelector('.js-color').innerHTML = '<option value="" selected>رنگ لاگو نہیں</option>';
         item.querySelector('.counter-line-total').textContent = 'Rs. 0.00';
         const actionWrap = item.querySelector('.counter-item-actions');
         const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'counter-remove-item'; remove.setAttribute('aria-label','یہ آئٹم ہٹائیں'); remove.innerHTML = '<i class="fas fa-trash"></i>'; actionWrap.appendChild(remove);
@@ -263,27 +276,29 @@ document.addEventListener('DOMContentLoaded', function () {
         let item = Array.from(container.querySelectorAll('.stock-data')).find(row => !row.querySelector('.js-brand').value);
         if (!item) item = createItem();
         item.querySelector('.js-brand').value = match.brand_id;
+        item.querySelector('.js-cloth-id').value = match.cloth_id;
         item.querySelector('.js-cloth-type').innerHTML = '<option value="' + match.type_id + '" selected>' + (match.type_name || '') + '</option>';
         const colorSelect = item.querySelector('.js-color');
-        colorSelect.innerHTML = '<option value="" selected>رنگ معلوم نہیں</option>';
-        availableColors.forEach(function (entry) {
+        const colorGroup = item.querySelector('.js-color-group');
+        colorGroup.hidden = !match.tracks_colors;
+        colorSelect.required = Boolean(match.tracks_colors);
+        colorSelect.innerHTML = match.tracks_colors ? '<option value="" disabled selected>رنگ منتخب کریں</option>' : '<option value="" selected>رنگ لاگو نہیں</option>';
+        (match.tracks_colors ? availableColors : []).forEach(function (entry) {
             const option = document.createElement('option');
             option.value = entry.name;
             option.textContent = entry.name + ' (' + entry.length + ' میٹر)';
             colorSelect.appendChild(option);
         });
-        const preferredColor = availableColors.find(entry => entry.name === 'عام') || (availableColors.length === 1 ? availableColors[0] : null);
-        if (preferredColor) colorSelect.value = preferredColor.name;
         item.querySelector('[name="length[]"]').value = '';
         item.querySelector('[name="item_total[]"]').value = '';
         calculateTotals();
         scanInput.value = '';
-        if (preferredColor) {
-            scanFeedback.textContent = 'آئٹم شامل ہو گیا: ' + (match.brand_name || '') + ' / ' + (match.type_name || '') + ' / ' + preferredColor.name;
+        if (!match.tracks_colors) {
+            scanFeedback.textContent = 'بغیر رنگ والا سیٹ شامل ہو گیا: ' + (match.brand_name || '') + ' / ' + (match.type_name || '');
             scanFeedback.className = 'counter-scan-feedback is-success';
             item.querySelector('[name="length[]"]').focus();
         } else {
-            scanFeedback.textContent = 'برانڈ اور قسم شامل ہو گئے؛ اس کپڑے کے متعدد رنگ ہیں، رنگ منتخب کریں۔';
+            scanFeedback.textContent = 'سیٹ شامل ہو گیا؛ فروخت مکمل کرنے سے پہلے رنگ منتخب کریں۔';
             scanFeedback.className = 'counter-scan-feedback is-warning';
             colorSelect.focus();
         }
@@ -294,10 +309,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const syncCustomerMode = function () {
         const mode = form.querySelector('[name="customer_mode"]:checked')?.value || 'regular';
         const isRegular = mode === 'regular';
+        const isNew = mode === 'new';
+        const isWalkIn = mode === 'walk_in';
         regularCustomerFields.hidden = !isRegular;
-        randomCustomerFields.hidden = isRegular;
+        randomCustomerFields.hidden = !isNew;
+        walkInCustomerFields.hidden = !isWalkIn;
         customer.required = isRegular;
-        randomCustomerName.required = !isRegular;
+        randomCustomerName.required = isNew;
         if (isRegular) {
             const selected = customer.options[customer.selectedIndex];
             legacyCustomer.value = selected?.dataset.legacy || '';

@@ -18,7 +18,7 @@
             <article class="set-label" id="cloth-set-{{ $cloth->id }}">
                 {!! $cloth->qr_svg !!}
                 <h2>{{ $cloth->brand?->name ?? 'Brand' }} — {{ $cloth->type?->name ?? 'Cloth' }}</h2>
-                <p class="set-label-colors">رنگ: {{ $cloth->colors->pluck('color')->join('، ') ?: 'درج نہیں' }}</p>
+                @if($cloth->tracksColors())<p class="set-label-colors">رنگ: {{ $cloth->colors->pluck('color')->join('، ') }}</p>@else<p class="set-label-colors">رنگ کے بغیر مجموعی سیٹ</p>@endif
                 <div class="set-label-code">{{ $cloth->set_code }}</div>
             </article>
         @empty

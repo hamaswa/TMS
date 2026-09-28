@@ -35,6 +35,7 @@ use App\Http\Controllers\OrderWorkAssignmentController;
 use App\Http\Controllers\ProductionWorkerController;
 use App\Http\Controllers\PublicOrderTrackingController;
 use App\Http\Controllers\PublicLocaleController;
+use App\Http\Controllers\PublicBusinessSignupController;
 use App\Http\Controllers\PublicStorefrontCartController;
 use App\Http\Controllers\PublicStorefrontCheckoutController;
 use App\Http\Controllers\PublicStorefrontController;
@@ -66,7 +67,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Auth::routes(['register' => false]);
+Auth::routes(['register' => false, 'verify' => true]);
 
 Route::get('/offline', [OfflineWorkspaceController::class, 'fallback'])->name('offline.fallback');
 
@@ -79,6 +80,10 @@ Route::get('/language/{locale}', [PublicLocaleController::class, 'update'])
     ->whereIn('locale', ['ur', 'en'])->name('public.locale.update');
 Route::get('/', [PublicStorefrontController::class, 'index'])->middleware('public.locale')->name('storefront.index');
 Route::get('/for-business', [PublicStorefrontController::class, 'business'])->middleware('public.locale')->name('storefront.business');
+Route::get('/for-business/signup', [PublicBusinessSignupController::class, 'create'])
+    ->middleware('public.locale')->name('storefront.business.signup');
+Route::post('/for-business/signup', [PublicBusinessSignupController::class, 'store'])
+    ->middleware(['public.locale', 'throttle:3,1'])->name('storefront.business.signup.store');
 Route::redirect('/shops', '/', 301)->name('storefront.legacy.index');
 Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->middleware('public.locale')->name('storefront.show');
 Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->middleware('public.locale')->name('storefront.clothing.index');

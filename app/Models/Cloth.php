@@ -19,9 +19,18 @@ class Cloth extends Model
         'length',
         'price',
         'sale_price',
+        'color_tracking_mode',
         'user_id',
         'stock_code',
     ];
+
+    public const COLOR_TRACKING_NONE = 'none';
+    public const COLOR_TRACKING_PER_COLOR = 'per_color';
+
+    public function tracksColors(): bool
+    {
+        return $this->color_tracking_mode === self::COLOR_TRACKING_PER_COLOR;
+    }
 
     protected static function booted(): void
     {

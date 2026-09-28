@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClothColor;
+use App\Models\Customers;
 use App\Models\BusinessRole;
 use App\Models\Order;
 use App\Models\Purchase;
@@ -112,6 +113,10 @@ class HomeController extends Controller
             'month_sales' => $canSales ? (float) (clone $monthSalesQuery)->sum(DB::raw('selling_price * length')) : null,
             'today_sales' => $canSales ? (float) SaleStock::where('user_id', $ownerId)
                 ->financiallyActive()->whereDate('sellDate', today())->sum(DB::raw('selling_price * length')) : null,
+            'new_customers_week' => $canSales ? Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', false)
+                ->whereBetween('first_sale_at', [now()->startOfWeek(), now()->endOfWeek()])->count() : null,
+            'new_customers_month' => $canSales ? Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', false)
+                ->whereBetween('first_sale_at', [now()->startOfMonth(), now()->endOfMonth()])->count() : null,
         ];
 
         $salesTrend = collect();

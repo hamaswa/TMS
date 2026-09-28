@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SaleSession;
 use App\Services\SaleSessionService;
+use App\Services\ShopHubService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,18 +65,48 @@ class SaleSessionController extends Controller
         ]);
     }
 
-    public function claim(Request $request, SaleSession $saleSession, SaleSessionService $service): RedirectResponse
+    public function claim(
+        Request $request,
+        SaleSession $saleSession,
+        SaleSessionService $service,
+        ShopHubService $hub,
+    ): RedirectResponse
     {
         $this->authorizeTenant($request, $saleSession);
-        $service->claim($saleSession, $request->user());
+        $baseRevision = $saleSession->revision;
+        $claimed = $service->claim($saleSession, $request->user());
+        $hub->recordSaleEvent(
+            $request->user(),
+            $claimed,
+            'sale_session.claimed',
+            null,
+            $request->header('X-Shop-Device-Id'),
+            $baseRevision,
+            $service->serialize($claimed),
+        );
 
         return back()->with('success', 'Sale session claimed.');
     }
 
-    public function complete(Request $request, SaleSession $saleSession, SaleSessionService $service): RedirectResponse
+    public function complete(
+        Request $request,
+        SaleSession $saleSession,
+        SaleSessionService $service,
+        ShopHubService $hub,
+    ): RedirectResponse
     {
         $this->authorizeTenant($request, $saleSession);
+        $baseRevision = $saleSession->revision;
         $completed = $service->complete($saleSession, $request->user());
+        $hub->recordSaleEvent(
+            $request->user(),
+            $completed,
+            'sale_session.completed',
+            null,
+            $request->header('X-Shop-Device-Id'),
+            $baseRevision,
+            $service->serialize($completed),
+        );
 
         return redirect()->route('admin.printStock', [
             'id' => $completed->receipt->first_sale_stock_id,

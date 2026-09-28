@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\SalesAgentController;
+use App\Http\Controllers\Api\ShopHubController;
+use App\Http\Controllers\Api\ShopHubRelayController;
 use App\Http\Controllers\ReactNativeController\ReactNativeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,11 +25,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [ReactNativeController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/v2/login', [ReactNativeController::class, 'login'])->middleware('throttle:5,1');
+Route::get('/shop-hub/status', [ShopHubController::class, 'status'])->middleware('throttle:60,1');
+Route::post('/shop-hub/relay', [ShopHubRelayController::class, 'store'])
+    ->middleware(['shop.hub.relay', 'throttle:120,1']);
 
 Route::prefix('sales-agent')->group(function () {
     Route::post('/login', [SalesAgentController::class, 'login'])->middleware('throttle:5,1');
     Route::middleware(['auth:sanctum', 'abilities:sales-agent', 'sales.agent'])->group(function () {
         Route::post('/logout', [SalesAgentController::class, 'logout']);
+        Route::get('/shop-context', [ShopHubController::class, 'status']);
         Route::get('/customers', [SalesAgentController::class, 'customers']);
         Route::get('/inventory', [SalesAgentController::class, 'inventory']);
         Route::get('/inventory/sets/{code}', [SalesAgentController::class, 'inventorySet']);

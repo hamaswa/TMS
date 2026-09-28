@@ -10,8 +10,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ApiError, login as apiLogin } from '../services/api';
+import { ApiError, connectionProfileFrom, login as apiLogin } from '../services/api';
 import { setToken } from '../storage/authStorage';
+import { setConnectionProfile } from '../storage/connectionStorage';
 
 const BLUE = '#123b5d';
 const GREEN = '#147a5a';
@@ -19,6 +20,7 @@ const GREEN = '#147a5a';
 export function LoginScreen() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
+  const [shopServer, setShopServer] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,7 +32,9 @@ export function LoginScreen() {
     setSubmitting(true);
     setMessage(null);
     try {
-      const result = await apiLogin(login.trim(), password);
+      const selectedServer = shopServer.trim() || undefined;
+      const result = await apiLogin(login.trim(), password, selectedServer);
+      await setConnectionProfile(connectionProfileFrom(selectedServer, result.connection));
       await setToken(result.token, result.user.id);
       router.replace('/sale');
     } catch (error) {
@@ -56,7 +60,25 @@ export function LoginScreen() {
             Sign in with the same employee account used by the shop dashboard.
           </Text>
 
+          <Text style={styles.connectionHelp}>
+            When the internet is unavailable, enter the Shop Hub address shown on the admin computer.
+          </Text>
+
           <View style={styles.card}>
+            <View style={styles.fieldWrap}>
+              <Text style={styles.label}>Shop Hub address (optional)</Text>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                value={shopServer}
+                onChangeText={setShopServer}
+                placeholder="http://192.168.1.10:8010"
+                placeholderTextColor="#8796a1"
+                style={styles.input}
+              />
+              <Text style={styles.fieldHint}>Leave empty to use the configured cloud server.</Text>
+            </View>
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Username or email</Text>
               <TextInput
@@ -128,6 +150,7 @@ const styles = StyleSheet.create({
   eyebrow: { color: GREEN, fontSize: 12, fontWeight: '900', letterSpacing: 2 },
   title: { color: BLUE, fontSize: 38, fontWeight: '900', marginTop: 3 },
   subtitle: { color: '#536672', fontSize: 16, lineHeight: 23, marginTop: 8, marginBottom: 20 },
+  connectionHelp: { color: '#536672', fontSize: 13, lineHeight: 19, marginBottom: 12 },
   card: {
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -138,6 +161,7 @@ const styles = StyleSheet.create({
   },
   fieldWrap: { gap: 7 },
   label: { color: '#425460', fontSize: 13, fontWeight: '800' },
+  fieldHint: { color: '#768691', fontSize: 11, lineHeight: 16 },
   input: {
     borderColor: '#c7d2d9',
     borderWidth: 1,

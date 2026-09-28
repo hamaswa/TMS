@@ -28,12 +28,14 @@ import {
   ApiError,
   completeSession,
   CustomerResult,
+  getShopContext,
   InventoryListItem,
   listInventory,
   logout,
   lookupInventorySet,
   requestAttention,
   searchCustomers,
+  ShopConnection,
 } from '../services/api';
 import { clearToken, getToken, getUserId } from '../storage/authStorage';
 
@@ -56,6 +58,7 @@ export function SaleDraftScreen() {
   } = useSaleDraft();
   const [scannerVisible, setScannerVisible] = useState(false);
   const [online, setOnline] = useState<boolean | null>(null);
+  const [shopConnection, setShopConnection] = useState<ShopConnection | null>(null);
   const [syncState, setSyncState] = useState<'waiting' | 'syncing' | 'offline' | 'conflict' | 'claimed'>('waiting');
   const [completing, setCompleting] = useState(false);
   const [forwarding, setForwarding] = useState(false);
@@ -83,9 +86,25 @@ export function SaleDraftScreen() {
   }
 
   useEffect(() => NetInfo.addEventListener((state) => {
-    const connected = Boolean(state.isConnected);
-    setOnline(connected);
-    if (!connected) setSyncState('offline');
+    const networkAvailable = Boolean(state.isConnected);
+    if (!networkAvailable) {
+      setOnline(false);
+      setShopConnection(null);
+      setSyncState('offline');
+      return;
+    }
+
+    getShopContext()
+      .then((result) => {
+        setOnline(true);
+        setShopConnection(result.data);
+        setSyncState((current) => current === 'offline' ? 'waiting' : current);
+      })
+      .catch(() => {
+        setOnline(false);
+        setShopConnection(null);
+        setSyncState('offline');
+      });
   }), []);
 
   useEffect(() => {
@@ -126,9 +145,21 @@ export function SaleDraftScreen() {
     [draft],
   );
 
+  const saleProblem = (completingSale: boolean): string | null => {
+    if (draft.lines.length === 0) return 'Scan a QR code or add an item from shop inventory first.';
+    if (draft.customerMode === 'existing' && !draft.customerId) return 'Select an existing customer.';
+    if (draft.customerMode === 'new' && !draft.newCustomerName.trim()) return 'Enter the new customer name.';
+    if (draft.lines.some((line) => line.requiresColor && !line.color)) return 'Select a color for every color-tracked cloth set.';
+    if (completingSale && draft.customerMode === 'walk-in' && totals.remaining > 0.009) {
+      return 'A walk-in sale must be fully paid. Otherwise save the buyer as a new customer.';
+    }
+    return null;
+  };
+
   const forwardToAdmin = async () => {
-    if (draft.lines.length === 0) {
-      Alert.alert('Cart is empty', 'Scan a QR code or add an item from shop inventory first.');
+    const problem = saleProblem(false);
+    if (problem) {
+      Alert.alert('Sale is incomplete', problem);
       return;
     }
     setForwarding(true);
@@ -148,8 +179,9 @@ export function SaleDraftScreen() {
   };
 
   const finishSale = async () => {
-    if (draft.lines.length === 0) {
-      Alert.alert('Cart is empty', 'Scan a QR code or add an item from shop inventory first.');
+    const problem = saleProblem(true);
+    if (problem) {
+      Alert.alert('Sale is incomplete', problem);
       return;
     }
     setCompleting(true);
@@ -183,7 +215,8 @@ export function SaleDraftScreen() {
         clothType: result.data.clothType,
         unitPrice: result.data.salePrice,
         availableColors: colors,
-        color: colors.length === 1 ? colors[0] : '',
+        requiresColor: result.data.colorTrackingMode === 'per_color',
+        color: '',
       });
       return true;
     } catch (error) {
@@ -230,7 +263,8 @@ export function SaleDraftScreen() {
       clothType: item.clothType,
       unitPrice: item.salePrice,
       availableColors: colors,
-      color: colors.length === 1 ? colors[0] : '',
+      requiresColor: item.colorTrackingMode === 'per_color',
+      color: '',
     });
     setManualPickerVisible(false);
   };
@@ -253,9 +287,14 @@ export function SaleDraftScreen() {
             </View>
             <View style={styles.statuses}>
               <StatusChip
-                label={online ? 'Online' : online === false ? 'Offline' : 'Checking'}
+                label={online
+                  ? shopConnection?.mode === 'shop' ? 'Shop connected' : 'Cloud online'
+                  : online === false ? 'Isolated' : 'Checking'}
                 tone={online ? 'green' : 'blue'}
               />
+              {shopConnection?.mode === 'shop' && shopConnection.pendingCloudEvents ? (
+                <StatusChip label={`${shopConnection.pendingCloudEvents} cloud pending`} tone="blue" />
+              ) : null}
               <StatusChip label={saveLabel(saveState)} tone={saveState === 'failed' ? 'red' : 'blue'} />
               {syncState === 'offline' || syncState === 'conflict' || syncState === 'claimed' ? (
                 <StatusChip label={syncLabel(syncState)} tone={syncState === 'offline' || syncState === 'conflict' ? 'red' : 'blue'} />
@@ -595,7 +634,7 @@ function ManualInventoryModal({
                 <View style={styles.inventoryText}>
                   <Text style={styles.inventoryName}>{item.clothType}</Text>
                   <Text style={styles.inventoryMeta}>
-                    {item.brand} · Set {item.setCode || 'without code'} · {item.colors.length} colors · {availableLength.toLocaleString('en-PK')} available
+                    {item.brand} · Set {item.setCode || 'without code'} · {item.colorTrackingMode === 'per_color' ? `${item.colors.length} colors` : 'no color tracking'} · {availableLength.toLocaleString('en-PK')} available
                   </Text>
                 </View>
                 <View style={styles.inventoryPriceWrap}>
@@ -698,23 +737,20 @@ function SaleLineCard({
       {hasStockItem && line.setCode ? <Text style={styles.scanned}>Stock set: {line.setCode}</Text> : null}
       {hasStockItem ? <LockedField label="Brand" value={line.brand} /> : null}
       {hasStockItem ? <LockedField label="Cloth type / model" value={line.clothType} /> : null}
-      {hasStockItem && line.availableColors?.length ? (
+      {hasStockItem && line.requiresColor ? (
         <>
-          <Text style={styles.fieldLabel}>Color (optional)</Text>
+          <Text style={styles.fieldLabel}>Color *</Text>
         <View style={styles.colorChoices}>
           {line.availableColors.map((color) => (
             <Pressable key={color} onPress={() => onChange({ color })} style={[styles.colorChoice, line.color === color && styles.colorChoiceSelected]}>
               <Text style={[styles.colorChoiceText, line.color === color && styles.colorChoiceTextSelected]}>{color}</Text>
             </Pressable>
           ))}
-          <Pressable onPress={() => onChange({ color: '' })} style={[styles.colorChoice, !line.color && styles.colorChoiceSelected]}>
-            <Text style={[styles.colorChoiceText, !line.color && styles.colorChoiceTextSelected]}>Not sure</Text>
-          </Pressable>
         </View>
         </>
       ) : null}
-      {hasStockItem && !line.availableColors?.length ? (
-        <Text style={styles.help}>No color variants are recorded for this stock item. Color will remain blank.</Text>
+      {hasStockItem && !line.requiresColor ? (
+        <Text style={styles.help}>This set is stored without color tracking. No color selection is needed.</Text>
       ) : null}
       {hasStockItem ? (
         <>

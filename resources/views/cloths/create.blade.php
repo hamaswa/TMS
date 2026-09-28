@@ -28,7 +28,8 @@
             <div class="cloth-field-grid">
                 <div class="cloth-field"><label for="cloth_type_id">کپڑے کی قسم <span class="cloth-required">*</span></label><select id="cloth_type_id" name="cloth_type_id" class="form-control" required><option value="">قسم منتخب کریں</option>@foreach($cloth_types as $cloth_type)<option value="{{ $cloth_type->id }}" @selected(old('cloth_type_id') == $cloth_type->id)>{{ $cloth_type->name }}</option>@endforeach</select>@error('cloth_type_id')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field"><label for="cloth_brand_id">برانڈ / کمپنی <span class="cloth-required">*</span></label><select id="cloth_brand_id" name="cloth_brand_id" class="form-control" required><option value="">برانڈ منتخب کریں</option>@foreach($cloth_brands as $cloth_brand)<option value="{{ $cloth_brand->id }}" @selected(old('cloth_brand_id') == $cloth_brand->id)>{{ $cloth_brand->name }}</option>@endforeach</select>@error('cloth_brand_id')<div class="cloth-error">{{ $message }}</div>@enderror</div>
-                <div class="cloth-field is-wide"><label for="colors">دستیاب رنگ <small>اختیاری</small></label><div class="cloth-color-picker"><select id="colorPreset" class="form-control" aria-label="محفوظ رنگ منتخب کریں"><option value="">فہرست سے رنگ شامل کریں</option><option value="عام">عام (بغیر مخصوص رنگ)</option><option value="سفید">سفید</option><option value="کالا">کالا</option><option value="نیلا">نیلا</option><option value="سرمئی">سرمئی</option><option value="بھورا">بھورا</option><option value="سبز">سبز</option><option value="سرخ">سرخ</option><option value="کریم">کریم</option><option value="خاکی">خاکی</option><option value="میرون">میرون</option></select><input id="colors" type="text" name="colors" class="form-control" value="{{ old('colors', 'عام') }}" placeholder="منتخب رنگ یہاں نظر آئیں گے؛ نیا رنگ بھی لکھ سکتے ہیں" autocomplete="off"></div><small><i class="fas fa-info-circle ml-1"></i>عام پہلے سے منتخب ہے۔ مخصوص رنگ منتخب کرنے پر عام خود ہٹ جائے گا، اور ضرورت ہو تو اپنا رنگ بھی لکھ سکتے ہیں۔</small>@error('colors')<div class="cloth-error">{{ $message }}</div>@enderror</div>
+                <div class="cloth-field is-wide"><label for="color_tracking_mode">رنگ کے حساب سے اسٹاک <span class="cloth-required">*</span></label><select id="color_tracking_mode" name="color_tracking_mode" class="form-control" required><option value="none" @selected(old('color_tracking_mode', 'none') === 'none')>نہیں — پورے سیٹ کی ایک مجموعی مقدار</option><option value="per_color" @selected(old('color_tracking_mode') === 'per_color')>ہاں — ہر رنگ کی مقدار الگ</option></select><small>یہ انتخاب فروخت کا اصول طے کرے گا: رنگ والا سیٹ فروخت کرتے وقت رنگ لازمی ہوگا، جبکہ بغیر رنگ والے سیٹ میں رنگ کا انتخاب نظر نہیں آئے گا۔</small>@error('color_tracking_mode')<div class="cloth-error">{{ $message }}</div>@enderror</div>
+                <div class="cloth-field is-wide" id="trackedColorFields"><label for="colors">دستیاب رنگ <span class="cloth-required">*</span></label><div class="cloth-color-picker"><select id="colorPreset" class="form-control" aria-label="محفوظ رنگ منتخب کریں"><option value="">فہرست سے رنگ شامل کریں</option><option value="سفید">سفید</option><option value="کالا">کالا</option><option value="نیلا">نیلا</option><option value="سرمئی">سرمئی</option><option value="بھورا">بھورا</option><option value="سبز">سبز</option><option value="سرخ">سرخ</option><option value="کریم">کریم</option><option value="خاکی">خاکی</option><option value="میرون">میرون</option></select><input id="colors" type="text" name="colors" class="form-control" value="{{ old('colors') }}" placeholder="رنگ درج کریں، مثلاً سفید، کالا، نیلا" autocomplete="off"></div><small><i class="fas fa-info-circle ml-1"></i>ہر درج شدہ رنگ کے لیے الگ اسٹاک مقدار بنے گی۔</small>@error('colors')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field"><label for="price">فی میٹر قیمت خرید <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="price" type="number" name="price" class="form-control" value="{{ old('price') }}" min="0" step="0.01" placeholder="0.00" required inputmode="decimal"></div>@error('price')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field"><label for="sale_price">فی میٹر قیمت فروخت <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="sale_price" type="number" name="sale_price" class="form-control" value="{{ old('sale_price') }}" min="0" step="0.01" placeholder="0.00" required inputmode="decimal"></div>@error('sale_price')<div class="cloth-error">{{ $message }}</div>@enderror</div>
             </div>
@@ -57,6 +58,8 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const trackingMode = document.getElementById('color_tracking_mode');
+    const trackedColorFields = document.getElementById('trackedColorFields');
     const colorsInput = document.getElementById('colors');
     const colorPreset = document.getElementById('colorPreset');
     const lengths = document.getElementById('lengthUploads');
@@ -64,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const lengthHelp = document.getElementById('lengthHelp');
     const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const enteredColors = () => [...new Set(colorsInput.value.split(/[,،]/).map(color => color.trim()).filter(Boolean))];
-    const colors = () => enteredColors().length ? enteredColors() : ['عام'];
+    const colors = () => trackingMode.value === 'per_color' ? enteredColors() : ['عام'];
     const emptyState = (icon, text) => `<div class="cloth-entry-empty"><i class="fas ${icon}"></i>${text}</div>`;
     const optionList = () => colors().map(color => `<option value="${escapeHtml(color)}">${escapeHtml(color)}</option>`).join('');
 
@@ -78,10 +81,10 @@ document.addEventListener('DOMContentLoaded', function () {
         lengths.innerHTML = availableColors.length ? '' : emptyState('fa-ruler-combined', 'پہلے اوپر دستیاب رنگ درج کریں');
         availableColors.forEach((color, index) => {
             const row = document.createElement('div'); row.className = 'cloth-entry';
-            row.innerHTML = `<span class="cloth-entry-index">${index + 1}</span><div class="cloth-entry-field"><label>رنگ</label><input type="text" class="form-control" value="${escapeHtml(color)}" readonly><input type="hidden" name="length_colors[]" value="${escapeHtml(color)}"></div><div class="cloth-entry-field"><label>افتتاحی لمبائی (میٹر)</label><input type="number" name="length[]" class="form-control" min="0" step="0.01" value="${escapeHtml(current[color] ?? '0')}" placeholder="0.00" inputmode="decimal"></div><span></span>`;
+            row.innerHTML = `<span class="cloth-entry-index">${index + 1}</span><div class="cloth-entry-field"><label>${trackingMode.value === 'per_color' ? 'رنگ' : 'اسٹاک'}</label><input type="text" class="form-control" value="${trackingMode.value === 'per_color' ? escapeHtml(color) : 'پورا سیٹ'}" readonly><input type="hidden" name="length_colors[]" value="${escapeHtml(color)}"></div><div class="cloth-entry-field"><label>افتتاحی لمبائی (میٹر)</label><input type="number" name="length[]" class="form-control" min="0" step="0.01" value="${escapeHtml(current[color] ?? '0')}" placeholder="0.00" inputmode="decimal"></div><span></span>`;
             lengths.appendChild(row);
         });
-        lengthHelp.textContent = availableColors.length ? `${availableColors.length} رنگوں کے لیے لمبائی درج کریں۔` : 'رنگ درج کریں، پھر قطاریں بنانے کے لیے بٹن دبائیں۔';
+        lengthHelp.textContent = trackingMode.value === 'per_color' ? `${availableColors.length} رنگوں کے لیے لمبائی درج کریں۔` : 'پورے سیٹ کی مجموعی افتتاحی لمبائی درج کریں۔';
     }
 
     function addMediaRow(type) {
@@ -103,20 +106,29 @@ document.addEventListener('DOMContentLoaded', function () {
         const selected = colorPreset.value.trim();
         if (!selected) return;
         let current = enteredColors();
-        if (selected === 'عام') current = [];
-        else current = current.filter(color => color !== 'عام');
+        current = current.filter(color => color !== 'عام');
         if (!current.includes(selected)) current.push(selected);
         colorsInput.value = current.join('، ');
         colorPreset.value = '';
         if (lengths.querySelector('.cloth-entry')) syncLengthRows();
     });
 
+    function syncTrackingMode() {
+        const tracked = trackingMode.value === 'per_color';
+        trackedColorFields.hidden = !tracked;
+        colorsInput.required = tracked;
+        if (!tracked) colorsInput.value = '';
+        if (lengths.querySelector('.cloth-entry')) syncLengthRows();
+    }
+    trackingMode.addEventListener('change', syncTrackingMode);
+
     document.getElementById('syncLengths').addEventListener('click', syncLengthRows);
     colorsInput.addEventListener('blur', function () { if (enteredColors().length) syncLengthRows(); });
     document.getElementById('addMoreImages').addEventListener('click', () => addMediaRow('image'));
     document.getElementById('addMoreVideos').addEventListener('click', () => addMediaRow('video'));
-    document.getElementById('clothCreateForm').addEventListener('submit', function (event) { if (enteredColors().length && !lengths.querySelector('[name="length[]"]')) { event.preventDefault(); syncLengthRows(); lengths.scrollIntoView({behavior:'smooth', block:'center'}); } });
-    if (enteredColors().length) syncLengthRows();
+    document.getElementById('clothCreateForm').addEventListener('submit', function (event) { if (trackingMode.value === 'per_color' && !enteredColors().length) { event.preventDefault(); colorsInput.focus(); return; } if (!lengths.querySelector('[name="length[]"]')) { event.preventDefault(); syncLengthRows(); lengths.scrollIntoView({behavior:'smooth', block:'center'}); } });
+    syncTrackingMode();
+    if (trackingMode.value === 'none' || enteredColors().length) syncLengthRows();
 });
 </script>
 @endpush

@@ -9,6 +9,7 @@ use App\Models\Customers;
 use App\Models\SaleSession;
 use App\Models\User;
 use App\Services\SaleSessionService;
+use App\Services\ShopHubService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class SalesAgentController extends Controller
 {
-    public function login(Request $request): JsonResponse
+    public function login(Request $request, ShopHubService $hub): JsonResponse
     {
         $credentials = $request->validate([
             'login' => ['required', 'string', 'max:255'],
@@ -51,6 +52,7 @@ class SalesAgentController extends Controller
             'token' => $token,
             'user' => $user->only(['id', 'name', 'username', 'email']),
             'permission' => BusinessRole::CLOTHING_SALES,
+            'connection' => $hub->status($user),
         ]);
     }
 
@@ -87,6 +89,7 @@ class SalesAgentController extends Controller
                 'clothTypeId' => $cloth->cloth_type_id,
                 'clothType' => $cloth->type?->name,
                 'salePrice' => (string) ($cloth->sale_price ?? ''),
+                'colorTrackingMode' => $cloth->color_tracking_mode,
                 'colors' => $cloth->colors->map->only(['color', 'length'])->values(),
             ]);
 
@@ -108,6 +111,7 @@ class SalesAgentController extends Controller
             'clothTypeId' => $cloth->cloth_type_id,
             'clothType' => $cloth->type?->name,
             'salePrice' => (string) ($cloth->sale_price ?? ''),
+            'colorTrackingMode' => $cloth->color_tracking_mode,
             'colors' => $cloth->colors->map(fn ($color) => [
                 'name' => $color->color,
                 'availableLength' => (string) $color->length,
@@ -122,9 +126,15 @@ class SalesAgentController extends Controller
         return response()->json(['data' => $sessions->serialize($session)]);
     }
 
-    public function sync(Request $request, string $uuid, SaleSessionService $sessions): JsonResponse
+    public function sync(
+        Request $request,
+        string $uuid,
+        SaleSessionService $sessions,
+        ShopHubService $hub,
+    ): JsonResponse
     {
         $payload = $this->validateSessionPayload($request);
+        $baseRevision = (int) $payload['revision'];
 
         try {
             $session = $sessions->sync($request->user(), $uuid, $payload);
@@ -138,13 +148,25 @@ class SalesAgentController extends Controller
             ], 409);
         }
 
-        return response()->json(['data' => $sessions->serialize($session)]);
+        $serialized = $sessions->serialize($session);
+        $hub->recordSaleEvent(
+            $request->user(),
+            $session,
+            'sale_session.saved',
+            $payload['operationId'] ?? null,
+            $request->header('X-Shop-Device-Id'),
+            $baseRevision,
+            $serialized,
+        );
+
+        return response()->json(['data' => $serialized, 'connection' => $hub->status($request->user())]);
     }
 
     private function validateSessionPayload(Request $request): array
     {
         return $request->validate([
             'revision' => ['required', 'integer', 'min:0'],
+            'operationId' => ['nullable', 'uuid'],
             'customerMode' => ['required', 'in:existing,new,walk-in'],
             'customerId' => ['nullable', 'integer'],
             'customer' => ['nullable', 'array'],
@@ -160,6 +182,7 @@ class SalesAgentController extends Controller
             'items.*.color' => ['nullable', 'string', 'max:100'],
             'items.*.availableColors' => ['nullable', 'array'],
             'items.*.availableColors.*' => ['string', 'max:100'],
+            'items.*.requiresColor' => ['nullable', 'boolean'],
             'items.*.quantity' => ['nullable'],
             'items.*.length' => ['nullable'],
             'items.*.unitPrice' => ['nullable'],
@@ -172,8 +195,14 @@ class SalesAgentController extends Controller
         ]);
     }
 
-    public function requestAttention(Request $request, string $uuid, SaleSessionService $sessions): JsonResponse
+    public function requestAttention(
+        Request $request,
+        string $uuid,
+        SaleSessionService $sessions,
+        ShopHubService $hub,
+    ): JsonResponse
     {
+        $baseRevision = (int) $request->input('revision', 0);
         $session = $request->has('items')
             ? DB::transaction(function () use ($request, $uuid, $sessions) {
                 $payload = $this->validateSessionPayload($request);
@@ -187,11 +216,28 @@ class SalesAgentController extends Controller
             })
             : $sessions->requestAttention($this->agentSession($request, $uuid), $request->user());
 
-        return response()->json(['data' => $sessions->serialize($session)]);
+        $serialized = $sessions->serialize($session);
+        $hub->recordSaleEvent(
+            $request->user(),
+            $session,
+            'sale_session.forwarded',
+            $request->input('operationId'),
+            $request->header('X-Shop-Device-Id'),
+            $baseRevision,
+            $serialized,
+        );
+
+        return response()->json(['data' => $serialized, 'connection' => $hub->status($request->user())]);
     }
 
-    public function complete(Request $request, string $uuid, SaleSessionService $sessions): JsonResponse
+    public function complete(
+        Request $request,
+        string $uuid,
+        SaleSessionService $sessions,
+        ShopHubService $hub,
+    ): JsonResponse
     {
+        $baseRevision = (int) $request->input('revision', 0);
         $session = $request->has('items')
             ? DB::transaction(function () use ($request, $uuid, $sessions) {
                 $payload = $this->validateSessionPayload($request);
@@ -205,7 +251,18 @@ class SalesAgentController extends Controller
             })
             : $sessions->complete($this->agentSession($request, $uuid), $request->user());
 
-        return response()->json(['data' => $sessions->serialize($session)]);
+        $serialized = $sessions->serialize($session);
+        $hub->recordSaleEvent(
+            $request->user(),
+            $session,
+            'sale_session.completed',
+            $request->input('operationId'),
+            $request->header('X-Shop-Device-Id'),
+            $baseRevision,
+            $serialized,
+        );
+
+        return response()->json(['data' => $serialized, 'connection' => $hub->status($request->user())]);
     }
 
     private function agentSession(Request $request, string $uuid): SaleSession

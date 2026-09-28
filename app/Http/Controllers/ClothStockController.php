@@ -174,11 +174,13 @@ class ClothStockController extends Controller
                 ->orderBy('name')
                 ->get();
             $inventoryOptions = $cloths->map(fn ($cloth) => [
+                'cloth_id' => (string) $cloth->id,
                 'stock_code' => $cloth->stock_code,
                 'brand_id' => (string) $cloth->cloth_brand_id,
                 'brand_name' => $cloth->brand?->name,
                 'type_id' => (string) $cloth->cloth_type_id,
                 'type_name' => $cloth->type?->name,
+                'tracks_colors' => $cloth->tracksColors(),
                 'colors' => $cloth->colors->map(fn ($color) => [
                     'name' => $color->color,
                     'length' => (float) $color->length,
@@ -196,6 +198,9 @@ class ClothStockController extends Controller
 
                 $items = collect($saleSession->items ?? [])->map(function (array $item) use ($cloths) {
                     $cloth = $cloths->first(function (Cloth $candidate) use ($item) {
+                        if (! empty($item['setCode'])) {
+                            return $candidate->set_code === $item['setCode'];
+                        }
                         if (! empty($item['brandId']) && ! empty($item['clothTypeId'])) {
                             return (string) $candidate->cloth_brand_id === (string) $item['brandId']
                                 && (string) $candidate->cloth_type_id === (string) $item['clothTypeId'];
@@ -210,6 +215,7 @@ class ClothStockController extends Controller
 
                     return [
                         'brand_id' => $item['brandId'] ?? $cloth?->cloth_brand_id,
+                        'cloth_id' => $cloth?->id,
                         'type_id' => $item['clothTypeId'] ?? $cloth?->cloth_type_id,
                         'color' => $item['color'] ?? '',
                         'length' => ($item['length'] ?? '') ?: ($item['quantity'] ?? ''),
@@ -221,9 +227,13 @@ class ClothStockController extends Controller
                 $customer = $saleSession->customer_data ?? [];
                 $payment = $saleSession->payment_data ?? [];
                 $saleForm = [
-                    'customer_mode' => $saleSession->customer_mode === 'existing' ? 'regular' : 'random',
+                    'customer_mode' => match ($saleSession->customer_mode) {
+                        'existing' => 'regular',
+                        'walk-in' => 'walk_in',
+                        default => 'new',
+                    },
                     'customer_id' => $saleSession->customer_id,
-                    'customer_name' => $customer['name'] ?? ($saleSession->customer_mode === 'walk-in' ? 'Walk-in Customer' : ''),
+                    'customer_name' => $saleSession->customer_mode === 'walk-in' ? '' : ($customer['name'] ?? ''),
                     'customer_phone' => $customer['phone'] ?? '',
                     'items' => $items ?: [[]],
                     'payment_method' => strtolower(str_replace(' ', '_', $payment['method'] ?? 'cash')),
@@ -712,6 +722,23 @@ class ClothStockController extends Controller
                 'cancelled_at' => now(),
                 'cancelled_by_user_id' => Auth::id(),
             ]);
+
+            $customerId = $receipt->customer_id ?? $original?->customerId;
+            if ($customerId) {
+                $customer = Customers::where('user_id', $ownerId)
+                    ->whereKey($customerId)
+                    ->where('is_walk_in', false)
+                    ->lockForUpdate()
+                    ->first();
+                if ($customer) {
+                    $customer->update([
+                        'first_sale_at' => SaleStock::financiallyActive()
+                            ->where('user_id', $ownerId)
+                            ->where('c_id', $customer->id)
+                            ->min('sellDate'),
+                    ]);
+                }
+            }
 
             return $receipt;
         });

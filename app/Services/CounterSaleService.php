@@ -24,6 +24,8 @@ class CounterSaleService
         $validated = Validator::make($input, [
             'brand_name' => ['required', 'array', 'min:1'],
             'brand_name.*' => ['required', 'integer'],
+            'cloth_id' => ['nullable', 'array'],
+            'cloth_id.*' => ['nullable', 'integer'],
             'cloth_type' => ['required', 'array'],
             'cloth_type.*' => ['required', 'integer'],
             'color' => ['required', 'array'],
@@ -36,7 +38,7 @@ class CounterSaleService
             'clothes_rack.*' => ['nullable', 'string', 'max:100'],
             'length' => ['required', 'array'],
             'length.*' => ['required', 'numeric', 'gt:0'],
-            'customer_mode' => ['nullable', Rule::in(['regular', 'random'])],
+            'customer_mode' => ['nullable', Rule::in(['regular', 'new', 'walk_in', 'random'])],
             'existing_customer_id' => ['nullable', 'integer'],
             'random_customer_name' => ['nullable', 'string', 'max:255'],
             'random_customer_phone' => ['nullable', 'string', 'max:30'],
@@ -93,13 +95,15 @@ class CounterSaleService
         }
 
         $ownerId = $actor->businessOwnerId();
-        $customerMode = $validated['customer_mode'] ?? 'regular';
+        $customerMode = ($validated['customer_mode'] ?? 'regular') === 'random'
+            ? 'new'
+            : ($validated['customer_mode'] ?? 'regular');
         $existingCustomerId = $validated['existing_customer_id'] ?? null;
         if (! $existingCustomerId && ! empty($validated['c_name'])) {
             [, $existingCustomerId] = explode('|', $validated['c_name'], 2);
         }
 
-        if ($customerMode === 'random' && blank($validated['random_customer_name'] ?? null)) {
+        if ($customerMode === 'new' && blank($validated['random_customer_name'] ?? null)) {
             throw ValidationException::withMessages(['random_customer_name' => 'نئے گاہک کا نام ضرور لکھیں۔']);
         }
         if ($customerMode === 'regular' && ! $existingCustomerId) {
@@ -110,17 +114,40 @@ class CounterSaleService
             ? Customers::where('user_id', $ownerId)->findOrFail($existingCustomerId)
             : null;
         $remainingBalance = round($saleTotal - (float) $validated['payment'], 2);
+        if ($customerMode === 'walk_in' && $remainingBalance > 0) {
+            throw ValidationException::withMessages(['payment' => 'واک اِن فروخت مکمل کرنے کے لیے پوری رقم وصول کریں، یا گاہک کو نیا/موجودہ گاہک منتخب کریں۔']);
+        }
+        if ($customerMode === 'new' && filled($validated['random_customer_phone'] ?? null)
+            && Customers::findByPhoneForOwner($ownerId, (string) $validated['random_customer_phone'])) {
+            throw ValidationException::withMessages(['random_customer_phone' => 'یہ فون نمبر پہلے سے موجود ہے۔ موجودہ گاہک منتخب کریں۔']);
+        }
 
         return DB::transaction(function () use ($validated, $existingCustomer, $customerMode, $itemCount, $remainingBalance, $ownerId, $perMeters) {
             $firstSale = null;
             $soldAt = now();
             $customer = $existingCustomer;
-            if ($customerMode === 'random') {
+            if ($customerMode === 'new') {
                 $customer = Customers::create([
                     'name' => trim($validated['random_customer_name']),
                     'phone_number1' => trim($validated['random_customer_phone'] ?? ''),
                     'user_id' => $ownerId,
+                    'first_sale_at' => $soldAt,
+                    'acquisition_source' => 'counter_sale',
                 ]);
+            } elseif ($customerMode === 'walk_in') {
+                $customer = Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', true)->first()
+                    ?? Customers::create([
+                        'name' => 'Walk-in Customer',
+                        'phone_number1' => '',
+                        'user_id' => $ownerId,
+                        'is_walk_in' => true,
+                        'acquisition_source' => 'walk_in',
+                    ]);
+            } elseif (! $customer->first_sale_at) {
+                $customer->forceFill([
+                    'first_sale_at' => $soldAt,
+                    'acquisition_source' => $customer->acquisition_source ?: 'counter_sale',
+                ])->save();
             }
 
             $receipt = CounterSaleReceipt::create([
@@ -134,6 +161,7 @@ class CounterSaleService
 
             for ($i = 0; $i < $itemCount; $i++) {
                 $cloth = Cloth::where('user_id', $ownerId)
+                    ->when(data_get($validated, "cloth_id.{$i}"), fn ($query, $clothId) => $query->whereKey($clothId))
                     ->where('cloth_type_id', $validated['cloth_type'][$i])
                     ->where('cloth_brand_id', $validated['brand_name'][$i])
                     ->first();
@@ -142,10 +170,16 @@ class CounterSaleService
                 }
 
                 $requestedColor = trim((string) ($validated['color'][$i] ?? ''));
+                if ($cloth->tracksColors() && $requestedColor === '') {
+                    throw ValidationException::withMessages(['color.'.$i => 'اس سیٹ کا اسٹاک رنگ کے حساب سے محفوظ ہے؛ رنگ منتخب کریں۔']);
+                }
+                if (! $cloth->tracksColors() && $requestedColor !== '') {
+                    throw ValidationException::withMessages(['color.'.$i => 'اس سیٹ میں رنگ الگ محفوظ نہیں؛ رنگ منتخب نہیں کیا جا سکتا۔']);
+                }
                 $colorQuery = $cloth->colors()->lockForUpdate();
-                $clothColor = $requestedColor !== ''
+                $clothColor = $cloth->tracksColors()
                     ? $colorQuery->where('color', $requestedColor)->first()
-                    : $colorQuery->orderByDesc('length')->first();
+                    : $colorQuery->first();
                 if (! $clothColor) {
                     throw ValidationException::withMessages(['color.'.$i => $requestedColor !== ''
                         ? 'منتخب رنگ اس برانڈ اور کپڑے کی قسم میں دستیاب نہیں۔'
@@ -161,7 +195,7 @@ class CounterSaleService
                     'counter_sale_receipt_id' => $receipt->id,
                     'cloth_type_id' => $validated['cloth_type'][$i],
                     'cloth_brand_id' => $validated['brand_name'][$i],
-                    'color' => $requestedColor !== '' ? $clothColor->color : null,
+                    'color' => $cloth->tracksColors() ? $clothColor->color : null,
                     'c_name' => $customer->name,
                     'c_id' => $customer->id,
                     'phone' => $customer->phone_number1,

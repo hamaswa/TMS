@@ -10,6 +10,7 @@ use App\Models\StorefrontClothingListing;
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontOrder;
 use App\Models\StorefrontTailoringService;
+use App\Models\SubscriptionPlan;
 use App\Notifications\NewStorefrontTailoringBookingNotification;
 use App\Services\StorefrontPaymentEvidenceService;
 use App\Support\PakistanPhoneNumber;
@@ -163,7 +164,13 @@ class PublicStorefrontController extends Controller
 
     public function business()
     {
-        return view('storefront.public.business');
+        $plans = SubscriptionPlan::publiclyAvailable()
+            ->orderByDesc('is_recommended')
+            ->orderBy('display_order')
+            ->orderBy('price')
+            ->get();
+
+        return view('storefront.public.business', compact('plans'));
     }
 
     public function show(Storefront $storefront)

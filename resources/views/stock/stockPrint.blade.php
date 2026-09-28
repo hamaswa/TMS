@@ -179,6 +179,25 @@
             box-shadow: 0 8px 24px rgba(15, 45, 70, .08);
         }
 
+        .receipt-cancelled-notice {
+            max-width: 760px;
+            margin: 14px auto 0;
+            padding: 14px 18px;
+            text-align: right;
+        }
+
+        .receipt-cancelled-notice h2 {
+            margin: 0 0 8px;
+            line-height: 1.8;
+        }
+
+        .receipt-cancelled-notice p {
+            margin-bottom: 5px !important;
+            color: #721c24;
+            font-size: 12px;
+            line-height: 1.9;
+        }
+
         .cancelled-receipt {
             position: relative;
         }
@@ -233,7 +252,7 @@
         @endif
 
         @if ($receipt?->status === 'cancelled')
-            <div class="alert alert-danger mb-0" role="status">
+            <div class="alert alert-danger receipt-cancelled-notice no-print" role="status">
                 <h2 class="h5">یہ کاؤنٹر فروخت منسوخ ہو چکی ہے</h2>
                 <p class="mb-1">رسید: <strong>{{ $receipt->receipt_number }}</strong></p>
                 <p class="mb-1">وجہ: {{ $receipt->cancellation_reason }}</p>
@@ -300,7 +319,9 @@
                             @endphp
                             <div class="stock-item-card">
                                 <div class="stock-item-heading"><span class="stock-item-number">#{{ $loop->iteration }}</span><strong>{{ $sellstock->brand->name }} — {{ $sellstock->type->name }}</strong></div>
-                                <div class="stock-item-meta"><span>رنگ: <strong>{{ $sellstock->color }}</strong></span>@if($sellstock->clothes_rack)<span>ریک: <strong>{{ $sellstock->clothes_rack }}</strong></span>@endif</div>
+                                @if(filled($sellstock->color))
+                                    <div class="stock-item-meta"><span>رنگ: <strong>{{ $sellstock->color }}</strong></span></div>
+                                @endif
                                 <div class="stock-item-calculation"><span>{{ number_format((float) $sellstock->length, 2) }} m</span><span>×</span><span>Rs. {{ number_format((float) $sellstock->selling_price, 2) }}</span><span>=</span><strong>Rs. {{ number_format($itemTotal, 2) }}</strong></div>
                             </div>
                         @endforeach

@@ -155,6 +155,7 @@ class InventoryLedgerTest extends TestCase
     public function test_counter_sale_allows_unidentified_color_and_allocates_available_stock(): void
     {
         [$owner, $cloth, $color] = $this->stock(10, 100);
+        $cloth->update(['color_tracking_mode' => Cloth::COLOR_TRACKING_NONE]);
         $customer = Customers::create(['name' => 'Unknown Color Buyer', 'phone_number1' => '', 'user_id' => $owner->id]);
 
         $this->actingAs($owner)->post(route('admin.sellStock'), [
@@ -293,6 +294,7 @@ class InventoryLedgerTest extends TestCase
             'customerId' => $customer->id,
         ]));
         $this->assertCount(2, $items);
+        $this->assertNotNull($customer->fresh()->first_sale_at);
         $this->assertEquals(8, (float) $firstColor->fresh()->length);
         $this->assertEquals(9, (float) $secondColor->fresh()->length);
 
@@ -369,6 +371,7 @@ class InventoryLedgerTest extends TestCase
         ]);
         $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
         $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('recivedPayment'));
+        $this->assertNull($customer->fresh()->first_sale_at);
 
         $report = app(FinancialReportService::class)->build($owner->id, now()->startOfDay(), now()->endOfDay());
         $this->assertEquals(0, $report['revenue']['کاؤنٹر کپڑا فروخت']);
@@ -417,7 +420,8 @@ class InventoryLedgerTest extends TestCase
         $response->assertOk()
             ->assertSeeText('گاہک کی معلومات')
             ->assertSeeText('ریگولر گاہک')
-            ->assertSeeText('رینڈم / نیا گاہک')
+            ->assertSeeText('نیا گاہک')
+            ->assertSeeText('واک اِن فروخت')
             ->assertSeeText('کل قیمت')
             ->assertSeeText('ریٹ فی میٹر')
             ->assertSeeText('مزید کپڑا شامل کریں')
@@ -569,7 +573,7 @@ class InventoryLedgerTest extends TestCase
         $owner = $this->userWithRole('shop_owner');
         $type = ClothType::create(['name' => fake()->unique()->word(), 'user_id' => $owner->id]);
         $brand = ClothBrand::create(['name' => fake()->unique()->company(), 'user_id' => $owner->id]);
-        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => $cost, 'sale_price' => $cost + 50, 'user_id' => $owner->id]);
+        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => $cost, 'sale_price' => $cost + 50, 'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR, 'user_id' => $owner->id]);
         $color = ClothColor::create(['cloth_id' => $cloth->id, 'color' => fake()->unique()->safeColorName(), 'length' => $length, 'average_unit_cost' => $cost, 'user_id' => $owner->id]);
 
         return [$owner, $cloth, $color];

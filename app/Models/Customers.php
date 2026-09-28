@@ -69,7 +69,7 @@ class Customers extends Authenticatable
     /**
      * @var array
      */
-    protected $fillable = ['name', 'parent_id', 'phone_number1', 'phone_number2', 'ref_phone_number',
+    protected $fillable = ['name', 'parent_id', 'is_walk_in', 'first_sale_at', 'acquisition_source', 'phone_number1', 'phone_number2', 'ref_phone_number',
         'shirtlength', 'sleeve', 'sleevetop', 'shoulder', 'chest',
         'senaChorai', 'necktype', 'comments', 'created_at', 'updated_at',
         'jeab', 'teraa', 'length', 'button', 'shirtbutton', 'damanchorai', 'chuta',
@@ -85,6 +85,8 @@ class Customers extends Authenticatable
         'self_registered_at' => 'datetime',
         'phone_verified_at' => 'datetime',
         'phone_normalization_conflict' => 'boolean',
+        'is_walk_in' => 'boolean',
+        'first_sale_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -141,6 +143,7 @@ class Customers extends Authenticatable
     public function scopeSelectableForSales(Builder $query): Builder
     {
         return $query
+            ->where('is_walk_in', false)
             ->whereNotNull('name')
             ->whereRaw("TRIM(name) <> ''")
             ->whereRaw("LOWER(TRIM(name)) NOT IN ('walk-in customer', 'walk in customer', 'walk-in', 'walk in')");

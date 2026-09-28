@@ -95,6 +95,7 @@ class SaleSessionService
         $session->forceFill([
             'status' => SaleSession::STATUS_NEEDS_ATTENTION,
             'attention_requested_at' => now(),
+            'revision' => $session->revision + 1,
         ])->save();
 
         foreach ($this->attentionRecipients($session) as $recipient) {
@@ -120,6 +121,7 @@ class SaleSessionService
                 'status' => SaleSession::STATUS_CLAIMED,
                 'claimed_by_user_id' => $actor->id,
                 'claimed_at' => now(),
+                'revision' => $locked->revision + 1,
             ])->save();
 
             return $locked->fresh();
@@ -173,26 +175,29 @@ class SaleSessionService
     private function counterSalePayload(SaleSession $session): array
     {
         $items = collect($session->items ?? [])->map(function (array $item) use ($session) {
-            if (! empty($item['brandId']) && ! empty($item['clothTypeId'])) {
-                return $item;
-            }
-
             $cloth = Cloth::where('user_id', $session->user_id)
+                ->when($item['setCode'] ?? null, fn ($query, $setCode) => $query->where('set_code', $setCode))
                 ->when($item['brand'] ?? null, fn ($query, $brand) => $query->whereHas('brand', fn ($brandQuery) => $brandQuery->where('name', $brand)))
                 ->when($item['clothType'] ?? null, fn ($query, $type) => $query->whereHas('type', fn ($typeQuery) => $typeQuery->where('name', $type)))
                 ->first();
 
             $item['brandId'] = $cloth?->cloth_brand_id;
             $item['clothTypeId'] = $cloth?->cloth_type_id;
+            $item['clothId'] = $cloth?->id;
 
             return $item;
         });
         $customer = $session->customer_data ?? [];
         $payment = $session->payment_data ?? [];
-        $mode = $session->customer_mode === 'existing' ? 'regular' : 'random';
+        $mode = match ($session->customer_mode) {
+            'existing' => 'regular',
+            'walk-in' => 'walk_in',
+            default => 'new',
+        };
 
         return [
             'brand_name' => $items->pluck('brandId')->all(),
+            'cloth_id' => $items->pluck('clothId')->all(),
             'cloth_type' => $items->pluck('clothTypeId')->all(),
             'color' => $items->pluck('color')->all(),
             'clothes_rack' => $items->pluck('rack')->all(),
@@ -200,7 +205,7 @@ class SaleSessionService
             'item_total' => $items->map(fn ($item) => (float) ($item['quantity'] ?? 1) * (float) ($item['unitPrice'] ?? 0))->all(),
             'customer_mode' => $mode,
             'existing_customer_id' => $session->customer_id,
-            'random_customer_name' => $customer['name'] ?? ($session->customer_mode === 'walk-in' ? 'Walk-in Customer' : null),
+            'random_customer_name' => $session->customer_mode === 'walk-in' ? null : ($customer['name'] ?? null),
             'random_customer_phone' => $customer['phone'] ?? null,
             'payment' => (float) ($payment['receivedAmount'] ?? 0),
             'payment_method' => strtolower(str_replace(' ', '_', $payment['method'] ?? 'cash')),

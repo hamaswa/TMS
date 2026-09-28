@@ -67,6 +67,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
             'sales.agent' => \App\Http\Middleware\EnsureSalesAgentAccess::class,
+            'shop.hub.relay' => \App\Http\Middleware\VerifyShopHubRelay::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

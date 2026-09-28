@@ -21,6 +21,7 @@
     $trendMax = max(1, (float) $salesTrend->max('total'));
     $trendTotal = (float) $salesTrend->sum('total');
     $purchaseStatus = ['draft' => 'زیرِ تیاری', 'received' => 'وصول شدہ', 'cancelled' => 'منسوخ'];
+    $liveSaleStatus = ['active' => 'جاری', 'needs_attention' => 'توجہ طلب', 'claimed' => 'زیرِ کار'];
 @endphp
 <section class="main-content shop-dashboard" dir="rtl">
 <div class="shop-dashboard-shell">
@@ -33,6 +34,7 @@
         @if($canInventory)<article class="dash-metric"><div><small>اسٹاک میں میٹر</small><strong>{{ number_format($clothing['meters'], 2) }}</strong></div><span class="dash-metric-icon"><i class="fas fa-ruler-combined"></i></span></article><article class="dash-metric"><div><small>اسٹاک کی مالیت</small><strong>Rs. {{ number_format($clothing['inventory_value'], 0) }}</strong></div><span class="dash-metric-icon"><i class="fas fa-coins"></i></span></article><article class="dash-metric"><div><small>کم اسٹاک اشیاء</small><strong>{{ $clothing['low_stock'] }}</strong></div><span class="dash-metric-icon"><i class="fas fa-exclamation-triangle"></i></span></article>@endif
         @if($canPurchases)<article class="dash-metric"><div><small>زیرِ تیاری خریداریاں</small><strong>{{ $clothing['draft_purchases'] }}</strong></div><span class="dash-metric-icon"><i class="fas fa-truck-loading"></i></span></article>@endif
         @if($canSales)<article class="dash-metric"><div><small>اس ماہ کی فروخت</small><strong>Rs. {{ number_format($clothing['month_sales'], 0) }}</strong></div><span class="dash-metric-icon"><i class="fas fa-chart-line"></i></span></article>@endif
+        @if($canSales)<article class="dash-metric"><div><small>اس ہفتے نئے گاہک</small><strong>{{ $clothing['new_customers_week'] }}</strong></div><span class="dash-metric-icon"><i class="fas fa-user-plus"></i></span></article><article class="dash-metric"><div><small>اس ماہ نئے گاہک</small><strong>{{ $clothing['new_customers_month'] }}</strong></div><span class="dash-metric-icon"><i class="fas fa-users"></i></span></article>@endif
     </div>
 
     <nav class="dash-actions" aria-label="فوری کارروائیاں">
@@ -54,7 +56,7 @@
                 <td data-label="ایجنٹ">{{ $session->agent?->name ?? '—' }}</td>
                 <td data-label="گاہک">{{ data_get($session->customer_data, 'name', $session->customer_mode === 'walk-in' ? 'Walk-in' : '—') }}</td>
                 <td data-label="اسکین شدہ آئٹمز">{{ collect($session->items)->filter(fn ($item) => filled($item['setCode'] ?? null))->count() }}</td>
-                <td data-label="حالت"><span class="dash-live-status">{{ str_replace('_', ' ', $session->status) }}</span></td>
+                <td data-label="حالت"><span class="dash-live-status">{{ $liveSaleStatus[$session->status] ?? $session->status }}</span></td>
                 <td data-label="آخری تبدیلی">{{ $session->updated_at?->diffForHumans() }}</td>
                 <td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.sales-sessions.show', $session) }}">کھولیں</a></td>
             </tr>
@@ -74,7 +76,7 @@
 
     <div class="dash-bottom-grid">
         @if($canPurchases)<section class="dash-panel"><div class="dash-panel-head"><h2 class="dash-panel-title"><i class="fas fa-truck-loading"></i> حالیہ خریداریاں</h2><a class="dash-panel-link" href="{{ route('admin.purchases.index') }}">تمام دیکھیں</a></div><div class="table-responsive"><table class="table dash-table"><thead><tr><th>خریداری</th><th>سپلائر</th><th>حالت</th><th>رقم</th></tr></thead><tbody>@forelse($recentPurchases as $purchase)<tr><td data-label="خریداری"><span class="dash-primary-text">{{ $purchase->purchase_number }}</span><span class="dash-secondary-text">{{ $purchase->purchase_date->format('d M Y') }}</span></td><td data-label="سپلائر">{{ $purchase->supplier->name }}</td><td data-label="حالت"><span class="dash-status dash-status-{{ $purchase->status }}">{{ $purchaseStatus[$purchase->status] ?? $purchase->status }}</span></td><td data-label="رقم"><span class="dash-money">Rs. {{ number_format($purchase->total_amount, 2) }}</span></td></tr>@empty<tr><td colspan="4" class="dash-empty"><i class="fas fa-inbox"></i>کوئی خریداری موجود نہیں</td></tr>@endforelse</tbody></table></div></section>@endif
-        @if($canSales)<section class="dash-panel"><div class="dash-panel-head"><h2 class="dash-panel-title"><i class="fas fa-receipt"></i> حالیہ فروخت</h2><a class="dash-panel-link" href="{{ route('admin.sellCloth') }}">نئی فروخت</a></div><div class="table-responsive"><table class="table dash-table"><thead><tr><th>گاہک</th><th>کپڑا</th><th>مقدار</th><th>رقم</th></tr></thead><tbody>@forelse($recentSales as $sale)<tr><td data-label="گاہک"><span class="dash-primary-text">{{ $sale->c_name }}</span><span class="dash-secondary-text">{{ \Illuminate\Support\Carbon::parse($sale->sellDate)->format('d M Y') }}</span></td><td data-label="کپڑا">{{ $sale->brand->name ?? 'برانڈ' }} / {{ $sale->color }}</td><td data-label="مقدار"><span class="dash-money">{{ number_format($sale->length, 2) }} m</span></td><td data-label="رقم"><span class="dash-money">Rs. {{ number_format((float) $sale->selling_price * (float) $sale->length, 2) }}</span></td></tr>@empty<tr><td colspan="4" class="dash-empty"><i class="fas fa-inbox"></i>کوئی فروخت موجود نہیں</td></tr>@endforelse</tbody></table></div></section>@endif
+        @if($canSales)<section class="dash-panel"><div class="dash-panel-head"><h2 class="dash-panel-title"><i class="fas fa-receipt"></i> حالیہ فروخت</h2><a class="dash-panel-link" href="{{ route('admin.sellCloth') }}">نئی فروخت</a></div><div class="table-responsive"><table class="table dash-table"><thead><tr><th>گاہک</th><th>کپڑا</th><th>مقدار</th><th>رقم</th></tr></thead><tbody>@forelse($recentSales as $sale)<tr><td data-label="گاہک"><span class="dash-primary-text">{{ $sale->c_name }}</span><span class="dash-secondary-text">{{ \Illuminate\Support\Carbon::parse($sale->sellDate)->format('d M Y') }}</span></td><td data-label="کپڑا">{{ $sale->brand->name ?? 'برانڈ' }}@if(filled($sale->color)) / {{ $sale->color }}@endif</td><td data-label="مقدار"><span class="dash-money">{{ number_format($sale->length, 2) }} m</span></td><td data-label="رقم"><span class="dash-money">Rs. {{ number_format((float) $sale->selling_price * (float) $sale->length, 2) }}</span></td></tr>@empty<tr><td colspan="4" class="dash-empty"><i class="fas fa-inbox"></i>کوئی فروخت موجود نہیں</td></tr>@endforelse</tbody></table></div></section>@endif
     </div>
 </div>
 </section>
@@ -88,6 +90,7 @@
     const count = document.getElementById('dashboard-live-sale-count');
     const showUrl = @json(route('admin.sales-sessions.show', '__UUID__'));
     const openStatuses = new Set(['active', 'needs_attention', 'claimed']);
+    const statusLabels = { active: 'جاری', needs_attention: 'توجہ طلب', claimed: 'زیرِ کار' };
 
     window.addEventListener('sales-session-feed', function (event) {
         const sessions = (event.detail?.data || []).filter(session => openStatuses.has(session.status));
@@ -104,7 +107,7 @@
             const values = [
                 session.agent?.name || '—',
                 session.customer?.name || (session.customerMode === 'walk-in' ? 'Walk-in' : '—'),
-                String(scannedItems), session.status.replaceAll('_', ' '),
+                String(scannedItems), statusLabels[session.status] || session.status,
                 session.updatedAt ? new Date(session.updatedAt).toLocaleTimeString() : '—',
             ];
             values.forEach(function (value, index) {

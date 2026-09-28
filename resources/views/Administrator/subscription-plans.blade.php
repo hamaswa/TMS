@@ -26,8 +26,8 @@
     @forelse($plans as $plan)
         <div class="card mb-3">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <div><strong>{{ $plan->name }}</strong> <code>{{ $plan->code }}</code></div>
-                <span class="badge badge-{{ $plan->is_active ? 'success' : 'secondary' }}">{{ $plan->is_active ? 'Active' : 'Inactive' }} · {{ $plan->subscriptions_count }} subscriptions</span>
+                <div><strong>{{ $plan->name }}</strong> <code>{{ $plan->code }}</code> @if($plan->is_recommended)<span class="badge badge-primary">Recommended</span>@endif</div>
+                <span class="badge badge-{{ $plan->is_active ? 'success' : 'secondary' }}">{{ ucfirst($plan->lifecycle_status) }} · {{ $plan->is_public ? 'Public' : 'Private' }} · {{ $plan->trial_days }} trial days · {{ $plan->subscriptions_count }} subscriptions</span>
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ route('administrator.subscription-plans.update', $plan) }}">@csrf @method('PUT')

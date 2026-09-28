@@ -1,6 +1,12 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { getToken } from '../storage/authStorage';
+import {
+  ConnectionProfile,
+  getConnectionProfile,
+  getDeviceId,
+  normalizeApiBaseUrl,
+} from '../storage/connectionStorage';
 import { SaleDraft } from '../domain/sale';
 
 const configuredUrl = process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl;
@@ -8,7 +14,7 @@ const browserHost = Platform.OS === 'web' ? globalThis.location?.hostname : null
 const localBrowserUrl = browserHost === 'localhost' || browserHost === '127.0.0.1'
   ? 'http://127.0.0.1:8010/api'
   : null;
-export const API_BASE_URL = String(localBrowserUrl ?? configuredUrl ?? 'http://127.0.0.1:8010/api').replace(/\/$/, '');
+export const DEFAULT_API_BASE_URL = String(localBrowserUrl ?? configuredUrl ?? 'http://127.0.0.1:8010/api').replace(/\/$/, '');
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public body?: unknown) {
@@ -16,14 +22,27 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}, authenticated = true): Promise<T> {
+async function apiBaseUrl(override?: string): Promise<string> {
+  if (override) return normalizeApiBaseUrl(override);
+  const profile = await getConnectionProfile();
+  return profile?.apiBaseUrl ?? DEFAULT_API_BASE_URL;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  authenticated = true,
+  baseOverride?: string,
+): Promise<T> {
   const token = authenticated ? await getToken() : null;
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const [base, deviceId] = await Promise.all([apiBaseUrl(baseOverride), getDeviceId()]);
+  const response = await fetch(`${base}${path}`, {
     ...options,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Shop-Device-Id': deviceId,
       ...options.headers,
     },
   });
@@ -42,11 +61,35 @@ export type ServerSession = {
   receipt?: { id: number; receipt_number: string } | null;
 };
 
-export const login = (loginValue: string, password: string) =>
-  request<{ token: string; user: { id: number; name: string } }>('/sales-agent/login', {
+export type ShopConnection = {
+  mode: 'shop' | 'cloud';
+  hubId: string | null;
+  hubName: string | null;
+  shopOwnerId: number | null;
+  withinShopSync: boolean;
+  cloudConfigured: boolean;
+  pendingCloudEvents: number | null;
+  serverTime: string;
+};
+
+export const probeShopConnection = (baseUrl?: string) =>
+  request<{ data: ShopConnection }>('/shop-hub/status', {}, false, baseUrl);
+
+export const getShopContext = () =>
+  request<{ data: ShopConnection }>('/sales-agent/shop-context');
+
+export const login = (loginValue: string, password: string, baseUrl?: string) =>
+  request<{ token: string; user: { id: number; name: string }; connection: ShopConnection }>('/sales-agent/login', {
     method: 'POST',
     body: JSON.stringify({ login: loginValue, password, device_name: 'BuyNStitch Sales Agent' }),
-  }, false);
+  }, false, baseUrl);
+
+export const connectionProfileFrom = (baseUrl: string | undefined, connection: ShopConnection): ConnectionProfile => ({
+  apiBaseUrl: normalizeApiBaseUrl(baseUrl || DEFAULT_API_BASE_URL),
+  mode: connection.mode,
+  hubId: connection.hubId,
+  hubName: connection.hubName,
+});
 
 export const logout = () => request('/sales-agent/logout', { method: 'POST' });
 
@@ -61,6 +104,7 @@ export type InventorySet = {
   clothTypeId: number;
   clothType: string;
   salePrice: string;
+  colorTrackingMode: 'none' | 'per_color';
   colors: { name: string; availableLength: string }[];
 };
 
@@ -72,6 +116,7 @@ export type InventoryListItem = {
   clothTypeId: number;
   clothType: string;
   salePrice: string;
+  colorTrackingMode: 'none' | 'per_color';
   colors: { color: string; length: string }[];
 };
 
@@ -83,7 +128,17 @@ export const lookupInventorySet = (scannedCode: string) => {
   return request<{ data: InventorySet }>(`/sales-agent/inventory/sets/${encodeURIComponent(code)}`);
 };
 
+const operationUuid = () => {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.random() * 16 | 0;
+    const value = character === 'x' ? random : (random & 0x3 | 0x8);
+    return value.toString(16);
+  });
+};
+
 const draftPayload = (draft: SaleDraft, revision: number) => ({
+  operationId: operationUuid(),
   revision,
   customerMode: draft.customerMode,
   customerId: draft.customerId,
