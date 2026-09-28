@@ -13,7 +13,7 @@ class Transaction extends Model
     protected $fillable = [
         'remainingBalance', 'recivedPayment', 'customerId', 'userId', 'orderId',
         'tailorId', 'comment', 'Order_type', 'sale_id', 'payment_method',
-        'payment_reference', 'paid_on',
+        'payment_reference', 'paid_on', 'counter_sale_receipt_id',
     ];
 
     protected function casts(): array
@@ -41,5 +41,10 @@ class Transaction extends Model
     public function sale()
     {
         return $this->belongsTo(Sale::class, 'sale_id');
+    }
+
+    public function counterSaleReceipt()
+    {
+        return $this->belongsTo(CounterSaleReceipt::class, 'counter_sale_receipt_id');
     }
 }

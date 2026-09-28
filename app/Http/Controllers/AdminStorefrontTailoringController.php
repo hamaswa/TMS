@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
+use App\Models\MeasurementTemplate;
 use App\Services\StorefrontPaymentEvidenceService;
 use App\Services\StorefrontTailoringBookingService;
 use Illuminate\Http\Request;
@@ -36,11 +37,14 @@ class AdminStorefrontTailoringController extends Controller
     {
         $storefront = $this->storefront();
         $services = $storefront->tailoringServices()
+            ->with('measurementTemplate:id,name')
             ->orderBy('sort_order')
             ->latest('id')
             ->get();
 
-        return view('storefront.admin.tailoring-services', compact('storefront', 'services'));
+        $measurementTemplates = $this->measurementTemplates();
+
+        return view('storefront.admin.tailoring-services', compact('storefront', 'services', 'measurementTemplates'));
     }
 
     public function storeService(Request $request)
@@ -94,10 +98,13 @@ class AdminStorefrontTailoringController extends Controller
         ]);
         $inquiries = $storefront->inquiries()
             ->with([
-                'service:id,name,price_from,estimated_days',
+                'service:id,name,price_from,estimated_days,measurement_template_id',
+                'service.measurementTemplate:id,name',
+                'measurementTemplate:id,name',
                 'paymentVerifier:id,name,username',
-                'customer:id,name,phone_number1',
-                'order:id,customerId,status,returnDate,totalPayment',
+                'customer:id,name,phone_number1,measurement_template_id',
+                'order:id,customerId,status,returnDate,totalPayment,measurement_template_id',
+                'order.measurementTemplate:id,name',
                 'confirmedBy:id,name,username',
                 'rejectedBy:id,name,username',
             ])
@@ -118,6 +125,7 @@ class AdminStorefrontTailoringController extends Controller
             'inquiries' => $inquiries,
             'filters' => $filters,
             'statuses' => StorefrontInquiry::statuses(),
+            'measurementTemplates' => $this->measurementTemplates(),
         ]);
     }
 
@@ -208,6 +216,13 @@ class AdminStorefrontTailoringController extends Controller
             'final_price' => ['required', 'numeric', 'min:0', 'max:9999999999'],
             'suit_quantity' => ['required', 'integer', 'min:1', 'max:20'],
             'promised_date' => ['required', 'date', 'after_or_equal:today'],
+            'measurement_template_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('measurement_templates', 'id')
+                    ->where('user_id', Auth::user()->businessOwnerId())
+                    ->where('is_active', true),
+            ],
             'admin_notes' => ['nullable', 'string', 'max:3000'],
         ]);
         $bookings->confirm(
@@ -216,6 +231,7 @@ class AdminStorefrontTailoringController extends Controller
             (float) $validated['final_price'],
             (int) $validated['suit_quantity'],
             $validated['promised_date'],
+            isset($validated['measurement_template_id']) ? (int) $validated['measurement_template_id'] : null,
             $validated['admin_notes'] ?? null,
         );
 
@@ -275,6 +291,13 @@ class AdminStorefrontTailoringController extends Controller
             'price_from' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
             'price_unit' => ['required', Rule::in(['فی سوٹ', 'فی لباس', 'فی کام'])],
             'estimated_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'measurement_template_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('measurement_templates', 'id')
+                    ->where('user_id', Auth::user()->businessOwnerId())
+                    ->where('is_active', true),
+            ],
             'deposit_type' => ['nullable', Rule::in(array_keys(StorefrontTailoringService::depositTypes()))],
             'deposit_value' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
             'measurement_methods' => ['nullable', 'array'],
@@ -327,5 +350,15 @@ class AdminStorefrontTailoringController extends Controller
         }
 
         return $validated;
+    }
+
+    private function measurementTemplates()
+    {
+        return MeasurementTemplate::query()
+            ->where('user_id', Auth::user()->businessOwnerId())
+            ->where('is_active', true)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get(['id', 'name', 'is_default']);
     }
 }

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Business;
 use App\Models\Customers;
+use App\Models\MeasurementTemplate;
 use App\Models\Storefront;
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontTailoringService;
@@ -154,6 +155,122 @@ class StorefrontTailoringBookingTest extends TestCase
         $this->actingAs($owner)->patch(route('admin.storefront.inquiries.confirm', $booking), $confirmation)
             ->assertRedirect(route('admin.storefront.inquiries.index'));
         $this->assertDatabaseHas('transactions', ['orderId' => $booking->fresh()->order_id, 'recivedPayment' => '500']);
+    }
+
+    public function test_service_template_is_snapshotted_on_booking_and_used_for_the_confirmed_order(): void
+    {
+        [$owner, $storefront, $service] = $this->shop();
+        $defaultTemplate = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'Shalwar Qameez',
+            'system_fields' => ['length', 'arms', 'shalwar'],
+            'custom_field_ids' => [],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+        $waistcoatTemplate = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'Executive Waistcoat',
+            'system_fields' => ['length', 'teraa', 'senaChorai'],
+            'custom_field_ids' => [],
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+        $service->update([
+            'measurement_template_id' => $waistcoatTemplate->id,
+            'measurement_methods' => [StorefrontTailoringService::MEASUREMENT_EXISTING_PROFILE],
+        ]);
+        $customer = Customers::create([
+            'user_id' => $owner->id,
+            'name' => 'Waistcoat Customer',
+            'phone_number1' => '03005556666',
+            'mobile_pin' => Hash::make('654321'),
+            'measurement_template_id' => $defaultTemplate->id,
+            'length' => 29,
+            'arms' => 24,
+            'teraa' => 18,
+            'senaChorai' => 21,
+            'shalwar' => 40,
+        ]);
+
+        $this->post(route('storefront.tailoring.bookings.store', $storefront), [
+            'tailoring_service_id' => $service->id,
+            'customer_name' => $customer->name,
+            'phone' => $customer->phone_number1,
+            'measurement_method' => StorefrontTailoringService::MEASUREMENT_EXISTING_PROFILE,
+            'suit_quantity' => 1,
+            'booking_pin' => '654321',
+            'booking_pin_confirmation' => '654321',
+            'payment_method' => StorefrontInquiry::PAYMENT_UNPAID,
+        ])->assertRedirect();
+
+        $booking = StorefrontInquiry::firstOrFail();
+        $this->assertSame($waistcoatTemplate->id, $booking->measurement_template_id);
+        $this->actingAs($owner)->get(route('admin.storefront.inquiries.index'))
+            ->assertOk()
+            ->assertSeeText('Executive Waistcoat');
+
+        $this->actingAs($owner)->patch(route('admin.storefront.inquiries.confirm', $booking), [
+            'final_price' => 2500,
+            'suit_quantity' => 1,
+            'promised_date' => now()->addWeek()->toDateString(),
+            'measurement_template_id' => $waistcoatTemplate->id,
+        ])->assertRedirect(route('admin.storefront.inquiries.index'));
+
+        $order = $booking->fresh()->order;
+        $this->assertSame($waistcoatTemplate->id, $order->measurement_template_id);
+        $this->assertEqualsCanonicalizing(
+            ['system.length', 'system.teraa', 'system.senaChorai'],
+            $order->measurementValues()->pluck('source_key')->all(),
+        );
+    }
+
+    public function test_existing_measurement_booking_shows_missing_fields_and_is_not_confirmed(): void
+    {
+        [$owner, $storefront, $service] = $this->shop();
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'Waistcoat',
+            'system_fields' => ['length', 'teraa'],
+            'custom_field_ids' => [],
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+        $service->update([
+            'measurement_template_id' => $template->id,
+            'measurement_methods' => [StorefrontTailoringService::MEASUREMENT_EXISTING_PROFILE],
+        ]);
+        $customer = Customers::create([
+            'user_id' => $owner->id,
+            'name' => 'Incomplete Customer',
+            'phone_number1' => '03007778888',
+            'mobile_pin' => Hash::make('654321'),
+            'length' => 29,
+        ]);
+        $this->post(route('storefront.tailoring.bookings.store', $storefront), [
+            'tailoring_service_id' => $service->id,
+            'customer_name' => $customer->name,
+            'phone' => $customer->phone_number1,
+            'measurement_method' => StorefrontTailoringService::MEASUREMENT_EXISTING_PROFILE,
+            'suit_quantity' => 1,
+            'booking_pin' => '654321',
+            'booking_pin_confirmation' => '654321',
+            'payment_method' => StorefrontInquiry::PAYMENT_UNPAID,
+        ]);
+        $booking = StorefrontInquiry::firstOrFail();
+
+        $this->actingAs($owner)->patch(route('admin.storefront.inquiries.confirm', $booking), [
+            'final_price' => 2500,
+            'suit_quantity' => 1,
+            'promised_date' => now()->addWeek()->toDateString(),
+            'measurement_template_id' => $template->id,
+        ])->assertSessionHasErrors('measurement_template_id');
+
+        $this->assertDatabaseCount('orders', 0);
+        $this->actingAs($owner)->get(route('admin.storefront.inquiries.index'))
+            ->assertOk()
+            ->assertSeeText('ضروری پیمائش مکمل کریں')
+            ->assertSeeText('تیرا');
     }
 
     private function shop(): array

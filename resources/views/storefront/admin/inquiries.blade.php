@@ -8,6 +8,7 @@
 <div class="container-fluid px-3 px-md-4 py-4" dir="rtl">
     <div class="inquiry-hero mb-4 d-flex flex-wrap justify-content-between align-items-center"><div><div class="small">آن لائن دکان</div><h1 class="h3 mb-1">آن لائن ٹیلرنگ بکنگ</h1><p class="mb-0 text-white-50">گاہک کی بکنگ کا جائزہ لیں، ادائیگی تصدیق کریں، آرڈر منظور یا مسترد کریں اور جاب شیٹ پرنٹ کریں۔</p></div>@if(auth()->user()->business->tailoring_enabled)<a class="btn btn-light mt-3 mt-md-0" href="{{ route('admin.storefront.tailoring.services') }}">ٹیلرنگ خدمات</a>@endif</div>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+    @if($errors->any())<div class="alert alert-danger" role="alert"><strong>کارروائی مکمل نہیں ہو سکی:</strong><ul class="mb-0 mt-2">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <div class="alert alert-info">نئی آن لائن بکنگ صرف درخواست محفوظ کرتی ہے۔ منظوری کے وقت نظام گاہک، ٹیلرنگ آرڈر اور مالی لین دین ایک ساتھ بناتا ہے۔ پرانی عمومی درخواستیں سابقہ طریقے سے دستیاب رہیں گی۔</div>
     <form class="card inquiry-card card-body mb-4" method="GET"><div class="form-row align-items-end"><div class="form-group col-md-5"><label>نام، فون یا ای میل</label><input name="q" class="form-control" value="{{ $filters['q']??'' }}"></div><div class="form-group col-md-4"><label>حالت</label><select name="status" class="form-control"><option value="">تمام حالتیں</option>@foreach($statuses as $value=>$label)<option value="{{ $value }}" @selected(($filters['status']??'')===$value)>{{ $label }}</option>@endforeach</select></div><div class="form-group col-md-3"><button class="btn btn-primary btn-block">فلٹر کریں</button></div></div></form>
     @forelse($inquiries as $inquiry)
@@ -17,7 +18,8 @@
         @if($inquiry->measurement_method || $inquiry->service_deposit_type)
         <div class="row mt-2">
             <div class="col-md-6"><strong>پیمائش:</strong> {{ \App\Models\StorefrontTailoringService::measurementMethodLabels()[$inquiry->measurement_method] ?? '—' }}</div>
-            <div class="col-md-6"><strong>درخواست کے وقت پیشگی پالیسی:</strong>
+            <div class="col-md-6"><strong>پیمائش ٹیمپلیٹ:</strong> {{ $inquiry->measurementTemplate?->name ?? ($inquiry->status === \App\Models\StorefrontInquiry::STATUS_CONFIRMED ? $inquiry->order?->measurementTemplate?->name : $inquiry->service?->measurementTemplate?->name) ?? 'منظوری کے وقت منتخب کریں' }}</div>
+            <div class="col-md-6 mt-2"><strong>درخواست کے وقت پیشگی پالیسی:</strong>
                 @if($inquiry->service_deposit_type === \App\Models\StorefrontTailoringService::DEPOSIT_PERCENTAGE)
                     {{ rtrim(rtrim(number_format((float)$inquiry->service_deposit_value,2),'0'),'.') }}%
                 @elseif($inquiry->service_deposit_amount !== null)
@@ -80,7 +82,26 @@
         @endif
         @if($inquiry->message)<div class="bg-light rounded p-3 mt-3">{{ $inquiry->message }}</div>@endif
         @if($inquiry->isBooking() && in_array($inquiry->status,[\App\Models\StorefrontInquiry::STATUS_NEW,\App\Models\StorefrontInquiry::STATUS_CONTACTED],true))
-        <div class="border rounded p-3 mt-3"><h3 class="h6">بکنگ پر فیصلہ</h3><form method="POST" action="{{ route('admin.storefront.inquiries.confirm',$inquiry) }}">@csrf @method('PATCH')<div class="form-row"><div class="form-group col-md-3"><label>حتمی قیمت</label><input name="final_price" type="number" min="0" step="0.01" required class="form-control" value="{{ old('final_price',$inquiry->estimated_price) }}"></div><div class="form-group col-md-2"><label>تعداد</label><input name="suit_quantity" type="number" min="1" max="20" required class="form-control" value="{{ old('suit_quantity',$inquiry->suit_quantity) }}"></div><div class="form-group col-md-3"><label>تیاری کی تاریخ</label><input name="promised_date" type="date" min="{{ now()->toDateString() }}" required class="form-control" value="{{ old('promised_date',$inquiry->preferred_date?->format('Y-m-d') ?: now()->addDays($inquiry->service?->estimated_days ?: 7)->format('Y-m-d')) }}"></div><div class="form-group col-md-4"><label>اندرونی نوٹ</label><input name="admin_notes" maxlength="3000" class="form-control" value="{{ old('admin_notes',$inquiry->admin_notes) }}"></div></div><button class="btn btn-success">بکنگ منظور اور آرڈر بنائیں</button></form><form method="POST" action="{{ route('admin.storefront.inquiries.reject',$inquiry) }}" class="mt-3">@csrf @method('PATCH')<div class="input-group"><input name="rejection_reason" required maxlength="1000" class="form-control" placeholder="مسترد کرنے کی وجہ"><div class="input-group-append"><button class="btn btn-outline-danger">بکنگ مسترد کریں</button></div></div></form></div>
+        <div class="border rounded p-3 mt-3">
+            <h3 class="h6">بکنگ پر فیصلہ</h3>
+            <form method="POST" action="{{ route('admin.storefront.inquiries.confirm',$inquiry) }}">@csrf @method('PATCH')
+                @php
+                    $defaultTemplateId = $inquiry->measurement_template_id
+                        ?: $inquiry->service?->measurement_template_id
+                        ?: $inquiry->customer?->measurement_template_id
+                        ?: $measurementTemplates->firstWhere('is_default', true)?->id;
+                @endphp
+                <div class="form-row">
+                    <div class="form-group col-md-3"><label>حتمی قیمت</label><input name="final_price" type="number" min="0" step="0.01" required class="form-control" value="{{ old('final_price',$inquiry->estimated_price) }}"></div>
+                    <div class="form-group col-md-2"><label>تعداد</label><input name="suit_quantity" type="number" min="1" max="20" required class="form-control" value="{{ old('suit_quantity',$inquiry->suit_quantity) }}"></div>
+                    <div class="form-group col-md-3"><label>تیاری کی تاریخ</label><input name="promised_date" type="date" min="{{ now()->toDateString() }}" required class="form-control" value="{{ old('promised_date',$inquiry->preferred_date?->format('Y-m-d') ?: now()->addDays($inquiry->service?->estimated_days ?: 7)->format('Y-m-d')) }}"></div>
+                    <div class="form-group col-md-4"><label>اندرونی نوٹ</label><input name="admin_notes" maxlength="3000" class="form-control" value="{{ old('admin_notes',$inquiry->admin_notes) }}"></div>
+                    <div class="form-group col-md-6"><label>پیمائش ٹیمپلیٹ</label><select name="measurement_template_id" class="form-control" required><option value="">منتخب کریں</option>@foreach($measurementTemplates as $template)<option value="{{ $template->id }}" @selected((string) old('measurement_template_id',$defaultTemplateId) === (string) $template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>@endforeach</select><small class="form-text text-muted">آرڈر میں صرف اسی لباس کی متعلقہ پیمائش محفوظ ہوگی۔</small></div>
+                </div>
+                <button class="btn btn-success">بکنگ منظور اور آرڈر بنائیں</button>
+            </form>
+            <form method="POST" action="{{ route('admin.storefront.inquiries.reject',$inquiry) }}" class="mt-3">@csrf @method('PATCH')<div class="input-group"><input name="rejection_reason" required maxlength="1000" class="form-control" placeholder="مسترد کرنے کی وجہ"><div class="input-group-append"><button class="btn btn-outline-danger">بکنگ مسترد کریں</button></div></div></form>
+        </div>
         @elseif($inquiry->isBooking() && $inquiry->status===\App\Models\StorefrontInquiry::STATUS_CONFIRMED)
         <div class="alert alert-success mt-3 mb-0"><strong>آرڈر #{{ $inquiry->order_id }} بن گیا ہے۔</strong> حتمی قیمت Rs {{ number_format((float)$inquiry->final_price,2) }} · تیاری {{ $inquiry->promised_date?->format('d-m-Y') }} <a target="_blank" class="btn btn-sm btn-dark mr-2" href="{{ route('admin.storefront.inquiries.job-sheet',$inquiry) }}">جاب شیٹ پرنٹ کریں</a> @if($inquiry->order)<a class="btn btn-sm btn-outline-dark" href="{{ route('admin.order-print',$inquiry->order) }}" target="_blank">مکمل آرڈر پرنٹ</a>@endif</div>
         @elseif($inquiry->isBooking() && $inquiry->status===\App\Models\StorefrontInquiry::STATUS_REJECTED)

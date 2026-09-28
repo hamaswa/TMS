@@ -35,6 +35,7 @@ use App\Http\Controllers\OrderWorkAssignmentController;
 use App\Http\Controllers\ProductionWorkerController;
 use App\Http\Controllers\PublicOrderTrackingController;
 use App\Http\Controllers\PublicLocaleController;
+use App\Http\Controllers\PublicBusinessSignupController;
 use App\Http\Controllers\PublicStorefrontCartController;
 use App\Http\Controllers\PublicStorefrontCheckoutController;
 use App\Http\Controllers\PublicStorefrontController;
@@ -42,6 +43,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleCustomerController;
+use App\Http\Controllers\SaleSessionController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StorefrontPaymentReconciliationController;
 use App\Http\Controllers\SubscriptionPlanController;
@@ -65,7 +67,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Auth::routes(['register' => false]);
+Auth::routes(['register' => false, 'verify' => true]);
 
 Route::get('/offline', [OfflineWorkspaceController::class, 'fallback'])->name('offline.fallback');
 
@@ -77,6 +79,11 @@ Route::redirect('/register', '/', 301);
 Route::get('/language/{locale}', [PublicLocaleController::class, 'update'])
     ->whereIn('locale', ['ur', 'en'])->name('public.locale.update');
 Route::get('/', [PublicStorefrontController::class, 'index'])->middleware('public.locale')->name('storefront.index');
+Route::get('/for-business', [PublicStorefrontController::class, 'business'])->middleware('public.locale')->name('storefront.business');
+Route::get('/for-business/signup', [PublicBusinessSignupController::class, 'create'])
+    ->middleware('public.locale')->name('storefront.business.signup');
+Route::post('/for-business/signup', [PublicBusinessSignupController::class, 'store'])
+    ->middleware(['public.locale', 'throttle:3,1'])->name('storefront.business.signup.store');
 Route::redirect('/shops', '/', 301)->name('storefront.legacy.index');
 Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->middleware('public.locale')->name('storefront.show');
 Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->middleware('public.locale')->name('storefront.clothing.index');
@@ -429,6 +436,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 
         // Cloth
         Route::resource('/cloth', ClothController::class);
+        Route::get('/cloth-set-qr-labels', [ClothController::class, 'qrLabels'])->name('cloth.qr-labels');
         Route::get('/cloth/{cloth}/qr-label', [ClothController::class, 'qrLabel'])->name('cloth.qr-label');
         Route::get('/edit-cloth/{id}/{color}', [ClothController::class, 'editCloth'])->name('edit-cloths');
         Route::post('/delete-cloth', [ClothController::class, 'deleteCloth'])->name('delete-cloths');
@@ -443,6 +451,11 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/getType', [ClothStockController::class, 'getType'])->middleware('business.permission:clothing.sales|clothing.inventory')->name('cloth-type.lookup');
 
     Route::middleware('business.permission:clothing.sales')->group(function () {
+        Route::get('/sales-sessions', [SaleSessionController::class, 'index'])->name('sales-sessions.index');
+        Route::get('/sales-sessions/feed', [SaleSessionController::class, 'feed'])->name('sales-sessions.feed');
+        Route::get('/sales-sessions/{saleSession}', [SaleSessionController::class, 'show'])->name('sales-sessions.show');
+        Route::post('/sales-sessions/{saleSession}/claim', [SaleSessionController::class, 'claim'])->name('sales-sessions.claim');
+        Route::post('/sales-sessions/{saleSession}/complete', [SaleSessionController::class, 'complete'])->name('sales-sessions.complete');
         Route::get('/cloths-index', [ClothStockController::class, 'index'])->name('cloths.index');
         Route::get('sellcloth', [ClothStockController::class, 'sellCloth'])->name('sellCloth');
         Route::get('/getSale', [ClothStockController::class, 'getSale'])->name('getSale');

@@ -13,17 +13,25 @@ use App\Models\OnlineOrder;
 use App\Models\Purchase;
 use App\Models\SaleStock;
 use App\Models\Setting;
+use App\Models\Stock;
 use App\Models\Supplier;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\FinancialReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class InventoryLedgerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_legacy_stock_model_has_its_required_soft_delete_column(): void
+    {
+        $this->assertTrue(Schema::hasColumn('stocks', 'deleted_at'));
+        $this->assertSame(0, Stock::query()->count());
+    }
 
     public function test_purchase_receipt_updates_moving_weighted_average_cost(): void
     {
@@ -88,6 +96,85 @@ class InventoryLedgerTest extends TestCase
             ->assertViewHas('sales', fn ($sales) => $sales->count() === 1
                 && $sales->first()->id === $sale->id
                 && $sales->first()->items_count === 1);
+    }
+
+    public function test_counter_sale_preserves_fractional_length_and_receipt_uses_its_own_payment(): void
+    {
+        [$owner, $cloth, $color] = $this->stock(10, 100);
+        $customer = Customers::create([
+            'name' => 'Fractional Buyer',
+            'phone_number1' => '03001119999',
+            'user_id' => $owner->id,
+        ]);
+
+        // Legacy sales and counter sales historically shared the sale_id column,
+        // so the same numeric ID must not make a receipt pick an older payment.
+        Transaction::create([
+            'remainingBalance' => 100,
+            'recivedPayment' => 50,
+            'customerId' => $customer->id,
+            'userId' => $owner->id,
+            'Order_type' => 'Sale',
+            'sale_id' => 1,
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$cloth->cloth_brand_id],
+            'cloth_type' => [$cloth->cloth_type_id],
+            'color' => [$color->color],
+            'item_total' => [300],
+            'clothes_rack' => [null],
+            'length' => [1.5],
+            'customer_mode' => 'regular',
+            'existing_customer_id' => $customer->id,
+            'payment' => 300,
+            'payment_method' => 'cash',
+        ]);
+
+        $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
+        $receipt = CounterSaleReceipt::where('user_id', $owner->id)->firstOrFail();
+        $response->assertRedirect(route('admin.printStock', [
+            'id' => $sale->id,
+            'customerId' => $customer->id,
+        ]));
+        $this->assertEquals(1.5, (float) $sale->length);
+        $this->assertDatabaseHas('transactions', [
+            'counter_sale_receipt_id' => $receipt->id,
+            'recivedPayment' => 300,
+            'remainingBalance' => 0,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.printStock', [
+            'id' => $sale->id,
+            'customerId' => $customer->id,
+        ]))->assertOk()
+            ->assertSeeText('1.50 m')
+            ->assertSeeText('Rs. 300.00');
+    }
+
+    public function test_counter_sale_allows_unidentified_color_and_allocates_available_stock(): void
+    {
+        [$owner, $cloth, $color] = $this->stock(10, 100);
+        $cloth->update(['color_tracking_mode' => Cloth::COLOR_TRACKING_NONE]);
+        $customer = Customers::create(['name' => 'Unknown Color Buyer', 'phone_number1' => '', 'user_id' => $owner->id]);
+
+        $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$cloth->cloth_brand_id],
+            'cloth_type' => [$cloth->cloth_type_id],
+            'color' => [''],
+            'item_total' => [300],
+            'clothes_rack' => [null],
+            'length' => [2],
+            'customer_mode' => 'regular',
+            'existing_customer_id' => $customer->id,
+            'payment' => 300,
+            'payment_method' => 'cash',
+        ])->assertRedirect();
+
+        $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
+        $this->assertNull($sale->color);
+        $this->assertSame($color->id, $sale->cloth_color_id);
+        $this->assertEquals(8, (float) $color->fresh()->length);
     }
 
     public function test_counter_sale_creates_random_customer_and_derives_rate_from_item_total(): void
@@ -207,6 +294,7 @@ class InventoryLedgerTest extends TestCase
             'customerId' => $customer->id,
         ]));
         $this->assertCount(2, $items);
+        $this->assertNotNull($customer->fresh()->first_sale_at);
         $this->assertEquals(8, (float) $firstColor->fresh()->length);
         $this->assertEquals(9, (float) $secondColor->fresh()->length);
 
@@ -283,6 +371,7 @@ class InventoryLedgerTest extends TestCase
         ]);
         $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
         $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('recivedPayment'));
+        $this->assertNull($customer->fresh()->first_sale_at);
 
         $report = app(FinancialReportService::class)->build($owner->id, now()->startOfDay(), now()->endOfDay());
         $this->assertEquals(0, $report['revenue']['کاؤنٹر کپڑا فروخت']);
@@ -331,7 +420,8 @@ class InventoryLedgerTest extends TestCase
         $response->assertOk()
             ->assertSeeText('گاہک کی معلومات')
             ->assertSeeText('ریگولر گاہک')
-            ->assertSeeText('رینڈم / نیا گاہک')
+            ->assertSeeText('نیا گاہک')
+            ->assertSeeText('واک اِن فروخت')
             ->assertSeeText('کل قیمت')
             ->assertSeeText('ریٹ فی میٹر')
             ->assertSeeText('مزید کپڑا شامل کریں')
@@ -339,7 +429,7 @@ class InventoryLedgerTest extends TestCase
             ->assertSee('id="counter-scan-add"', false)
             ->assertSee('class="counter-sale-form"', false)
             ->assertSee('counter-items-panel', false)
-            ->assertSee('counter-items-table-head', false)
+            ->assertSee('counter-item-summary', false)
             ->assertSee('counter-payment-column', false)
             ->assertSee('counter-payment-panel', false)
             ->assertSeeText($this->stockCodeForOwner($owner))
@@ -483,7 +573,7 @@ class InventoryLedgerTest extends TestCase
         $owner = $this->userWithRole('shop_owner');
         $type = ClothType::create(['name' => fake()->unique()->word(), 'user_id' => $owner->id]);
         $brand = ClothBrand::create(['name' => fake()->unique()->company(), 'user_id' => $owner->id]);
-        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => $cost, 'sale_price' => $cost + 50, 'user_id' => $owner->id]);
+        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => $cost, 'sale_price' => $cost + 50, 'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR, 'user_id' => $owner->id]);
         $color = ClothColor::create(['cloth_id' => $cloth->id, 'color' => fake()->unique()->safeColorName(), 'length' => $length, 'average_unit_cost' => $cost, 'user_id' => $owner->id]);
 
         return [$owner, $cloth, $color];

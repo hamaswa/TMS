@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\BusinessRole;
 use App\Models\Customers;
+use App\Models\MeasurementTemplate;
 use App\Models\Storefront;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -212,7 +213,16 @@ class PakistanComprehensiveQaSeeder extends Seeder
 
     private function services(Storefront $storefront, array $services): void
     {
+        $ownerId = (int) $storefront->business->owner_user_id;
         foreach ($services as $index => [$name, $description, $price, $unit, $days, $featured]) {
+            $template = null;
+            if (str_contains($name, 'ویسٹ')) {
+                $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)->where('name', 'like', '%ویسٹ%')->first();
+            } elseif (str_contains($name, 'بچ')) {
+                $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)->where('name', 'like', '%بچ%')->first();
+            } elseif (str_contains($name, 'شلوار') || str_contains($name, 'سوٹ')) {
+                $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)->where('is_default', true)->first();
+            }
             $storefront->tailoringServices()->updateOrCreate(
                 ['name' => $name],
                 [
@@ -220,6 +230,7 @@ class PakistanComprehensiveQaSeeder extends Seeder
                     'price_from' => $price,
                     'price_unit' => $unit,
                     'estimated_days' => $days,
+                    'measurement_template_id' => $template?->id,
                     'is_featured' => $featured,
                     'is_published' => true,
                     'sort_order' => ($index + 1) * 10,

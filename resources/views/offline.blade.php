@@ -15,5 +15,18 @@
         <p>آپ کے پہلے سے کھولے گئے ٹی ایم ایس صفحات آف لائن دستیاب ہیں۔ انٹرنیٹ آنے پر یہ صفحہ دوبارہ کھولیں۔ محفوظ کی گئی آف لائن تبدیلیاں خودکار طور پر سنک ہو جائیں گی۔</p>
         <a class="button" href="javascript:location.reload()">دوبارہ کوشش کریں</a>
     </main>
+    <script>
+        if ('serviceWorker' in navigator) {
+            let reloadingForWorker = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function () {
+                if (reloadingForWorker) return;
+                reloadingForWorker = true;
+                location.reload();
+            });
+            navigator.serviceWorker.register('/service-worker.js?v=20260927c', {scope: '/', updateViaCache: 'none'})
+                .then(function (registration) { return registration.update(); })
+                .catch(function () { /* The retry button remains available when truly offline. */ });
+        }
+    </script>
 </body>
 </html>

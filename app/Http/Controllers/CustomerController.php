@@ -409,6 +409,9 @@ class CustomerController extends Controller
         // dd($sleeve_opening_type);
         $obj->sleeve = $sleeve_opening_type;
         $obj->user_id = Auth::user()->businessOwnerId();
+        if (! $existingCustomer) {
+            $obj->acquisition_source = 'tailoring';
+        }
         $obj->measurement_template_id = $measurementTemplate?->id;
         $isSecondaryProfile = $obj->parent_id !== null;
         $plainPin = $isSecondaryProfile
@@ -815,6 +818,7 @@ class CustomerController extends Controller
                 'name' => $validatedData['customer_name'],
                 'phone_number1' => $validatedData['customer_num'],
                 'user_id' => auth()->user()->businessOwnerId(),
+                'acquisition_source' => 'shop_customer',
             ]);
 
             return redirect()->route('admin.stock.index')->with('insert', 'نیا کسٹمر شامل کیا گیا ہے۔');

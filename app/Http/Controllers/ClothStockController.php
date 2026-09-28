@@ -12,12 +12,15 @@ use App\Models\Customers;
 use App\Models\DaliyExpenses;
 use App\Models\Expenses;
 use App\Models\SaleStock;
+use App\Models\SaleSession;
 use App\Models\Setting;
 use App\Models\Stock;
 use App\Models\Transaction;
 use App\Models\Workers;
 use App\Services\InventoryService;
+use App\Services\CounterSaleService;
 use App\Services\PrintDocumentService;
+use App\Services\SaleSessionService;
 use App\Support\PaymentMethods;
 use Carbon\Carbon;
 use DateTime;
@@ -153,7 +156,7 @@ class ClothStockController extends Controller
 
     public function show($id) {}
 
-    public function sellCloth($id = null)
+    public function sellCloth(Request $request)
     {
         try {
             // if ($id) {
@@ -166,21 +169,81 @@ class ClothStockController extends Controller
             $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())->with(['brand', 'type', 'colors'])->get();
             $id = auth()->user()->businessOwnerId();
             // dd($id);
-            $customers = Customers::where('user_id', $id)->get();
+            $customers = Customers::where('user_id', $id)
+                ->selectableForSales()
+                ->orderBy('name')
+                ->get();
             $inventoryOptions = $cloths->map(fn ($cloth) => [
+                'cloth_id' => (string) $cloth->id,
                 'stock_code' => $cloth->stock_code,
                 'brand_id' => (string) $cloth->cloth_brand_id,
                 'brand_name' => $cloth->brand?->name,
                 'type_id' => (string) $cloth->cloth_type_id,
                 'type_name' => $cloth->type?->name,
+                'tracks_colors' => $cloth->tracksColors(),
                 'colors' => $cloth->colors->map(fn ($color) => [
                     'name' => $color->color,
                     'length' => (float) $color->length,
                 ])->values(),
             ])->values();
 
+            $saleSession = null;
+            $saleForm = null;
+            if ($request->filled('sale_session')) {
+                $saleSession = SaleSession::where('user_id', $id)
+                    ->where('uuid', $request->string('sale_session'))
+                    ->with('agent:id,name')
+                    ->firstOrFail();
+                abort_if($saleSession->isTerminal(), 409, 'This sale session is already closed.');
+
+                $items = collect($saleSession->items ?? [])->map(function (array $item) use ($cloths) {
+                    $cloth = $cloths->first(function (Cloth $candidate) use ($item) {
+                        if (! empty($item['setCode'])) {
+                            return $candidate->set_code === $item['setCode'];
+                        }
+                        if (! empty($item['brandId']) && ! empty($item['clothTypeId'])) {
+                            return (string) $candidate->cloth_brand_id === (string) $item['brandId']
+                                && (string) $candidate->cloth_type_id === (string) $item['clothTypeId'];
+                        }
+
+                        return (! ($item['brand'] ?? null) || $candidate->brand?->name === $item['brand'])
+                            && (! ($item['clothType'] ?? null) || $candidate->type?->name === $item['clothType']);
+                    });
+
+                    $quantity = (float) ($item['quantity'] ?? 1);
+                    $unitPrice = (float) ($item['unitPrice'] ?? 0);
+
+                    return [
+                        'brand_id' => $item['brandId'] ?? $cloth?->cloth_brand_id,
+                        'cloth_id' => $cloth?->id,
+                        'type_id' => $item['clothTypeId'] ?? $cloth?->cloth_type_id,
+                        'color' => $item['color'] ?? '',
+                        'length' => ($item['length'] ?? '') ?: ($item['quantity'] ?? ''),
+                        'item_total' => round($quantity * $unitPrice, 2),
+                        'rack' => $item['rack'] ?? '',
+                    ];
+                })->values()->all();
+
+                $customer = $saleSession->customer_data ?? [];
+                $payment = $saleSession->payment_data ?? [];
+                $saleForm = [
+                    'customer_mode' => match ($saleSession->customer_mode) {
+                        'existing' => 'regular',
+                        'walk-in' => 'walk_in',
+                        default => 'new',
+                    },
+                    'customer_id' => $saleSession->customer_id,
+                    'customer_name' => $saleSession->customer_mode === 'walk-in' ? '' : ($customer['name'] ?? ''),
+                    'customer_phone' => $customer['phone'] ?? '',
+                    'items' => $items ?: [[]],
+                    'payment_method' => strtolower(str_replace(' ', '_', $payment['method'] ?? 'cash')),
+                    'payment' => $payment['receivedAmount'] ?? '',
+                    'payment_reference' => $payment['reference'] ?? '',
+                ];
+            }
+
             // dd($customers);
-            return view('stock.sell', compact('customers', 'cloths', 'inventoryOptions'));
+            return view('stock.sell', compact('customers', 'cloths', 'inventoryOptions', 'saleSession', 'saleForm'));
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -210,9 +273,27 @@ class ClothStockController extends Controller
         }
     }
 
-    public function sellStock(Request $request)
+    public function sellStock(Request $request, CounterSaleService $counterSales, SaleSessionService $saleSessions)
     {
-        return $this->processStockSale($request);
+        $validated = $counterSales->validate($request->all());
+        if ($request->filled('sale_session_uuid')) {
+            $session = SaleSession::where('user_id', Auth::user()->businessOwnerId())
+                ->where('uuid', $request->string('sale_session_uuid'))
+                ->firstOrFail();
+            $completed = $saleSessions->completeWithValidated($session, Auth::user(), $validated);
+
+            return redirect()->route('admin.printStock', [
+                'id' => $completed->receipt->first_sale_stock_id,
+                'customerId' => $completed->receipt->customer_id,
+            ]);
+        }
+
+        $result = $counterSales->complete(Auth::user(), $validated);
+
+        return redirect()->route('admin.printStock', [
+            'id' => $result['first_sale']->id,
+            'customerId' => $result['customer']->id,
+        ]);
 
         // Retrieve the stock based on the selected brand name
         $brandNames = $request->input('brand_name');
@@ -408,11 +489,22 @@ class ClothStockController extends Controller
         $id = $customers->id;
         // dd($id);
 
+        $receipt = $latestSaleStock->receipt;
         $gettransactions = Transaction::where('customerId', $id)
             ->where('Order_type', 'Sale')
             ->where('userId', auth()->user()->businessOwnerId())
-            ->where('sale_id', $sale_id)
-            ->first();
+            ->when(
+                $receipt,
+                fn ($query) => $query->where(function ($linked) use ($receipt, $sale_id) {
+                    $linked->where('counter_sale_receipt_id', $receipt->id)
+                        ->orWhere(function ($legacy) use ($sale_id) {
+                            $legacy->whereNull('counter_sale_receipt_id')->where('sale_id', $sale_id);
+                        });
+                }),
+                fn ($query) => $query->where('sale_id', $sale_id)
+            )
+            ->latest('id')
+            ->firstOrFail();
 
         $remaining = $gettransactions->remainingBalance;
         $payment = $gettransactions->recivedPayment;
@@ -445,7 +537,6 @@ class ClothStockController extends Controller
         if ($latestSaleStock) {
             $customerName = $latestSaleStock->c_name;
             $phone = $latestSaleStock->phone;
-            $receipt = $latestSaleStock->receipt;
             $sellStock = $receipt
                 ? SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('counter_sale_receipt_id', $receipt->id)->orderBy('id')->get()
                 : SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('created_at', $latestSaleStock->created_at)->orderBy('id')->get();
@@ -573,9 +664,16 @@ class ClothStockController extends Controller
                 ]);
             }
             $original = Transaction::where('userId', $ownerId)
-                ->where('sale_id', $receipt->first_sale_stock_id)
                 ->where('Order_type', 'Sale')
+                ->where(function ($linked) use ($receipt) {
+                    $linked->where('counter_sale_receipt_id', $receipt->id)
+                        ->orWhere(function ($legacy) use ($receipt) {
+                            $legacy->whereNull('counter_sale_receipt_id')
+                                ->where('sale_id', $receipt->first_sale_stock_id);
+                        });
+                })
                 ->lockForUpdate()
+                ->latest('id')
                 ->first();
             $received = (float) ($original?->recivedPayment ?? 0);
             $balance = (float) ($original?->remainingBalance ?? 0);
@@ -609,6 +707,7 @@ class ClothStockController extends Controller
                 'recivedPayment' => -$received,
                 'Order_type' => 'Sale Cancellation',
                 'sale_id' => $receipt->first_sale_stock_id,
+                'counter_sale_receipt_id' => $receipt->id,
                 'customerId' => $receipt->customer_id ?? $original?->customerId,
                 'userId' => $ownerId,
                 'payment_method' => $refundMethod ?? $original?->payment_method ?? 'cash',
@@ -623,6 +722,23 @@ class ClothStockController extends Controller
                 'cancelled_at' => now(),
                 'cancelled_by_user_id' => Auth::id(),
             ]);
+
+            $customerId = $receipt->customer_id ?? $original?->customerId;
+            if ($customerId) {
+                $customer = Customers::where('user_id', $ownerId)
+                    ->whereKey($customerId)
+                    ->where('is_walk_in', false)
+                    ->lockForUpdate()
+                    ->first();
+                if ($customer) {
+                    $customer->update([
+                        'first_sale_at' => SaleStock::financiallyActive()
+                            ->where('user_id', $ownerId)
+                            ->where('c_id', $customer->id)
+                            ->min('sellDate'),
+                    ]);
+                }
+            }
 
             return $receipt;
         });

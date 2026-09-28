@@ -1,0 +1,34 @@
+# BuyNStitch Sales Agent
+
+An Expo React Native Android app isolated inside the Laravel repository's `android/` directory.
+
+## Implemented foundation
+
+- TypeScript and Expo SDK 57.
+- Employee username/email and password login preview routed into the sale form. The preview does not transmit or store credentials until the Laravel employee API exists.
+- Existing/new/walk-in customer modes.
+- Whole-set QR, Code 128, EAN-13 and EAN-8 scanning with `expo-camera`.
+- Counter-sale item and payment fields.
+- Automatic local draft persistence with AsyncStorage.
+- Online/offline indication with NetInfo.
+- Existing permission identifier `clothing.sales`; no new role or login system.
+- Explicit integration boundary: the app never claims that a local draft has synced or completed a sale before the Laravel API exists.
+
+## Run on a physical Android phone
+
+1. Install Expo Go on the phone.
+2. In this directory run `npm start`.
+3. Scan the displayed Expo QR code with the phone.
+
+Camera barcode scanning is included in Expo Go. The phone and computer normally need to be able to reach each other; Expo tunnel mode can be used when local-network discovery is blocked.
+
+## Builds
+
+- Installable test APK: `eas build --platform android --profile preview`
+- Play Store bundle: `eas build --platform android --profile production`
+
+The first EAS build will ask you to sign in and associate this project with your existing Expo account. Do not commit Expo access tokens or Android signing credentials.
+
+## Server integration
+
+Read `docs/BACKEND_CONTRACT.md` before implementing Laravel endpoints. The current `/api/login` is customer PIN authentication; the Sales Agent app must authenticate the existing employee account and enforce `clothing.sales`.

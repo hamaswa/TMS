@@ -8,7 +8,9 @@ use App\Models\Customers;
 use App\Models\Storefront;
 use App\Models\StorefrontClothingListing;
 use App\Models\StorefrontInquiry;
+use App\Models\StorefrontOrder;
 use App\Models\StorefrontTailoringService;
+use App\Models\SubscriptionPlan;
 use App\Notifications\NewStorefrontTailoringBookingNotification;
 use App\Services\StorefrontPaymentEvidenceService;
 use App\Support\PakistanPhoneNumber;
@@ -38,6 +40,57 @@ class PublicStorefrontController extends Controller
             'category' => ['nullable', Rule::in(['clothing', 'tailoring', 'both'])],
             'delivery' => ['nullable', Rule::in(['1'])],
         ]);
+        $hasActiveFilters = collect($filters)
+            ->contains(fn ($value) => $value !== null && $value !== '');
+        $topStorefronts = (clone $publicQuery)
+            ->with('business:id,status,tailoring_enabled,clothing_enabled')
+            ->withCount([
+                'orders as fulfilled_orders_count' => fn ($orders) => $orders->whereIn('status', [
+                    StorefrontOrder::STATUS_CONFIRMED,
+                    StorefrontOrder::STATUS_COMPLETE,
+                ]),
+                'inquiries as confirmed_bookings_count' => fn ($inquiries) => $inquiries
+                    ->where('status', StorefrontInquiry::STATUS_CONFIRMED),
+            ])
+            ->orderByRaw('(fulfilled_orders_count + confirmed_bookings_count) DESC')
+            ->orderByDesc('published_at')
+            ->limit(6)
+            ->get();
+
+        $publicProducts = StorefrontClothingListing::query()
+            ->where('is_published', true)
+            ->where('is_available', true)
+            ->whereHas('storefront', fn ($storefront) => $storefront
+                ->publiclyVisible()
+                ->where('show_clothing', true)
+                ->whereHas('business', fn ($business) => $business->where('clothing_enabled', true)));
+        $topProducts = (clone $publicProducts)
+            ->with([
+                'storefront:id,business_id,slug,display_name,city',
+                'cloth.brand',
+                'cloth.type',
+                'cloth.images',
+                'cloth.colors',
+            ])
+            ->withSum([
+                'orderItems as successful_quantity_sold' => fn ($items) => $items
+                    ->whereHas('order', fn ($orders) => $orders->whereIn('status', [
+                        StorefrontOrder::STATUS_CONFIRMED,
+                        StorefrontOrder::STATUS_COMPLETE,
+                    ])),
+            ], 'quantity')
+            ->orderByDesc('successful_quantity_sold')
+            ->orderByDesc('is_featured')
+            ->orderBy('sort_order')
+            ->latest('id')
+            ->limit(8)
+            ->get();
+
+        if ($hasActiveFilters) {
+            $topStorefronts = collect();
+            $topProducts = collect();
+        }
+
         $storefronts = $publicQuery
             ->when($filters['q'] ?? null, function ($query, $term) {
                 $query->where(function ($query) use ($term) {
@@ -86,7 +139,38 @@ class PublicStorefrontController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        return view('storefront.public.index', compact('storefronts', 'cities', 'filters'));
+        $marketplaceStats = [
+            'shops' => $storefronts->total(),
+            'products' => (clone $publicProducts)->count(),
+            'services' => StorefrontTailoringService::query()
+                ->where('is_published', true)
+                ->where('is_available', true)
+                ->whereHas('storefront', fn ($storefront) => $storefront
+                    ->publiclyVisible()
+                    ->where('show_tailoring', true)
+                    ->whereHas('business', fn ($business) => $business->where('tailoring_enabled', true)))
+                ->count(),
+        ];
+
+        return view('storefront.public.index', compact(
+            'storefronts',
+            'cities',
+            'filters',
+            'topStorefronts',
+            'topProducts',
+            'marketplaceStats',
+        ));
+    }
+
+    public function business()
+    {
+        $plans = SubscriptionPlan::publiclyAvailable()
+            ->orderByDesc('is_recommended')
+            ->orderBy('display_order')
+            ->orderBy('price')
+            ->get();
+
+        return view('storefront.public.business', compact('plans'));
     }
 
     public function show(Storefront $storefront)
@@ -406,6 +490,7 @@ class PublicStorefrontController extends Controller
                     ...collect($validated)->except(['website', 'tailoring_service_id', 'payment_evidence', 'booking_pin', 'booking_pin_confirmation'])->all(),
                     ...$evidence,
                     'tailoring_service_id' => $lockedService?->id,
+                    'measurement_template_id' => $lockedService?->measurement_template_id,
                     'customer_id' => $customer?->id,
                     'booking_pin_hash' => $isBooking ? Hash::make($validated['booking_pin']) : null,
                     'payment_claimed_amount' => (float) ($validated['payment_claimed_amount'] ?? 0),

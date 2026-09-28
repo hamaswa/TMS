@@ -336,9 +336,15 @@ class TailorJobLifecycleTest extends TestCase
         $this->actingAs($owner)
             ->get(route('admin.Customers.index'))
             ->assertOk()
-            ->assertSee('name="status"', false)
-            ->assertSee('data-action-base="'.url('admin/tailor-jobs').'"', false)
-            ->assertDontSee('name="order_status"', false);
+            ->assertSee(route('admin.customers.statement', $order->customerId), false)
+            ->assertDontSee('name="status"', false)
+            ->assertDontSee('data-action-base="'.url('admin/tailor-jobs').'"', false);
+
+        $this->actingAs($owner)
+            ->get(route('admin.customers.statement', ['id' => $order->customerId, 'tab' => 'tailoring']))
+            ->assertOk()
+            ->assertSeeText('سلائی')
+            ->assertDontSee('name="status"', false);
 
         $customerOrders = $this->actingAs($owner)
             ->getJson(route('admin.getCustomer', ['id' => $order->customerId]))

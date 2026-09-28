@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use App\Services\InventoryService;
 use App\Services\PrintDocumentService;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class ClothController extends Controller
 {
@@ -22,17 +23,33 @@ class ClothController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-   public function index()
-   {
-    try {
-        $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
-        ->with(['type', 'brand', 'colors.latestCostedStockAddition', 'images', 'videos'])
-        ->latest()
-        ->get();
-        return view('cloths.index', compact('cloths'));
+    public function index()
+    {
+        try {
+            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
+                ->with(['type', 'brand', 'colors.latestCostedStockAddition', 'images', 'videos'])
+                ->latest()
+                ->get();
+
+            return view('cloths.index', compact('cloths'));
         } catch (\Throwable $th) {
             throw $th;
-            }
+        }
+    }
+
+    public function qrLabels(PrintDocumentService $documents)
+    {
+        $cloths = Cloth::where('user_id', Auth::user()->businessOwnerId())
+            ->with(['type', 'brand', 'colors'])
+            ->orderBy('id')
+            ->get()
+            ->map(function (Cloth $cloth) use ($documents) {
+                $cloth->qr_svg = $documents->qrSvg('BNS-SET:'.$cloth->set_code, 220);
+
+                return $cloth;
+            });
+
+        return view('cloths.qr-labels', compact('cloths'));
     }
 
     /**
@@ -70,6 +87,7 @@ class ClothController extends Controller
                 'length_colors.*' => ['required', 'string', 'max:100'],
                 'price' => ['required', 'numeric', 'min:0'],
                 'sale_price' => ['required', 'numeric', 'min:0'],
+                'color_tracking_mode' => ['required', Rule::in([Cloth::COLOR_TRACKING_NONE, Cloth::COLOR_TRACKING_PER_COLOR])],
                 'colors' => ['nullable', 'string', 'max:1000'],
                 'images' => ['nullable', 'array'],
                 'images.*' => ['image', 'max:4096'],
@@ -83,6 +101,7 @@ class ClothController extends Controller
             // dd($validated);
             ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
             ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
+            $trackingMode = $validated['color_tracking_mode'];
             $colors = array_values(
                                 array_filter(
                                     array_map(
@@ -93,8 +112,15 @@ class ClothController extends Controller
                                 )
                             );
 
-                            if ($colors === []) {
+                            if ($trackingMode === Cloth::COLOR_TRACKING_NONE) {
                                 $colors = ['عام'];
+                            } else {
+                                $colors = array_values(array_filter($colors, fn ($color) => mb_strtolower($color) !== 'عام'));
+                                if ($colors === []) {
+                                    throw ValidationException::withMessages([
+                                        'colors' => 'رنگ کے حساب سے اسٹاک رکھنے کے لیے کم از کم ایک رنگ درج کریں۔',
+                                    ]);
+                                }
                             }
 
                             $lengths = $validated['length'] ?? [];
@@ -174,12 +200,13 @@ class ClothController extends Controller
             // ]);
 
             // Save the cloth
-            DB::transaction(function () use ($request, $validated, $colors, $lengths) {
+            DB::transaction(function () use ($request, $validated, $colors, $lengths, $trackingMode) {
                 $cloth = Cloth::create([
                     'cloth_type_id' => $validated['cloth_type_id'],
                     'cloth_brand_id' => $validated['cloth_brand_id'],
                     'price' => $validated['price'],
                     'sale_price' => $validated['sale_price'],
+                    'color_tracking_mode' => $trackingMode,
                     'user_id' => Auth::user()->businessOwnerId(),
                 ]);
 

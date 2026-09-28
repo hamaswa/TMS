@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\CustomerSerialNumberService;
 use App\Support\PakistanPhoneNumber;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -68,7 +69,7 @@ class Customers extends Authenticatable
     /**
      * @var array
      */
-    protected $fillable = ['name', 'parent_id', 'phone_number1', 'phone_number2', 'ref_phone_number',
+    protected $fillable = ['name', 'parent_id', 'is_walk_in', 'first_sale_at', 'acquisition_source', 'phone_number1', 'phone_number2', 'ref_phone_number',
         'shirtlength', 'sleeve', 'sleevetop', 'shoulder', 'chest',
         'senaChorai', 'necktype', 'comments', 'created_at', 'updated_at',
         'jeab', 'teraa', 'length', 'button', 'shirtbutton', 'damanchorai', 'chuta',
@@ -84,6 +85,8 @@ class Customers extends Authenticatable
         'self_registered_at' => 'datetime',
         'phone_verified_at' => 'datetime',
         'phone_normalization_conflict' => 'boolean',
+        'is_walk_in' => 'boolean',
+        'first_sale_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -131,6 +134,19 @@ class Customers extends Authenticatable
         $matches = $matches->concat($legacyConflicts)->unique('id');
 
         return $matches->count() === 1 ? $matches->first() : null;
+    }
+
+    /**
+     * Hide anonymous counter-sale placeholders from customer pickers while
+     * retaining legitimate named customers that do not have a phone number.
+     */
+    public function scopeSelectableForSales(Builder $query): Builder
+    {
+        return $query
+            ->where('is_walk_in', false)
+            ->whereNotNull('name')
+            ->whereRaw("TRIM(name) <> ''")
+            ->whereRaw("LOWER(TRIM(name)) NOT IN ('walk-in customer', 'walk in customer', 'walk-in', 'walk in')");
     }
 
     /**

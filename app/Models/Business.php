@@ -21,6 +21,8 @@ class Business extends Model
 
     protected $fillable = [
         'name',
+        'signup_mobile_normalized',
+        'self_registered_at',
         'shop_code',
         'owner_user_id',
         'tailoring_enabled',
@@ -55,6 +57,7 @@ class Business extends Model
         return [
             'tailoring_enabled' => 'boolean',
             'clothing_enabled' => 'boolean',
+            'self_registered_at' => 'datetime',
             'approved_at' => 'datetime',
             'status_changed_at' => 'datetime',
             'password_expiry_days' => 'integer',

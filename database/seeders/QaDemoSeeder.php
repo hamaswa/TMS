@@ -195,6 +195,24 @@ class QaDemoSeeder extends Seeder
             'is_default' => true,
             'is_active' => true,
         ]);
+        MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'ویسٹ کوٹ',
+            'description' => 'ویسٹ کوٹ کے لیے مختصر اور متعلقہ پیمائش',
+            'system_fields' => ['length', 'teraa', 'senaChorai'],
+            'custom_field_ids' => [$collar->id, $fit->id],
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+        MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'بچوں کا لباس',
+            'description' => 'بچوں کے لباس کی بنیادی پیمائش',
+            'system_fields' => ['length', 'arms', 'teraa', 'senaChorai', 'shalwar', 'pancha'],
+            'custom_field_ids' => [],
+            'is_default' => false,
+            'is_active' => true,
+        ]);
 
         $customerNames = $combined
             ? [['Muhammad Aslam', '03007771111', 'شام کے وقت رابطہ کریں'], ['Tariq Mehmood', '03007772222', 'سادہ ڈیزائن پسند ہے']]

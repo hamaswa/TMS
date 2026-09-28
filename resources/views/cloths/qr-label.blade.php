@@ -12,7 +12,7 @@
     <div class="toolbar"><button type="button" onclick="window.print()">پرنٹ کریں</button><a href="{{ route('admin.cloth.index') }}">واپس</a></div>
     <main class="label">
         <h1>{{ $cloth->brand?->name ?? 'برانڈ' }} / {{ $cloth->type?->name ?? 'قسم' }}</h1>
-        <p>{{ $cloth->colors->pluck('color')->join('، ') }}</p>
+        <p>{{ $cloth->tracksColors() ? $cloth->colors->pluck('color')->join('، ') : 'رنگ کے بغیر مجموعی سیٹ' }}</p>
         <div class="qr">{!! $qrSvg !!}</div>
         <p class="code">{{ $cloth->stock_code }}</p>
     </main>

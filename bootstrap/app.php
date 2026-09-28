@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->use([
             // \App\Http\Middleware\TrustHosts::class,
             \App\Http\Middleware\TrustProxies::class,
+            \Illuminate\Http\Middleware\HandleCors::class,
             // \Fruitcake\Cors\HandleCors::class,
             \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
             \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
@@ -63,6 +64,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscription.active' => \App\Http\Middleware\EnsureSubscriptionActive::class,
             'password.changed' => \App\Http\Middleware\EnsureEmployeePasswordChanged::class,
             'public.locale' => \App\Http\Middleware\SetPublicLocale::class,
+            'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+            'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
+            'sales.agent' => \App\Http\Middleware\EnsureSalesAgentAccess::class,
+            'shop.hub.relay' => \App\Http\Middleware\VerifyShopHubRelay::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

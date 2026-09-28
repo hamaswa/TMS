@@ -22,9 +22,10 @@ class StorefrontTailoringBookingService
         float $finalPrice,
         int $suitQuantity,
         string $promisedDate,
+        ?int $measurementTemplateId,
         ?string $adminNotes,
     ): StorefrontInquiry {
-        return DB::transaction(function () use ($booking, $actorUserId, $finalPrice, $suitQuantity, $promisedDate, $adminNotes) {
+        return DB::transaction(function () use ($booking, $actorUserId, $finalPrice, $suitQuantity, $promisedDate, $measurementTemplateId, $adminNotes) {
             $locked = StorefrontInquiry::query()->lockForUpdate()
                 ->with(['storefront.business', 'service'])->findOrFail($booking->id);
             if (! $locked->isBooking() || ! in_array($locked->status, [StorefrontInquiry::STATUS_NEW, StorefrontInquiry::STATUS_CONTACTED], true)) {
@@ -58,9 +59,29 @@ class StorefrontTailoringBookingService
                     'note' => collect([$locked->city, $locked->email])->filter()->join(' · ') ?: null,
                 ]);
             }
-            $template = $customer->measurementTemplate
-                ?: MeasurementTemplate::where('user_id', $ownerId)
+            $resolvedTemplateId = $measurementTemplateId
+                ?: $locked->measurement_template_id
+                ?: $locked->service?->measurement_template_id
+                ?: $customer->measurement_template_id;
+            $template = $resolvedTemplateId
+                ? MeasurementTemplate::where('user_id', $ownerId)
+                    ->where('is_active', true)
+                    ->find($resolvedTemplateId)
+                : MeasurementTemplate::where('user_id', $ownerId)
                     ->where('is_active', true)->where('is_default', true)->first();
+            if ($resolvedTemplateId && ! $template) {
+                throw ValidationException::withMessages([
+                    'measurement_template_id' => 'منتخب پیمائش ٹیمپلیٹ اس دکان کے لیے دستیاب نہیں ہے۔',
+                ]);
+            }
+            if ($locked->measurement_method === StorefrontTailoringService::MEASUREMENT_EXISTING_PROFILE && $template) {
+                $missing = $this->measurements->missingRequiredMeasurements($customer, $ownerId, $template);
+                if ($missing->isNotEmpty()) {
+                    throw ValidationException::withMessages([
+                        'measurement_template_id' => 'بکنگ منظور کرنے سے پہلے یہ ضروری پیمائش مکمل کریں: '.$missing->implode('، '),
+                    ]);
+                }
+            }
             $measurementLabel = $locked->measurement_method
                 ? (StorefrontTailoringService::measurementMethodLabels()[$locked->measurement_method] ?? $locked->measurement_method)
                 : null;
@@ -116,6 +137,7 @@ class StorefrontTailoringBookingService
                 'suit_quantity' => $suitQuantity,
                 'final_price' => round($finalPrice, 2),
                 'promised_date' => $promisedDate,
+                'measurement_template_id' => $template?->id,
                 'admin_notes' => $adminNotes,
                 'status' => StorefrontInquiry::STATUS_CONFIRMED,
                 'confirmed_by_user_id' => $actorUserId,

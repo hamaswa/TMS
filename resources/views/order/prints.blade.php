@@ -433,9 +433,11 @@ body {
                 position: relative;
             } */
     </style>
+    @include('print.partials.document-styles')
 </head>
 
-<body>
+<body class="tms-order-print">
+    @include('print.partials.toolbar')
 
     <div id="invoice-POS">
 
@@ -452,23 +454,26 @@ body {
         <div id="fullSection">
             <div id="orderSection" style="max-width: 350px; margin-top:-60px;" class="ticket order-section">
                 <p align="center"><img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
-                <h1 class="text-center"  style="font-size: 16px;font-weight: 600;text-align: center;margin-top:-20px; ">{{ $setting->name }}
+                <h1 class="text-center receipt-shop-name"  style="font-size: 16px;font-weight: 600;text-align: center;margin-top:-20px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3">
-                    <div class="d-flex justify-content-between ">
+                    <div class="order-summary-row d-flex justify-content-between">
                         <div>
                             <h2 style="font-size: 16px;font-weight:600;">invoice No # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div>
-                            <h2 style="font-weight:900;">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h2>
+                            <h2 class="receipt-date" style="font-weight:900;">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h2>
                         </div>
                     </div>
                     <hr>
                     <div class="order-detail-list">
                         <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong class="order-detail-value">{{ $orderDetail->suitQuantity }}</strong></div>
-                        <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong class="order-detail-value">{{ $orderDetail->customers?->serial_number ?? $orderDetail->sub_customer }}</strong></div>
+                        <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong class="order-detail-value">{{ $orderDetail->sub_customer }}</strong></div>
+                        @if ($orderDetail->measurementTemplate)
+                            <div class="order-detail-row"><span class="order-detail-label">لباس / ٹیمپلیٹ:</span><strong class="order-detail-value" dir="auto">{{ $orderDetail->measurementTemplate->name }}</strong></div>
+                        @endif
                         <div class="order-detail-row"><span class="order-detail-label">آرڈر کی رقم:</span><strong class="order-detail-value">{{ $orderDetail->totalPayment }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">موجودہ رقم کی ادائیگی:</span><strong class="order-detail-value">{{ $orderDetail->transactions->first()?->recivedPayment ?? 0 }}</strong></div>
                         @if ($orderBalance > 0)
@@ -486,8 +491,9 @@ body {
                         {!! $trackingQrSvg !!}
                         <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
                     </aside>
-                    <div>
-                        <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;">{{$orderDetail->remarks}}
+                    @include('print.partials.qr')
+                    <div class="order-note">
+                        <h3 class="text-center font-weight-bold mt-2" dir="auto" style="font-size:18px;">{{$orderDetail->remarks}}
                         </h3>
                     </div>
                     <div class="order-footer">
@@ -511,12 +517,22 @@ body {
                     <hr style="margin-top:4px;">
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell measurement-serial">
-                            Serial num: {{ $orderDetail->customers?->serial_number ?? $orderDetail->sub_customer }}
+                            Serial num: {{ $orderDetail->sub_customer }}
                         </div>
                         <div class="measurement-meta-cell" style="text-align:right;">
                             {{$orderDetail->customers->name}}
                         </div>
                     </div>
+                    @if ($orderDetail->measurementTemplate)
+                        <div class="desing-flex measurement-meta-row">
+                            <div class="measurement-meta-cell" style="text-align:left;" dir="auto">
+                                {{ $orderDetail->measurementTemplate->name }}
+                            </div>
+                            <div class="measurement-meta-cell" style="text-align:right;">
+                                لباس / ٹیمپلیٹ
+                            </div>
+                        </div>
+                    @endif
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell" style="text-align:left;">
                             {{ $tailor?->name ?? 'بعد میں مقرر ہوگا' }}
@@ -849,7 +865,7 @@ body {
                     <div>
                         <div align="center">
                             <div>
-                                <h3 class="text-center font-weight-400 mt-2" style="font-size: 16px;">{{$orderDetail->remarks}}</h3>
+                                <h3 class="text-center font-weight-400 mt-2" dir="auto" style="font-size: 16px;">{{$orderDetail->remarks}}</h3>
                             </div>
                             <div class="measurement-footer">
                                 <p>{!! $setting->address !!}</p>

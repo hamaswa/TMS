@@ -11,6 +11,7 @@ use App\Models\Storefront;
 use App\Models\StorefrontCart;
 use App\Models\StorefrontCartItem;
 use App\Models\StorefrontClothingListing;
+use App\Models\StorefrontInquiry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -152,6 +153,56 @@ class StorefrontDiscoveryFilterTest extends TestCase
             'min_price' => 500,
             'max_price' => 100,
         ]))->assertSessionHasErrors('max_price');
+    }
+
+    public function test_homepage_ranks_confirmed_stores_and_featured_products_and_hides_rankings_during_search(): void
+    {
+        [$popularOwner, , $popularStore] = $this->storefront(
+            'Popular BuyNStitch Store',
+            'Karachi',
+            true,
+            true,
+            true
+        );
+        [$newOwner, , $newStore] = $this->storefront(
+            'New BuyNStitch Store',
+            'Lahore',
+            false,
+            true,
+            false
+        );
+        StorefrontInquiry::create([
+            'storefront_id' => $popularStore->id,
+            'customer_name' => 'Confirmed Customer',
+            'phone' => '03001234567',
+            'status' => StorefrontInquiry::STATUS_CONFIRMED,
+        ]);
+
+        $type = ClothType::create(['name' => 'Homepage Fabric', 'user_id' => $popularOwner->id]);
+        [$featured] = $this->listing(
+            $popularOwner,
+            $popularStore,
+            $type,
+            'Featured Homepage Fabric',
+            'Navy',
+            8,
+            2200
+        );
+        $featured->update(['is_featured' => true]);
+        $otherType = ClothType::create(['name' => 'Other Fabric', 'user_id' => $newOwner->id]);
+        $this->listing($newOwner, $newStore, $otherType, 'Regular Homepage Fabric', 'Black', 8, 1800);
+
+        $response = $this->get(route('storefront.index'));
+        $response->assertOk()
+            ->assertSeeText('BuyNStitch')
+            ->assertSeeText('Featured Homepage Fabric');
+        $this->assertSame($popularStore->id, $response->viewData('topStorefronts')->first()->id);
+        $this->assertSame($featured->id, $response->viewData('topProducts')->first()->id);
+
+        $filtered = $this->get(route('storefront.index', ['q' => 'New BuyNStitch']));
+        $filtered->assertOk()->assertDontSeeText('Popular BuyNStitch Store');
+        $this->assertTrue($filtered->viewData('topStorefronts')->isEmpty());
+        $this->assertTrue($filtered->viewData('topProducts')->isEmpty());
     }
 
     private function storefront(

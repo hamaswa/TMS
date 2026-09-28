@@ -9,6 +9,14 @@ class SubscriptionPlan extends Model
 {
     use HasFactory;
 
+    public const LIFECYCLE_DRAFT = 'draft';
+
+    public const LIFECYCLE_ACTIVE = 'active';
+
+    public const LIFECYCLE_ARCHIVED = 'archived';
+
+    public const LIFECYCLE_STATUSES = [self::LIFECYCLE_DRAFT, self::LIFECYCLE_ACTIVE, self::LIFECYCLE_ARCHIVED];
+
     public const FEATURES = [
         'allow_tailoring' => 'Tailoring workspace',
         'allow_clothing' => 'Clothing sales and purchases',
@@ -22,8 +30,10 @@ class SubscriptionPlan extends Model
         'name',
         'code',
         'description',
+        'marketing_summary',
         'price',
         'billing_period_days',
+        'trial_days',
         'max_employees',
         'max_business_roles',
         'max_tailors',
@@ -34,6 +44,10 @@ class SubscriptionPlan extends Model
         'allow_team_management',
         'allow_activity_log',
         'allowed_permissions',
+        'is_public',
+        'is_recommended',
+        'display_order',
+        'lifecycle_status',
         'is_active',
         'created_by_user_id',
     ];
@@ -43,6 +57,7 @@ class SubscriptionPlan extends Model
         return [
             'price' => 'decimal:2',
             'billing_period_days' => 'integer',
+            'trial_days' => 'integer',
             'max_employees' => 'integer',
             'max_business_roles' => 'integer',
             'max_tailors' => 'integer',
@@ -53,6 +68,9 @@ class SubscriptionPlan extends Model
             'allow_team_management' => 'boolean',
             'allow_activity_log' => 'boolean',
             'allowed_permissions' => 'array',
+            'is_public' => 'boolean',
+            'is_recommended' => 'boolean',
+            'display_order' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -77,5 +95,13 @@ class SubscriptionPlan extends Model
             'allow_activity_log' => $this->allow_activity_log,
             'allowed_permissions' => $this->allowed_permissions,
         ];
+    }
+
+    public function scopePubliclyAvailable($query)
+    {
+        return $query->where('is_active', true)
+            ->where('is_public', true)
+            ->where('lifecycle_status', self::LIFECYCLE_ACTIVE)
+            ->where('trial_days', '>', 0);
     }
 }

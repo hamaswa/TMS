@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClothColor;
+use App\Models\Customers;
 use App\Models\BusinessRole;
 use App\Models\Order;
 use App\Models\Purchase;
+use App\Models\SaleSession;
 use App\Models\SaleStock;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -111,10 +113,15 @@ class HomeController extends Controller
             'month_sales' => $canSales ? (float) (clone $monthSalesQuery)->sum(DB::raw('selling_price * length')) : null,
             'today_sales' => $canSales ? (float) SaleStock::where('user_id', $ownerId)
                 ->financiallyActive()->whereDate('sellDate', today())->sum(DB::raw('selling_price * length')) : null,
+            'new_customers_week' => $canSales ? Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', false)
+                ->whereBetween('first_sale_at', [now()->startOfWeek(), now()->endOfWeek()])->count() : null,
+            'new_customers_month' => $canSales ? Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', false)
+                ->whereBetween('first_sale_at', [now()->startOfMonth(), now()->endOfMonth()])->count() : null,
         ];
 
         $salesTrend = collect();
         $recentSales = collect();
+        $liveSaleSessions = collect();
         if ($canSales) {
             $trendStart = today()->subDays(6);
             $salesByDate = SaleStock::where('user_id', $ownerId)->financiallyActive()
@@ -128,6 +135,14 @@ class HomeController extends Controller
             });
             $recentSales = SaleStock::where('user_id', $ownerId)->financiallyActive()
                 ->with(['brand', 'type'])->latest('sellDate')->latest('id')->limit(5)->get();
+            $liveSaleSessions = SaleSession::where('user_id', $ownerId)
+                ->whereIn('status', [
+                    SaleSession::STATUS_ACTIVE,
+                    SaleSession::STATUS_NEEDS_ATTENTION,
+                    SaleSession::STATUS_CLAIMED,
+                ])
+                ->with(['agent:id,name', 'claimedBy:id,name'])
+                ->latest('updated_at')->limit(6)->get();
         }
 
         $recentPurchases = $canPurchases
@@ -140,7 +155,7 @@ class HomeController extends Controller
 
         return view('dashboard.clothing', compact(
             'clothing', 'canInventory', 'canPurchases', 'canSales',
-            'salesTrend', 'recentSales', 'recentPurchases', 'lowStockItems'
+            'salesTrend', 'recentSales', 'liveSaleSessions', 'recentPurchases', 'lowStockItems'
         ));
     }
 

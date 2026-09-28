@@ -195,6 +195,33 @@ class MeasurementTemplateTest extends TestCase
             ->assertSeeText('واسکٹ');
     }
 
+    public function test_order_form_exposes_missing_template_measurements_before_submit(): void
+    {
+        $owner = $this->owner();
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'نامکمل واسکٹ',
+            'system_fields' => ['length', 'teraa'],
+            'custom_field_ids' => [],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+        $customer = Customers::create([
+            'name' => 'Missing Measurement Customer',
+            'phone_number1' => '03007770111',
+            'user_id' => $owner->id,
+            'measurement_template_id' => $template->id,
+            'length' => 42,
+            'teraa' => null,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.order.create', $customer))
+            ->assertOk()
+            ->assertSeeText('منتخب لباس کی ضروری پیمائش نامکمل ہے')
+            ->assertSee('data-missing=', false)
+            ->assertSee('تیرا', false);
+    }
+
     private function field(User $owner, string $label, bool $required = false): MeasurementField
     {
         return MeasurementField::create([

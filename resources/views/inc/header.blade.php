@@ -14,18 +14,24 @@
 @php($canTailorConfiguration = Auth::check() && Auth::user()->hasBusinessPermission('tailoring.configuration'))
 @php($canCustomerBalances = Auth::check() && Auth::user()->hasBusinessPermission('customers.balances'))
 @php($unreadNotificationCount = Auth::check() && Auth::user()->isBusinessOwner() ? Auth::user()->unreadNotifications()->count() : 0)
+@php($salesAttentionCount = $canShopSales && \Illuminate\Support\Facades\Schema::hasTable('sale_sessions') ? \App\Models\SaleSession::where('user_id', Auth::user()->businessOwnerId())->where('status', 'needs_attention')->count() : 0)
+@php($salesOpenCount = $canShopSales && \Illuminate\Support\Facades\Schema::hasTable('sale_sessions') ? \App\Models\SaleSession::where('user_id', Auth::user()->businessOwnerId())->whereIn('status', ['active','needs_attention','claimed'])->count() : 0)
 @php($isTailorOfflineActor = Session::get('tailor') && session()->has('tailor_id'))
 @php($isBusinessOfflineActor = Auth::check() && Auth::user()->isBusinessMember())
 @php($offlineCapable = ! $isSuperAdmin && ($isTailorOfflineActor || $isBusinessOfflineActor))
 @php($offlineSyncUrl = $isTailorOfflineActor ? route('tailor.offline.sync') : ($canTailorWorkshop ? route('admin.offline.sync') : null))
 @php($offlineManifestUrl = $isTailorOfflineActor ? route('tailor.offline.manifest') : ($isBusinessOfflineActor ? route('admin.offline.manifest') : null))
 @php($offlineActorKey = $isTailorOfflineActor ? 'tailor:'.session('tailor_id') : ($isBusinessOfflineActor ? 'user:'.Auth::id() : null))
+@php($isLocalShopHub = config('shop_hub.mode') === 'hub')
+@php($pendingHubEvents = $isLocalShopHub && Auth::check() && Auth::user()->isBusinessMember() && \Illuminate\Support\Facades\Schema::hasTable('shop_hub_events') ? \App\Models\ShopHubEvent::where('business_owner_user_id', Auth::user()->businessOwnerId())->where('status', 'pending')->count() : 0)
 <!doctype html>
 <html lang="{{ $isSuperAdmin ? 'en' : 'ur' }}" dir="{{ $isSuperAdmin ? 'ltr' : 'rtl' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="tms-shop-connection" content="{{ $isLocalShopHub ? 'shop' : 'cloud' }}">
+    @if($isLocalShopHub && config('shop_hub.id'))<meta name="tms-shop-hub-id" content="{{ config('shop_hub.id') }}">@endif
     @if($offlineCapable)
         <meta name="theme-color" content="#174f78">
         <meta name="tms-offline-enabled" content="1">
@@ -95,7 +101,7 @@
                     <a class="dropdown-item" href="{{ route('admin.inventory-ledger.index') }}"><i class="fas fa-exchange-alt fa-fw ml-2 text-info"></i>اسٹاک کھاتہ</a>
                     <a class="dropdown-item" href="{{ route('admin.inventory-valuation.index') }}"><i class="fas fa-balance-scale fa-fw ml-2 text-info"></i>اسٹاک کی مالیت</a>
                     @endif
-                    @if($canShopSales)<a class="dropdown-item" href="{{ route('admin.sellCloth') }}"><i class="fas fa-cash-register fa-fw ml-2 text-info"></i>نئی فروخت</a>@endif
+                    @if($canShopSales)<a class="dropdown-item" href="{{ route('admin.sellCloth') }}"><i class="fas fa-cash-register fa-fw ml-2 text-info"></i>نئی فروخت</a><a class="dropdown-item" href="{{ route('admin.sales-sessions.index') }}"><i class="fas fa-inbox fa-fw ml-2 text-warning"></i>سیلز اِن باکس @if($salesOpenCount)<span class="badge badge-danger">{{ min($salesOpenCount,99) }}</span>@endif</a>@endif
                     @if($canShopSales && Auth::user()->business?->storefront)<a class="dropdown-item" href="{{ route('admin.storefront.orders.index') }}"><i class="fas fa-shopping-bag fa-fw ml-2 text-info"></i>آن لائن آرڈرز</a>@endif
                     @if($canShopPurchases)<a class="dropdown-item" href="{{ route('admin.purchases.index') }}"><i class="fas fa-truck-loading fa-fw ml-2 text-info"></i>خریداری</a>@endif
                     @if($canShopSuppliers)<a class="dropdown-item" href="{{ route('admin.suppliers.index') }}"><i class="fas fa-building fa-fw ml-2 text-info"></i>سپلائرز</a>@endif
@@ -117,10 +123,40 @@
             <li class="nav-item"><a class="nav-link" href="{{ route('administrator.index') }}">Clients</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.subscriptions.index') }}">Subscriptions</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.subscription-plans.index') }}">Plans</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.marketplace.index') }}">Marketplace</a></li><li class="nav-item"><a class="nav-link" href="{{ route('administrator.create') }}">Create client</a></li>
         @endif
     </ul>
-    @auth<ul class="navbar-nav ml-auto">@if(Auth::user()->isBusinessOwner())<li class="nav-item"><a class="nav-link" href="{{ route('admin.notifications.index') }}" aria-label="اطلاعات"><i class="fas fa-bell"></i>@if($unreadNotificationCount)<span class="badge badge-danger">{{ min($unreadNotificationCount,99) }}</span>@endif</a></li>@endif<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="accountMenu" data-toggle="dropdown"><i class="fas fa-user-circle mr-1"></i>{{ Auth::user()->name }}</a><div class="dropdown-menu dropdown-menu-right" aria-labelledby="accountMenu">
+    @auth<ul class="navbar-nav ml-auto">@if($isLocalShopHub)<li class="nav-item"><span class="nav-link" title="اسی Wi-Fi پر موجود دکان کے صارفین مقامی طور پر منسلک ہیں"><i class="fas fa-wifi text-success ml-1"></i>دکان سے منسلک @if($pendingHubEvents)<span class="badge badge-warning" title="کلاؤڈ پر بھیجنے کے لیے باقی تبدیلیاں">{{ min($pendingHubEvents,99) }}</span>@endif</span></li>@endif @if($canShopSales)<li class="nav-item"><a class="nav-link" href="{{ route('admin.sales-sessions.index') }}" aria-label="سیلز اِن باکس" title="سیلز اِن باکس"><i class="fas fa-inbox"></i><span id="sales-inbox-badge" class="badge badge-danger" style="{{ $salesOpenCount ? '' : 'display:none' }}">{{ min($salesOpenCount,99) }}</span></a></li>@endif @if(Auth::user()->isBusinessOwner())<li class="nav-item"><a class="nav-link" href="{{ route('admin.notifications.index') }}" aria-label="اطلاعات"><i class="fas fa-bell"></i>@if($unreadNotificationCount)<span class="badge badge-danger">{{ min($unreadNotificationCount,99) }}</span>@endif</a></li>@endif<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="accountMenu" data-toggle="dropdown"><i class="fas fa-user-circle mr-1"></i>{{ Auth::user()->name }}</a><div class="dropdown-menu dropdown-menu-right" aria-labelledby="accountMenu">
         @if($isSuperAdmin)<a class="dropdown-item" href="{{ route('employee.password.edit') }}">Change password</a><div class="dropdown-divider"></div>@elseif(Auth::user()->isBusinessOwner())<a class="dropdown-item" href="{{ route('admin.subscription.index') }}">سبسکرپشن اور ادائیگی</a><a class="dropdown-item" href="{{ route('admin.setting.index') }}">دکان کی ترتیبات</a><a class="dropdown-item" href="{{ route('admin.users') }}">اکاؤنٹ کی تفصیل</a><div class="dropdown-divider"></div>@else<a class="dropdown-item" href="{{ route('employee.password.edit') }}">پاس ورڈ تبدیل کریں</a><div class="dropdown-divider"></div>@endif
         <a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault();document.getElementById('logout-form').submit();">{{ $isSuperAdmin ? 'Logout' : 'لاگ آؤٹ' }}</a><form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">@csrf</form>
     </div></li></ul>@endauth
     </div>
 </nav></div></header>
 @include('inc.sidebar')
+@if($canShopSales)
+@push('scripts')
+<script>
+(function () {
+    let knownOpen = {{ (int) $salesOpenCount }};
+    async function refreshSalesInbox() {
+        if (document.hidden) {
+            window.setTimeout(refreshSalesInbox, 5000);
+            return;
+        }
+        try {
+            const response = await fetch(@json(route('admin.sales-sessions.feed')), {headers: {'Accept': 'application/json'}});
+            if (!response.ok) return;
+            const feed = await response.json();
+            const badge = document.getElementById('sales-inbox-badge');
+            if (badge) {
+                badge.textContent = Math.min(feed.openCount, 99);
+                badge.style.display = feed.openCount ? '' : 'none';
+            }
+            if (feed.openCount > knownOpen) document.title = '(' + feed.openCount + ') لائیو سیلز — TMS';
+            knownOpen = feed.openCount;
+            window.dispatchEvent(new CustomEvent('sales-session-feed', {detail: feed}));
+        } catch (_) {}
+        finally { window.setTimeout(refreshSalesInbox, 5000); }
+    }
+    window.setTimeout(refreshSalesInbox, 800);
+})();
+</script>
+@endpush
+@endif

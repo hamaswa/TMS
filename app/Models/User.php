@@ -2,19 +2,22 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     public const MODULE_TAILORING = 'tailoring';
+
     public const MODULE_CLOTHING = 'clothing';
 
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    /** @use HasFactory<UserFactory> */
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -185,16 +188,21 @@ class User extends Authenticatable
 
     public function carts()
     {
-        return $this->hasMany(Cart::class,'user_id');
+        return $this->hasMany(Cart::class, 'user_id');
     }
 
     public function onlineorder()
     {
-        return $this->hasMany(OnlineOrder::class,'user_id');
+        return $this->hasMany(OnlineOrder::class, 'user_id');
     }
 
     public function servernoti()
     {
-        return $this->hasMany(ServerNotifications::class,'user_id');
+        return $this->hasMany(ServerNotifications::class, 'user_id');
+    }
+
+    public function saleSessions()
+    {
+        return $this->hasMany(SaleSession::class, 'agent_user_id');
     }
 }

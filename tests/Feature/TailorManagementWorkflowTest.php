@@ -42,7 +42,7 @@ class TailorManagementWorkflowTest extends TestCase
 
         $this->actingAs($owner)->get(route('admin.Tailor.index'))
             ->assertOk()
-            ->assertSeeText('حساب اور لین دین')
+            ->assertSeeText('حساب دیکھیں')
             ->assertSeeText('ایڈوانس دیں')
             ->assertDontSeeText('Tailor Record');
     }

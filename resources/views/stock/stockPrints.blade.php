@@ -252,10 +252,11 @@
                             <div class="stock-item-card">
                                 <div class="stock-order-row"><span class="stock-order-label">برانڈ:</span><strong class="stock-order-value">{{ $saleStock->brand->name }}</strong></div>
                                 <div class="stock-order-row"><span class="stock-order-label">قسم:</span><strong class="stock-order-value">{{ $saleStock->type->name }}</strong></div>
-                                <div class="stock-order-row"><span class="stock-order-label">رنگ:</span><strong class="stock-order-value">{{ $saleStock->color }}</strong></div>
+                                @if(filled($saleStock->color))
+                                    <div class="stock-order-row"><span class="stock-order-label">رنگ:</span><strong class="stock-order-value">{{ $saleStock->color }}</strong></div>
+                                @endif
                                 <div class="stock-order-row"><span class="stock-order-label">میٹر:</span><strong class="stock-order-value">{{ $saleStock->length }}</strong></div>
                                 <div class="stock-order-row"><span class="stock-order-label">ٹوٹل:</span><strong class="stock-order-value">{{ number_format($itemTotal, 2) }}</strong></div>
-                                <div class="stock-order-row"><span class="stock-order-label">ریک:</span><strong class="stock-order-value">{{ $saleStock->clothes_rack }}</strong></div>
                             </div>
                         @empty
                             <div class="stock-items-empty">کوئی ریکارڈ موجود نہیں۔</div>

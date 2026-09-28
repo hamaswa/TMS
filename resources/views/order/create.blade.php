@@ -88,7 +88,7 @@
                         <div class="order-section-head"><span class="order-section-number">1</span><div><h2>آرڈر کی بنیادی معلومات</h2><p>تعداد، شناخت اور استعمال ہونے والی پیمائش منتخب کریں۔</p></div></div>
                         <div class="order-section-body">
                             @if($data['measurementTemplates']->isNotEmpty())
-                                <div class="order-template mb-3"><label for="order-measurement-template">لباس کا پیمائش ٹیمپلیٹ</label><select id="order-measurement-template" class="form-control" name="measurement_template_id"><option value="">تمام محفوظ پیمائش</option>@foreach($data['measurementTemplates'] as $template)<option value="{{ $template->id }}" @selected((string)old('measurement_template_id',$data['measurementTemplateId'])===(string)$template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>@endforeach</select><small class="form-text text-muted">صرف منتخب ٹیمپلیٹ کی پیمائش آرڈر کے ساتھ محفوظ ہوگی؛ گاہک کی اصل پیمائش تبدیل نہیں ہوگی۔</small></div>
+                                <div class="order-template mb-3"><label for="order-measurement-template">لباس کا پیمائش ٹیمپلیٹ</label><select id="order-measurement-template" class="form-control" name="measurement_template_id"><option value="" data-missing="[]">تمام محفوظ پیمائش</option>@foreach($data['measurementTemplates'] as $template)<option value="{{ $template->id }}" data-missing='@json($data['measurementTemplateRequirements'][$template->id] ?? [], JSON_UNESCAPED_UNICODE)' @selected((string)old('measurement_template_id',$data['measurementTemplateId'])===(string)$template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>@endforeach</select><small class="form-text text-muted">صرف منتخب ٹیمپلیٹ کی پیمائش آرڈر کے ساتھ محفوظ ہوگی؛ گاہک کی اصل پیمائش تبدیل نہیں ہوگی۔</small><div id="measurement-template-warning" class="order-alert is-danger mt-3 mb-0" role="alert" hidden><i class="fas fa-ruler-combined"></i><div><strong>منتخب لباس کی ضروری پیمائش نامکمل ہے۔</strong><div class="mt-1" data-missing-list></div><div class="mt-1">پہلے گاہک کی پیمائش مکمل کریں، پھر آرڈر محفوظ کریں۔</div></div></div></div>
                             @endif
                             <div class="order-fields">
                                 <div class="order-field"><label for="order_customer_name">ناپ والے فرد کا نام</label><div class="order-control"><i class="fas fa-user"></i><input id="order_customer_name" type="text" class="form-control" name="CustomerName" readonly value="{{ $data['selectedMeasurementProfile']->name }}"></div></div>
@@ -150,6 +150,21 @@ document.addEventListener('DOMContentLoaded',function(){
     total?.addEventListener('input',updateBalance);received?.addEventListener('input',updateBalance);updateBalance();
     var tailor=document.getElementById('tailor-selected');
     if(tailor?.value){tailor.dispatchEvent(new Event('change',{bubbles:true}));}
+    var template=document.getElementById('order-measurement-template');
+    var templateWarning=document.getElementById('measurement-template-warning');
+    var submit=document.querySelector('.order-submit');
+    function updateTemplateRequirements(){
+        if(!template||!templateWarning)return;
+        var selected=template.options[template.selectedIndex];
+        var missing=[];
+        try{missing=JSON.parse(selected?.dataset.missing||'[]');}catch(error){missing=[];}
+        templateWarning.hidden=missing.length===0;
+        var list=templateWarning.querySelector('[data-missing-list]');
+        if(list)list.textContent=missing.length?'نامکمل: '+missing.join('، '):'';
+        if(submit){submit.disabled=missing.length>0;submit.setAttribute('aria-disabled',missing.length>0?'true':'false');}
+    }
+    template?.addEventListener('change',updateTemplateRequirements);
+    updateTemplateRequirements();
 });
 </script>
 @endsection
