@@ -68,6 +68,18 @@ class SaleSessionWorkflowTest extends TestCase
             'status' => SaleSession::STATUS_NEEDS_ATTENTION,
         ]);
         Notification::assertSentTo($owner, SaleSessionAttentionNotification::class);
+
+        $this->actingAs($owner)->get(route('admin.sales-sessions.index'))
+            ->assertOk()
+            ->assertSee('id="salesAttentionModal"', false)
+            ->assertSee('id="sales-session-attention-open"', false);
+
+        $this->actingAs($owner)->getJson(route('admin.sales-sessions.feed'))
+            ->assertOk()
+            ->assertJsonPath('attentionCount', 1)
+            ->assertJsonPath('data.0.uuid', $uuid)
+            ->assertJsonPath('data.0.status', SaleSession::STATUS_NEEDS_ATTENTION)
+            ->assertJsonPath('data.0.agent.name', $agent->name);
     }
 
     public function test_agent_can_complete_local_draft_in_one_action_with_optional_color(): void

@@ -61,6 +61,13 @@
         html[lang="ur"] .input-group-text{min-height:48px;line-height:1.7}
         html[lang="ur"] .btn{line-height:1.7}
         html[lang="ur"] .badge{line-height:1.65;padding-top:.35em;padding-bottom:.45em}
+        .sales-attention-modal .modal-content{border:0;border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(15,42,67,.28)}
+        .sales-attention-modal .modal-header{border:0;background:linear-gradient(135deg,#102a43,#1769ef);color:#fff;padding:1.25rem 1.4rem}
+        .sales-attention-modal .modal-title{font-weight:900}.sales-attention-modal .close{color:#fff;opacity:.85;text-shadow:none}
+        .sales-attention-modal .modal-body{padding:1.4rem}.sales-attention-icon{display:flex;align-items:center;justify-content:center;width:62px;height:62px;margin:0 auto 1rem;border-radius:20px;background:#fff3cd;color:#966200;font-size:1.65rem}
+        .sales-attention-message{text-align:center;color:#425466;margin-bottom:1rem}.sales-attention-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem}
+        .sales-attention-detail{padding:.8rem;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;text-align:center}.sales-attention-detail small{display:block;color:#718096}.sales-attention-detail strong{display:block;color:#123b5d;margin-top:.2rem}
+        .sales-attention-modal .modal-footer{border:0;padding:0 1.4rem 1.4rem;gap:.5rem}@media(max-width:575.98px){.sales-attention-details{grid-template-columns:1fr}.sales-attention-modal .modal-dialog{margin:.75rem}}
     </style>
     <script src="{{ asset('assets/js/jquery-3.5.1.min.js') }}"></script>
     <script src="{{ asset('assets/js/popper.min.js') }}"></script>
@@ -131,10 +138,60 @@
 </nav></div></header>
 @include('inc.sidebar')
 @if($canShopSales)
+<div class="modal fade sales-attention-modal" id="salesAttentionModal" tabindex="-1" role="dialog" aria-labelledby="salesAttentionModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="salesAttentionModalTitle"><i class="fas fa-mobile-alt ml-2"></i>نئی موبائل فروخت</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="sales-attention-icon"><i class="fas fa-bell"></i></div>
+                <p class="sales-attention-message" id="sales-session-attention-message">سیلز ایجنٹ نے نئی فروخت آپ کو بھیجی ہے۔</p>
+                <div class="sales-attention-details">
+                    <div class="sales-attention-detail"><small>سیلز ایجنٹ</small><strong id="sales-session-attention-agent">—</strong></div>
+                    <div class="sales-attention-detail"><small>گاہک</small><strong id="sales-session-attention-customer">—</strong></div>
+                    <div class="sales-attention-detail"><small>آئٹمز</small><strong id="sales-session-attention-items">0</strong></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">بعد میں</button>
+                <a class="btn btn-primary" id="sales-session-attention-open" href="{{ route('admin.sales-sessions.index') }}"><i class="fas fa-external-link-alt ml-1"></i>فروخت کھولیں</a>
+            </div>
+        </div>
+    </div>
+</div>
 @push('scripts')
 <script>
 (function () {
     let knownOpen = {{ (int) $salesOpenCount }};
+    const showUrl = @json(route('admin.sales-sessions.show', '__UUID__'));
+    const seenStorageKey = @json('tms-sales-attention-seen-'.Auth::user()->businessOwnerId());
+    let seenAttention = new Set();
+
+    try {
+        seenAttention = new Set(JSON.parse(window.sessionStorage.getItem(seenStorageKey) || '[]'));
+    } catch (_) {}
+
+    function rememberAttention(sessions) {
+        sessions.forEach(function (session) { seenAttention.add(session.uuid); });
+        try {
+            window.sessionStorage.setItem(seenStorageKey, JSON.stringify(Array.from(seenAttention).slice(-100)));
+        } catch (_) {}
+    }
+
+    function showAttentionModal(session, extraCount) {
+        const customer = session.customer?.name || (session.customerMode === 'walk-in' ? 'Walk-in' : '—');
+        document.getElementById('sales-session-attention-agent').textContent = session.agent?.name || '—';
+        document.getElementById('sales-session-attention-customer').textContent = customer;
+        document.getElementById('sales-session-attention-items').textContent = String((session.items || []).length);
+        document.getElementById('sales-session-attention-message').textContent = extraCount
+            ? 'سیلز ایجنٹ نے یہ فروخت اور مزید ' + extraCount + ' فروخت آپ کو بھیجی ہیں۔'
+            : 'سیلز ایجنٹ نے نئی فروخت آپ کو بھیجی ہے۔';
+        document.getElementById('sales-session-attention-open').href = showUrl.replace('__UUID__', encodeURIComponent(session.uuid));
+        if (window.jQuery) window.jQuery('#salesAttentionModal').modal('show');
+    }
+
     async function refreshSalesInbox() {
         if (document.hidden) {
             window.setTimeout(refreshSalesInbox, 5000);
@@ -148,6 +205,13 @@
             if (badge) {
                 badge.textContent = Math.min(feed.openCount, 99);
                 badge.style.display = feed.openCount ? '' : 'none';
+            }
+            const newAttention = (feed.data || []).filter(function (session) {
+                return session.status === 'needs_attention' && !seenAttention.has(session.uuid);
+            });
+            if (newAttention.length) {
+                rememberAttention(newAttention);
+                showAttentionModal(newAttention[0], newAttention.length - 1);
             }
             if (feed.openCount > knownOpen) document.title = '(' + feed.openCount + ') لائیو سیلز — TMS';
             knownOpen = feed.openCount;

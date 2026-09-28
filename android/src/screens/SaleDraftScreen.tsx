@@ -206,7 +206,8 @@ export function SaleDraftScreen() {
   const handleScannedSet = async (code: string) => {
     try {
       const result = await lookupInventorySet(code);
-      const colors = result.data.colors.map((color) => color.name);
+      const colors = uniqueColors(result.data.colors.map((color) => color.name));
+      const requiresColor = result.data.colorTrackingMode === 'per_color';
       addScannedLine({
         setCode: result.data.setCode,
         brandId: result.data.brandId,
@@ -215,8 +216,8 @@ export function SaleDraftScreen() {
         clothType: result.data.clothType,
         unitPrice: result.data.salePrice,
         availableColors: colors,
-        requiresColor: result.data.colorTrackingMode === 'per_color',
-        color: '',
+        requiresColor,
+        color: defaultColor(colors, requiresColor),
       });
       return true;
     } catch (error) {
@@ -254,7 +255,8 @@ export function SaleDraftScreen() {
   };
 
   const addManualInventoryItem = (item: InventoryListItem) => {
-    const colors = item.colors.map((color) => color.color).filter(Boolean);
+    const colors = uniqueColors(item.colors.map((color) => color.color));
+    const requiresColor = item.colorTrackingMode === 'per_color';
     addScannedLine({
       setCode: item.setCode,
       brandId: item.brandId,
@@ -263,8 +265,8 @@ export function SaleDraftScreen() {
       clothType: item.clothType,
       unitPrice: item.salePrice,
       availableColors: colors,
-      requiresColor: item.colorTrackingMode === 'per_color',
-      color: '',
+      requiresColor,
+      color: defaultColor(colors, requiresColor),
     });
     setManualPickerVisible(false);
   };
@@ -740,6 +742,9 @@ function SaleLineCard({
       {hasStockItem && line.requiresColor ? (
         <>
           <Text style={styles.fieldLabel}>Color *</Text>
+          {!line.color && line.availableColors.length > 1 ? (
+            <Text style={styles.help}>This stock has multiple colors. Select the sold color manually.</Text>
+          ) : null}
         <View style={styles.colorChoices}>
           {line.availableColors.map((color) => (
             <Pressable key={color} onPress={() => onChange({ color })} style={[styles.colorChoice, line.color === color && styles.colorChoiceSelected]}>
@@ -858,6 +863,8 @@ const syncLabel = (state: 'waiting' | 'syncing' | 'offline' | 'conflict' | 'clai
 
 const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 const money = (value: number) => `Rs. ${value.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const uniqueColors = (colors: string[]) => [...new Set(colors.map((color) => color.trim()).filter(Boolean))];
+const defaultColor = (colors: string[], requiresColor: boolean) => requiresColor && colors.length === 1 ? colors[0] : '';
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
