@@ -173,11 +173,9 @@ class CounterSaleService
                 if ($cloth->tracksColors() && $requestedColor === '') {
                     throw ValidationException::withMessages(['color.'.$i => 'اس سیٹ کا اسٹاک رنگ کے حساب سے محفوظ ہے؛ رنگ منتخب کریں۔']);
                 }
-                if (! $cloth->tracksColors() && $requestedColor !== '') {
-                    throw ValidationException::withMessages(['color.'.$i => 'اس سیٹ میں رنگ الگ محفوظ نہیں؛ رنگ منتخب نہیں کیا جا سکتا۔']);
-                }
+                $usesExplicitColor = $requestedColor !== '';
                 $colorQuery = $cloth->colors()->lockForUpdate();
-                $clothColor = $cloth->tracksColors()
+                $clothColor = $usesExplicitColor
                     ? $colorQuery->where('color', $requestedColor)->first()
                     : $colorQuery->first();
                 if (! $clothColor) {
@@ -195,7 +193,7 @@ class CounterSaleService
                     'counter_sale_receipt_id' => $receipt->id,
                     'cloth_type_id' => $validated['cloth_type'][$i],
                     'cloth_brand_id' => $validated['brand_name'][$i],
-                    'color' => $cloth->tracksColors() ? $clothColor->color : null,
+                    'color' => $usesExplicitColor ? $clothColor->color : null,
                     'c_name' => $customer->name,
                     'c_id' => $customer->id,
                     'phone' => $customer->phone_number1,
