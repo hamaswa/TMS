@@ -429,6 +429,8 @@ class InventoryLedgerTest extends TestCase
             ->assertSee('id="counter-scan-add"', false)
             ->assertSee('class="counter-sale-form"', false)
             ->assertSee('counter-items-panel', false)
+            ->assertSee('counter-items-table-head', false)
+            ->assertSee('counter-field-rate', false)
             ->assertSee('counter-item-summary', false)
             ->assertSee('counter-payment-column', false)
             ->assertSee('counter-payment-panel', false)

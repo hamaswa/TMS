@@ -211,6 +211,7 @@ class ClothStockController extends Controller
                     });
 
                     $quantity = (float) ($item['quantity'] ?? 1);
+                    $length = (float) (($item['length'] ?? '') ?: $quantity);
                     $unitPrice = (float) ($item['unitPrice'] ?? 0);
 
                     return [
@@ -218,8 +219,9 @@ class ClothStockController extends Controller
                         'cloth_id' => $cloth?->id,
                         'type_id' => $item['clothTypeId'] ?? $cloth?->cloth_type_id,
                         'color' => $item['color'] ?? '',
-                        'length' => ($item['length'] ?? '') ?: ($item['quantity'] ?? ''),
-                        'item_total' => round($quantity * $unitPrice, 2),
+                        'length' => $length,
+                        'per_meter' => $unitPrice,
+                        'item_total' => round($length * $unitPrice, 2),
                         'rack' => $item['rack'] ?? '',
                     ];
                 })->values()->all();

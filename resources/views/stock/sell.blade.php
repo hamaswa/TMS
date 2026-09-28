@@ -15,6 +15,61 @@
     .counter-customer-panel{border-color:#dce8f8;background:linear-gradient(145deg,#fff,#f8fbff)}.counter-payment-column{display:flex;flex-direction:column;gap:12px;min-width:0}
     @media(min-width:1200px){.counter-sale-form{grid-template-columns:minmax(0,1fr) 400px;grid-template-rows:auto auto;gap:16px}.counter-customer-panel{grid-column:1/-1;grid-row:1}.counter-items-panel{grid-column:1;grid-row:2;min-width:0}.counter-payment-column{position:sticky;top:82px;grid-column:2;grid-row:2;align-self:start;max-height:calc(100vh - 98px);overflow-y:auto;padding:1px 3px 12px;scrollbar-width:thin}.counter-payment-panel .form-group{flex:0 0 50%;max-width:50%;margin-bottom:12px!important}.counter-payment-panel .counter-sale-panel-body{padding-bottom:16px}.counter-payment-panel label{font-size:.76rem;white-space:nowrap}.counter-payment-panel .form-control{font-size:.8rem}.counter-sale-submit{padding:0}.counter-sale-submit button{width:100%;min-width:0}}
     @media(max-width:767.98px){.counter-scan-box{grid-template-columns:1fr}.counter-scan-feedback{grid-column:auto}}
+
+    /* Refined counter layout: compact checkout summary beside a table-style sale workspace. */
+    .counter-sale-page{--sale-blue:#1473f3;--sale-green:#119a61;background:#f4f7fb}
+    .counter-sale-shell{max-width:1680px}
+    .counter-sale-heading-icon{border-color:#d9e7fb;background:#edf5ff}
+    .counter-sale-heading h1{font-size:1.72rem}
+    .counter-sale-panel{border-color:#dbe5f1;border-radius:16px;box-shadow:0 8px 26px rgba(24,55,94,.055)}
+    .counter-sale-section-head{padding:19px 22px 0;font-size:1.12rem}
+    .counter-sale-panel-body{padding:20px 22px}
+    .counter-items-panel{overflow:hidden}
+    .counter-items-panel .counter-sale-panel-body{padding-top:17px}
+    .counter-scan-box{margin-bottom:12px;padding:17px 18px;border-color:#8cbcf8;border-radius:12px;background:#f7fbff}
+    .counter-scan-box .btn{min-height:44px;padding-inline:22px;border-radius:8px;font-weight:800;box-shadow:0 6px 15px rgba(20,115,243,.16)}
+    .counter-scan-feedback{padding:10px 13px;border:1px solid #cfe3fb;border-radius:8px;background:#edf6ff;color:#496781!important;font-weight:600}
+    .counter-items-table-head{display:none}
+    .counter-payment-panel{border-color:#cfe9dc;background:linear-gradient(145deg,#fcfffd,#f1fbf6)}
+    .counter-payment-panel .counter-sale-section-head{font-size:1.28rem}
+    .counter-payment-panel .form-control{background:#fff}
+    .counter-balance-line{justify-content:space-between;padding:13px 14px;border:1px solid #c8ead9;border-radius:10px;background:#eaf9f2}
+    .counter-sale-submit button{min-height:54px;border-radius:10px;font-size:1rem}
+
+    @media(min-width:992px){
+        .counter-customer-modes{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media(min-width:1200px){
+        .counter-sale-form{grid-template-columns:minmax(0,1fr) 420px;gap:18px}
+        .counter-payment-column{top:78px;padding:1px 4px 14px}
+        .counter-payment-panel .form-group{flex:0 0 50%;max-width:50%}
+        .counter-items-table-head,.counter-sale-item{display:grid;grid-template-columns:92px minmax(125px,.72fr) minmax(125px,.72fr) minmax(100px,.65fr) minmax(120px,.9fr) minmax(135px,1fr) minmax(135px,1.05fr) 50px;gap:0;direction:ltr}
+        .counter-items-table-head{align-items:center;margin-top:14px;padding:0 13px;border:1px solid #dbe5f1;border-radius:11px 11px 0 0;background:#edf3fb;color:#435674;font-size:.79rem;font-weight:800}
+        .counter-items-table-head span{display:flex;grid-row:1;align-items:center;justify-content:center;min-height:48px;padding:8px;border-left:1px solid #dbe5f1;text-align:center;direction:rtl}
+        .counter-items-table-head span:nth-child(1){border-left:0}
+        .counter-items-table-head span:nth-child(1){grid-column:1}.counter-items-table-head span:nth-child(2){grid-column:8}.counter-items-table-head span:nth-child(3){grid-column:7}.counter-items-table-head span:nth-child(4){grid-column:6}.counter-items-table-head span:nth-child(5){grid-column:5}.counter-items-table-head span:nth-child(6){grid-column:4}.counter-items-table-head span:nth-child(7){grid-column:3}.counter-items-table-head span:nth-child(8){grid-column:2}
+        .counter-sale-item{align-items:stretch;margin:0;padding:0 13px;border-top:0;border-radius:0;background:#fff}
+        .counter-sale-item:last-child{border-radius:0 0 11px 11px}
+        .counter-sale-item>div{display:flex;grid-row:1;align-items:center;justify-content:center;min-width:0;padding:12px 9px;border-left:1px solid #e7edf5;direction:rtl}
+        .counter-item-summary{grid-column:1}.counter-item-identity{grid-column:8}.counter-field-brand{grid-column:7}.counter-field-type{grid-column:6}.counter-field-color{grid-column:5}.counter-field-length{grid-column:4}.counter-field-total{grid-column:3}.counter-field-rate{grid-column:2}
+        .counter-sale-item .form-group{margin:0!important}
+        .counter-sale-item .js-color-group[hidden]{display:flex!important;visibility:hidden}
+        .counter-sale-item .form-group>label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+        .counter-sale-item .form-control{width:100%;min-height:42px;height:42px;font-size:.78rem}
+        .counter-sale-item select.form-control{height:42px;min-height:42px;padding-block:2px;line-height:1.45}
+        .counter-item-summary{align-self:stretch;gap:6px;border:0;border-radius:0;background:transparent}
+        .counter-item-summary small,.counter-line-total{display:none}
+        .counter-item-actions{justify-content:center}
+        .counter-remove-item{width:34px;height:34px;border:1px solid #ffc8cc;background:#fff7f7}
+        .counter-item-identity{height:auto}
+        .counter-item-number{width:32px;height:32px;background:#eaf3ff}
+        .counter-add-item{float:left;margin-top:14px}
+        .counter-summary-line{clear:both;margin-top:18px;padding:14px 17px;border-radius:9px;background:#f0f6ff;font-size:1rem}
+        .counter-summary-line strong{font-size:1.18rem}
+    }
+    @media(max-width:1199.98px){
+        .counter-items-table-head{display:none}
+    }
 </style>
 @endpush
 
@@ -42,6 +97,7 @@
                 'type_id' => data_get(old('cloth_type', []), $index, ''),
                 'color' => data_get(old('color', []), $index, ''),
                 'length' => data_get(old('length', []), $index, ''),
+                'per_meter' => data_get(old('per_meter', []), $index, ''),
                 'item_total' => data_get(old('item_total', []), $index, ''),
                 'rack' => data_get(old('clothes_rack', []), $index, ''),
             ])->all();
@@ -90,6 +146,16 @@
                     <button type="button" id="counter-scan-add" class="btn btn-primary"><i class="fas fa-qrcode ml-1"></i> آئٹم شامل کریں</button>
                     <p id="counter-scan-feedback" class="counter-scan-feedback text-muted">رنگ کے حساب سے محفوظ سیٹ میں رنگ لازمی ہوگا؛ مجموعی سیٹ میں رنگ نظر نہیں آئے گا۔</p>
                 </div>
+                <div class="counter-items-table-head" aria-hidden="true">
+                    <span>عمل</span>
+                    <span>#</span>
+                    <span>برانڈ</span>
+                    <span>کپڑے کی قسم</span>
+                    <span>رنگ</span>
+                    <span>میٹر / گز</span>
+                    <span>کل قیمت</span>
+                    <span>ریٹ فی میٹر</span>
+                </div>
                 <div id="stockDataContainer" aria-live="polite">
                     @foreach($saleItems as $itemIndex => $saleItem)
                     @php
@@ -104,12 +170,12 @@
                         <div class="counter-item-summary"><small>آئٹم کا خلاصہ</small><div class="counter-item-actions"><span class="counter-line-total">Rs. {{ number_format((float) ($saleItem['item_total'] ?? 0), 2) }}</span>@if($itemIndex > 0)<button type="button" class="counter-remove-item" aria-label="یہ آئٹم ہٹائیں"><i class="fas fa-trash"></i></button>@endif</div></div>
                         <div class="counter-item-identity"><span class="counter-item-number">{{ $itemIndex + 1 }}</span></div>
                         <input type="hidden" class="js-cloth-id" name="cloth_id[]" value="{{ $colorCloth?->id }}">
-                        <div class="form-group"><label>برانڈ <span class="required">*</span></label><select class="form-control js-brand" name="brand_name[]" required><option value="" disabled @selected($selectedBrand === '')>برانڈ منتخب کریں</option>@foreach($cloths->unique('cloth_brand_id') as $cloth)<option value="{{ $cloth->cloth_brand_id }}" @selected($selectedBrand === (string) $cloth->cloth_brand_id)>{{ $cloth->brand->name }}</option>@endforeach</select></div>
-                        <div class="form-group"><label>کپڑے کی قسم <span class="required">*</span></label><select class="form-control js-cloth-type" name="cloth_type[]" required><option value="" disabled @selected($selectedType === '')>پہلے برانڈ منتخب کریں</option>@foreach($typeCloths as $cloth)<option value="{{ $cloth->cloth_type_id }}" @selected($selectedType === (string) $cloth->cloth_type_id)>{{ $cloth->type->name }}</option>@endforeach</select></div>
-                        <div class="form-group js-color-group" @if(!$colorCloth?->tracksColors()) hidden @endif><label>رنگ <span class="required">*</span></label><select class="form-control js-color" name="color[]" @required($colorCloth?->tracksColors())><option value="" disabled @selected($selectedColor === '')>رنگ منتخب کریں</option>@foreach(($colorCloth?->tracksColors() ? $colorCloth->colors : collect())->where('length', '>', 0) as $color)<option value="{{ $color->color }}" @selected($selectedColor === (string) $color->color)>{{ $color->color }} ({{ (float) $color->length }} میٹر)</option>@endforeach</select></div>
-                        <div class="form-group"><label>میٹر / گز <span class="required">*</span></label><div class="counter-input"><i class="fas fa-ruler"></i><input type="number" class="form-control" name="length[]" value="{{ $saleItem['length'] ?? '' }}" min="0.01" step="0.01" placeholder="مقدار" required></div></div>
-                        <div class="form-group"><label>کل قیمت <span class="required">*</span></label><div class="counter-input"><i class="fas fa-money-bill-wave"></i><input type="number" class="form-control has-suffix" name="item_total[]" value="{{ $saleItem['item_total'] ?? '' }}" min="0" step="0.01" placeholder="کل قیمت" required><input type="hidden" name="per_meter[]" value="0"><input type="hidden" name="clothes_rack[]" value=""><span class="counter-input-suffix">Rs.</span></div></div>
-                        <div class="form-group js-rate-wrap"><label>ریٹ فی میٹر <small>(خودکار)</small></label><input type="text" class="form-control js-rate-per-meter" value="Rs. 0.00" readonly></div>
+                        <div class="form-group counter-field-brand"><label>برانڈ <span class="required">*</span></label><select class="form-control js-brand" name="brand_name[]" required><option value="" disabled @selected($selectedBrand === '')>برانڈ منتخب کریں</option>@foreach($cloths->unique('cloth_brand_id') as $cloth)<option value="{{ $cloth->cloth_brand_id }}" @selected($selectedBrand === (string) $cloth->cloth_brand_id)>{{ $cloth->brand->name }}</option>@endforeach</select></div>
+                        <div class="form-group counter-field-type"><label>کپڑے کی قسم <span class="required">*</span></label><select class="form-control js-cloth-type" name="cloth_type[]" required><option value="" disabled @selected($selectedType === '')>پہلے برانڈ منتخب کریں</option>@foreach($typeCloths as $cloth)<option value="{{ $cloth->cloth_type_id }}" @selected($selectedType === (string) $cloth->cloth_type_id)>{{ $cloth->type->name }}</option>@endforeach</select></div>
+                        <div class="form-group js-color-group counter-field-color" @if(!$colorCloth?->tracksColors()) hidden @endif><label>رنگ <span class="required">*</span></label><select class="form-control js-color" name="color[]" @required($colorCloth?->tracksColors())><option value="" disabled @selected($selectedColor === '')>رنگ منتخب کریں</option>@foreach(($colorCloth?->tracksColors() ? $colorCloth->colors : collect())->where('length', '>', 0) as $color)<option value="{{ $color->color }}" @selected($selectedColor === (string) $color->color)>{{ $color->color }} ({{ (float) $color->length }} میٹر)</option>@endforeach</select></div>
+                        <div class="form-group counter-field-length"><label>میٹر / گز <span class="required">*</span></label><input type="number" class="form-control" name="length[]" value="{{ $saleItem['length'] ?? '' }}" min="0.01" step="0.01" placeholder="مقدار" required></div>
+                        <div class="form-group counter-field-total"><label>کل قیمت <span class="required">*</span></label><input type="number" class="form-control" name="item_total[]" value="{{ $saleItem['item_total'] ?? '' }}" min="0" step="0.01" placeholder="کل قیمت" readonly required><input type="hidden" name="per_meter[]" value="{{ $saleItem['per_meter'] ?? 0 }}"><input type="hidden" name="clothes_rack[]" value=""></div>
+                        <div class="form-group js-rate-wrap counter-field-rate"><label>ریٹ فی میٹر</label><input type="number" class="form-control js-rate-per-meter" value="{{ $saleItem['per_meter'] ?? '' }}" min="0" step="0.01" placeholder="ریٹ" @readonly((float) ($saleItem['per_meter'] ?? 0) > 0) required></div>
                     </article>
                     @endforeach
                 </div>
@@ -166,6 +232,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const inventoryOptions = @json($inventoryOptions);
 
     const money = value => 'Rs. ' + value.toFixed(2);
+    const initializeItemRate = function (item) {
+        const length = Number.parseFloat(item.querySelector('[name="length[]"]').value) || 0;
+        const itemTotal = Number.parseFloat(item.querySelector('[name="item_total[]"]').value) || 0;
+        const hiddenRate = item.querySelector('[name="per_meter[]"]');
+        const rateInput = item.querySelector('.js-rate-per-meter');
+        let rate = Number.parseFloat(hiddenRate.value) || Number.parseFloat(rateInput.value) || 0;
+        if (rate <= 0 && length > 0 && itemTotal > 0) rate = itemTotal / length;
+        hiddenRate.value = rate.toFixed(2);
+        rateInput.value = rate > 0 ? rate.toFixed(2) : '';
+    };
     const refreshItemNumbers = function () {
         container.querySelectorAll('.stock-data').forEach(function (item, index) {
             item.querySelector('.counter-item-number').textContent = index + 1;
@@ -175,11 +251,10 @@ document.addEventListener('DOMContentLoaded', function () {
         let saleTotal = 0;
         container.querySelectorAll('.stock-data').forEach(function (item) {
             const length = Number.parseFloat(item.querySelector('[name="length[]"]').value) || 0;
-            const lineTotal = Number.parseFloat(item.querySelector('[name="item_total[]"]').value) || 0;
-            const rate = length > 0 ? lineTotal / length : 0;
+            const rate = Number.parseFloat(item.querySelector('[name="per_meter[]"]').value) || 0;
+            const lineTotal = length * rate;
             saleTotal += lineTotal;
-            item.querySelector('[name="per_meter[]"]').value = rate.toFixed(2);
-            item.querySelector('.js-rate-per-meter').value = money(rate);
+            item.querySelector('[name="item_total[]"]').value = lineTotal.toFixed(2);
             item.querySelector('.counter-line-total').textContent = money(lineTotal);
         });
         const received = Number.parseFloat(payment.value) || 0;
@@ -226,9 +301,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
     const bindItem = function (item) {
+        initializeItemRate(item);
         item.querySelector('.js-brand').addEventListener('change', () => loadClothTypes(item));
         item.querySelector('.js-cloth-type').addEventListener('change', () => loadColors(item));
-        item.querySelectorAll('[name="item_total[]"], [name="length[]"]').forEach(input => input.addEventListener('input', calculateTotals));
+        item.querySelector('[name="length[]"]').addEventListener('input', calculateTotals);
+        item.querySelector('.js-rate-per-meter').addEventListener('input', function (event) {
+            item.querySelector('[name="per_meter[]"]').value = (Number.parseFloat(event.target.value) || 0).toFixed(2);
+            calculateTotals();
+        });
         const remove = item.querySelector('.counter-remove-item');
         if (remove) remove.addEventListener('click', function () { item.remove(); refreshItemNumbers(); calculateTotals(); });
     };
@@ -236,7 +316,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const createItem = function () {
         const item = container.querySelector('.stock-data').cloneNode(true);
-        item.querySelectorAll('input').forEach(input => { input.value = input.classList.contains('js-rate-per-meter') ? 'Rs. 0.00' : (input.name === 'per_meter[]' ? '0' : ''); });
+        item.querySelectorAll('input').forEach(input => { input.value = input.name === 'per_meter[]' ? '0' : ''; });
+        item.querySelector('.js-rate-per-meter').readOnly = false;
         item.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
         item.querySelector('.js-cloth-type').innerHTML = '<option value="" disabled selected>پہلے برانڈ منتخب کریں</option>';
         item.querySelector('.js-cloth-id').value = '';
@@ -291,6 +372,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         item.querySelector('[name="length[]"]').value = '';
         item.querySelector('[name="item_total[]"]').value = '';
+        item.querySelector('[name="per_meter[]"]').value = Number(match.unit_price || 0).toFixed(2);
+        item.querySelector('.js-rate-per-meter').value = Number(match.unit_price || 0) > 0 ? Number(match.unit_price).toFixed(2) : '';
         calculateTotals();
         scanInput.value = '';
         if (!match.tracks_colors) {

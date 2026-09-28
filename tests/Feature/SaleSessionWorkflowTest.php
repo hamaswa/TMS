@@ -228,12 +228,15 @@ class SaleSessionWorkflowTest extends TestCase
         $session = SaleSession::where('uuid', $uuid)->firstOrFail();
         $this->actingAs($owner)->get(route('admin.sales-sessions.show', $session))
             ->assertRedirect(route('admin.sellCloth', ['sale_session' => $uuid]));
-        $this->actingAs($owner)->get(route('admin.sellCloth', ['sale_session' => $uuid]))
+        $saleFormResponse = $this->actingAs($owner)->get(route('admin.sellCloth', ['sale_session' => $uuid]));
+        $saleFormResponse
             ->assertOk()
             ->assertSeeText('سیلز ایجنٹ کی لائیو فروخت')
             ->assertSeeText('2 آئٹمز')
             ->assertSee('name="sale_session_uuid" value="'.$uuid.'"', false)
             ->assertDontSeeText('فیبرک رول / ریک');
+        $this->assertStringContainsString('name="item_total[]" value="600"', $saleFormResponse->getContent());
+        $this->assertStringContainsString('name="per_meter[]" value="300"', $saleFormResponse->getContent());
         $this->actingAs($owner)->post(route('admin.sales-sessions.claim', $session))->assertRedirect();
         $this->actingAs($owner)->post(route('admin.sellStock'), [
             'sale_session_uuid' => $uuid,
