@@ -28,6 +28,11 @@ class Kernel extends ConsoleKernel
             ->dailyAt('09:00')
             ->timezone('Asia/Karachi')
             ->withoutOverlapping();
+
+        $schedule->command('demo:reset')
+            ->dailyAt(config('demo.reset_time', '03:00'))
+            ->timezone('Asia/Karachi')
+            ->withoutOverlapping();
     }
 
     /**

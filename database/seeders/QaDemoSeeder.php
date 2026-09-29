@@ -30,7 +30,7 @@ use Spatie\Permission\Models\Role;
 
 class QaDemoSeeder extends Seeder
 {
-    private const PASSWORD = 'Demo@2026';
+    public const PASSWORD = 'Demo@2026';
 
     public function run(): void
     {
@@ -56,7 +56,7 @@ class QaDemoSeeder extends Seeder
         });
     }
 
-    private function owner(
+    public function owner(
         string $name,
         string $email,
         string $businessName,
@@ -64,6 +64,7 @@ class QaDemoSeeder extends Seeder
         bool $clothing,
         string $phone,
         string $address,
+        bool $isDemo = false,
     ): array {
         $owner = User::create([
             'name' => $name,
@@ -84,6 +85,7 @@ class QaDemoSeeder extends Seeder
             'tailoring_enabled' => $tailoring,
             'clothing_enabled' => $clothing,
             'status' => Business::STATUS_ACTIVE,
+            'is_demo' => $isDemo,
             'approved_at' => now(),
             'status_changed_at' => now(),
             'status_reason' => 'QA demo business provisioned as active.',
@@ -109,7 +111,7 @@ class QaDemoSeeder extends Seeder
         return [$owner, $business];
     }
 
-    private function employees(User $owner, Business $business): void
+    public function employees(User $owner, Business $business, ?string $identitySuffix = null): void
     {
         $roles = [
             ['name' => 'آرڈر منیجر', 'permissions' => [
@@ -140,6 +142,11 @@ class QaDemoSeeder extends Seeder
                 'permissions' => $data['permissions'],
             ]);
             [$name, $username, $email, $phone, $jobTitle, $workspace] = $people[$index];
+            if ($identitySuffix) {
+                $username .= '.'.$identitySuffix;
+                [$emailName, $emailDomain] = explode('@', $email, 2);
+                $email = $emailName.'+'.$identitySuffix.'@'.$emailDomain;
+            }
             $employee = User::create([
                 'name' => $name,
                 'username' => $username,
@@ -162,7 +169,7 @@ class QaDemoSeeder extends Seeder
         }
     }
 
-    private function tailoringData(User $owner, bool $combined): void
+    public function tailoringData(User $owner, bool $combined): void
     {
         $measurementService = app(MeasurementService::class);
         $collar = MeasurementField::create([
@@ -296,7 +303,7 @@ class QaDemoSeeder extends Seeder
         }
     }
 
-    private function clothingData(User $owner, bool $combined): void
+    public function clothingData(User $owner, bool $combined): void
     {
         $brand = ClothBrand::create([
             'name' => $combined ? 'Gul Ahmed' : 'Khaadi Fabrics',
@@ -309,6 +316,7 @@ class QaDemoSeeder extends Seeder
             'cloth_brand_id' => $brand->id,
             'price' => $combined ? 850 : 780,
             'sale_price' => $combined ? 1150 : 1050,
+            'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR,
             'user_id' => $owner->id,
         ]);
         $color = ClothColor::create([

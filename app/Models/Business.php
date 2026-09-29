@@ -29,6 +29,7 @@ class Business extends Model
         'clothing_enabled',
         'tailoring_status_mode',
         'status',
+        'is_demo',
         'approved_at',
         'approved_by_user_id',
         'status_changed_at',
@@ -57,6 +58,7 @@ class Business extends Model
         return [
             'tailoring_enabled' => 'boolean',
             'clothing_enabled' => 'boolean',
+            'is_demo' => 'boolean',
             'self_registered_at' => 'datetime',
             'approved_at' => 'datetime',
             'status_changed_at' => 'datetime',
@@ -182,6 +184,11 @@ class Business extends Model
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function isDemo(): bool
+    {
+        return (bool) $this->is_demo;
     }
 
     public function statusHistory()
