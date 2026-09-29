@@ -15,7 +15,7 @@
 
         .auth-page {
             min-height: 100vh;
-            overflow-x: hidden;
+            overflow: hidden;
             background: #eef5fb;
             color: #1f2937;
             direction: rtl;

@@ -12,6 +12,8 @@ use App\Models\Customers;
 use App\Models\MeasurementField;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
+use App\Models\Options;
+use App\Models\OptionType;
 use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\Supplier;
@@ -22,6 +24,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\InventoryService;
 use App\Services\MeasurementService;
+use App\Services\TailoringOptionDefaultsService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -258,9 +261,19 @@ class QaDemoSeeder extends Seeder
             'password' => Hash::make(self::PASSWORD),
             'user_id' => $owner->id,
         ]);
+        app(TailoringOptionDefaultsService::class)->seedForOwner($owner->id);
+        $sewingTypeId = OptionType::query()
+            ->where('slug', TailoringOptionDefaultsService::SEWING_TYPE_SLUG)
+            ->value('id');
+        $sewingOption = Options::query()
+            ->where('user_id', $owner->id)
+            ->where('option_id', $sewingTypeId)
+            ->where('Name', 'سادہ')
+            ->firstOrFail();
         $rate = Tailorsalary::create([
             'tailor_id' => $tailor->id,
-            'type' => 'مردانہ سوٹ',
+            'options_id' => $sewingOption->id,
+            'type' => $sewingOption->Name,
             'price' => $combined ? 900 : 850,
         ]);
 

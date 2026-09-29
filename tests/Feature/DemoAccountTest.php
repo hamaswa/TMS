@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Customers;
 use App\Models\Setting;
+use App\Models\Tailor;
+use App\Models\Tailorsalary;
 use App\Models\User;
 use Database\Seeders\DemoShopSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,7 +45,12 @@ class DemoAccountTest extends TestCase
         ])
             ->assertRedirect(route('admin.home'));
 
-        $this->assertAuthenticatedAs(User::where('email', config('demo.email'))->firstOrFail());
+        $owner = User::where('email', config('demo.email'))->firstOrFail();
+        $this->assertAuthenticatedAs($owner);
+        $tailorId = Tailor::where('user_id', $owner->id)->value('id');
+        $rate = Tailorsalary::where('tailor_id', $tailorId)->firstOrFail();
+        $this->assertNotNull($rate->options_id);
+        $this->assertDatabaseHas('options', ['id' => $rate->options_id, 'user_id' => $owner->id]);
 
         $this->get(route('admin.home'))
             ->assertOk()
