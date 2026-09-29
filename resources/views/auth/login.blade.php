@@ -5,6 +5,8 @@
 
 @push('styles')
     <style>
+        @include('storefront.public.partials.platform-header-styles')
+
         :root {
             --navy: #082e58;
             --blue: #1477ea;
@@ -15,6 +17,7 @@
 
         .auth-page {
             min-height: 100vh;
+            overflow-x: hidden;
             background: #eef5fb;
             color: #1f2937;
             direction: rtl;
@@ -27,11 +30,19 @@
         }
 
         .auth-page .app-main {
+            min-width: 0;
             padding: 0 !important
         }
 
+        .auth-page #app {
+            min-width: 0
+        }
+
         .auth-shell {
-            min-height: 100vh;
+            min-height: calc(100vh - 76px);
+            min-height: calc(100dvh - 76px);
+            width: 100%;
+            min-width: 0;
             display: grid;
             grid-template-columns: minmax(390px, .86fr) minmax(0, 1.14fr);
             grid-template-areas: "entry story";
@@ -41,6 +52,9 @@
         .auth-story {
             grid-area: story;
             position: relative;
+            min-width: 0;
+            min-height: calc(100vh - 76px);
+            min-height: calc(100dvh - 76px);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -295,7 +309,14 @@
 
         .auth-entry {
             grid-area: entry;
-            position: relative;
+            position: sticky;
+            top: 76px;
+            align-self: start;
+            min-width: 0;
+            height: calc(100vh - 76px);
+            height: calc(100dvh - 76px);
+            overflow-x: hidden;
+            overflow-y: auto;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -322,9 +343,11 @@
 
         .auth-entry:after {
             width: 320px;
-            height: 320px;
+            height: 140px;
             right: -220px;
-            bottom: -180px
+            bottom: 0;
+            border-bottom: 0;
+            border-radius: 50% 50% 0 0 / 100% 100% 0 0
         }
 
         .auth-card {
@@ -356,22 +379,6 @@
 
         .mobile-brand {
             display: none
-        }
-
-        .market-home {
-            min-height: 44px;
-            display: inline-flex;
-            align-items: center;
-            gap: .4rem;
-            margin-bottom: .5rem;
-            color: var(--blue);
-            font-size: .76rem;
-            font-weight: 800;
-            text-decoration: none
-        }
-
-        .market-home:hover {
-            text-decoration: underline
         }
 
         .auth-card h2 {
@@ -543,7 +550,7 @@
             line-height: 1.7
         }
 
-        @media(max-width:1100px) {
+        @media(max-width:1400px) {
             .scene {
                 display: none
             }
@@ -554,6 +561,62 @@
 
             .auth-flow {
                 grid-template-columns: repeat(3, 1fr)
+            }
+        }
+
+        @media(max-width:1100px) {
+            .auth-story {
+                padding: 2rem
+            }
+        }
+
+        @media(min-width:861px) and (max-height:900px) {
+            .auth-story {
+                padding: clamp(1.5rem, 3vw, 2.5rem)
+            }
+
+            .auth-story h1 {
+                margin: .8rem 0 .45rem;
+                font-size: clamp(2.5rem, min(4.25vw, 7.5vh), 4.25rem);
+                line-height: 1.28
+            }
+
+            .auth-copy {
+                margin: 1.25rem 0
+            }
+
+            .auth-copy>p {
+                line-height: 1.75
+            }
+
+            .flow-step {
+                min-height: 96px;
+                padding: .6rem .45rem
+            }
+
+            .auth-entry {
+                padding: 1.25rem
+            }
+
+            .auth-card {
+                padding: 1.5rem 2rem
+            }
+
+            .auth-card h2 {
+                margin-top: .45rem;
+                font-size: 1.85rem
+            }
+
+            .auth-subtitle {
+                margin-bottom: 1rem
+            }
+
+            .auth-row {
+                margin: .7rem 0 .85rem
+            }
+
+            .assurance {
+                margin-top: .8rem
             }
         }
 
@@ -568,7 +631,11 @@
             }
 
             .auth-entry {
-                min-height: 100vh;
+                position: relative;
+                height: auto;
+                min-height: calc(100vh - 76px);
+                min-height: calc(100dvh - 76px);
+                overflow-y: visible;
                 padding: 1.25rem
             }
 
@@ -611,6 +678,7 @@
 @section('content')
     @php($scissors = '<svg viewBox="0 0 24 24" fill="none"><path d="M8.4 7.9 18.8 3m-10.4 13.1L18.8 21M8.2 12h11.2M8.4 7.9a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0Zm0 8.2a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>')
     @php($demoPreview = config('demo.enabled') && request()->boolean('demo'))
+    @include('storefront.public.partials.platform-header', ['isLoginHeader' => true])
     <div class="auth-shell">
         <section class="auth-story" aria-label="ٹیلر مینجمنٹ پلیٹ فارم کا تعارف">
             <div class="auth-brand"><span class="brand-name">BuyN<em>Stitch</em><small>مقامی کپڑا اور ٹیلرنگ کاروبار، ایک ہی
@@ -639,7 +707,6 @@
                 <div class="card-brand auth-brand"><span class="brand-name">BuyN<em>Stitch</em><small>مقامی کپڑا اور ٹیلرنگ
                             کاروبار، ایک ہی جگہ</small></span><span class="brand-mark"
                         aria-hidden="true">{!! $scissors !!}</span></div>
-                <a class="market-home" href="{{ route('storefront.index') }}">← BuyNStitch پر واپس جائیں</a>
                 <h2>خوش آمدید</h2>
                 <p class="auth-subtitle">اپنا کاروبار سنبھالنے کے لیے لاگ اِن کریں۔</p>
                 @if ($demoPreview)

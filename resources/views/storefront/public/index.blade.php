@@ -151,23 +151,10 @@
     #d9e8e3}.workspace-list{grid-template-columns:1fr}.process-step:after{display:none}.landing-section,.marketplace{padding:55px
     0}.market-intro,.section-head,.footer-grid{align-items:flex-start;flex-direction:column}.business-cta{grid-template-columns:1fr}.filter-actions
     .btn{flex:1}}
+    @include('storefront.public.partials.platform-header-styles')
 @endpush
 @section('body')
-    <nav class="tms-nav">
-        <div class="shell" dir="ltr"><a class="tms-brand" href="{{ route('storefront.index') }}"><span class="tms-mark"><i
-                        class="fas fa-cut"></i></span><span class="tms-wordmark"><strong>BuyNStitch</strong><small>Tailoring &amp; Clothing Business Platform</small></span></a>
-            <div class="nav-center"><a href="#features">Features · خصوصیات</a><a href="#workspaces">Solutions · حل</a><a
-                    href="#marketplace">Marketplace · مارکیٹ</a><a href="#how">How it works · طریقہ</a></div>
-            <div class="nav-actions">@include('storefront.public.partials.language-switch')<a class="nav-login"
-                    href="{{ route('login') }}">{{ app()->getLocale() === 'ur' ? 'لاگ اِن' : 'Login' }}</a>
-                @if (config('demo.enabled'))
-                    <a class="nav-demo"
-                        href="{{ route('login', ['demo' => 1]) }}">{{ app()->getLocale() === 'ur' ? 'ڈیمو دیکھیں' : 'Try Demo' }}
-                        <i class="fas fa-arrow-right"></i></a>
-                @endif
-            </div>
-        </div>
-    </nav>
+    @include('storefront.public.partials.platform-header')
     <header class="tms-hero">
         <div class="shell hero-grid">
             <div class="product-scene">

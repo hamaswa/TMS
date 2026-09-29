@@ -24,8 +24,12 @@ class ExampleTest extends TestCase
             ->assertSee('ہر سلائی،')
             ->assertSee('BuyNStitch')
             ->assertSee('لاگ اِن کریں')
+            ->assertSee('مرکزی نیویگیشن')
+            ->assertSeeText('واپس جائیں')
             ->assertSee('/build/assets/app-', false)
             ->assertDontSee('public/css/app.css', false);
+
+        $this->assertFileExists(public_path('assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2'));
     }
 
     public function test_login_and_public_marketplace_expose_accessible_mobile_controls(): void
