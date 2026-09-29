@@ -5,8 +5,6 @@
 
 @push('styles')
     <style>
-        @include('storefront.public.partials.platform-header-styles')
-
         :root {
             --navy: #082e58;
             --blue: #1477ea;
@@ -22,7 +20,8 @@
             color: #1f2937;
             direction: rtl;
             text-align: right;
-            font-family: "Noto Nastaliq Urdu", "Noto Sans Arabic", Tahoma, Arial, sans-serif
+            font-family: "Noto Nastaliq Urdu", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
+            line-height: 2
         }
 
         .auth-page .app-navbar {
@@ -39,8 +38,8 @@
         }
 
         .auth-shell {
-            min-height: calc(100vh - 76px);
-            min-height: calc(100dvh - 76px);
+            min-height: 100vh;
+            min-height: 100dvh;
             width: 100%;
             min-width: 0;
             display: grid;
@@ -53,8 +52,8 @@
             grid-area: story;
             position: relative;
             min-width: 0;
-            min-height: calc(100vh - 76px);
-            min-height: calc(100dvh - 76px);
+            min-height: 100vh;
+            min-height: 100dvh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -114,7 +113,8 @@
             font-weight: 600;
             letter-spacing: 0;
             color: #cbe5f7;
-            direction: rtl
+            direction: rtl;
+            line-height: 2
         }
 
         .brand-name em {
@@ -165,7 +165,7 @@
         .auth-story h1 {
             margin: 1.2rem 0 .8rem;
             font-size: clamp(2.65rem, 5vw, 5rem);
-            line-height: 1.38;
+            line-height: 1.7;
             font-weight: 900
         }
 
@@ -178,7 +178,7 @@
             max-width: 610px;
             color: #d2e8f8;
             font-size: clamp(.95rem, 1.35vw, 1.12rem);
-            line-height: 2.05
+            line-height: 2.15
         }
 
         .scene {
@@ -288,13 +288,15 @@
         }
 
         .flow-step strong {
-            font-size: .78rem
+            font-size: .78rem;
+            line-height: 2
         }
 
         .flow-step small {
             margin-top: .15rem;
             color: #bcd9eb;
-            font-size: .61rem
+            font-size: .61rem;
+            line-height: 2
         }
 
         .story-tagline {
@@ -310,11 +312,11 @@
         .auth-entry {
             grid-area: entry;
             position: sticky;
-            top: 76px;
+            top: 0;
             align-self: start;
             min-width: 0;
-            height: calc(100vh - 76px);
-            height: calc(100dvh - 76px);
+            height: 100vh;
+            height: 100dvh;
             overflow-x: hidden;
             overflow-y: auto;
             display: flex;
@@ -386,21 +388,25 @@
             color: var(--navy);
             font-size: 2.15rem;
             font-weight: 900;
+            line-height: 1.75;
             text-align: center
         }
 
         .auth-subtitle {
             margin-bottom: 1.6rem;
             color: var(--muted);
-            line-height: 1.8;
+            line-height: 2.15;
             text-align: center
         }
 
         .auth-label {
+            display: block;
+            min-height: 2em;
             margin-bottom: .45rem;
             color: #263b54;
             font-size: .82rem;
-            font-weight: 800
+            font-weight: 800;
+            line-height: 2
         }
 
         .auth-control {
@@ -410,7 +416,7 @@
         .auth-control>svg {
             position: absolute;
             right: 1rem;
-            top: 28px;
+            top: 50%;
             transform: translateY(-50%);
             width: 20px;
             height: 20px;
@@ -427,7 +433,8 @@
             color: #172033;
             box-shadow: none;
             transition: .2s;
-            text-align: right
+            text-align: right;
+            line-height: 1.8
         }
 
         .auth-control .form-control:focus {
@@ -439,7 +446,8 @@
         .password-toggle {
             position: absolute;
             left: .65rem;
-            top: 6px;
+            top: 50%;
+            transform: translateY(-50%);
             width: 44px;
             height: 44px;
             border: 0;
@@ -577,8 +585,8 @@
 
             .auth-story h1 {
                 margin: .8rem 0 .45rem;
-                font-size: clamp(2.5rem, min(4.25vw, 7.5vh), 4.25rem);
-                line-height: 1.28
+                font-size: clamp(2.2rem, min(3.8vw, 6.5vh), 3.75rem);
+                line-height: 1.6
             }
 
             .auth-copy {
@@ -633,8 +641,8 @@
             .auth-entry {
                 position: relative;
                 height: auto;
-                min-height: calc(100vh - 76px);
-                min-height: calc(100dvh - 76px);
+                min-height: 100vh;
+                min-height: 100dvh;
                 overflow-y: visible;
                 padding: 1.25rem
             }
@@ -678,7 +686,6 @@
 @section('content')
     @php($scissors = '<svg viewBox="0 0 24 24" fill="none"><path d="M8.4 7.9 18.8 3m-10.4 13.1L18.8 21M8.2 12h11.2M8.4 7.9a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0Zm0 8.2a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>')
     @php($demoPreview = config('demo.enabled') && request()->boolean('demo'))
-    @include('storefront.public.partials.platform-header', ['isLoginHeader' => true])
     <div class="auth-shell">
         <section class="auth-story" aria-label="ٹیلر مینجمنٹ پلیٹ فارم کا تعارف">
             <div class="auth-brand"><span class="brand-name">BuyN<em>Stitch</em><small>مقامی کپڑا اور ٹیلرنگ کاروبار، ایک ہی

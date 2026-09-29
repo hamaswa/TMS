@@ -24,8 +24,7 @@ class ExampleTest extends TestCase
             ->assertSee('ہر سلائی،')
             ->assertSee('BuyNStitch')
             ->assertSee('لاگ اِن کریں')
-            ->assertSee('مرکزی نیویگیشن')
-            ->assertSeeText('واپس جائیں')
+            ->assertDontSee('مرکزی نیویگیشن')
             ->assertSee('/build/assets/app-', false)
             ->assertDontSee('public/css/app.css', false);
 

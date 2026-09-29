@@ -39,8 +39,8 @@
     1px,transparent 1px),linear-gradient(90deg,rgba(36,119,255,.08) 1px,transparent 1px);background-size:42px
     42px;mask-image:linear-gradient(to bottom,black,transparent
     72%)}.hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.08fr
-    .92fr;align-items:center;gap:58px}.hero-copy{direction:rtl;text-align:right}.eyebrow{display:inline-flex;align-items:center;gap:8px;margin-bottom:17px;color:var(--dark-green);font-weight:900}.eyebrow:before{content:"";width:30px;height:2px;background:var(--gold)}.hero-copy
-    h1{margin:0;color:var(--navy);font-size:clamp(2.45rem,4.8vw,4.65rem);line-height:1.35;letter-spacing:-.035em}.hero-copy
+    .92fr;align-items:center;gap:58px}.hero-copy{direction:rtl;text-align:right;font-family:"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif}.eyebrow{display:inline-flex;align-items:center;gap:8px;margin-bottom:17px;color:var(--dark-green);font-weight:900;line-height:2}.eyebrow:before{content:"";width:30px;height:2px;background:var(--gold)}.hero-copy
+    h1{margin:0;color:var(--navy);font-size:clamp(2.45rem,4.8vw,4.65rem);line-height:1.7;letter-spacing:0}.hero-copy
     h1 span{color:var(--green)}.hero-english{max-width:620px;margin:18px 0 0 auto;color:#334a68;font:700
     clamp(1rem,1.8vw,1.27rem)/1.6
     Arial;direction:ltr}.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.hero-btn{min-height:50px;display:inline-flex;align-items:center;gap:10px;border-radius:12px;padding:10px
@@ -93,8 +93,8 @@
     rgba(11,36,71,.1)}.feature-icon{width:48px;height:48px;display:grid;place-items:center;margin-bottom:17px;border-radius:13px;background:#e9f2ff;color:var(--blue);font-size:1.15rem}.feature-card:nth-child(2n)
     .feature-icon{background:#e4f7f0;color:var(--green)}.feature-card:nth-child(3n)
     .feature-icon{background:#fff3d9;color:#b57a0c}.feature-card
-    h3{margin:0;color:var(--navy);font-size:1.05rem}.feature-card h3
-    small{display:block;margin-top:3px;color:var(--green);font-weight:800}.feature-card p{margin:10px 0
+    h3{margin:0;color:var(--navy);font:800 1.05rem/1.5 Inter,Arial,sans-serif}.feature-card h3
+    small{display:block;margin-top:7px;color:var(--green);font:800 .83rem/2 "Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,sans-serif}.feature-card p{margin:10px 0
     0;color:var(--muted);font-size:.9rem}
     .workspace-grid{display:grid;grid-template-columns:1fr
     1fr;gap:22px}.workspace-card{position:relative;overflow:hidden;padding:30px;border:1px solid
@@ -115,8 +115,8 @@
     .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.process-step{position:relative;padding:27px;text-align:center}.process-step:not(:last-child):after{content:"";position:absolute;top:34px;inset-inline-end:-20px;width:40px;border-top:2px
     dashed #b7cbe0}.step-no{width:50px;height:50px;display:grid;place-items:center;margin:0 auto
     15px;border-radius:14px;background:linear-gradient(145deg,var(--blue),#145ac8);color:#fff;font:900 1.1rem
-    Arial;box-shadow:0 10px 22px rgba(36,119,255,.2)}.process-step h3{margin:0;color:var(--navy)}.process-step h3
-    small{display:block;color:var(--green);font-size:.78rem}.process-step p{color:var(--muted);font-size:.88rem}
+    Arial;box-shadow:0 10px 22px rgba(36,119,255,.2)}.process-step h3{margin:0;color:var(--navy);font-family:Inter,Arial,sans-serif;line-height:1.5}.process-step h3
+    small{display:block;margin-top:6px;color:var(--green);font:800 .78rem/2 "Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,sans-serif}.process-step p{color:var(--muted);font-family:Inter,Arial,sans-serif;font-size:.88rem;line-height:1.7}
     .marketplace{padding:76px
     0;background:#f5f9fc}.market-intro,.section-head{display:flex;align-items:end;justify-content:space-between;gap:25px;margin-bottom:25px}.market-intro
     h2,.section-head h2{margin:0;color:var(--navy);font-size:clamp(1.7rem,3vw,2.55rem)}.market-intro p{margin:5px 0

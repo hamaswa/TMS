@@ -78,7 +78,15 @@
     text-decoration: none;
     font-weight: 800;
     font-size: .87rem;
-    white-space: nowrap
+    gap: 5px;
+    white-space: nowrap;
+    font-family: Inter, Arial, sans-serif;
+    line-height: 1.35
+}
+
+.nav-center a [lang="ur"] {
+    font-family: "Noto Nastaliq Urdu", "Noto Sans Arabic", Tahoma, sans-serif;
+    line-height: 2
 }
 
 .nav-actions {
@@ -103,7 +111,8 @@
     padding: 8px 15px;
     text-decoration: none;
     font-weight: 900;
-    white-space: nowrap
+    white-space: nowrap;
+    line-height: 1.65
 }
 
 .nav-login {

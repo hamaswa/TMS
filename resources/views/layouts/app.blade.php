@@ -7,6 +7,22 @@
     <title>BuyNStitch</title>
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
     @stack('styles')
+    <style>
+        html[lang="ur"] body { line-height: 2 }
+        html[lang="ur"] h1,
+        html[lang="ur"] h2,
+        html[lang="ur"] h3,
+        html[lang="ur"] h4,
+        html[lang="ur"] h5,
+        html[lang="ur"] h6 { line-height: 1.75 !important }
+        html[lang="ur"] p,
+        html[lang="ur"] label,
+        html[lang="ur"] small,
+        html[lang="ur"] .btn,
+        html[lang="ur"] .form-control { line-height: 2 !important }
+        html[lang="ur"] [lang="en"],
+        html[lang="ur"] .latin-text { font-family: Inter, Arial, sans-serif; line-height: 1.55 !important }
+    </style>
 </head>
 <body class="@yield('body_class')">
     <div id="app">
