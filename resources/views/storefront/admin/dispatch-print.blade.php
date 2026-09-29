@@ -60,7 +60,7 @@
         </div>
         @if($order->customer_note)<div class="note"><strong>گاہک کا نوٹ:</strong><br>{{ $order->customer_note }}</div>@endif
         <div class="signatures"><div class="signature">پیک کرنے والے کے دستخط</div><div class="signature">ڈسپیچ / کورئیر کے دستخط</div></div>
-        <footer class="footer">یہ ڈسپیچ شیٹ تصدیق شدہ آن لائن آرڈر کے لیے TMS سے تیار کی گئی ہے۔</footer>
+        <footer class="footer">یہ ڈسپیچ شیٹ تصدیق شدہ آن لائن آرڈر کے لیے BuyNStitch سے تیار کی گئی ہے۔</footer>
     </main>
 </body>
 </html>

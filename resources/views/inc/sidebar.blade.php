@@ -32,7 +32,7 @@
 
 <aside class="tms-sidebar" aria-label="مرکزی نیویگیشن">
     <a class="tms-sidebar-brand" href="{{ $activeWorkspace ? route('admin.workspace.current') : route('admin.home') }}">
-        <span class="tms-sidebar-brand-icon"><i class="fas fa-cut"></i></span><span class="tms-sidebar-brand-text">TMSX</span>
+        <span class="tms-sidebar-brand-icon"><i class="fas fa-cut"></i></span><span class="tms-sidebar-brand-text">BuyNStitch</span>
     </a>
     <nav class="tms-sidebar-scroll">
         <a class="tms-side-link {{ request()->routeIs('admin.home','admin.workspace.current') ? 'is-active' : '' }}" href="{{ $activeWorkspace ? route('admin.workspace.current') : route('admin.home') }}"><span class="tms-side-icon"><i class="fas fa-home"></i></span><span class="tms-side-label">ڈیش بورڈ</span></a>

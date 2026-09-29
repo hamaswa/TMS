@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>درزی لاگ اِن — TMS</title>
+    <title>درزی لاگ اِن — BuyNStitch</title>
     <link href="{{ asset('assets/css/bootstrap.min.css') }}" rel="stylesheet">
     <style>
         :root{--navy:#102a43;--blue:#1769e0;--cyan:#20b8cd}
@@ -20,7 +20,7 @@
 <main class="login-shell">
     <section class="login-panel">
         <div class="login-card">
-            <div class="brand"><span class="brand-mark">✂</span><span>TMS<small>درزی کا محفوظ پورٹل</small></span></div>
+            <div class="brand"><span class="brand-mark">✂</span><span>BuyNStitch<small>درزی کا محفوظ پورٹل</small></span></div>
             <h1>درزی لاگ اِن</h1>
             <p class="subtitle">اپنے تفویض شدہ کام، مراحل اور اجرت دیکھنے کے لیے لاگ اِن کریں۔</p>
 

@@ -41,7 +41,7 @@
         <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
         <link rel="apple-touch-icon" href="{{ asset('assets/images/web-app-manifest-192x192.png') }}">
     @endif
-    <title>{{ $isSuperAdmin ? 'TMS Super Admin' : 'ٹیلر مینجمنٹ سسٹم' }}</title>
+    <title>{{ $isSuperAdmin ? 'BuyNStitch Super Admin' : 'BuyNStitch' }}</title>
     <link rel="icon" href="{{ asset('assets/images/favicon.ico') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="{{ asset('assets/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -77,9 +77,9 @@
 <body>
 <header class="tms-nav sticky-top"><div class="container-fluid px-3 px-lg-4"><nav class="navbar navbar-expand-xl navbar-dark p-0">
     @if(Session::get('tailor'))
-        <a class="navbar-brand" href="{{ url('tailor/tailor-dashboard') }}"><i class="fas fa-cut mr-2"></i>TMS</a>
+        <a class="navbar-brand" href="{{ url('tailor/tailor-dashboard') }}"><i class="fas fa-cut mr-2"></i>BuyNStitch</a>
     @else
-        <a class="navbar-brand" href="{{ $isSuperAdmin ? route('administrator.index') : route('admin.home') }}"><i class="fas fa-cut mr-2"></i>TMS</a>
+        <a class="navbar-brand" href="{{ $isSuperAdmin ? route('administrator.index') : route('admin.home') }}"><i class="fas fa-cut mr-2"></i>BuyNStitch</a>
     @endif
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#tmsNavigation" aria-controls="tmsNavigation" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="tmsNavigation"><ul class="navbar-nav mr-auto align-items-xl-center">
@@ -213,7 +213,7 @@
                 rememberAttention(newAttention);
                 showAttentionModal(newAttention[0], newAttention.length - 1);
             }
-            if (feed.openCount > knownOpen) document.title = '(' + feed.openCount + ') لائیو سیلز — TMS';
+            if (feed.openCount > knownOpen) document.title = '(' + feed.openCount + ') لائیو سیلز — BuyNStitch';
             knownOpen = feed.openCount;
             window.dispatchEvent(new CustomEvent('sales-session-feed', {detail: feed}));
         } catch (_) {}

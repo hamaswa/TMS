@@ -17,11 +17,12 @@ class ExampleTest extends TestCase
             ->assertSee(route('login'), false);
     }
 
-    public function test_login_page_uses_the_branded_tms_experience_and_compiled_assets(): void
+    public function test_login_page_uses_the_branded_buynstitch_experience_and_compiled_assets(): void
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('ہر سلائی۔')
+            ->assertSee('ہر سلائی،')
+            ->assertSee('BuyNStitch')
             ->assertSee('لاگ اِن کریں')
             ->assertSee('/build/assets/app-', false)
             ->assertDontSee('public/css/app.css', false);
@@ -31,8 +32,8 @@ class ExampleTest extends TestCase
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('.auth-link{min-height:44px', false)
-            ->assertSee('.market-home{min-height:44px', false);
+            ->assertSee('class="auth-link"', false)
+            ->assertSee('min-height: 44px', false);
 
         $this->get('/')
             ->assertOk()

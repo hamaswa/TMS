@@ -56,7 +56,7 @@ class Setting extends Model
         return static::firstOrCreate(
             ['user_id' => $ownerId],
             [
-                'name' => $name !== '' ? $name : 'TMS Shop',
+                'name' => $name !== '' ? $name : 'BuyNStitch Shop',
                 'logo' => '',
                 'note' => '',
                 'address' => '',

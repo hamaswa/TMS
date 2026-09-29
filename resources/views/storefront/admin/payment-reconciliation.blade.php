@@ -43,7 +43,7 @@
     </div>
 
     <div class="alert alert-info">
-        <strong>طریقہ:</strong> ہر تاریخ اور ادائیگی طریقے کے لیے TMS کی تصدیق شدہ رقم دیکھیں، پھر والٹ/بینک رپورٹ کی اصل رقم اور حوالہ درج کریں۔ صفر رقم درج کرنے پر وضاحتی نوٹ ضروری ہے۔ فرق درست ہونے تک ریکارڈ دوبارہ محفوظ کیا جا سکتا ہے؛ ہر تبدیلی کی تاریخ محفوظ رہتی ہے۔
+        <strong>طریقہ:</strong> ہر تاریخ اور ادائیگی طریقے کے لیے BuyNStitch کی تصدیق شدہ رقم دیکھیں، پھر والٹ/بینک رپورٹ کی اصل رقم اور حوالہ درج کریں۔ صفر رقم درج کرنے پر وضاحتی نوٹ ضروری ہے۔ فرق درست ہونے تک ریکارڈ دوبارہ محفوظ کیا جا سکتا ہے؛ ہر تبدیلی کی تاریخ محفوظ رہتی ہے۔
     </div>
 
     @forelse($report['rows'] as $row)
@@ -60,7 +60,7 @@
             <div class="card-body">
                 @if($row['snapshot_changed'])<div class="alert alert-warning">اس تاریخ کی تصدیق شدہ ادائیگیاں پچھلی مصالحت کے بعد تبدیل ہوئی ہیں۔ موجودہ رقم دوبارہ ملائیں۔</div>@endif
                 <div class="row mb-3">
-                    <div class="col-md-3 mb-2"><small class="text-muted d-block">TMS متوقع رقم</small><strong class="amount-ltr">PKR {{ number_format($row['expected_amount'],2) }}</strong></div>
+                    <div class="col-md-3 mb-2"><small class="text-muted d-block">BuyNStitch متوقع رقم</small><strong class="amount-ltr">PKR {{ number_format($row['expected_amount'],2) }}</strong></div>
                     <div class="col-md-3 mb-2"><small class="text-muted d-block">فراہم کنندہ رقم</small><strong class="amount-ltr">PKR {{ number_format($row['actual_amount'],2) }}</strong></div>
                     <div class="col-md-3 mb-2"><small class="text-muted d-block">فرق</small><strong class="amount-ltr text-{{ $row['variance_amount']==0?'success':'danger' }}">PKR {{ number_format($row['variance_amount'],2) }}</strong></div>
                     <div class="col-md-3 mb-2"><small class="text-muted d-block">آخری مصالحت</small><strong>{{ $record?->reconciled_at?->format('d-m-Y h:i A') ?: '—' }}</strong>@if($record)<div class="small text-muted">{{ $record->reconciler->name ?? $record->reconciler->username ?? 'سابق صارف' }} · {{ $record->events_count }} اندراج</div>@endif</div>

@@ -29,7 +29,7 @@ class PrintDocumentService
 
         $reference = (string) $reference;
         $payload = implode('|', [
-            'TMS',
+            'BuyNStitch',
             'SHOP:'.($setting?->shop_slug ?: $setting?->user_id ?: 'UNCONFIGURED'),
             'TYPE:'.strtoupper($documentType),
             'REF:'.$reference,
