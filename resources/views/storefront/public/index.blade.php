@@ -16,6 +16,7 @@
     <script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(\App\Support\StorefrontSeo::website(__('storefront.common.marketplace'),__('storefront.marketplace.hero_text'),route('storefront.index')),$marketplaceItems ? ['@type'=>'ItemList','@id'=>route('storefront.index').'#top-stores','name'=>__('storefront.marketplace.top_stores'),'itemListElement'=>$marketplaceItems] : [])) !!}</script>
 @endpush
 @push('styles')
+.ui-icon{width:1em;height:1em;display:inline-block;flex:0 0 auto;vertical-align:-.15em;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .workspace-card{position:relative;overflow:hidden;padding:30px;border:1px solid
     var(--line);border-radius:22px;background:#fff;box-shadow:0 15px 38px
     rgba(11,36,71,.07)}
@@ -47,7 +48,7 @@
     21px;text-decoration:none;font-weight:900}.hero-btn.primary{background:linear-gradient(135deg,var(--green),#0ca678);color:#fff;box-shadow:0
     12px 25px rgba(14,143,104,.22)}.hero-btn.secondary{border:1px solid
     #abc8e6;background:#fff;color:var(--blue)}.hero-trust{display:flex;gap:18px;flex-wrap:wrap;margin-top:23px;color:#50657e;font-size:.82rem;font-weight:800}.hero-trust
-    span{display:inline-flex;align-items:center;gap:7px}.hero-trust i{color:var(--green)}
+    span{display:inline-flex;align-items:center;gap:7px}.hero-trust .ui-icon{color:var(--green)}
     .product-scene{position:relative;direction:ltr}.dashboard-window{position:relative;overflow:hidden;border:1px solid
     #c8d9e9;border-radius:20px;background:#fff;box-shadow:0 35px 80px rgba(11,36,71,.22);transform:perspective(1200px)
     rotateY(2deg)}.window-top{height:40px;display:flex;align-items:center;gap:6px;padding:0 14px;border-bottom:1px solid
@@ -73,14 +74,13 @@
     .52rem Arial}.mock-order em{padding:3px
     6px;border-radius:9px;background:#dff6ed;color:var(--dark-green);font-style:normal}.scene-chip{position:absolute;z-index:2;display:flex;align-items:center;gap:9px;padding:11px
     14px;border:1px solid #d5e2ee;border-radius:13px;background:rgba(255,255,255,.96);box-shadow:0 13px 30px
-    rgba(11,36,71,.15);font:800 .72rem Arial}.scene-chip
-    i{width:34px;height:34px;display:grid;place-items:center;border-radius:9px}.chip-qr{left:-26px;top:52px}.chip-qr
-    i{background:#e5efff;color:var(--blue)}.chip-stock{right:-20px;top:22px}.chip-stock
-    i{background:#e0f6ee;color:var(--green)}.chip-measure{left:25px;bottom:-25px}.chip-measure
-    i{background:#fff1d6;color:#c18718}
+    rgba(11,36,71,.15);font:800 .72rem Arial}.scene-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:9px}.scene-icon .ui-icon{width:17px;height:17px}.chip-qr{left:-26px;top:52px}.chip-qr
+    .scene-icon{background:#e5efff;color:var(--blue)}.chip-stock{right:-20px;top:22px}.chip-stock
+    .scene-icon{background:#e0f6ee;color:var(--green)}.chip-measure{left:25px;bottom:-25px}.chip-measure
+    .scene-icon{background:#fff1d6;color:#c18718}
     .proof-bar{border-block:1px solid
     #d8e7ee;background:#f0faf7}.proof-grid{display:grid;grid-template-columns:repeat(4,1fr)}.proof-item{display:flex;align-items:center;justify-content:center;gap:13px;padding:18px;border-inline-end:1px
-    solid #d9e8e3}.proof-item:last-child{border:0}.proof-item i{color:var(--green);font-size:1.35rem}.proof-item
+    solid #d9e8e3}.proof-item:last-child{border:0}.proof-item .ui-icon{color:var(--green);font-size:1.35rem}.proof-item
     strong{display:block;color:var(--navy);font:900 1.25rem Arial}.proof-item
     span{display:block;color:var(--muted);font-size:.72rem}
     .landing-section{padding:78px 0}.soft{background:#f6f9fc}.landing-head{max-width:760px;margin:0 auto
@@ -111,7 +111,7 @@
     12px;border-radius:999px;background:#e9f2ff;color:var(--blue);font-weight:900}
     .workspace-list
     span{display:flex;align-items:center;gap:7px;color:#435a75;font-size:.86rem}.workspace-list
-    i{color:var(--green)}.workspace-link{color:var(--blue);text-decoration:none;font-weight:900}
+    .ui-icon{color:var(--green)}.workspace-link{color:var(--blue);text-decoration:none;font-weight:900}
     .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.process-step{position:relative;padding:27px;text-align:center}.process-step:not(:last-child):after{content:"";position:absolute;top:34px;inset-inline-end:-20px;width:40px;border-top:2px
     dashed #b7cbe0}.step-no{width:50px;height:50px;display:grid;place-items:center;margin:0 auto
     15px;border-radius:14px;background:linear-gradient(145deg,var(--blue),#145ac8);color:#fff;font:900 1.1rem
@@ -138,7 +138,7 @@
     .btn{background:#fff;color:var(--navy);font-weight:900}.faq-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.faq
     summary{cursor:pointer;color:var(--navy);font-weight:900}.tms-footer{background:var(--navy);color:#d7e5f3;padding:28px
     0}.footer-grid{display:flex;align-items:center;justify-content:space-between;gap:20px}.footer-brand{font:900 1.4rem
-    Arial}.footer-brand i{color:#39d3a3}.footer-copy{font-size:.82rem;color:#9eb5ca}
+    Arial}.footer-brand .ui-icon{color:#39d3a3}.footer-copy{font-size:.82rem;color:#9eb5ca}
     @media(max-width:1050px){.nav-center{display:none}.hero-grid{gap:30px}.dashboard-body{grid-template-columns:86px
     1fr}.filter-grid{grid-template-columns:repeat(2,1fr)}.filter-actions{grid-column:1/-1}.product-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:820px){.hero-grid{grid-template-columns:1fr}.hero-copy{text-align:center}.hero-english{margin-inline:auto}.hero-actions,.hero-trust{justify-content:center}.product-scene{width:min(650px,100%);margin:18px
     auto}.feature-grid,.proof-grid{grid-template-columns:repeat(2,1fr)}.workspace-grid{grid-template-columns:1fr}.shop-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){.shell{width:min(100%
@@ -158,19 +158,19 @@
     <header class="tms-hero">
         <div class="shell hero-grid">
             <div class="product-scene">
-                <div class="scene-chip chip-qr"><i class="fas fa-qrcode"></i><span>Scan & Sell<br><small>QR
+                <div class="scene-chip chip-qr"><span class="scene-icon">@include('storefront.public.partials.icon', ['name' => 'qrcode'])</span><span>Scan & Sell<br><small>QR
                             Billing</small></span></div>
-                <div class="scene-chip chip-stock"><i class="fas fa-layer-group"></i><span>Cloth Inventory<br><small>320+
+                <div class="scene-chip chip-stock"><span class="scene-icon">@include('storefront.public.partials.icon', ['name' => 'layers'])</span><span>Cloth Inventory<br><small>320+
                             Items</small></span></div>
-                <div class="scene-chip chip-measure"><i class="fas fa-ruler-combined"></i><span>Measurements<br><small>Save
+                <div class="scene-chip chip-measure"><span class="scene-icon">@include('storefront.public.partials.icon', ['name' => 'ruler'])</span><span>Measurements<br><small>Save
                             & track</small></span></div>
                 <div class="dashboard-window">
                     <div class="window-top"><i></i><i></i><i></i></div>
                     <div class="dashboard-body">
                         <aside class="mock-sidebar">
-                            <div class="mock-logo"><i class="fas fa-cut"></i> BuyNStitch</div>
-                            @foreach ([['fa-th-large', 'Dashboard'], ['fa-clipboard-list', 'Orders'], ['fa-users', 'Customers'], ['fa-ruler', 'Measurements'], ['fa-layer-group', 'Inventory'], ['fa-chart-bar', 'Reports']] as [$icon, $label])
-                                <div @class(['mock-link', 'active' => $loop->first])><i class="fas {{ $icon }}"></i>
+                            <div class="mock-logo">@include('storefront.public.partials.icon', ['name' => 'scissors']) BuyNStitch</div>
+                            @foreach ([['dashboard', 'Dashboard'], ['clipboard', 'Orders'], ['users', 'Customers'], ['ruler', 'Measurements'], ['layers', 'Inventory'], ['chart-bar', 'Reports']] as [$icon, $label])
+                                <div @class(['mock-link', 'active' => $loop->first])>@include('storefront.public.partials.icon', ['name' => $icon])
                                     {{ $label }}</div>
                             @endforeach
                         </aside>
@@ -211,30 +211,28 @@
             <p class="hero-english">Run your tailoring shop, cloth inventory and sales from one smart platform. Find the right fabric. Book the right tailor.</p>
             <div class="hero-actions">
                 @if (config('demo.enabled'))
-                    <a class="hero-btn primary" href="{{ route('login', ['demo' => 1]) }}">مفت ڈیمو دیکھیں <i
-                            class="fas fa-arrow-left"></i></a>
+                    <a class="hero-btn primary" href="{{ route('login', ['demo' => 1]) }}">مفت ڈیمو دیکھیں @include('storefront.public.partials.icon', ['name' => 'arrow-left'])</a>
                 @endif
                 <a class="hero-btn secondary" href="{{ route('storefront.business.signup') }}">
                     کاروبار شروع کریں</a>
             </div>
-            <div class="hero-trust"><span><i class="fas fa-check-circle"></i> آسان</span><span><i
-                        class="fas fa-check-circle"></i> محفوظ</span><span><i class="fas fa-check-circle"></i> پاکستانی
+            <div class="hero-trust"><span>@include('storefront.public.partials.icon', ['name' => 'check-circle']) آسان</span><span>@include('storefront.public.partials.icon', ['name' => 'check-circle']) محفوظ</span><span>@include('storefront.public.partials.icon', ['name' => 'check-circle']) پاکستانی
                     کاروبار کے مطابق</span></div>
         </div>
         </div>
     </header>
     <section class="proof-bar">
         <div class="shell proof-grid">
-            <div class="proof-item"><i class="fas fa-store"></i>
+            <div class="proof-item">@include('storefront.public.partials.icon', ['name' => 'store'])
                 <div><strong>2</strong><span>Business workspaces</span></div>
             </div>
-            <div class="proof-item"><i class="fas fa-qrcode"></i>
+            <div class="proof-item">@include('storefront.public.partials.icon', ['name' => 'qrcode'])
                 <div><strong>QR</strong><span>Stock & sales workflow</span></div>
             </div>
-            <div class="proof-item"><i class="fas fa-language"></i>
+            <div class="proof-item">@include('storefront.public.partials.icon', ['name' => 'language'])
                 <div><strong>اردو</strong><span>Urdu + English</span></div>
             </div>
-            <div class="proof-item"><i class="fas fa-cloud"></i>
+            <div class="proof-item">@include('storefront.public.partials.icon', ['name' => 'cloud'])
                 <div><strong>24/7</strong><span>Secure cloud access</span></div>
             </div>
         </div>
@@ -247,9 +245,8 @@
                     <p>From measurements to inventory and payments, BuyNStitch keeps every part of your business connected.</p>
                 </header>
                 <div class="feature-grid">
-                    @foreach ([['fa-clipboard-list', 'Tailoring Orders', 'سلائی کے آرڈرز', 'Create, track and deliver every order on time.'], ['fa-ruler-combined', 'Customer Measurements', 'گاہک کی پیمائش', 'Keep accurate measurement history for every customer.'], ['fa-layer-group', 'Cloth Inventory', 'کپڑے کا اسٹاک', 'Manage brands, fabric types, colors and live stock.'], ['fa-qrcode', 'QR Sales', 'کیو آر فروخت', 'Scan cloth labels and prepare a sale in seconds.'], ['fa-truck', 'Supplier Purchases', 'سپلائر خریداری', 'Receive complete bundles and update inventory quickly.'], ['fa-chart-line', 'Reports & Payments', 'رپورٹس اور ادائیگیاں', 'Understand sales, balances, expenses and growth.']] as [$icon, $en, $ur, $text])
-                        <article class="feature-card"><span class="feature-icon"><i
-                                    class="fas {{ $icon }}"></i></span>
+                    @foreach ([['clipboard', 'Tailoring Orders', 'سلائی کے آرڈرز', 'Create, track and deliver every order on time.'], ['ruler', 'Customer Measurements', 'گاہک کی پیمائش', 'Keep accurate measurement history for every customer.'], ['layers', 'Cloth Inventory', 'کپڑے کا اسٹاک', 'Manage brands, fabric types, colors and live stock.'], ['qrcode', 'QR Sales', 'کیو آر فروخت', 'Scan cloth labels and prepare a sale in seconds.'], ['truck', 'Supplier Purchases', 'سپلائر خریداری', 'Receive complete bundles and update inventory quickly.'], ['chart-line', 'Reports & Payments', 'رپورٹس اور ادائیگیاں', 'Understand sales, balances, expenses and growth.']] as [$icon, $en, $ur, $text])
+                        <article class="feature-card"><span class="feature-icon">@include('storefront.public.partials.icon', ['name' => $icon])</span>
                             <h3>{{ $en }}<small>{{ $ur }}</small></h3>
                             <p>{{ $text }}</p>
                         </article>
@@ -264,28 +261,24 @@
                     <p>Switch between tailoring operations and cloth-shop sales without changing systems.</p>
                 </header>
                 <div class="workspace-grid">
-                    <article class="workspace-card"><span class="workspace-label"><i class="fas fa-cut"></i> Tailoring
+                    <article class="workspace-card"><span class="workspace-label">@include('storefront.public.partials.icon', ['name' => 'scissors']) Tailoring
                             Workspace</span>
                         <h3>ٹیلرنگ ورک اسپیس</h3>
                         <p>Manage customers, measurements, stitching stages, workers, delivery dates and receipts.</p>
-                        <div class="workspace-list"><span><i class="fas fa-check"></i> Customer profiles</span><span><i
-                                    class="fas fa-check"></i> Measurement history</span><span><i class="fas fa-check"></i>
-                                Workshop stages</span><span><i class="fas fa-check"></i> Tailor assignments</span></div>
+                        <div class="workspace-list"><span>@include('storefront.public.partials.icon', ['name' => 'check']) Customer profiles</span><span>@include('storefront.public.partials.icon', ['name' => 'check']) Measurement history</span><span>@include('storefront.public.partials.icon', ['name' => 'check'])
+                                Workshop stages</span><span>@include('storefront.public.partials.icon', ['name' => 'check']) Tailor assignments</span></div>
                         @if (config('demo.enabled'))
-                            <a class="workspace-link" href="{{ route('login', ['demo' => 1]) }}">Explore tailoring demo <i
-                                    class="fas fa-arrow-right"></i></a>
+                            <a class="workspace-link" href="{{ route('login', ['demo' => 1]) }}">Explore tailoring demo @include('storefront.public.partials.icon', ['name' => 'arrow-right'])</a>
                         @endif
                     </article>
-                    <article class="workspace-card"><span class="workspace-label"><i class="fas fa-store"></i>
+                    <article class="workspace-card"><span class="workspace-label">@include('storefront.public.partials.icon', ['name' => 'store'])
                             Clothing & Sales Workspace</span>
                         <h3>دکان اور فروخت ورک اسپیس</h3>
                         <p>Control cloth stock, supplier purchases, QR labels, counter sales, payments and reports.</p>
-                        <div class="workspace-list"><span><i class="fas fa-check"></i> Live inventory</span><span><i
-                                    class="fas fa-check"></i> QR-assisted sales</span><span><i class="fas fa-check"></i>
-                                Supplier records</span><span><i class="fas fa-check"></i> Sales analytics</span></div>
+                        <div class="workspace-list"><span>@include('storefront.public.partials.icon', ['name' => 'check']) Live inventory</span><span>@include('storefront.public.partials.icon', ['name' => 'check']) QR-assisted sales</span><span>@include('storefront.public.partials.icon', ['name' => 'check'])
+                                Supplier records</span><span>@include('storefront.public.partials.icon', ['name' => 'check']) Sales analytics</span></div>
                         @if (config('demo.enabled'))
-                            <a class="workspace-link" href="{{ route('login', ['demo' => 1]) }}">Explore sales demo <i
-                                    class="fas fa-arrow-right"></i></a>
+                            <a class="workspace-link" href="{{ route('login', ['demo' => 1]) }}">Explore sales demo @include('storefront.public.partials.icon', ['name' => 'arrow-right'])</a>
                         @endif
                     </article>
                 </div>
@@ -390,7 +383,7 @@
                                         href="{{ route('storefront.clothing.show', [$listing->storefront, $listing]) }}">
                                         @if ($image)
                                             <img src="{{ $image->image_url }}" alt="{{ $listing->display_name }}"
-                                            loading="lazy">@else<i class="fas fa-tshirt"></i>
+                                            loading="lazy">@else @include('storefront.public.partials.icon', ['name' => 'shirt'])
                                             @endif @if ($listing->is_featured)
                                                 <span class="product-badge">{{ __('storefront.common.featured') }}</span>
                                             @endif
@@ -467,7 +460,7 @@
     </main>
     <footer class="tms-footer">
         <div class="shell footer-grid">
-            <div class="footer-brand"><i class="fas fa-cut"></i> BuyNStitch</div>
+            <div class="footer-brand">@include('storefront.public.partials.icon', ['name' => 'scissors']) BuyNStitch</div>
             <div class="footer-copy">Tailoring &amp; Clothing Business Platform · © {{ now()->year }}</div>
             <div class="footer-copy">Made for businesses in Pakistan</div>
         </div>

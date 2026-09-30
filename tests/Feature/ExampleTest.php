@@ -14,6 +14,7 @@ class ExampleTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertViewIs('storefront.public.index')
+            ->assertSee('class="ui-icon', false)
             ->assertSee(route('login'), false);
     }
 
