@@ -173,6 +173,11 @@ class PublicStorefrontController extends Controller
         return view('storefront.public.business', compact('plans'));
     }
 
+    public function about()
+    {
+        return view('storefront.public.about');
+    }
+
     public function show(Storefront $storefront)
     {
         abort_unless(

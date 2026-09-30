@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ur' ? 'rtl' : 'ltr' }}">
+<html lang="@yield('html_lang', app()->getLocale())" dir="@yield('html_dir', app()->getLocale() === 'ur' ? 'rtl' : 'ltr')">
 <head>
     @php
         $seoTitle = trim($__env->yieldContent('title', __('storefront.common.marketplace')));

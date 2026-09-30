@@ -34,7 +34,32 @@ class StorefrontFoundationTest extends TestCase
         $this->actingAs($owner)
             ->get('/')
             ->assertOk()
-            ->assertViewIs('storefront.public.index');
+            ->assertViewIs('storefront.public.index')
+            ->assertSeeText($owner->name)
+            ->assertSee(route('admin.home'), false)
+            ->assertDontSee('class="nav-login"', false)
+            ->assertDontSee('class="nav-demo"', false);
+    }
+
+    public function test_about_page_uses_buynstitch_branding_and_authenticated_account_navigation(): void
+    {
+        $this->get(route('storefront.about'))
+            ->assertOk()
+            ->assertViewIs('storefront.public.about')
+            ->assertSeeText('About BuyNStitch')
+            ->assertSeeText('What Makes BuyNStitch Different?')
+            ->assertSee(asset('images/about/tailoring-studio-hero.png'), false)
+            ->assertSee('href="'.route('login').'"', false);
+
+        [$owner] = $this->business(true, true);
+
+        $this->actingAs($owner)
+            ->get(route('storefront.about'))
+            ->assertOk()
+            ->assertSeeText($owner->name)
+            ->assertSee('href="'.route('admin.home').'"', false)
+            ->assertDontSee('class="nav-login"', false)
+            ->assertDontSee('class="nav-demo"', false);
     }
 
     public function test_client_can_save_preview_and_publish_a_public_storefront(): void

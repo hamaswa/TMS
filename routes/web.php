@@ -79,6 +79,7 @@ Route::redirect('/register', '/', 301);
 Route::get('/language/{locale}', [PublicLocaleController::class, 'update'])
     ->whereIn('locale', ['ur', 'en'])->name('public.locale.update');
 Route::get('/', [PublicStorefrontController::class, 'index'])->middleware('public.locale')->name('storefront.index');
+Route::get('/about', [PublicStorefrontController::class, 'about'])->middleware('public.locale')->name('storefront.about');
 Route::get('/for-business', [PublicStorefrontController::class, 'business'])->middleware('public.locale')->name('storefront.business');
 Route::get('/for-business/signup', [PublicBusinessSignupController::class, 'create'])
     ->middleware('public.locale')->name('storefront.business.signup');

@@ -89,6 +89,16 @@
     line-height: 2
 }
 
+.tms-nav.is-english .nav-center [lang="ur"],
+.tms-nav.is-english .nav-center .nav-separator {
+    display: none
+}
+
+.nav-center a.is-active {
+    color: var(--blue, #2477ff);
+    box-shadow: inset 0 -2px var(--blue, #2477ff)
+}
+
 .nav-actions {
     justify-content: flex-end;
     gap: 9px;
@@ -101,7 +111,8 @@
 }
 
 .nav-login,
-.nav-demo {
+.nav-demo,
+.nav-account {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
@@ -113,6 +124,43 @@
     font-weight: 900;
     white-space: nowrap;
     line-height: 1.65
+}
+
+.nav-account {
+    min-height: 46px;
+    max-width: 230px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 12px 5px 6px;
+    border: 1px solid #cfe0f0;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--navy, #0b2447);
+    text-decoration: none;
+    font-weight: 900;
+    box-shadow: 0 7px 18px rgba(11, 36, 71, .08)
+}
+
+.nav-account > span:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+.nav-account .account-arrow {
+    color: var(--blue, #2477ff);
+    font-size: .65rem
+}
+
+.nav-avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(145deg, var(--blue, #2477ff), #125ad3);
+    color: #fff
 }
 
 .nav-login {
@@ -156,5 +204,14 @@
 
     .nav-demo {
         padding: 8px 11px
+    }
+
+    .nav-account {
+        max-width: 160px;
+        padding-right: 9px
+    }
+
+    .nav-account .account-arrow {
+        display: none
     }
 }
