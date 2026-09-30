@@ -13,6 +13,7 @@
     "expo-router": "~57.0.23",
     "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
+    "expo-updates": "~57.0.23",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
@@ -32,6 +33,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build:preview": "npx eas-cli@latest build --platform android --profile preview",
+    "update:preview": "npx eas-cli@latest update --channel preview",
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "lint": "expo lint"

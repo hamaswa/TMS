@@ -24,10 +24,25 @@ Camera barcode scanning is included in Expo Go. The phone and computer normally 
 
 ## Builds
 
-- Installable test APK: `eas build --platform android --profile preview`
+- First update-enabled test APK: `npm run build:preview`
 - Play Store bundle: `eas build --platform android --profile production`
 
 The first EAS build will ask you to sign in and associate this project with your existing Expo account. Do not commit Expo access tokens or Android signing credentials.
+
+## Keep one test installation up to date
+
+The `preview` build is connected to the EAS Update channel named `preview`. Share and
+install the APK link from `npm run build:preview` once. For later JavaScript, styling,
+and asset changes, publish to that same installed app with:
+
+```bash
+npm run update:preview -- --message "Describe the update"
+```
+
+The installed app checks for an update when it starts. Fully close and reopen it; a
+second restart may be needed after the update downloads. A new APK is only required
+when native dependencies, Android permissions/configuration, or the app version/runtime
+changes. When that happens, run `npm run build:preview` and share the replacement APK.
 
 ## Server integration
 

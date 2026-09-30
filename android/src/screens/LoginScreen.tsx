@@ -66,20 +66,6 @@ export function LoginScreen() {
 
           <View style={styles.card}>
             <View style={styles.fieldWrap}>
-              <Text style={styles.label}>Shop Hub address (optional)</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                value={shopServer}
-                onChangeText={setShopServer}
-                placeholder="http://192.168.1.10:8010"
-                placeholderTextColor="#8796a1"
-                style={styles.input}
-              />
-              <Text style={styles.fieldHint}>Leave empty to use the configured cloud server.</Text>
-            </View>
-            <View style={styles.fieldWrap}>
               <Text style={styles.label}>Username or email</Text>
               <TextInput
                 autoCapitalize="none"

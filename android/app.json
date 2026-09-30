@@ -3,6 +3,12 @@
     "name": "BuyNStitch Sales Agent",
     "slug": "buynstitch-sales-agent",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/66712576-1847-4f96-b6e2-7aa8013568de"
+    },
     "scheme": "buynstitch-sales",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
