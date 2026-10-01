@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -18,9 +19,11 @@ const BLUE = '#123b5d';
 const GREEN = '#147a5a';
 
 export function LoginScreen() {
+  const passwordInputRef = useRef<TextInput>(null);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [shopServer, setShopServer] = useState('');
+  const [showShopServer, setShowShopServer] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,9 +51,14 @@ export function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.keyboardArea}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.page}>
+        <ScrollView
+          contentContainerStyle={styles.page}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.brandMark}>
             <Text style={styles.brandMarkText}>B&S</Text>
           </View>
@@ -64,12 +72,41 @@ export function LoginScreen() {
             When the internet is unavailable, enter the Shop Hub address shown on the admin computer.
           </Text>
 
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showShopServer }}
+            onPress={() => setShowShopServer((visible) => !visible)}
+            style={styles.connectionToggle}
+          >
+            <Text style={styles.connectionToggleText}>
+              {showShopServer ? 'Hide Shop Hub address' : 'Use a Shop Hub address'}
+            </Text>
+          </Pressable>
+
           <View style={styles.card}>
+            {showShopServer ? (
+              <View style={styles.fieldWrap}>
+                <Text style={styles.label}>Shop Hub address</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  value={shopServer}
+                  onChangeText={setShopServer}
+                  placeholder="http://192.168.1.10:8010/api"
+                  placeholderTextColor="#8796a1"
+                  style={styles.input}
+                />
+              </View>
+            ) : null}
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Username or email</Text>
               <TextInput
                 autoCapitalize="none"
                 autoComplete="username"
+                blurOnSubmit={false}
+                onSubmitEditing={() => passwordInputRef.current?.focus()}
+                returnKeyType="next"
                 value={login}
                 onChangeText={setLogin}
                 placeholder="Employee username or email"
@@ -80,8 +117,11 @@ export function LoginScreen() {
             <View style={styles.fieldWrap}>
               <Text style={styles.label}>Password</Text>
               <TextInput
+                ref={passwordInputRef}
                 autoCapitalize="none"
                 autoComplete="current-password"
+                onSubmitEditing={signIn}
+                returnKeyType="done"
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
@@ -97,7 +137,7 @@ export function LoginScreen() {
           </View>
 
           <Text style={styles.permission}>Existing required permission: clothing.sales</Text>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -107,12 +147,13 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#f4f7f9' },
   keyboardArea: { flex: 1 },
   page: {
-    flex: 1,
+    flexGrow: 1,
     width: '100%',
     maxWidth: 500,
     alignSelf: 'center',
     justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
   },
   brandMark: {
     width: 68,
@@ -121,7 +162,7 @@ const styles = StyleSheet.create({
     backgroundColor: BLUE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
     ...Platform.select({
       web: { boxShadow: '0 8px 30px rgba(18, 59, 93, 0.18)' },
       default: {
@@ -135,8 +176,10 @@ const styles = StyleSheet.create({
   brandMarkText: { color: '#fff', fontSize: 22, fontWeight: '900' },
   eyebrow: { color: GREEN, fontSize: 12, fontWeight: '900', letterSpacing: 2 },
   title: { color: BLUE, fontSize: 38, fontWeight: '900', marginTop: 3 },
-  subtitle: { color: '#536672', fontSize: 16, lineHeight: 23, marginTop: 8, marginBottom: 20 },
+  subtitle: { color: '#536672', fontSize: 16, lineHeight: 23, marginTop: 8, marginBottom: 14 },
   connectionHelp: { color: '#536672', fontSize: 13, lineHeight: 19, marginBottom: 12 },
+  connectionToggle: { alignSelf: 'flex-start', marginBottom: 12, paddingVertical: 2 },
+  connectionToggleText: { color: GREEN, fontSize: 13, fontWeight: '800' },
   card: {
     backgroundColor: '#fff',
     borderRadius: 20,

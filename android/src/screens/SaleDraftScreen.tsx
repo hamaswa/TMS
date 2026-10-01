@@ -275,11 +275,13 @@ export function SaleDraftScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: 112 + insets.bottom }]}
+          contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}
+          keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <View style={styles.headerText}>
@@ -343,7 +345,10 @@ export function SaleDraftScreen() {
             )}
           </Section>
 
-          <SecondaryButton label="Add cloth without QR" onPress={openManualPicker} fullWidth />
+          <View style={styles.inventoryActions}>
+            <PrimaryButton label="Scan QR" onPress={() => setScannerVisible(true)} />
+            <SecondaryButton label="Browse stock" onPress={openManualPicker} />
+          </View>
 
           <View style={styles.cartHeading}>
             <Text style={styles.cartTitle}>Items added</Text>
@@ -353,8 +358,7 @@ export function SaleDraftScreen() {
           {draft.lines.length === 0 ? (
             <View style={styles.emptyCart}>
               <Text style={styles.emptyCartTitle}>Your cart is empty</Text>
-              <Text style={styles.emptyCartHelp}>Scan a cloth-set QR or choose an item from shop inventory.</Text>
-              <SecondaryButton label="Add cloth without QR" onPress={openManualPicker} fullWidth />
+              <Text style={styles.emptyCartHelp}>Use Scan QR or Browse stock above to add the first item.</Text>
             </View>
           ) : (
             draft.lines.map((line, index) => (
@@ -454,15 +458,6 @@ export function SaleDraftScreen() {
         onClose={() => setCustomerPickerVisible(false)}
       />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Scan cloth set QR"
-        onPress={() => setScannerVisible(true)}
-        style={[styles.scanFloatingButton, { bottom: Math.max(insets.bottom, 16) + 8 }]}
-      >
-        <Text style={styles.scanFloatingIcon}>⌗</Text>
-        <Text style={styles.scanFloatingText}>Scan QR</Text>
-      </Pressable>
     </SafeAreaView>
   );
 }
@@ -915,6 +910,7 @@ const styles = StyleSheet.create({
   pickerStep: { color: BLUE, fontWeight: '900', fontSize: 14, marginTop: 3 },
   pickerHint: { color: '#687986', fontSize: 12, paddingVertical: 8 },
   cartHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2, marginTop: 2 },
+  inventoryActions: { flexDirection: 'row', gap: 10 },
   cartTitle: { color: BLUE, fontSize: 18, fontWeight: '900' },
   cartCount: { color: GREEN, fontSize: 12, fontWeight: '800' },
   emptyCart: { gap: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: '#b9c6cf', borderRadius: 14, backgroundColor: '#fff', padding: 16 },
@@ -959,15 +955,4 @@ const styles = StyleSheet.create({
   inventoryPriceWrap: { alignItems: 'flex-end', gap: 4 },
   inventoryPrice: { color: BLUE, fontWeight: '900', fontSize: 13 },
   inventoryAdd: { color: GREEN, fontWeight: '900', fontSize: 12 },
-  scanFloatingButton: {
-    position: 'absolute', left: 18, right: 18, bottom: 16, minHeight: 58,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
-    borderRadius: 18, backgroundColor: GREEN, borderWidth: 2, borderColor: '#fff',
-    ...Platform.select({
-      web: { boxShadow: '0 8px 28px rgba(11, 47, 36, 0.28)' },
-      default: { shadowColor: '#0b2f24', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 14, elevation: 9 },
-    }),
-  },
-  scanFloatingIcon: { color: '#fff', fontWeight: '900', fontSize: 22 },
-  scanFloatingText: { color: '#fff', fontWeight: '900', fontSize: 16 },
 });
