@@ -599,6 +599,27 @@ class CustomerController extends Controller
                     $this->measurements->recordHistoryRows($obj, $previousRows, $previousTemplate, Auth::id(), 'baseline');
                 }
                 $this->measurements->recordHistoryRows($obj, $currentRows, $measurementTemplate, Auth::id(), 'customer_update');
+
+                $openOrders = Order::query()
+                    ->where('userId', Auth::user()->businessOwnerId())
+                    ->where('status', '!=', 'delivered')
+                    ->where(function ($query) use ($obj) {
+                        $query->where('sub_customer', $obj->id);
+
+                        if ($obj->parent_id === null) {
+                            $query->orWhere(function ($legacyQuery) use ($obj) {
+                                $legacyQuery->whereNull('sub_customer')
+                                    ->where('customerId', $obj->id);
+                            });
+                        }
+                    })
+                    ->get();
+
+                $openOrders->each(function (Order $order) use ($obj, $measurementTemplate) {
+                    $order->measurement_template_id = $measurementTemplate?->id;
+                    $order->save();
+                    $this->measurements->snapshotOrder($order, $obj, $measurementTemplate);
+                });
             }
         });
         // dd($obj);

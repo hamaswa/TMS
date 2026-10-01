@@ -419,6 +419,8 @@ class CustomerCreationTest extends TestCase
         $this->actingAs($owner)->get(route('admin.Customers.edit', $profile))
             ->assertOk()
             ->assertSeeText('خاندانی پیمائش پروفائل')
+            ->assertSeeText('حالیہ آرڈرز')
+            ->assertSee('href="'.route('admin.customer.orders', $profile).'"', false)
             ->assertSee('name="contact" value="03007771111"', false)
             ->assertSee('readonly', false)
             ->assertDontSee('name="mobile_pin"', false);
@@ -447,6 +449,92 @@ class CustomerCreationTest extends TestCase
             ->get(route('admin.Customers.edit', $profile))
             ->assertOk()
             ->assertSeeText('گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
+    }
+
+    public function test_updating_customer_measurements_refreshes_all_open_profile_orders_but_not_delivered_history(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner->assignRole($role);
+        $customer = Customers::create([
+            'name' => 'Measurement Customer',
+            'phone_number1' => '03005551234',
+            'user_id' => $owner->id,
+            'length' => 42,
+        ]);
+        $deliveredOrder = Order::create([
+            'customerId' => $customer->id,
+            'sub_customer' => $customer->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 3000,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id,
+            'status' => 'delivered',
+            'created_at' => now()->subDay(),
+        ]);
+        $deliveredOrder->measurementValues()->create([
+            'source_key' => 'system.length',
+            'label' => 'لمبائی',
+            'value' => '40',
+            'unit' => 'inch',
+            'sort_order' => 0,
+        ]);
+        $firstOpenOrder = Order::create([
+            'customerId' => $customer->id,
+            'sub_customer' => $customer->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 3200,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id,
+            'status' => 'assigned',
+            'created_at' => now()->subHour(),
+        ]);
+        $firstOpenOrder->measurementValues()->create([
+            'source_key' => 'system.length',
+            'label' => 'لمبائی',
+            'value' => '41',
+            'unit' => 'inch',
+            'sort_order' => 0,
+        ]);
+        $secondOpenOrder = Order::create([
+            'customerId' => $customer->id,
+            'sub_customer' => $customer->id,
+            'suitQuantity' => 1,
+            'totalPayment' => 3400,
+            'returnDate' => now()->addWeek()->toDateString(),
+            'userId' => $owner->id,
+            'status' => 'stitching',
+            'created_at' => now(),
+        ]);
+        $secondOpenOrder->measurementValues()->create([
+            'source_key' => 'system.length',
+            'label' => 'لمبائی',
+            'value' => '43',
+            'unit' => 'inch',
+            'sort_order' => 0,
+        ]);
+
+        $this->actingAs($owner)->put(route('admin.Customers.update', $customer), [
+            'name' => $customer->name,
+            'contact' => $customer->phone_number1,
+            'length' => 44,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('order_measurement_values', [
+            'order_id' => $firstOpenOrder->id,
+            'source_key' => 'system.length',
+            'value' => '44',
+        ]);
+        $this->assertDatabaseHas('order_measurement_values', [
+            'order_id' => $secondOpenOrder->id,
+            'source_key' => 'system.length',
+            'value' => '44',
+        ]);
+        $this->assertDatabaseHas('order_measurement_values', [
+            'order_id' => $deliveredOrder->id,
+            'source_key' => 'system.length',
+            'value' => '40',
+        ]);
     }
 
     public function test_client_can_reset_customer_pin_and_existing_mobile_sessions_are_revoked(): void

@@ -4,12 +4,14 @@
     $statementUrl = $parentCustomer
         ? route('admin.customers.statement', ['id' => $parentCustomer->id, 'tab' => 'measurements', 'profile' => $customer->id])
         : route('admin.customers.statement', $customer);
+    $recentOrdersUrl = route('admin.customer.orders', $customer);
 @endphp
 <style>
     .customer-edit-page{background:#f4f7fb;min-height:calc(100vh - 70px)}
     .customer-edit-shell{max-width:1180px;margin:0 auto}
     .customer-edit-hero{background:linear-gradient(135deg,#102a43,#1769aa);border-radius:20px;color:#fff;padding:1.6rem 1.8rem;box-shadow:0 14px 32px rgba(16,42,67,.18)}
     .customer-edit-hero h1,.customer-edit-hero p{color:#fff!important}.customer-edit-hero p{opacity:.82}
+    .customer-edit-hero-actions{display:flex;flex-wrap:wrap;gap:.65rem}
     .customer-edit-card{border:0;border-radius:18px;box-shadow:0 10px 28px rgba(31,45,61,.08);overflow:hidden}
     .edit-section{padding:1.5rem;border-bottom:1px solid #e8eef5}.edit-section:last-child{border-bottom:0}
     .edit-section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.25rem}
@@ -37,9 +39,14 @@
                         <h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1>
                         <p class="mb-0">{{ $parentCustomer ? $parentCustomer->name.' کے مشترکہ اکاؤنٹ میں اس فرد کی پیمائش اور سلائی کی پسند تبدیل کریں۔' : 'رابطہ، پیمائش، سلائی کی پسند اور موبائل پن ایک جگہ تبدیل کریں۔' }}</p>
                     </div>
-                    <a href="{{ $statementUrl }}" class="btn btn-light mt-3 mt-md-0">
-                        <i class="fas fa-user ml-1"></i> پروفائل / کھاتہ
-                    </a>
+                    <div class="customer-edit-hero-actions mt-3 mt-md-0">
+                        <a href="{{ $recentOrdersUrl }}" class="btn btn-outline-light">
+                            <i class="fas fa-history ml-1"></i> حالیہ آرڈرز
+                        </a>
+                        <a href="{{ $statementUrl }}" class="btn btn-light">
+                            <i class="fas fa-user ml-1"></i> پروفائل / کھاتہ
+                        </a>
+                    </div>
                 </div>
             </div>
 
