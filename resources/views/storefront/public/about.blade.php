@@ -18,15 +18,15 @@
     .section-label{display:flex;align-items:center;gap:12px;margin-bottom:14px;color:var(--blue);font-size:.72rem;font-weight:900;letter-spacing:.24em;text-transform:uppercase}
     .section-label:after{content:"";width:34px;height:2px;background:var(--blue);opacity:.6}
     .about-hero{position:relative;background:#eff8ff}
-    .about-hero-grid{min-height:490px;display:grid;grid-template-columns:47% 53%;align-items:stretch}
-    .about-hero-copy{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;padding:58px 8% 58px max(20px,calc((100vw - 1240px)/2))}
+    .about-hero-grid{min-height:clamp(460px,58vh,560px);display:grid;grid-template-columns:52% 48%;align-items:stretch}
+    .about-hero-copy{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;padding:42px clamp(28px,5vw,76px) 42px max(20px,calc((100vw - 1240px)/2))}
     .about-hero-copy:before{content:"";position:absolute;z-index:-1;width:300px;height:300px;left:-190px;bottom:-190px;border-radius:50%;background:#d8efff}
-    .about-hero h1{max-width:600px;margin-bottom:18px;color:var(--navy);font-size:clamp(2.3rem,4vw,4rem);line-height:1.12;letter-spacing:-.04em}
+    .about-hero h1{max-width:650px;margin-bottom:16px;color:var(--navy);font-size:clamp(2.15rem,3.2vw,3.15rem);line-height:1.08;letter-spacing:-.04em}
     .about-hero h1 span{color:var(--blue)}
-    .about-hero p{max-width:560px;margin-bottom:0;color:#3f5f8d;font-size:1.03rem}
-    .about-hero-media{position:relative;min-height:490px;overflow:hidden}
-    .about-hero-media:after{content:"Local Fabric.\A Expert Stitching.\A All in One Place.";white-space:pre;position:absolute;top:65px;right:40px;color:#fff;font:italic 1.12rem/1.65 Georgia,serif;text-align:center;text-shadow:0 2px 14px rgba(0,0,0,.55);transform:rotate(-4deg)}
-    .about-hero-media img{width:100%;height:100%;object-fit:cover;object-position:center}
+    .about-hero p{max-width:540px;margin-bottom:0;color:#3f5f8d;font-size:.98rem}
+    .about-hero-media{position:relative;min-height:inherit;overflow:hidden}
+    .about-hero-media:after{content:"Local Fabric.\A Expert Stitching.\A All in One Place.";white-space:pre;position:absolute;top:36px;right:28px;color:#fff;font:italic 1rem/1.55 Georgia,serif;text-align:center;text-shadow:0 2px 14px rgba(0,0,0,.55);transform:rotate(-4deg)}
+    .about-hero-media img{width:100%;height:100%;object-fit:cover;object-position:58% center}
     .story{padding:72px 0}
     .story-grid{display:grid;grid-template-columns:.93fr 1.07fr;align-items:center;gap:74px}
     .story-copy{padding-left:45px}
@@ -69,8 +69,8 @@
     .join h3{margin:0 0 2px;color:var(--navy);font-size:1.05rem}.join p{margin:0;color:var(--muted);font-size:.86rem}.join .about-cta{position:relative;z-index:1;margin:0;padding-inline:25px}
     .about-footer{padding:28px 0;background:#071e3c;color:#d7e7fa}.about-footer .shell{display:flex;align-items:center;justify-content:space-between;gap:20px}.about-footer strong{display:flex;align-items:center;gap:7px;font-size:1.25rem}.about-footer strong .about-icon{width:22px;height:22px}.about-footer span{color:#9fb6d3;font-size:.82rem}
     @media(max-width:1000px){.benefit-grid{grid-template-columns:repeat(3,1fr)}.story-grid{gap:40px}.story-copy{padding-left:15px}.story-visual{margin-right:45px}}
-    @media(max-width:780px){.about-hero-grid{grid-template-columns:1fr}.about-hero-copy{padding:52px 25px}.about-hero-media{min-height:360px}.story-grid,.values-grid{grid-template-columns:1fr}.story-copy{padding:0 5px}.story-visual{margin:0 40px 0 5px}.benefit-grid{grid-template-columns:repeat(2,1fr);margin-inline:5px}.difference-intro{margin-left:5px}.stats-grid{grid-template-columns:repeat(2,1fr);gap:22px}.stat:nth-child(2){border:0}.join-card{align-items:flex-start;flex-direction:column;padding:28px}.about-footer .shell{align-items:flex-start;flex-direction:column}}
-    @media(max-width:520px){.shell{width:min(100% - 28px,1240px)}.about-hero-copy{padding-inline:18px}.about-hero h1{font-size:2.35rem}.about-hero-media:after{right:18px;top:30px}.story{padding:52px 0}.story-visual{margin:0}.story-visual img{height:300px}.story-visual:before{display:none}.quality-note{right:12px;bottom:-30px;width:200px}.difference{padding-top:48px}.benefit-grid{grid-template-columns:1fr}.values-card,.mission-card{padding:28px 24px}.stats-grid{padding-inline:12px}.join-copy{align-items:flex-start}.about-footer{padding-bottom:34px}}
+    @media(max-width:780px){.about-hero-grid{grid-template-columns:1fr}.about-hero-copy{padding:38px 25px}.about-hero-media{min-height:290px}.story-grid,.values-grid{grid-template-columns:1fr}.story-copy{padding:0 5px}.story-visual{margin:0 40px 0 5px}.benefit-grid{grid-template-columns:repeat(2,1fr);margin-inline:5px}.difference-intro{margin-left:5px}.stats-grid{grid-template-columns:repeat(2,1fr);gap:22px}.stat:nth-child(2){border:0}.join-card{align-items:flex-start;flex-direction:column;padding:28px}.about-footer .shell{align-items:flex-start;flex-direction:column}}
+    @media(max-width:520px){.shell{width:min(100% - 28px,1240px)}.about-hero-copy{padding:32px 18px}.about-hero h1{font-size:1.95rem}.about-hero p{font-size:.92rem}.about-hero-media{min-height:250px}.about-hero-media:after{right:16px;top:22px;font-size:.88rem}.story{padding:52px 0}.story-visual{margin:0}.story-visual img{height:300px}.story-visual:before{display:none}.quality-note{right:12px;bottom:-30px;width:200px}.difference{padding-top:48px}.benefit-grid{grid-template-columns:1fr}.values-card,.mission-card{padding:28px 24px}.stats-grid{padding-inline:12px}.join-copy{align-items:flex-start}.about-footer{padding-bottom:34px}}
     @include('storefront.public.partials.platform-header-styles')
 @endpush
 
@@ -83,8 +83,8 @@
             <div class="about-hero-grid">
                 <div class="about-hero-copy">
                     <div class="section-label">About us</div>
-                    <h1>We’re on a mission to make tailoring and fabric businesses <span>simpler, smarter and more successful.</span></h1>
-                    <p>BuyNStitch is built for people who value quality, tradition and convenience. We bring together local fabrics and expert tailoring services — all in one place.</p>
+                    <h1>Making tailoring and fabric businesses <span>simpler, smarter and more successful.</span></h1>
+                    <p>BuyNStitch brings trusted local fabrics and expert tailoring together in one convenient platform.</p>
                 </div>
                 <div class="about-hero-media">
                     <img src="{{ asset('images/about/tailoring-studio-hero.png') }}" alt="A navy tailored suit, premium fabric and tailoring tools in a bright studio">

@@ -105,8 +105,9 @@ class LegacyRouteCleanupTest extends TestCase
     public function test_active_order_print_routes_render_measurement_profile_serials_and_their_intended_views(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();
+        $order->customers()->update(['serial_number' => 1404]);
         $order->update([
-            'suitNum' => (string) $order->sub_customer,
+            'suitNum' => '1404',
             'remarks' => 'Bring matching buttons - کالر نرم رکھیں',
         ]);
         Setting::forceCreate([
@@ -142,7 +143,7 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)->get(route('admin.order-print', $order))
             ->assertOk()
             ->assertViewIs('order.print')
-            ->assertSeeText('Serial num: '.$order->sub_customer)
+            ->assertSeeText('Serial num: 1404')
             ->assertSeeText('موجودہ ادائیگی واجب')
             ->assertSeeText('گزشتہ ادائیگی کے')
             ->assertSeeText('کل ادائیگی واجب')
@@ -153,7 +154,7 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)->get(route('admin.order-prints', $order))
             ->assertOk()
             ->assertViewIs('order.prints')
-            ->assertSeeText('Serial num: '.$order->sub_customer);
+            ->assertSeeText('Serial num: 1404');
     }
 
     public function test_print_documents_support_safe_paper_overrides_and_qr_references(): void

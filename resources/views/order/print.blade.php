@@ -449,6 +449,10 @@
 </head>
 
 <body>
+    @php
+        $displaySerial = $orderDetail->customers?->serial_number
+            ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
+    @endphp
 
     <div id="invoice-POS">
         <center id="top">
@@ -491,7 +495,7 @@
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong
                                 class="order-detail-value">{{ $orderDetail->suitQuantity }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سیریل نمبر:</span><strong
-                                class="order-detail-value">{{ $orderDetail->sub_customer }}</strong></div>
+                                class="order-detail-value">{{ $displaySerial }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">آرڈر کی رقم:</span><strong
                                 class="order-detail-value">{{ $orderDetail->totalPayment }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">موجودہ رقم کی
@@ -545,7 +549,7 @@
                     <hr>
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell measurement-serial">
-                            Serial num: {{ $orderDetail->sub_customer }}
+                            Serial num: {{ $displaySerial }}
                         </div>
                         <div class="measurement-meta-cell" style="text-align:right;">
                             {{ $orderDetail->customers->name }}
