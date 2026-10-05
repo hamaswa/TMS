@@ -4,7 +4,7 @@
     .locale-switch a.active{opacity:1;background:rgba(255,255,255,.16);font-weight:800}
 </style>
 <div class="locale-switch" role="group" aria-label="{{ __('storefront.language.label') }}">
-    <a lang="ur" dir="rtl" href="{{ route('public.locale.update', ['locale' => 'ur', 'redirect' => request()->getRequestUri()]) }}" @class(['active' => app()->getLocale() === 'ur'])>اردو</a>
+    <a lang="ur" dir="rtl" href="{{ route('public.locale.update', ['locale' => 'ur', 'redirect' => request()->getRequestUri()]) }}" @class(['active' => app()->getLocale() === 'ur']) @if(app()->getLocale() === 'ur') aria-current="true" @endif>اردو</a>
     <span aria-hidden="true">|</span>
-    <a lang="en" dir="ltr" href="{{ route('public.locale.update', ['locale' => 'en', 'redirect' => request()->getRequestUri()]) }}" @class(['active' => app()->getLocale() === 'en'])>English</a>
+    <a lang="en" dir="ltr" href="{{ route('public.locale.update', ['locale' => 'en', 'redirect' => request()->getRequestUri()]) }}" @class(['active' => app()->getLocale() === 'en']) @if(app()->getLocale() === 'en') aria-current="true" @endif>English</a>
 </div>

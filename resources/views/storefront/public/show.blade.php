@@ -42,6 +42,7 @@ html[lang="ur"] .store-hero h1{line-height:1.25!important}html[lang="ur"] .store
 @media(max-width:760px){.owner-preview .shell{align-items:flex-start;flex-direction:column;padding:10px 0}.preview-actions{width:100%;flex-wrap:wrap}.preview-action{flex:1}.store-hero{min-height:360px}.store-hero.height-compact{min-height:290px}.store-hero.height-tall{min-height:480px}.store-hero.has-slider,.store-hero.has-slider.height-compact{min-height:440px}.store-hero.has-slider.height-tall{min-height:520px}.store-hero-content{padding:20px 0}.hero-slide .store-hero-content{padding:36px 0 86px}.store-hero h1{font-size:clamp(2rem,10vw,3rem);line-height:1.18}.store-hero p{line-height:1.65}.store-hero:after{right:-155px;width:260px;height:260px}.store-hero.is-split .shell{grid-template-columns:1fr;gap:8px;padding-block:18px}.store-hero.is-split .hero-media{min-height:180px;order:-1}.hero-slider-controls{right:18px;bottom:20px}.store-options .card{min-height:0}.preview-status{order:3}.benefits{grid-template-columns:1fr}.benefit{justify-content:flex-start;border-left:0;border-bottom:1px solid var(--line)}.benefit:last-child{border-bottom:0}.section-heading{align-items:flex-start;flex-direction:column}}
 @media(max-width:520px){.product-grid{grid-template-columns:repeat({{ in_array((int)$storefront->product_columns_mobile,[1,2],true) ? (int)$storefront->product_columns_mobile : 1 }},minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.store-hero-content{animation:none!important}.hero-video{display:none}}
+@include('storefront.public.partials.fabric-home-styles')
 @endpush
 @section('body')
 @php
@@ -72,7 +73,9 @@ html[lang="ur"] .store-hero h1{line-height:1.25!important}html[lang="ur"] .store
         ? "background-image:url('{$storefront->cover_url}');" : '';
     $configuredSlides = $storefront->relationLoaded('heroSlides') ? $storefront->heroSlides : collect();
 @endphp
-@if($configuredSlides->isNotEmpty())
+@if($storefront->show_clothing && $heroLayout === 'overlay' && $heroMediaType === 'color' && $configuredSlides->isEmpty())
+@include('storefront.public.partials.fabric-hero')
+@elseif($configuredSlides->isNotEmpty())
 <header class="hero store-hero has-slider height-{{ $heroHeight }}" style="{{ $heroVars }}" data-hero-slider>
     <div class="hero-slides">
         @foreach($configuredSlides as $slide)
@@ -105,6 +108,7 @@ html[lang="ur"] .store-hero h1{line-height:1.25!important}html[lang="ur"] .store
 </div>
 @endif
 
+@include('storefront.public.partials.fabric-discovery')
 @if($storefront->show_clothing && ($storefront->show_featured_products ?? true))
 <section class="section"><div class="shell">
     <div class="commerce-layout"><div><div class="section-heading"><div><h2>{{ __('storefront.home.featured_products') }}</h2><p class="muted">{{ __('storefront.home.featured_products_text') }}</p></div><a class="section-link" href="{{ $clothingUrl }}">{{ __('storefront.home.all_products') }} @include('storefront.public.partials.icon', ['name' => 'arrow-left'])</a></div>
@@ -115,13 +119,13 @@ html[lang="ur"] .store-hero h1{line-height:1.25!important}html[lang="ur"] .store
             @php($availableStock = (float) ($listing->cloth?->colors?->sum('length') ?? 0))
             <article class="card home-product">
                 <a class="product-photo" href="{{ $productUrl }}" aria-label="{{ $listing->localizedName() }}">@if($image)<img src="{{ $image->image_url }}" alt="{{ $listing->localizedName() }}">@else @include('storefront.public.partials.icon', ['name' => 'shirt', 'class' => 'is-xl']) @endif @if($listing->is_featured)<span class="product-featured">{{ __('storefront.clothing.featured') }}</span>@endif</a>
-                <div class="product-content"><h3>{{ $listing->localizedName() }}</h3>@if(($storefront->show_product_brand ?? true) || ($storefront->show_product_category ?? true))<div class="product-meta">@if($storefront->show_product_brand ?? true){{ $listing->cloth?->brand?->name ?? __('storefront.clothing.no_brand') }}@endif @if(($storefront->show_product_brand ?? true) && ($storefront->show_product_category ?? true)) · @endif @if($storefront->show_product_category ?? true){{ $listing->cloth?->type?->localizedName() ?? __('storefront.clothing.fabric') }}@endif</div>@endif @if($storefront->show_product_stock ?? true)<div class="product-stock {{ $availableStock <= 0 ? 'is-empty' : '' }}">@include('storefront.public.partials.icon', ['name' => $availableStock > 0 ? 'check-circle' : 'box']){{ $availableStock > 0 ? __('storefront.clothing.available',['amount'=>number_format($availableStock,2)]) : __('storefront.clothing.out_of_stock') }}</div>@endif<div class="product-bottom"><span class="product-price">{!! \App\Support\PakistanCurrency::html($listing->cloth?->sale_price ?: $listing->cloth?->price) !!} <small class="muted">{{ __('storefront.clothing.per_metre') }}</small></span><a class="product-view" href="{{ $productUrl }}" title="{{ __('storefront.home.view_product') }}">@include('storefront.public.partials.icon', ['name' => 'bag'])</a></div></div>
+                <div class="product-content"><h3>{{ $listing->localizedName() }}</h3>@if(($storefront->show_product_brand ?? true) || ($storefront->show_product_category ?? true))<div class="product-meta">@if($storefront->show_product_brand ?? true){{ $listing->cloth?->brand?->name ?? __('storefront.clothing.no_brand') }}@endif @if(($storefront->show_product_brand ?? true) && ($storefront->show_product_category ?? true)) · @endif @if($storefront->show_product_category ?? true){{ $listing->cloth?->type?->localizedName() ?? __('storefront.clothing.fabric') }}@endif</div>@endif @if($storefront->show_product_stock ?? true)<div class="product-stock {{ $availableStock <= 0 ? 'is-empty' : '' }}">@include('storefront.public.partials.icon', ['name' => $availableStock > 0 ? 'check-circle' : 'box']){{ $availableStock > 0 ? __('storefront.clothing.available',['amount'=>number_format($availableStock,2)]) : __('storefront.clothing.out_of_stock') }}</div>@endif<div class="product-bottom"><span class="product-price">{!! \App\Support\PakistanCurrency::html($listing->cloth?->sale_price ?: $listing->cloth?->price) !!} <small class="muted">{{ __('storefront.clothing.per_metre') }}</small></span><a class="product-view" href="{{ $productUrl }}" title="{{ __('storefront.home.view_product') }}">@include('storefront.public.partials.icon', ['name' => 'bag']) {{ __('storefront.home.view_product') }}</a></div></div>
             </article>
         @empty
             <div class="card products-empty"><span class="featured">@include('storefront.public.partials.icon', ['name' => 'box', 'class' => 'is-lg'])</span><h3>{{ __('storefront.clothing.empty_title') }}</h3><p class="muted">{{ __('storefront.clothing.empty_text') }}</p>@if($preview)<a class="btn" href="{{ route('admin.storefront.clothing.index') }}">{{ __('storefront.home.edit_shop') }}</a>@endif</div>
         @endforelse
     </div>
-    </div><aside class="card category-sidebar"><h3>@include('storefront.public.partials.icon', ['name' => 'grid']){{ __('storefront.home.shop_categories') }}</h3>@if($clothTypes->isNotEmpty())<div class="category-group"><span class="category-group-title">{{ __('storefront.home.browse_by_type') }}</span><div class="category-list">@foreach($clothTypes as $type)<a href="{{ $clothingUrl }}?type={{ $type->id }}"><span>@include('storefront.public.partials.icon', ['name' => 'tag']){{ $type->localizedName() }}</span>@include('storefront.public.partials.icon', ['name' => 'chevron-left'])</a>@endforeach</div></div>@endif @if($clothBrands->isNotEmpty())<div class="category-group"><span class="category-group-title">{{ __('storefront.home.browse_by_brand') }}</span><div class="brand-cloud">@foreach($clothBrands as $brand)<a href="{{ $clothingUrl }}?q={{ urlencode($brand->name) }}">{{ $brand->name }}</a>@endforeach</div></div>@endif</aside></div>
+    </div></div>
 </div></section>
 @endif
 

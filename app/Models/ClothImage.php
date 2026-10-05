@@ -24,7 +24,9 @@ class ClothImage extends Model
         }
 
         if (Storage::disk('public')->exists($this->images)) {
-            return Storage::disk('public')->url($this->images);
+            // Public uploads are served by this app; keep the active host,
+            // port and base path instead of the CLI APP_URL configuration.
+            return asset('storage/'.ltrim($this->images, '/'));
         }
 
         $legacyPath = ltrim($this->images, '/');

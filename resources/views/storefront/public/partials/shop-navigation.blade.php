@@ -69,3 +69,22 @@
         @if($storefront->show_clothing)<form class="shop-search" action="{{ $clothingUrl }}" method="GET"><input name="q" aria-label="{{ __('storefront.home.search_products') }}" placeholder="{{ __('storefront.home.search_placeholder') }}"><button type="submit" aria-label="{{ __('storefront.home.search_products') }}">@include('storefront.public.partials.icon', ['name' => 'search'])</button></form>@endif
     </div></nav>
 </div>
+@push('scripts')
+<script>
+(() => {
+    const menus = [...document.querySelectorAll('.shop-header .category-drop')];
+    menus.forEach(menu => menu.querySelector('summary').addEventListener('click', () => {
+        menus.forEach(other => { if (other !== menu) other.open = false; });
+    }));
+    document.addEventListener('click', event => {
+        menus.forEach(menu => { if (!menu.contains(event.target)) menu.open = false; });
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        menus.forEach(menu => {
+            if (menu.open) { menu.open = false; menu.querySelector('summary').focus(); }
+        });
+    });
+})();
+</script>
+@endpush

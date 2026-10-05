@@ -453,8 +453,8 @@
 <div class="img-thumbnails me-md-4">
     @foreach ($stocks->images as $image)
         <div class="img-div mb-2">
-            <img src="{{ asset('public/storage/' . $image->images) }}" alt="Cloth Image" class="thumbnail-img"
-            data-main="{{ asset('public/storage/' . $image->images) }}">
+            <img src="{{ $image->image_url }}" alt="Cloth Image" class="thumbnail-img"
+            data-main="{{ $image->image_url }}">
         </div>
     @endforeach
 
@@ -474,7 +474,7 @@
             <div class="card product-card">
                 <div class="product-image">
                     @foreach ($stocks->images as $image)
-                    <img id="mainImage" src="{{ asset('public/storage/' . $stocks->images->first()->images) }}" alt="Cloth Image">
+                    <img id="mainImage" src="{{ $stocks->images->first()->image_url }}" alt="Cloth Image">
                     @endforeach
                     {{-- <div id="colorOverlay" class="color-overlay"></div> --}}
                 </div>
@@ -543,7 +543,7 @@
                                 @php
                                     $image = $stock->images->firstWhere('image_color', $color->color);
                                 @endphp
-                                <img src="{{ asset('public/storage/' . $image->images) }}" alt="Cloth Image">
+                                <img src="{{ $image->image_url }}" alt="Cloth Image">
                                 <p class="card-title"><strong>Cloth Type:</strong> {{ $stock->type->name }}</p>
                                 {{-- <p class="card-title"><strong>Color:</strong> {{ $stock->color }}</p> --}}
                                 <a href="{{ route('user.customer.stock.show', [
