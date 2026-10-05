@@ -776,30 +776,60 @@ class OrderController extends Controller
     {
         $ownerId = Auth::user()->businessOwnerId();
         $detailedWorkflow = Business::tailoringStatusModeForOwner($ownerId) === Business::TAILORING_STATUS_DETAILED;
-        $validated = $request->validate(['week' => ['nullable', 'date']]);
+        $validated = $request->validate([
+            'week' => ['nullable', 'date'],
+            'filter' => ['nullable', Rule::in(['upcoming', 'overdue', 'ready'])],
+        ]);
+        $filter = $validated['filter'] ?? null;
         $weekStart = Carbon::parse($validated['week'] ?? now())
             ->startOfWeek(Carbon::MONDAY)
             ->startOfDay();
         $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
-        $orders = Order::where('userId', $ownerId)
-            ->whereBetween('returnDate', [$weekStart->toDateString(), $weekEnd->toDateString()])
-            ->with(['customers:id,name,phone_number1,serial_number', 'tailor:id,name'])
+        $ordersQuery = Order::where('userId', $ownerId)
+            ->whereHas('customers', fn ($query) => $query->where('user_id', $ownerId))
+            ->with([
+                'customers' => fn ($query) => $query->where('user_id', $ownerId)
+                    ->select('id', 'name', 'phone_number1', 'serial_number'),
+                'tailor' => fn ($query) => $query->where('user_id', $ownerId)
+                    ->select('id', 'name'),
+            ])
+            ->withSum([
+                'transactions as outstanding_amount' => fn ($query) => $query->where('userId', $ownerId),
+            ], 'remainingBalance')
             ->orderBy('returnDate')
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        if ($filter === 'upcoming') {
+            $ordersQuery->whereDate('returnDate', '>=', today())
+                ->whereNotIn('status', ['ready', 'delivered']);
+        } elseif ($filter === 'overdue') {
+            $ordersQuery->whereDate('returnDate', '<', today())
+                ->whereNotIn('status', ['ready', 'delivered']);
+        } elseif ($filter === 'ready') {
+            $ordersQuery->where('status', 'ready');
+        } else {
+            $ordersQuery->whereBetween('returnDate', [$weekStart->toDateString(), $weekEnd->toDateString()]);
+        }
+
+        $orders = $ordersQuery->get();
 
         $ordersByDate = $orders->groupBy(
             fn (Order $order) => Carbon::parse($order->returnDate)->toDateString()
         );
-        $weekDays = collect(range(0, 6))->map(function (int $offset) use ($weekStart, $ordersByDate) {
-            $date = $weekStart->copy()->addDays($offset);
+        $weekDays = $filter
+            ? $ordersByDate->map(fn ($dateOrders, string $date) => [
+                'date' => Carbon::parse($date),
+                'orders' => $dateOrders,
+            ])->values()
+            : collect(range(0, 6))->map(function (int $offset) use ($weekStart, $ordersByDate) {
+                $date = $weekStart->copy()->addDays($offset);
 
-            return [
-                'date' => $date,
-                'orders' => $ordersByDate->get($date->toDateString(), collect()),
-            ];
-        });
+                return [
+                    'date' => $date,
+                    'orders' => $ordersByDate->get($date->toDateString(), collect()),
+                ];
+            });
         $summary = [
             'orders' => $orders->count(),
             'suits' => (int) $orders->sum('suitQuantity'),
@@ -807,7 +837,9 @@ class OrderController extends Controller
             'ready' => $orders->whereIn('status', ['ready', 'delivered'])->count(),
         ];
 
-        return view('All_Total.order', compact('weekStart', 'weekEnd', 'weekDays', 'summary', 'detailedWorkflow'));
+        return view('All_Total.order', compact(
+            'weekStart', 'weekEnd', 'weekDays', 'summary', 'detailedWorkflow', 'filter'
+        ));
     }
 
     public function updateRackNo(Request $request, $orderId)
