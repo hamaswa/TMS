@@ -151,6 +151,14 @@
     #d9e8e3}.workspace-list{grid-template-columns:1fr}.process-step:after{display:none}.landing-section,.marketplace{padding:55px
     0}.market-intro,.section-head,.footer-grid{align-items:flex-start;flex-direction:column}.business-cta{grid-template-columns:1fr}.filter-actions
     .btn{flex:1}}
+    .product-grid{align-items:stretch;grid-auto-rows:1fr}
+    .product-grid .product{display:flex;flex-direction:column;min-width:0;height:100%}
+    .product .product-image{height:190px;min-height:190px;flex:0 0 190px;overflow:hidden}
+    .product .product-image img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+    .product .product-body{display:flex;flex-direction:column;flex:1;min-width:0}
+    .product .product-body h3{overflow-wrap:anywhere}
+    .product .product-price{margin-bottom:12px}
+    .product .product-body .btn{width:100%;margin-top:auto}
     @include('storefront.public.partials.platform-header-styles')
 @endpush
 @section('body')
@@ -395,7 +403,7 @@
                                         </div>
                                         <div class="product-price">{!! \App\Support\PakistanCurrency::html($listing->cloth?->sale_price ?: $listing->cloth?->price) !!} <small
                                                 class="muted">/{{ __('storefront.common.metre') }}</small></div><a
-                                            class="btn" style="width:100%;margin-top:12px"
+                                            class="btn"
                                             href="{{ route('storefront.clothing.show', [$listing->storefront, $listing]) }}">{{ __('storefront.marketplace.view_product') }}</a>
                                     </div>
                                 </article>
