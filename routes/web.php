@@ -421,8 +421,11 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::post('/order/order-complete', [OrderController::class, 'orderCompleteNotify'])->name('order.notify');
         Route::post('/save-subscription', [NotificationController::class, 'saveSubscription'])->name('save-subscription');
         Route::post('/save-push-noti', [PushNotificationController::class, 'saveSubscription'])->name('save-push');
-        Route::get('/total_orde', [OrderController::class, 'totalOrder'])->name('order.total');
     });
+
+    Route::get('/total_orde', [OrderController::class, 'totalOrder'])
+        ->middleware('business.permission:tailoring.orders|tailoring.workshop')
+        ->name('order.total');
 
     // csv import and export route
 });

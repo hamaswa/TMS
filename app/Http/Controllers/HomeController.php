@@ -79,18 +79,42 @@ class HomeController extends Controller
             'month_suits' => $canOrders ? (int) (clone $orders)->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->sum('suitQuantity') : null,
         ];
 
-        $operationalOrders = ($canWorkshop || $canOrders)
-            ? Order::where('userId', $ownerId)
-                ->where('status', '!=', 'delivered')
-                ->with(['customers:id,name', 'tailor:id,name'])
-                ->orderByRaw('CASE WHEN returnDate IS NULL THEN 1 ELSE 0 END')
-                ->orderBy('returnDate')
-                ->latest('id')
-                ->limit(5)
-                ->get()
-            : collect();
+        $dashboardOrders = fn () => Order::where('userId', $ownerId)
+            ->whereHas('customers', fn ($query) => $query->where('user_id', $ownerId))
+            ->with([
+                'customers' => fn ($query) => $query->where('user_id', $ownerId)
+                    ->select('id', 'name', 'serial_number'),
+                'tailor' => fn ($query) => $query->where('user_id', $ownerId)
+                    ->select('id', 'name'),
+            ])
+            ->orderByRaw('CASE WHEN returnDate IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('returnDate')
+            ->orderBy('id');
+        $operationalOrders = collect();
+        $overdueOrders = collect();
+        $readyForHandoverOrders = collect();
 
-        return view('dashboard.tailoring', compact('tailoring', 'canWorkshop', 'canOrders', 'operationalOrders'));
+        if ($canWorkshop || $canOrders) {
+            $operationalOrders = $dashboardOrders()
+                ->whereDate('returnDate', '>=', today())
+                ->whereNotIn('status', ['ready', 'delivered'])
+                ->limit(5)
+                ->get();
+            $overdueOrders = $dashboardOrders()
+                ->whereDate('returnDate', '<', today())
+                ->whereNotIn('status', ['ready', 'delivered'])
+                ->limit(5)
+                ->get();
+            $readyForHandoverOrders = $dashboardOrders()
+                ->where('status', 'ready')
+                ->limit(5)
+                ->get();
+        }
+
+        return view('dashboard.tailoring', compact(
+            'tailoring', 'canWorkshop', 'canOrders', 'operationalOrders',
+            'overdueOrders', 'readyForHandoverOrders'
+        ));
     }
 
     public function clothing()

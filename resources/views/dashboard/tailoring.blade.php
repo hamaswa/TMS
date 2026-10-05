@@ -19,6 +19,32 @@
             );
         }
         if ($canOrders) $metricCards->push(['اس ماہ کے سوٹ', $tailoring['month_suits'], 'fa-tshirt', 'info']);
+        $operationSections = collect([
+            [
+                'title' => 'قریب آنے والی حوالگیاں',
+                'description' => 'آج اور آنے والے دنوں کے زیرِ تکمیل آرڈرز۔',
+                'orders' => $operationalOrders,
+                'filter' => 'upcoming',
+                'empty' => 'کوئی آنے والا زیرِ تکمیل آرڈر موجود نہیں۔',
+                'theme' => 'upcoming',
+            ],
+            [
+                'title' => 'تاخیر کا شکار آرڈرز',
+                'description' => 'واپسی کی تاریخ گزر چکی ہے لیکن کام ابھی مکمل نہیں ہوا۔',
+                'orders' => $overdueOrders,
+                'filter' => 'overdue',
+                'empty' => 'کوئی تاخیر کا شکار نامکمل آرڈر موجود نہیں۔',
+                'theme' => 'overdue',
+            ],
+            [
+                'title' => 'تیار، حوالگی کے منتظر',
+                'description' => 'کام مکمل ہے لیکن آرڈر ابھی گاہک کے حوالے نہیں ہوا۔',
+                'orders' => $readyForHandoverOrders,
+                'filter' => 'ready',
+                'empty' => 'تمام تیار آرڈرز گاہکوں کے حوالے کیے جا چکے ہیں۔',
+                'theme' => 'ready',
+            ],
+        ]);
     @endphp
 
     <style>
@@ -40,7 +66,10 @@
         .quick-action { display:flex; align-items:center; gap:12px; min-height:68px; padding:14px 17px; color:#29445f; background:#fff; border:1px solid var(--dash-line); border-radius:13px; font-weight:800; transition:.2s ease; }
         .quick-action__icon { display:grid; place-items:center; flex:0 0 38px; width:38px; height:38px; color:#1769e0; background:#edf5ff; border-radius:10px; }
         .quick-action:hover { color:#1769e0; background:#f8fbff; border-color:#9cc2f4; text-decoration:none; transform:translateY(-1px); }
+        .operations-stack { display:grid; gap:16px; }
         .operations-panel { overflow:hidden; background:#fff; border:1px solid var(--dash-line); border-radius:16px; box-shadow:0 8px 28px rgba(21,47,81,.055); }
+        .operations-panel.is-overdue { border-color:#f0c9cd; }.operations-panel.is-overdue .operations-head { border-right:4px solid #d64552; }
+        .operations-panel.is-ready { border-color:#cbe8d8; }.operations-panel.is-ready .operations-head { border-right:4px solid #15915b; }
         .operations-head { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 20px; border-bottom:1px solid var(--dash-line); }
         .operations-head h2 { margin:0 0 4px; color:var(--dash-navy); font-size:1.16rem; font-weight:800; }
         .operations-head p { margin:0; color:var(--dash-muted); font-size:.82rem; }
@@ -84,22 +113,26 @@
             @endif
 
             @if($canWorkshop || $canOrders)
-                <div class="operations-panel">
-                    <div class="operations-head"><div><h2>قریب آنے والی حوالگیاں</h2><p>زیرِ تکمیل آرڈرز کو واپسی کی تاریخ کے مطابق ترجیح دی گئی ہے۔</p></div><a href="{{ $canWorkshop ? route('admin.tailor-jobs.index') : route('admin.order.total') }}">تمام ریکارڈ <i class="fas fa-arrow-left"></i></a></div>
-                    @if($operationalOrders->isNotEmpty())
-                        <div class="operations-list">
-                            @foreach($operationalOrders as $order)
-                                @php($dueDate = $order->returnDate ? \Carbon\Carbon::parse($order->returnDate) : null)
-                                <div class="operation-item">
-                                    <div class="operation-top"><span class="operation-id">#{{ $order->id }}</span><span class="operation-status">{{ \App\Models\Order::STATUS_LABELS[$order->status] ?? ($order->status ?: 'درج شدہ') }}</span></div>
-                                    <strong>{{ $order->customers?->name ?? 'گاہک درج نہیں' }}</strong><small>{{ $order->tailor?->name ? 'درزی: '.$order->tailor->name : 'درزی مقرر نہیں' }} · {{ max(1,(int)$order->suitQuantity) }} سوٹ</small>
-                                    <div class="operation-due {{ $dueDate && $dueDate->isPast() && !$dueDate->isToday() ? 'is-overdue' : '' }}"><i class="fas fa-calendar-alt"></i>{{ $dueDate ? $dueDate->format('d-m-Y') : 'تاریخ مقرر نہیں' }}</div>
+                <div class="operations-stack">
+                    @foreach($operationSections as $section)
+                        <div class="operations-panel is-{{ $section['theme'] }}">
+                            <div class="operations-head"><div><h2>{{ $section['title'] }}</h2><p>{{ $section['description'] }}</p></div><a href="{{ route('admin.order.total', ['filter' => $section['filter']]) }}">تمام نتائج <i class="fas fa-arrow-left"></i></a></div>
+                            @if($section['orders']->isNotEmpty())
+                                <div class="operations-list">
+                                    @foreach($section['orders'] as $order)
+                                        @php($dueDate = $order->returnDate ? \Carbon\Carbon::parse($order->returnDate) : null)
+                                        <div class="operation-item">
+                                            <div class="operation-top"><span class="operation-id">#{{ $order->customers?->serial_number ?? $order->customers?->id ?? '—' }}</span><span class="operation-status">{{ \App\Models\Order::STATUS_LABELS[$order->status] ?? ($order->status ?: 'درج شدہ') }}</span></div>
+                                            <strong>{{ $order->customers?->name ?? 'گاہک درج نہیں' }}</strong><small>{{ $order->tailor?->name ? 'درزی: '.$order->tailor->name : 'درزی مقرر نہیں' }} · {{ max(1,(int)$order->suitQuantity) }} سوٹ</small>
+                                            <div class="operation-due {{ $section['theme'] === 'overdue' ? 'is-overdue' : '' }}"><i class="fas fa-calendar-alt"></i>{{ $dueDate ? $dueDate->format('d-m-Y') : 'تاریخ مقرر نہیں' }}</div>
+                                        </div>
+                                    @endforeach
                                 </div>
-                            @endforeach
+                            @else
+                                <div class="operations-empty"><i class="fas fa-check-circle"></i>{{ $section['empty'] }}</div>
+                            @endif
                         </div>
-                    @else
-                        <div class="operations-empty"><i class="fas fa-check-circle"></i>کوئی زیرِ تکمیل آرڈر موجود نہیں۔</div>
-                    @endif
+                    @endforeach
                 </div>
             @endif
         </div>

@@ -543,6 +543,81 @@ class TailorJobLifecycleTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_tailoring_dashboard_separates_upcoming_overdue_and_ready_orders_with_filtered_result_links(): void
+    {
+        [$owner, $tailor, $overdueOrder] = $this->job([
+            'returnDate' => now()->subDay()->toDateString(),
+            'status' => 'stitching',
+        ]);
+        $overdueOrder->customers->forceFill(['serial_number' => 1404])->save();
+        $baseOrder = [
+            'customerId' => $overdueOrder->customerId,
+            'sub_customer' => $overdueOrder->sub_customer,
+            'suitQuantity' => 1,
+            'totalPayment' => 2000,
+            'tailorId' => $tailor->id,
+            'tailor_price' => 500,
+            'userId' => $owner->id,
+        ];
+        $upcomingOrder = Order::create($baseOrder + [
+            'returnDate' => now()->addDays(2)->toDateString(),
+            'status' => 'assigned',
+        ]);
+        $readyOrder = Order::create($baseOrder + [
+            'returnDate' => now()->subDays(2)->toDateString(),
+            'status' => 'ready',
+        ]);
+        $deliveredOrder = Order::create($baseOrder + [
+            'returnDate' => now()->subDays(3)->toDateString(),
+            'status' => 'delivered',
+        ]);
+        $otherOwner = User::factory()->create();
+        $otherCustomer = Customers::create([
+            'name' => 'Another Shop Customer',
+            'phone_number1' => fake()->unique()->numerify('03#########'),
+            'user_id' => $otherOwner->id,
+        ]);
+        $crossShopOrder = Order::create(array_merge($baseOrder, [
+            'customerId' => $otherCustomer->id,
+            'sub_customer' => $otherCustomer->id,
+            'returnDate' => now()->subDays(4)->toDateString(),
+            'status' => 'stitching',
+        ]));
+
+        $dashboard = $this->actingAs($owner)->get(route('admin.dashboard.tailoring'));
+        $dashboard
+            ->assertOk()
+            ->assertSeeText('قریب آنے والی حوالگیاں')
+            ->assertSeeText('تاخیر کا شکار آرڈرز')
+            ->assertSeeText('تیار، حوالگی کے منتظر')
+            ->assertSee(route('admin.order.total', ['filter' => 'upcoming']), false)
+            ->assertSee(route('admin.order.total', ['filter' => 'overdue']), false)
+            ->assertSee(route('admin.order.total', ['filter' => 'ready']), false)
+            ->assertSee('<span class="operation-id">#1404</span>', false)
+            ->assertDontSeeText('Another Shop Customer');
+        $dashboard->assertViewHas('operationalOrders', fn ($orders) => $orders->pluck('id')->all() === [$upcomingOrder->id]);
+        $dashboard->assertViewHas('overdueOrders', fn ($orders) => $orders->pluck('id')->all() === [$overdueOrder->id]);
+        $dashboard->assertViewHas('readyForHandoverOrders', fn ($orders) => $orders->pluck('id')->all() === [$readyOrder->id]);
+
+        $overdueResults = $this->actingAs($owner)->get(route('admin.order.total', ['filter' => 'overdue']));
+        $overdueResults
+            ->assertOk()
+            ->assertViewIs('All_Total.order')
+            ->assertSeeText('تاخیر کا شکار آرڈرز');
+        $overdueResults->assertViewHas('weekDays', fn ($days) => $days
+            ->flatMap(fn ($day) => $day['orders'])->pluck('id')->all() === [$overdueOrder->id]);
+        $this->assertNotContains($crossShopOrder->id, $overdueResults->viewData('weekDays')
+            ->flatMap(fn ($day) => $day['orders'])->pluck('id'));
+
+        $readyResults = $this->actingAs($owner)->get(route('admin.order.total', ['filter' => 'ready']));
+        $readyResults
+            ->assertOk()
+            ->assertViewIs('All_Total.order')
+            ->assertSeeText('تیار، حوالگی کے منتظر');
+        $readyResults->assertViewHas('weekDays', fn ($days) => $days
+            ->flatMap(fn ($day) => $day['orders'])->pluck('id')->all() === [$readyOrder->id]);
+    }
+
     private function job(array $overrides = []): array
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

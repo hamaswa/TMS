@@ -162,6 +162,13 @@ body {
             margin-bottom: 10px;
         }
 
+        .receipt-reference {
+            color: #000 !important;
+            font-size: 16px !important;
+            font-weight: 900 !important;
+            line-height: 1.6 !important;
+        }
+
         .measurement-row {
             align-items: flex-start;
             margin-bottom: 4px;
@@ -277,9 +284,9 @@ body {
 
         .receipt-builder-credit {
             direction: ltr;
-            margin-top: 5px !important;
-            padding-top: 4px !important;
-            border-top: 1px dotted #777;
+            margin-top: 3px !important;
+            padding-top: 3px !important;
+            border-top: 1px solid #777;
             font-family: Arial, sans-serif !important;
             font-size: 11px !important;
             font-weight: 800 !important;
@@ -331,9 +338,9 @@ body {
 
         .order-footer {
             width: 100%;
-            margin-top: 10px;
-            padding: 9px 6px 5px;
-            border-top: 1px solid #777;
+            margin-top: 3px;
+            padding: 3px 6px 2px;
+            border-top: 0;
             text-align: center;
         }
 
@@ -342,7 +349,7 @@ body {
             color: #000 !important;
             font-size: 13px !important;
             font-weight: 900 !important;
-            line-height: 1.7 !important;
+            line-height: 1.45 !important;
         }
 
         .order-footer p {
@@ -429,27 +436,13 @@ body {
             }
         }
 
-        body.tms-order-print #orderSection,
-        body.tms-order-print #sizeSection { max-width: none !important; }
-        body.tms-order-print.tms-paper-receipt_80 #invoice-POS { width: 80mm; padding: 4mm; }
-        body.tms-order-print.tms-paper-a4 #invoice-POS { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 14mm; }
-        body.tms-order-print.tms-paper-a4 #fullSection { display: grid; grid-template-columns: minmax(0, 56%) minmax(0, 44%); gap: 10mm; }
-        .measurement-row > .measurement-column-empty { min-height: 1px; }
-        .receipt-date { direction: ltr; white-space: nowrap; }
-        .order-summary-row { break-inside: avoid; }
-        .order-note { unicode-bidi: plaintext; white-space: pre-wrap; }
-        @media screen and (max-width: 520px) {
-            body.tms-order-print #invoice-POS { width: 100%; padding: 10px; }
-            body.tms-order-print.tms-paper-a4 #fullSection { display: block; }
-        }
-
         /* .printbtn{
                 position: relative;
             } */
     </style>
 </head>
 
-<body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
+<body>
     @php
         $displaySerial = $orderDetail->customers?->serial_number
             ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
@@ -475,11 +468,11 @@ body {
                 <div class="pl-3 pr-3">
                     <div class="d-flex justify-content-between ">
                         <div>
-                            <h2 style="font-size: 16px;font-weight:600;">invoice No # {{ $orderDetail->id }}
+                            <h2 class="receipt-reference">invoice No # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div>
-                            <h2 style="font-weight:900;">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h2>
+                            <h2 class="receipt-reference">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h2>
                         </div>
                     </div>
                     <hr>
@@ -514,7 +507,6 @@ body {
                         <p>{{ $setting->note }}</p>
                         <p class="receipt-builder-credit">Built by IT Linked</p>
                     </div>
-                    <hr>
                 </div>
 
                 <!--<p style="text-align:center; font-size: 10px">{{ $setting->note }}</p>-->

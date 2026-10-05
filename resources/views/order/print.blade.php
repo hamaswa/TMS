@@ -17,13 +17,13 @@
         @font-face {
             font-family: 'Noto Nastaliq Urdu';
             src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
-            font-weight: normal;
+            font-weight: 100 900;
             font-style: normal;
             font-display: swap;
         }
 
         body {
-            font-family: 'Noto Nastaliq Urdu';
+            font-family: 'Noto Nastaliq Urdu', serif;
         }
 
         /* #invoice-POS {
@@ -39,8 +39,7 @@
             padding-left: 5mm;
             /* Remove all padding */
             padding-right: 0mm;
-            margin-top: 25px;
-            /* Ensure no margin at the top */
+            margin: 0;
             width: 100mm;
             /* Increase the width */
             background: #FFF;
@@ -64,29 +63,24 @@
         }
 
         h1 {
-            font-size: 20px;
-            font-weight: 900;
+            font-size: 18px;
             /*color: #222;*/
         }
 
         h2 {
-            font-size: 22px;
-            font-weight: 900;
+            font-size: 12px;
         }
 
         h3 {
-            font-size: 23px;
-            font-weight: 900;
-            /*line-height: 2em;*/
+            font-size: 12px;
+            font-weight: 300;
+            line-height: 2em;
         }
 
         p {
-            font-size: 16px;
-            font-weight: 900;
-            color: #000;
-            line-height: 20px;
-            margin: 0px;
-            /*padding: 10px 0 0 0;*/
+            font-size: 10px;
+            color: #666;
+            line-height: 1px;
         }
 
         #top,
@@ -97,8 +91,7 @@
         }
 
         #top {
-            /* new change */
-            min-height: 10px;
+            min-height: 100px;
         }
 
         #mid {
@@ -168,7 +161,14 @@
         .desing-flex {
             display: flex;
             justify-content: space-between;
-            /*margin-bottom: 10px;*/
+            margin-bottom: 10px;
+        }
+
+        .receipt-reference {
+            color: #000 !important;
+            font-size: 16px !important;
+            font-weight: 900 !important;
+            line-height: 1.6 !important;
         }
 
         .measurement-row {
@@ -286,9 +286,9 @@
 
         .receipt-builder-credit {
             direction: ltr;
-            margin-top: 5px !important;
-            padding-top: 4px !important;
-            border-top: 1px dotted #777;
+            margin-top: 3px !important;
+            padding-top: 3px !important;
+            border-top: 1px solid #777;
             font-family: Arial, sans-serif !important;
             font-size: 11px !important;
             font-weight: 800 !important;
@@ -340,9 +340,9 @@
 
         .order-footer {
             width: 100%;
-            margin-top: 10px;
-            padding: 9px 6px 5px;
-            border-top: 1px solid #777;
+            margin-top: 3px;
+            padding: 3px 6px 2px;
+            border-top: 0;
             text-align: center;
         }
 
@@ -351,7 +351,7 @@
             color: #000 !important;
             font-size: 13px !important;
             font-weight: 900 !important;
-            line-height: 1.7 !important;
+            line-height: 1.45 !important;
         }
 
         .order-footer p {
@@ -438,24 +438,8 @@
             }
 
             .btn {
-                display: none !important;
+                display: none;
             }
-        }
-
-        body.tms-order-print #orderSection,
-        body.tms-order-print #sizeSection { max-width: none !important; }
-        body.tms-order-print.tms-paper-receipt_80 #invoice-POS { width: 80mm; padding: 4mm; }
-        body.tms-order-print.tms-paper-a4 #invoice-POS { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 14mm; }
-        body.tms-order-print.tms-paper-a4 #fullSection { display: grid; grid-template-columns: minmax(0, 56%) minmax(0, 44%); gap: 10mm; }
-        body.tms-order-print.tms-paper-a4 .order-section,
-        body.tms-order-print.tms-paper-a4 .size-section { margin-top: 0 !important; }
-        .measurement-row > .measurement-column-empty { min-height: 1px; }
-        .receipt-date { direction: ltr; white-space: nowrap; }
-        .order-summary-row { break-inside: avoid; }
-        .order-note { unicode-bidi: plaintext; white-space: pre-wrap; }
-        @media screen and (max-width: 520px) {
-            body.tms-order-print #invoice-POS { width: 100%; padding: 10px; }
-            body.tms-order-print.tms-paper-a4 #fullSection { display: block; }
         }
 
         /* .printbtn{
@@ -464,7 +448,7 @@
     </style>
 </head>
 
-<body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
+<body>
     @php
         $displaySerial = $orderDetail->customers?->serial_number
             ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
@@ -490,25 +474,22 @@
         </center><!--End InvoiceTop-->
 
         <div id="fullSection">
-            <div id="orderSection" style="max-width: 350px;margin-top:-30px;" class="ticket order-section">
+            <div id="orderSection" style="max-width: 350px; margin-top:-60px;" class="ticket order-section">
                 <p align="center"><img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
                 <h1 class="text-center" style="text-align: center;margin-top:-10px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3" style="margin-top: 0px">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h2>invoice No # {{ $orderDetail->id }}
+                            <h2 class="receipt-reference">invoice No # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div style="font-weight:900;">
-                            <h3 class="receipt-date">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
+                            <h3 class="receipt-reference">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
                         </div>
                     </div>
                     <hr>
                     <div class="order-detail-list">
-                        @if($orderDetail->measurementTemplate)
-                            <div class="order-detail-row order-summary-row"><span class="order-detail-label">لباس / ٹیمپلیٹ:</span><strong class="order-detail-value" dir="auto">{{ $orderDetail->measurementTemplate->name }}</strong></div>
-                        @endif
                         <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong
                                 class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong
@@ -544,19 +525,15 @@
                         <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
                     </aside>
                     <div>
-                        <h3 class="text-center font-weight-900 order-note" dir="auto" style="font-size: 18px; margin: 25px 0 0 0;">
+                        <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">
                             {{ $orderDetail->remarks }}</h3>
                     </div>
-                    @if($printConfig['show_qr'] && $printConfig['qr_svg'])
-                        <aside class="order-tracking-qr"><div>{!! $printConfig['qr_svg'] !!}</div><div class="order-tracking-qr__text">TMS REF: {{ $printConfig['reference'] }}</div></aside>
-                    @endif
                     <div class="order-footer">
                         <p>{!! $setting->address !!}</p>
                         <p class="order-footer-contact">{{ $setting->contact_no }}</p>
                         <p>{{ $setting->note }}</p>
                         <p class="receipt-builder-credit">Built by IT Linked</p>
                     </div>
-                    <hr>
                 </div>
 
                 <!--<p style="text-align:center; font-size: 10px">{{ $setting->note }}</p>-->
@@ -568,7 +545,7 @@
                     <h1 class="text-center measurement-shop-name">{{ $setting->name }}</h1>
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
-                    <hr>
+                    <hr style="margin-top:4px;">
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell measurement-serial">
                             Serial num: {{ $displaySerial }}
@@ -593,8 +570,6 @@
                             {{ $orderDetail->customers->phone_number1 }}
                         </div>
                     </div>
-                    <hr>
-
                     @if ($printMeasurements->count())
                         @php
                             $allMeasurements = $printMeasurements->keyBy('source_key');

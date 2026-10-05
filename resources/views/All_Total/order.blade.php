@@ -7,6 +7,42 @@
         'assigned' => 'کارخانے میں ہے', 'cutting' => 'کارخانے میں ہے', 'stitching' => 'کارخانے میں ہے',
         'trial' => 'کارخانے میں ہے', 'ready' => 'تیار ہے', 'delivered' => 'حوالہ کر دیا گیا',
     ];
+    $canManageOrders = Auth::user()->hasBusinessPermission('tailoring.orders');
+    $canManageWorkshop = Auth::user()->hasBusinessPermission('tailoring.workshop');
+    $pageMeta = [
+        'week' => [
+            'title' => 'ہفتہ وار ٹیلرنگ آرڈرز',
+            'description' => 'واپسی کی تاریخ کے مطابق ہر دن کے آرڈرز دیکھیں، رسید چیک کریں یا آرڈر میں ترمیم کریں۔',
+            'summary' => 'اس ہفتے کے آرڈرز',
+            'range' => $weekStart->format('d-m-Y').' سے '.$weekEnd->format('d-m-Y'),
+            'range_note' => 'آرڈر اس دن دکھایا جاتا ہے جس دن گاہک کو واپس دینا ہے۔',
+            'empty' => 'اس دن واپسی کے لیے کوئی آرڈر مقرر نہیں۔',
+        ],
+        'upcoming' => [
+            'title' => 'قریب آنے والی حوالگیاں',
+            'description' => 'آج اور آنے والے دنوں کے تمام زیرِ تکمیل آرڈرز۔',
+            'summary' => 'آنے والے آرڈرز',
+            'range' => 'آج سے آنے والی تمام تاریخیں',
+            'range_note' => 'تیار اور حوالہ شدہ آرڈرز اس فہرست میں شامل نہیں ہیں۔',
+            'empty' => 'اس تاریخ کے لیے کوئی آنے والا آرڈر موجود نہیں۔',
+        ],
+        'overdue' => [
+            'title' => 'تاخیر کا شکار آرڈرز',
+            'description' => 'وہ تمام آرڈرز جن کی واپسی کی تاریخ گزر چکی ہے اور کام ابھی مکمل نہیں ہوا۔',
+            'summary' => 'تاخیر والے آرڈرز',
+            'range' => 'آج سے پہلے کی نامکمل حوالگیاں',
+            'range_note' => 'تیار اور حوالہ شدہ آرڈرز اس فہرست میں شامل نہیں ہیں۔',
+            'empty' => 'اس تاریخ کا کوئی نامکمل تاخیر والا آرڈر موجود نہیں۔',
+        ],
+        'ready' => [
+            'title' => 'تیار، حوالگی کے منتظر',
+            'description' => 'وہ تمام تیار آرڈرز جو ابھی گاہکوں کے حوالے نہیں کیے گئے۔',
+            'summary' => 'حوالگی کے منتظر',
+            'range' => 'تیار مگر غیر حوالہ شدہ آرڈرز',
+            'range_note' => 'گاہک کے حوالے ہوتے ہی آرڈر اس فہرست سے نکل جائے گا۔',
+            'empty' => 'اس تاریخ کا کوئی تیار آرڈر حوالگی کا منتظر نہیں۔',
+        ],
+    ][$filter ?: 'week'];
 @endphp
 
 <style>
@@ -31,32 +67,40 @@
         @include('inc.message')
 
         <header class="wo-head">
-            <div><h1><i class="fas fa-calendar-week ml-2 text-primary"></i>ہفتہ وار ٹیلرنگ آرڈرز</h1><p>واپسی کی تاریخ کے مطابق ہر دن کے آرڈرز دیکھیں، رسید چیک کریں یا آرڈر میں ترمیم کریں۔</p></div>
-            <nav class="wo-week-nav" aria-label="ہفتہ تبدیل کریں">
-                <a href="{{ route('admin.order.total', ['week' => $weekStart->copy()->subWeek()->toDateString()]) }}"><i class="fas fa-chevron-right"></i>پچھلا ہفتہ</a>
-                <a class="is-current" href="{{ route('admin.order.total') }}">موجودہ ہفتہ</a>
-                <a href="{{ route('admin.order.total', ['week' => $weekStart->copy()->addWeek()->toDateString()]) }}">اگلا ہفتہ<i class="fas fa-chevron-left"></i></a>
+            <div><h1><i class="fas fa-calendar-week ml-2 text-primary"></i>{{ $pageMeta['title'] }}</h1><p>{{ $pageMeta['description'] }}</p></div>
+            <nav class="wo-week-nav" aria-label="آرڈر فلٹر تبدیل کریں">
+                @if(!$filter)
+                    <a href="{{ route('admin.order.total', ['week' => $weekStart->copy()->subWeek()->toDateString()]) }}"><i class="fas fa-chevron-right"></i>پچھلا ہفتہ</a>
+                    <a class="is-current" href="{{ route('admin.order.total') }}">موجودہ ہفتہ</a>
+                    <a href="{{ route('admin.order.total', ['week' => $weekStart->copy()->addWeek()->toDateString()]) }}">اگلا ہفتہ<i class="fas fa-chevron-left"></i></a>
+                @else
+                    <a href="{{ route('admin.order.total') }}">موجودہ ہفتہ</a>
+                    <a @class(['is-current' => $filter === 'upcoming']) href="{{ route('admin.order.total', ['filter' => 'upcoming']) }}">آنے والے</a>
+                    <a @class(['is-current' => $filter === 'overdue']) href="{{ route('admin.order.total', ['filter' => 'overdue']) }}">تاخیر والے</a>
+                    <a @class(['is-current' => $filter === 'ready']) href="{{ route('admin.order.total', ['filter' => 'ready']) }}">تیار</a>
+                @endif
             </nav>
         </header>
 
         <div class="wo-summary">
-            <div class="wo-summary-card"><span class="wo-summary-icon"><i class="fas fa-clipboard-list"></i></span><div><small>اس ہفتے کے آرڈرز</small><strong>{{ number_format($summary['orders']) }}</strong></div></div>
+            <div class="wo-summary-card"><span class="wo-summary-icon"><i class="fas fa-clipboard-list"></i></span><div><small>{{ $pageMeta['summary'] }}</small><strong>{{ number_format($summary['orders']) }}</strong></div></div>
             <div class="wo-summary-card is-suits"><span class="wo-summary-icon"><i class="fas fa-tshirt"></i></span><div><small>کل سوٹ</small><strong>{{ number_format($summary['suits']) }}</strong></div></div>
             <div class="wo-summary-card is-work"><span class="wo-summary-icon"><i class="fas fa-store"></i></span><div><small>کارخانے میں</small><strong>{{ number_format($summary['in_workshop']) }}</strong></div></div>
             <div class="wo-summary-card is-ready"><span class="wo-summary-icon"><i class="fas fa-check-circle"></i></span><div><small>تیار / حوالہ شدہ</small><strong>{{ number_format($summary['ready']) }}</strong></div></div>
         </div>
 
-        <div class="wo-range"><strong><i class="far fa-calendar-alt ml-2 text-primary"></i>{{ $weekStart->format('d-m-Y') }} سے {{ $weekEnd->format('d-m-Y') }}</strong><span>آرڈر اس دن دکھایا جاتا ہے جس دن گاہک کو واپس دینا ہے۔</span></div>
+        <div class="wo-range"><strong><i class="far fa-calendar-alt ml-2 text-primary"></i>{{ $pageMeta['range'] }}</strong><span>{{ $pageMeta['range_note'] }}</span></div>
 
         <div class="wo-days">
             @foreach($weekDays as $index => $day)
                 @php
                     $dayOrders = $day['orders'];
                     $isToday = $day['date']->isToday();
+                    $dayName = $dayNames[$day['date']->dayOfWeekIso - 1];
                 @endphp
                 <section class="wo-day {{ $dayOrders->isNotEmpty() ? 'has-orders' : '' }} {{ $isToday ? 'is-today' : '' }}">
                     <div class="wo-day-head">
-                        <div class="wo-day-title"><span class="wo-date-box">{{ $day['date']->format('d') }}</span><div><h2>{{ $dayNames[$index] }} / {{ $day['date']->format('l') }}</h2><small>{{ $day['date']->format('d-m-Y') }}{{ $isToday ? ' · آج' : '' }}</small></div></div>
+                        <div class="wo-day-title"><span class="wo-date-box">{{ $day['date']->format('d') }}</span><div><h2>{{ $dayName }} / {{ $day['date']->format('l') }}</h2><small>{{ $day['date']->format('d-m-Y') }}{{ $isToday ? ' · آج' : '' }}</small></div></div>
                         <span class="wo-day-count">{{ $dayOrders->count() }} آرڈر</span>
                     </div>
 
@@ -80,7 +124,7 @@
                                                 <i class="fas {{ $isDelivered ? 'fa-truck' : ($isReady ? 'fa-check-circle' : 'fa-tools') }}"></i>
                                                 {{ $statusLabels[$order->status] ?? $order->status }}
                                             </span>
-                                            @if($detailedWorkflow && $nextStatusOptions->isNotEmpty())
+                                            @if($canManageWorkshop && $detailedWorkflow && $nextStatusOptions->isNotEmpty())
                                                 <form class="wo-detailed-status" method="POST" action="{{ route('admin.tailor-jobs.status', $order) }}">
                                                     @csrf @method('PATCH')
                                                     <select name="status" aria-label="اگلا مرحلہ">
@@ -90,7 +134,7 @@
                                                     </select>
                                                     <button type="submit">تبدیل کریں</button>
                                                 </form>
-                                            @elseif(! $detailedWorkflow && ! $isDelivered)
+                                            @elseif($canManageWorkshop && ! $detailedWorkflow && ! $isDelivered)
                                                 <form class="wo-status-switch" method="POST" action="{{ route('admin.order.status') }}" aria-label="آرڈر کی حالت تبدیل کریں">
                                                     @csrf
                                                     <input type="hidden" name="order_id" value="{{ $order->id }}">
@@ -117,18 +161,23 @@
                                         <span>سوٹ<b>{{ $order->suitQuantity ?: 1 }}</b></span>
                                         <span>رقم<b>Rs. {{ number_format((float)$order->totalPayment) }}</b></span>
                                     </div>
-                                    <div class="wo-order-actions">
-                                        <a class="wo-action" href="{{ route('admin.order-print', $order->id) }}" title="رسید دیکھیں" aria-label="رسید دیکھیں"><i class="fas fa-print"></i></a>
-                                        <a class="wo-action is-edit" href="{{ route('admin.order.edit', $order->id) }}" title="آرڈر میں ترمیم کریں" aria-label="آرڈر میں ترمیم کریں"><i class="fas fa-pen"></i></a>
-                                    </div>
+                                    @if($canManageOrders)
+                                        <div class="wo-order-actions">
+                                            <a class="wo-action" href="{{ route('admin.order-print', $order->id) }}" title="رسید دیکھیں" aria-label="رسید دیکھیں"><i class="fas fa-print"></i></a>
+                                            <a class="wo-action is-edit" href="{{ route('admin.order.edit', $order->id) }}" title="آرڈر میں ترمیم کریں" aria-label="آرڈر میں ترمیم کریں"><i class="fas fa-pen"></i></a>
+                                        </div>
+                                    @endif
                                 </article>
                             @endforeach
                         </div>
                     @else
-                        <div class="wo-empty"><i class="far fa-calendar-check"></i>اس دن واپسی کے لیے کوئی آرڈر مقرر نہیں۔</div>
+                        <div class="wo-empty"><i class="far fa-calendar-check"></i>{{ $pageMeta['empty'] }}</div>
                     @endif
                 </section>
             @endforeach
+            @if($weekDays->isEmpty())
+                <div class="wo-empty"><i class="far fa-calendar-check"></i>{{ $pageMeta['empty'] }}</div>
+            @endif
         </div>
     </div>
 </section>
