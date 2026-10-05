@@ -54,7 +54,7 @@
                 @endphp
                 <tr data-cloth-row data-brand="{{ $cloth->cloth_brand_id }}" data-stock="{{ $stockStatus }}" data-search="{{ Illuminate\Support\Str::lower(($cloth->type->name ?? '').' '.($cloth->brand->name ?? '').' '.$displayColor.' '.$cloth->stock_code) }}">
                     <td data-label="#"><span class="cloth-index">{{ $loop->iteration }}</span></td>
-                    <td data-label="کپڑا" class="cloth-main-cell"><div class="cloth-identity"><span class="cloth-thumb">@if($image)<img src="{{ asset('/'.$image->images) }}" alt="{{ $color->color }}">@else<i class="fas fa-image"></i>@endif</span><div><strong>{{ $cloth->brand->name ?? 'برانڈ' }}</strong><small>{{ $cloth->type->name ?? 'قسم درج نہیں' }}</small><small dir="ltr">{{ $cloth->stock_code }}</small></div></div></td>
+                    <td data-label="کپڑا" class="cloth-main-cell"><div class="cloth-identity"><span class="cloth-thumb">@if($image)<img src="{{ $image->image_url }}" alt="{{ $color->color }}">@else<i class="fas fa-image"></i>@endif</span><div><strong>{{ $cloth->brand->name ?? 'برانڈ' }}</strong><small>{{ $cloth->type->name ?? 'قسم درج نہیں' }}</small><small dir="ltr">{{ $cloth->stock_code }}</small></div></div></td>
                     <td data-label="رنگ"><span class="cloth-color">{{ $displayColor }}</span></td>
                     <td data-label="دستیاب مقدار"><span class="cloth-number cloth-meter">{{ number_format($length, 2) }} میٹر</span></td>
                     <td data-label="اسٹاک حالت"><span class="cloth-stock-badge {{ $stockStatus === 'low' ? 'is-low' : ($stockStatus === 'empty' ? 'is-empty' : '') }}">{{ $stockLabel }}</span></td>

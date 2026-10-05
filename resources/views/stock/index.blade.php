@@ -192,7 +192,7 @@
                                         <td>{{ $latestStockAdditionDate?->format('d-m-Y') ?: '—' }}</td>
                                         <td>
                                             @if ($image)
-                                                <img class="stock-image" src="{{ asset('/'.$image->images) }}" alt="{{ $color->color }}">
+                                                <img class="stock-image" src="{{ $image->image_url }}" alt="{{ $color->color }}">
                                             @else
                                                 <span class="stock-image-placeholder" aria-label="تصویر موجود نہیں"><i class="far fa-image" aria-hidden="true"></i></span>
                                             @endif

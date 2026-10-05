@@ -298,7 +298,7 @@
                                     @php
                                         $image = $stock->images->firstWhere('image_color', $color->color);
                                     @endphp
-                                    <img src="{{ asset('public/storage/' . $image->images) }}" alt="Cloth Image">
+                                    <img src="{{ $image->image_url }}" alt="Cloth Image">
                                     <p class="card-title"><strong>Cloth Type:</strong> {{ $stock->type->name }}</p>
                                     <p class="card-title"><strong>Color:</strong> {{ $image->image_color }}</p>
                                     <a href="{{ route('user.customer.stock.show', [
