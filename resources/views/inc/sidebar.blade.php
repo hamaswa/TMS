@@ -65,7 +65,7 @@
 
         @if(Auth::user()->hasModule('tailoring') && (! $hasMultipleWorkspaces || $activeWorkspace === 'tailoring'))
             @if($canTailorOrders)<a class="tms-side-link {{ request()->routeIs('admin.order.*') ? 'is-active' : '' }}" href="{{ route('admin.order.total') }}"><span class="tms-side-icon"><i class="fas fa-clipboard-list"></i></span><span class="tms-side-label">ٹیلرنگ آرڈرز</span></a>@endif
-            @if($canTailorWorkshop)<a class="tms-side-link {{ request()->routeIs('admin.tailor-jobs.*') ? 'is-active' : '' }}" href="{{ route('admin.tailor-jobs.index') }}"><span class="tms-side-icon"><i class="fas fa-tasks"></i></span><span class="tms-side-label">ورکشاپ</span></a>@endif
+            {{-- @if($canTailorWorkshop)<a class="tms-side-link {{ request()->routeIs('admin.tailor-jobs.*') ? 'is-active' : '' }}" href="{{ route('admin.tailor-jobs.index') }}"><span class="tms-side-icon"><i class="fas fa-tasks"></i></span><span class="tms-side-label">ورکشاپ</span></a>@endif --}}
             @if($canTailorCustomers)<a class="tms-side-link {{ request()->routeIs('admin.Customers.*') ? 'is-active' : '' }}" href="{{ route('admin.Customers.index') }}"><span class="tms-side-icon"><i class="fas fa-user-friends"></i></span><span class="tms-side-label">گاہک</span></a>@endif
 
             @if($canTailorTailors)

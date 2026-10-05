@@ -603,7 +603,12 @@ class TailorJobLifecycleTest extends TestCase
         $overdueResults
             ->assertOk()
             ->assertViewIs('All_Total.order')
-            ->assertSeeText('تاخیر کا شکار آرڈرز');
+            ->assertSeeText('تاخیر کا شکار آرڈرز')
+            ->assertSee('id="wo-search"', false)
+            ->assertSee('id="wo-status-filter"', false)
+            ->assertSee('id="wo-tailor-filter"', false)
+            ->assertSee('class="wo-table-head"', false)
+            ->assertSeeText('رقم / بقایا');
         $overdueResults->assertViewHas('weekDays', fn ($days) => $days
             ->flatMap(fn ($day) => $day['orders'])->pluck('id')->all() === [$overdueOrder->id]);
         $this->assertNotContains($crossShopOrder->id, $overdueResults->viewData('weekDays')

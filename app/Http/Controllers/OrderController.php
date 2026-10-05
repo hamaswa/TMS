@@ -794,6 +794,9 @@ class OrderController extends Controller
                 'tailor' => fn ($query) => $query->where('user_id', $ownerId)
                     ->select('id', 'name'),
             ])
+            ->withSum([
+                'transactions as outstanding_amount' => fn ($query) => $query->where('userId', $ownerId),
+            ], 'remainingBalance')
             ->orderBy('returnDate')
             ->orderBy('id');
 
