@@ -63,22 +63,22 @@ class StorefrontSeo
         $schema = [
             '@type' => 'LocalBusiness',
             '@id' => $url.'#business',
-            'name' => $storefront->display_name,
+            'name' => $storefront->localizedName(),
             'url' => $url,
             'description' => self::description(
-                $storefront->description ?: $storefront->tagline,
+                $storefront->localized('description') ?: $storefront->localized('tagline'),
                 __('storefront.home.default_description')
             ),
             'image' => self::absoluteUrl($storefront->cover_url ?: $storefront->logo_url),
             'telephone' => $storefront->public_phone,
             'email' => $storefront->public_email,
-            'areaServed' => $storefront->city ?: __('storefront.common.pakistan'),
+            'areaServed' => $storefront->localized('city') ?: __('storefront.common.pakistan'),
         ];
-        if ($storefront->address || $storefront->city) {
+        if ($storefront->localized('address') || $storefront->localized('city')) {
             $schema['address'] = array_filter([
                 '@type' => 'PostalAddress',
-                'streetAddress' => $storefront->address,
-                'addressLocality' => $storefront->city,
+                'streetAddress' => $storefront->localized('address'),
+                'addressLocality' => $storefront->localized('city'),
                 'addressCountry' => 'PK',
             ]);
         }
@@ -123,20 +123,20 @@ class StorefrontSeo
             '@type' => 'Product',
             '@id' => $url.'#product',
             'url' => $url,
-            'name' => $listing->display_name,
+            'name' => $listing->localizedName(),
             'description' => self::description(
-                $listing->description,
+                $listing->localizedDescription(),
                 collect([
                     $listing->cloth->brand?->name,
-                    $listing->cloth->type?->name,
-                    $storefront->display_name,
+                    $listing->cloth->type?->localizedName(),
+                    $storefront->localizedName(),
                 ])->filter()->implode(' · ')
             ),
             'image' => $images ?: null,
             'brand' => $listing->cloth->brand?->name
                 ? ['@type' => 'Brand', 'name' => $listing->cloth->brand->name]
                 : null,
-            'category' => $listing->cloth->type?->name,
+            'category' => $listing->cloth->type?->localizedName(),
             'offers' => [
                 '@type' => 'Offer',
                 'url' => $url,
@@ -149,7 +149,7 @@ class StorefrontSeo
                 'seller' => [
                     '@type' => 'LocalBusiness',
                     '@id' => route('storefront.show', $storefront).'#business',
-                    'name' => $storefront->display_name,
+                    'name' => $storefront->localizedName(),
                 ],
             ],
         ], fn ($value) => $value !== null && $value !== '');
@@ -162,12 +162,12 @@ class StorefrontSeo
             '@type' => 'Service',
             '@id' => $url.'#service',
             'url' => $url,
-            'name' => $service->name,
+            'name' => $service->localizedName(),
             'description' => self::description(
-                $service->description,
+                $service->localizedDescription(),
                 __('storefront.tailoring.default_description')
             ),
-            'serviceType' => $service->name,
+            'serviceType' => $service->localizedName(),
             'areaServed' => [
                 '@type' => 'Country',
                 'name' => 'Pakistan',
@@ -175,7 +175,7 @@ class StorefrontSeo
             'provider' => [
                 '@type' => 'LocalBusiness',
                 '@id' => route('storefront.show', $storefront).'#business',
-                'name' => $storefront->display_name,
+                'name' => $storefront->localizedName(),
             ],
         ];
         if ($service->price_from !== null) {

@@ -72,11 +72,18 @@ class StorefrontFoundationTest extends TestCase
 
         $this->actingAs($owner)->put(route('admin.storefront.update'), [
             'display_name' => 'صدیقی ٹیلرز اینڈ فیبرکس',
+            'display_name_ur' => 'صدیقی ٹیلرز اینڈ فیبرکس',
+            'display_name_en' => 'Siddiqui Tailors and Fabrics',
             'slug' => 'siddiqui-tailors',
             'default_locale' => 'ur',
             'tagline' => 'معیاری کپڑا اور نفیس سلائی',
+            'tagline_ur' => 'معیاری کپڑا اور نفیس سلائی',
+            'tagline_en' => 'Quality fabric and fine stitching',
             'description' => 'راولپنڈی میں کپڑے اور سلائی کی مکمل سہولت۔',
+            'description_ur' => 'راولپنڈی میں کپڑے اور سلائی کی مکمل سہولت۔',
+            'description_en' => 'Complete fabric and tailoring service in Rawalpindi.',
             'public_phone' => '03001112222',
+            'whatsapp_number' => '+923001112222',
             'public_email' => 'shop@example.test',
             'address' => 'مین بازار، راولپنڈی',
             'city' => 'راولپنڈی',
@@ -84,10 +91,62 @@ class StorefrontFoundationTest extends TestCase
             'show_tailoring' => '1',
             'inquiries_enabled' => '1',
             'pickup_enabled' => '1',
+            'design_settings_present' => '1',
+            'hero_title_ur' => 'آپ کی پسند، ہماری مہارت',
+            'hero_title_en' => 'Your style, our craft',
+            'hero_text_ur' => 'اصل کپڑا اور ماہر سلائی ایک جگہ۔',
+            'hero_text_en' => 'Authentic fabric and expert tailoring in one place.',
+            'announcement_ur' => 'نئی کلیکشن دستیاب ہے',
+            'announcement_en' => 'New collection now available',
+            'theme_primary_color' => '#145c43',
+            'theme_accent_color' => '#c47b16',
+            'theme_background_color' => '#f4f1ea',
+            'theme_surface_color' => '#fffdf8',
+            'theme_text_color' => '#24211d',
+            'font_style' => 'classic',
+            'hero_layout' => 'split',
+            'hero_alignment' => 'center',
+            'hero_overlay_strength' => 55,
+            'hero_height' => 'compact',
+            'hero_media_type' => 'color',
+            'hero_media_fit' => 'cover',
+            'hero_media_position' => 'top',
+            'hero_text_animation' => 'slide',
+            'corner_style' => 'rounded',
+            'product_columns' => 2,
+            'header_layout' => 'menu_first',
+            'sticky_header' => '1',
+            'show_nav_categories' => '1',
+            'show_featured_products' => '1',
+            'show_benefits' => '1',
+            'show_services' => '1',
+            'show_about' => '1',
+            'navigation_links' => [[
+                'label_ur' => 'سائز گائیڈ',
+                'label_en' => 'Size guide',
+                'url' => 'https://example.test/size-guide',
+                'location' => 'both',
+                'new_tab' => '1',
+            ]],
+            'footer_style' => 'brand',
+            'footer_text_ur' => 'ہر لباس میں معیار اور اعتماد۔',
+            'footer_text_en' => 'Quality and confidence in every garment.',
+            'facebook_url' => 'https://facebook.com/example',
         ])->assertRedirect(route('admin.storefront.edit'));
 
         $storefront = Storefront::where('business_id', $business->id)->firstOrFail();
         $this->assertFalse($storefront->is_published);
+        $this->assertSame('#145c43', $storefront->theme_primary_color);
+        $this->assertSame('#f4f1ea', $storefront->theme_background_color);
+        $this->assertSame('split', $storefront->hero_layout);
+        $this->assertSame('rounded', $storefront->corner_style);
+        $this->assertSame(2, $storefront->product_columns);
+        $this->assertSame('menu_first', $storefront->header_layout);
+        $this->assertTrue($storefront->sticky_header);
+        $this->assertSame('slide', $storefront->hero_text_animation);
+        $this->assertSame('brand', $storefront->footer_style);
+        $this->assertFalse($storefront->show_nav_brands);
+        $this->assertSame('Size guide', $storefront->navigation_links[0]['label_en']);
         $this->actingAs($owner)->get(route('admin.storefront.preview'))->assertOk()->assertSeeText('یہ صرف پیش منظر ہے');
         $this->get(route('storefront.show', $storefront))->assertNotFound();
 
@@ -100,9 +159,31 @@ class StorefrontFoundationTest extends TestCase
         $this->get(route('storefront.show', $storefront))
             ->assertOk()
             ->assertSeeText('صدیقی ٹیلرز اینڈ فیبرکس')
+            ->assertSeeText('آپ کی پسند، ہماری مہارت')
+            ->assertSeeText('نئی کلیکشن دستیاب ہے')
+            ->assertSeeText('سائز گائیڈ')
+            ->assertSee('https://example.test/size-guide', false)
+            ->assertSee('--primary:#145c43', false)
+            ->assertSee('--shop-background:#f4f1ea', false)
+            ->assertSee('is-split is-center', false)
+            ->assertSee('header-layout-menu_first', false)
+            ->assertSee('animate-slide', false)
+            ->assertSee('shop-footer style-brand', false)
+            ->assertSeeText('ہر لباس میں معیار اور اعتماد۔')
+            ->assertSee('https://facebook.com/example', false)
             ->assertSeeText('کپڑے کی دکان')
             ->assertSeeText('ٹیلرنگ خدمات');
         $this->get(route('storefront.index'))->assertOk()->assertSeeText('صدیقی ٹیلرز اینڈ فیبرکس');
+        $this->withSession(['public_locale' => 'en'])
+            ->get(route('storefront.show', $storefront))
+            ->assertOk()
+            ->assertSeeText('Siddiqui Tailors and Fabrics')
+            ->assertSeeText('Your style, our craft')
+            ->assertSeeText('Authentic fabric and expert tailoring in one place.')
+            ->assertSeeText('New collection now available')
+            ->assertSeeText('Size guide')
+            ->assertSeeText('Quality and confidence in every garment.')
+            ->assertDontSeeText('صدیقی ٹیلرز اینڈ فیبرکس');
     }
 
     public function test_first_time_storefront_disables_module_links_until_basic_details_are_saved(): void
@@ -212,6 +293,43 @@ class StorefrontFoundationTest extends TestCase
             ->assertOk()
             ->assertSee('lang="ur"', false)
             ->assertSee('dir="rtl"', false);
+    }
+
+    public function test_storefront_switches_business_content_and_uses_local_icons(): void
+    {
+        [, $business] = $this->business(true, true);
+        $storefront = Storefront::create([
+            'business_id' => $business->id,
+            'display_name' => 'اردو دکان',
+            'display_name_ur' => 'اردو دکان',
+            'display_name_en' => 'English Shop',
+            'tagline' => 'اردو تعارف',
+            'tagline_ur' => 'اردو تعارف',
+            'tagline_en' => 'English introduction',
+            'slug' => 'bilingual-shop',
+            'default_locale' => 'ur',
+            'show_clothing' => true,
+            'show_tailoring' => true,
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->withSession(['public_locale' => 'en'])
+            ->get(route('storefront.show', $storefront))
+            ->assertOk()
+            ->assertSeeText('English Shop')
+            ->assertSeeText('English introduction')
+            ->assertDontSeeText('اردو دکان')
+            ->assertDontSee('cdnjs.cloudflare.com', false)
+            ->assertDontSee('class="fas ', false)
+            ->assertSee('class="ui-icon', false);
+
+        $this->withSession(['public_locale' => 'ur'])
+            ->get(route('storefront.show', $storefront))
+            ->assertOk()
+            ->assertSeeText('اردو دکان')
+            ->assertSeeText('اردو تعارف')
+            ->assertDontSeeText('English Shop');
     }
 
     public function test_suspended_business_storefront_is_hidden_without_deleting_it(): void

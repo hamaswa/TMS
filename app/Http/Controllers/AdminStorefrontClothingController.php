@@ -35,7 +35,12 @@ class AdminStorefrontClothingController extends Controller
 
         $validated = $request->validate([
             'public_name' => ['nullable', 'string', 'max:180'],
+            'public_name_ur' => ['nullable', 'string', 'max:180'],
+            'public_name_en' => ['nullable', 'string', 'max:180'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'description_ur' => ['nullable', 'string', 'max:2000'],
+            'description_en' => ['nullable', 'string', 'max:2000'],
+            'tags' => ['nullable', 'string', 'max:500'],
             'is_featured' => ['nullable', 'boolean'],
             'is_published' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
@@ -47,6 +52,12 @@ class AdminStorefrontClothingController extends Controller
             'preorder_enabled' => ['nullable', 'boolean'],
             'preorder_lead_days' => ['nullable', 'required_if:preorder_enabled,1', 'integer', 'min:1', 'max:365'],
         ]);
+        $contentLocale = $storefront->default_locale === 'en' ? 'en' : 'ur';
+        foreach (['public_name', 'description'] as $field) {
+            if (filled($validated[$field.'_'.$contentLocale] ?? null)) {
+                $validated[$field] = $validated[$field.'_'.$contentLocale];
+            }
+        }
 
         if ($request->boolean('is_published') && ! $storefront->show_clothing) {
             throw ValidationException::withMessages([
@@ -59,7 +70,12 @@ class AdminStorefrontClothingController extends Controller
         );
         $listing->fill([
             'public_name' => $validated['public_name'] ?? null,
+            'public_name_ur' => $validated['public_name_ur'] ?? null,
+            'public_name_en' => $validated['public_name_en'] ?? null,
             'description' => $validated['description'] ?? null,
+            'description_ur' => $validated['description_ur'] ?? null,
+            'description_en' => $validated['description_en'] ?? null,
+            'tags' => collect(preg_split('/[,،\n]+/u', $validated['tags'] ?? ''))->map(fn ($tag) => trim($tag))->filter()->unique()->values()->all(),
             'is_featured' => $request->boolean('is_featured'),
             'is_published' => $request->boolean('is_published'),
             'sort_order' => $validated['sort_order'] ?? 0,

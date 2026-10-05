@@ -27,4 +27,10 @@ class MeasurementTemplate extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function standardProfiles()
+    {
+        return $this->hasMany(StandardMeasurementProfile::class)
+            ->orderBy('sort_order')->orderBy('name');
+    }
 }

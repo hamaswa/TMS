@@ -165,18 +165,19 @@
                         $selectedColor = (string) ($saleItem['color'] ?? '');
                         $typeCloths = $cloths->where('cloth_brand_id', $selectedBrand)->unique('cloth_type_id');
                         $colorCloth = $selectedClothId !== '' ? $cloths->firstWhere('id', (int) $selectedClothId) : $cloths->first(fn ($cloth) => (string) $cloth->cloth_brand_id === $selectedBrand && (string) $cloth->cloth_type_id === $selectedType);
-                        $availableColors = $colorCloth?->colors->where('length', '>', 0) ?? collect();
+                        $availableColors = collect($colorCloth?->selectableColorNames() ?? []);
                     @endphp
                     <article class="stock-data counter-sale-item">
                         <div class="counter-item-summary"><small>آئٹم کا خلاصہ</small><div class="counter-item-actions"><span class="counter-line-total">Rs. {{ number_format((float) ($saleItem['item_total'] ?? 0), 2) }}</span>@if($itemIndex > 0)<button type="button" class="counter-remove-item" aria-label="یہ آئٹم ہٹائیں"><i class="fas fa-trash"></i></button>@endif</div></div>
                         <div class="counter-item-identity"><span class="counter-item-number">{{ $itemIndex + 1 }}</span></div>
                         <input type="hidden" class="js-cloth-id" name="cloth_id[]" value="{{ $colorCloth?->id }}">
+                        <input type="hidden" class="js-sale-price-basis" value="{{ $saleItem['sale_price_basis'] ?? ($colorCloth?->sale_price_basis ?: 'per_meter') }}">
                         <div class="form-group counter-field-brand"><label>برانڈ <span class="required">*</span></label><select class="form-control js-brand" name="brand_name[]" required><option value="" disabled @selected($selectedBrand === '')>برانڈ منتخب کریں</option>@foreach($cloths->unique('cloth_brand_id') as $cloth)<option value="{{ $cloth->cloth_brand_id }}" @selected($selectedBrand === (string) $cloth->cloth_brand_id)>{{ $cloth->brand->name }}</option>@endforeach</select></div>
                         <div class="form-group counter-field-type"><label>کپڑے کی قسم <span class="required">*</span></label><select class="form-control js-cloth-type" name="cloth_type[]" required><option value="" disabled @selected($selectedType === '')>پہلے برانڈ منتخب کریں</option>@foreach($typeCloths as $cloth)<option value="{{ $cloth->cloth_type_id }}" @selected($selectedType === (string) $cloth->cloth_type_id)>{{ $cloth->type->name }}</option>@endforeach</select></div>
-                        <div class="form-group js-color-group counter-field-color" @if(!$colorCloth?->tracksColors() && $availableColors->isEmpty()) hidden @endif><label>رنگ @if($colorCloth?->tracksColors())<span class="required">*</span>@endif</label><select class="form-control js-color" name="color[]" @required($colorCloth?->tracksColors())><option value="" @disabled($colorCloth?->tracksColors()) @selected($selectedColor === '')>{{ $colorCloth?->tracksColors() ? 'رنگ منتخب کریں' : 'رنگ منتخب کریں (اختیاری)' }}</option>@foreach($availableColors as $color)<option value="{{ $color->color }}" @selected($selectedColor === (string) $color->color)>{{ $color->color }} ({{ (float) $color->length }} میٹر)</option>@endforeach</select></div>
+                        <div class="form-group js-color-group counter-field-color" @if(!$colorCloth?->hasSelectableColors()) hidden @endif><label>رنگ @if($colorCloth?->hasSelectableColors())<span class="required">*</span>@endif</label><select class="form-control js-color" name="color[]" @required($colorCloth?->hasSelectableColors())><option value="" disabled @selected($selectedColor === '')>رنگ منتخب کریں</option>@foreach($availableColors as $color)<option value="{{ $color }}" @selected($selectedColor === (string) $color)>{{ $color }}@if($colorCloth?->tracksColors()) ({{ (float) ($colorCloth->colors->firstWhere('color',$color)?->length ?? 0) }} میٹر)@endif</option>@endforeach</select></div>
                         <div class="form-group counter-field-length"><label>میٹر / گز <span class="required">*</span></label><input type="number" class="form-control" name="length[]" value="{{ $saleItem['length'] ?? '' }}" min="0.01" step="0.01" placeholder="مقدار" required></div>
                         <div class="form-group counter-field-total"><label>کل قیمت <span class="required">*</span></label><input type="number" class="form-control" name="item_total[]" value="{{ $saleItem['item_total'] ?? '' }}" min="0" step="0.01" placeholder="کل قیمت" readonly required><input type="hidden" name="per_meter[]" value="{{ $saleItem['per_meter'] ?? 0 }}"><input type="hidden" name="clothes_rack[]" value=""></div>
-                        <div class="form-group js-rate-wrap counter-field-rate"><label>ریٹ فی میٹر</label><input type="number" class="form-control js-rate-per-meter" value="{{ $saleItem['per_meter'] ?? '' }}" min="0" step="0.01" placeholder="ریٹ" @readonly((float) ($saleItem['per_meter'] ?? 0) > 0) required></div>
+                        <div class="form-group js-rate-wrap counter-field-rate"><label class="js-rate-label">{{ ($saleItem['sale_price_basis'] ?? ($colorCloth?->sale_price_basis ?: 'per_meter')) === 'per_suit' ? 'ریٹ فی سوٹ' : 'ریٹ فی میٹر' }}</label><input type="number" class="form-control js-rate-per-meter" value="{{ $saleItem['per_meter'] ?? '' }}" min="0" step="0.01" placeholder="ریٹ" @readonly((float) ($saleItem['per_meter'] ?? 0) > 0) required></div>
                     </article>
                     @endforeach
                 </div>
@@ -233,6 +234,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const inventoryOptions = @json($inventoryOptions);
 
     const money = value => 'Rs. ' + value.toFixed(2);
+    const applyInventoryPricing = function (item, match) {
+        const basis = match?.sale_price_basis === 'per_suit' ? 'per_suit' : 'per_meter';
+        const rate = Number(match?.unit_price || 0);
+        item.querySelector('.js-sale-price-basis').value = basis;
+        item.querySelector('.js-rate-label').textContent = basis === 'per_suit' ? 'ریٹ فی سوٹ' : 'ریٹ فی میٹر';
+        item.querySelector('[name="length[]"]').value = Number(match?.default_sale_length || 0) > 0 ? Number(match.default_sale_length) : '';
+        item.querySelector('[name="per_meter[]"]').value = rate.toFixed(2);
+        item.querySelector('.js-rate-per-meter').value = rate > 0 ? rate.toFixed(2) : '';
+    };
     const initializeItemRate = function (item) {
         const length = Number.parseFloat(item.querySelector('[name="length[]"]').value) || 0;
         const itemTotal = Number.parseFloat(item.querySelector('[name="item_total[]"]').value) || 0;
@@ -253,7 +263,8 @@ document.addEventListener('DOMContentLoaded', function () {
         container.querySelectorAll('.stock-data').forEach(function (item) {
             const length = Number.parseFloat(item.querySelector('[name="length[]"]').value) || 0;
             const rate = Number.parseFloat(item.querySelector('[name="per_meter[]"]').value) || 0;
-            const lineTotal = length * rate;
+            const basis = item.querySelector('.js-sale-price-basis').value;
+            const lineTotal = basis === 'per_suit' ? rate : length * rate;
             saleTotal += lineTotal;
             item.querySelector('[name="item_total[]"]').value = lineTotal.toFixed(2);
             item.querySelector('.counter-line-total').textContent = money(lineTotal);
@@ -287,16 +298,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const color = item.querySelector('.js-color');
         const match = inventoryOptions.find(entry => entry.brand_id === brandId && entry.type_id === typeId);
         const group = item.querySelector('.js-color-group');
-        const availableColors = (match?.colors || []).filter(entry => Number(entry.length) > 0);
-        const canChooseColor = Boolean(match?.tracks_colors || availableColors.length);
+        const availableColors = (match?.colors || []).filter(entry => !match?.tracks_colors || Number(entry.length) > 0);
+        const canChooseColor = Boolean(match?.requires_color);
         item.querySelector('.js-cloth-id').value = match?.cloth_id || '';
+        if (match) applyInventoryPricing(item, match);
         group.hidden = !canChooseColor;
-        color.required = Boolean(match?.tracks_colors);
-        color.innerHTML = match?.tracks_colors ? '<option value="" disabled selected>رنگ منتخب کریں</option>' : '<option value="" selected>رنگ منتخب کریں (اختیاری)</option>';
+        color.required = Boolean(match?.requires_color);
+        color.innerHTML = '<option value="" disabled selected>رنگ منتخب کریں</option>';
         availableColors.forEach(function (entry) {
             const option = document.createElement('option');
             option.value = entry.name;
-            option.textContent = entry.name + ' (' + entry.length + ' میٹر)';
+            option.textContent = entry.name + (entry.length === null ? '' : ' (' + entry.length + ' میٹر)');
             color.appendChild(option);
         });
         if (match?.tracks_colors && !match.colors.some(entry => entry.length > 0)) {
@@ -324,6 +336,8 @@ document.addEventListener('DOMContentLoaded', function () {
         item.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
         item.querySelector('.js-cloth-type').innerHTML = '<option value="" disabled selected>پہلے برانڈ منتخب کریں</option>';
         item.querySelector('.js-cloth-id').value = '';
+        item.querySelector('.js-sale-price-basis').value = 'per_meter';
+        item.querySelector('.js-rate-label').textContent = 'ریٹ فی میٹر';
         item.querySelector('.js-color-group').hidden = true;
         item.querySelector('.js-color').required = false;
         item.querySelector('.js-color').innerHTML = '<option value="" selected>رنگ لاگو نہیں</option>';
@@ -335,22 +349,23 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const selectScannedItem = function () {
-        const code = scanInput.value.trim().toUpperCase();
+        const rawCode = scanInput.value.trim().toUpperCase();
+        const code = rawCode.startsWith('BNS-SET:') ? rawCode.slice(8) : rawCode;
         if (!code) {
             scanFeedback.textContent = 'پہلے QR اسکین کریں یا اسٹاک کوڈ درج کریں۔';
             scanFeedback.className = 'counter-scan-feedback is-error';
             scanInput.focus();
             return;
         }
-        const match = inventoryOptions.find(entry => String(entry.stock_code || '').trim().toUpperCase() === code);
+        const match = inventoryOptions.find(entry => [entry.stock_code, entry.set_code].some(value => String(value || '').trim().toUpperCase() === code));
         if (!match) {
             scanFeedback.textContent = 'اس اسٹاک کوڈ کا کپڑا نہیں ملا: ' + scanInput.value.trim();
             scanFeedback.className = 'counter-scan-feedback is-error';
             scanInput.select();
             return;
         }
-        const availableColors = (match.colors || []).filter(entry => Number(entry.length) > 0);
-        if (!availableColors.length) {
+        const availableColors = (match.colors || []).filter(entry => !match.tracks_colors || Number(entry.length) > 0);
+        if (Number(match.available_length || 0) <= 0) {
             scanFeedback.textContent = 'اس کپڑے کا اسٹاک دستیاب نہیں ہے۔';
             scanFeedback.className = 'counter-scan-feedback is-error';
             scanInput.select();
@@ -364,25 +379,22 @@ document.addEventListener('DOMContentLoaded', function () {
         item.querySelector('.js-cloth-type').innerHTML = '<option value="' + match.type_id + '" selected>' + (match.type_name || '') + '</option>';
         const colorSelect = item.querySelector('.js-color');
         const colorGroup = item.querySelector('.js-color-group');
-        colorGroup.hidden = !(match.tracks_colors || availableColors.length);
-        colorSelect.required = Boolean(match.tracks_colors);
-        colorSelect.innerHTML = match.tracks_colors ? '<option value="" disabled selected>رنگ منتخب کریں</option>' : '<option value="" selected>رنگ منتخب کریں (اختیاری)</option>';
+        colorGroup.hidden = !match.requires_color;
+        colorSelect.required = Boolean(match.requires_color);
+        colorSelect.innerHTML = '<option value="" disabled selected>رنگ منتخب کریں</option>';
         availableColors.forEach(function (entry) {
             const option = document.createElement('option');
             option.value = entry.name;
-            option.textContent = entry.name + ' (' + entry.length + ' میٹر)';
+            option.textContent = entry.name + (entry.length === null ? '' : ' (' + entry.length + ' میٹر)');
             colorSelect.appendChild(option);
         });
         item.querySelector('[name="length[]"]').value = '';
         item.querySelector('[name="item_total[]"]').value = '';
-        item.querySelector('[name="per_meter[]"]').value = Number(match.unit_price || 0).toFixed(2);
-        item.querySelector('.js-rate-per-meter').value = Number(match.unit_price || 0) > 0 ? Number(match.unit_price).toFixed(2) : '';
+        applyInventoryPricing(item, match);
         calculateTotals();
         scanInput.value = '';
-        if (!match.tracks_colors) {
-            scanFeedback.textContent = availableColors.length
-                ? 'سیٹ شامل ہو گیا؛ ضرورت ہو تو رنگ منتخب کریں: ' + (match.brand_name || '') + ' / ' + (match.type_name || '')
-                : 'بغیر رنگ والا سیٹ شامل ہو گیا: ' + (match.brand_name || '') + ' / ' + (match.type_name || '');
+        if (!match.requires_color) {
+            scanFeedback.textContent = 'بغیر رنگ والا سیٹ شامل ہو گیا: ' + (match.brand_name || '') + ' / ' + (match.type_name || '');
             scanFeedback.className = 'counter-scan-feedback is-success';
             item.querySelector('[name="length[]"]').focus();
         } else {

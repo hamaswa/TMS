@@ -1,10 +1,11 @@
 @extends('storefront.public.layout')
-@section('title', $booking->reference.' — '.$storefront->display_name)
+@section('title', $booking->reference.' — '.$storefront->localizedName())
 @push('styles')
+@include('storefront.public.partials.shop-navigation-styles')
 .booking-shell{max-width:850px;margin:0 auto}.booking-card{background:#fff;border:1px solid #e2e7ec;border-radius:18px;padding:24px;box-shadow:0 10px 30px rgba(25,45,70,.08)}.booking-ref{font:700 1.15rem monospace;direction:ltr;display:inline-block;background:#edf3f8;border-radius:9px;padding:7px 11px}.booking-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.booking-field{background:#f6f8fa;border-radius:11px;padding:12px}.booking-field strong{display:block;margin-bottom:4px}.booking-status{display:inline-block;padding:7px 12px;border-radius:999px;background:#fff1c5;color:#795b00;font-weight:700}.booking-status.confirmed{background:#dff5e7;color:#176b39}.booking-status.rejected{background:#fde3e3;color:#8a2424}@media(max-width:650px){.booking-grid{grid-template-columns:1fr}}
 @endpush
 @section('body')
-<nav class="nav"><div class="shell"><a class="nav-brand" href="{{ route('storefront.show',$storefront) }}">{{ $storefront->display_name }}</a><div class="nav-actions">@include('storefront.public.partials.language-switch')<a class="nav-link" href="{{ route('storefront.tailoring.index',$storefront) }}">{{ __('storefront.tailoring.all_services') }}</a></div></div></nav>
+@include('storefront.public.partials.shop-navigation')
 <main class="section"><div class="shell booking-shell">
 @if(session('success'))<div class="success">{{ session('success') }}</div>@endif
 <div class="booking-card">
@@ -16,7 +17,7 @@
 @else
 <hr><div class="booking-grid">
 <div class="booking-field"><strong>{{ __('storefront.tailoring.name') }}</strong>{{ $booking->customer_name }}</div>
-<div class="booking-field"><strong>{{ __('storefront.tailoring.service') }}</strong>{{ $booking->service?->name }}</div>
+<div class="booking-field"><strong>{{ __('storefront.tailoring.service') }}</strong>{{ $booking->service?->localizedName() }}</div>
 <div class="booking-field"><strong>{{ __('storefront.tailoring.suit_quantity') }}</strong>{{ $booking->suit_quantity }}</div>
 <div class="booking-field"><strong>{{ __('storefront.tailoring.measurement_method') }}</strong>{{ __('storefront.tailoring.measurement_methods.'.$booking->measurement_method) }}</div>
 <div class="booking-field"><strong>{{ __('storefront.tailoring.preferred_date') }}</strong>{{ $booking->preferred_date?->format('d-m-Y') ?: '—' }}</div>
@@ -29,4 +30,5 @@
 @if($booking->message)<div class="booking-field" style="margin-top:14px"><strong>{{ __('storefront.tailoring.details_question') }}</strong>{{ $booking->message }}</div>@endif
 @endunless
 </div></div></main>
+@include('storefront.public.partials.shop-footer')
 @endsection

@@ -49,10 +49,30 @@
             <thead><tr><th>#</th><th>کپڑا</th><th>رنگ</th><th>مقدار</th><th>فی میٹر</th><th>کل</th></tr></thead>
             <tbody>
                 @foreach($order->items as $item)
-                    <tr><td>{{ $loop->iteration }}</td><td>{{ $item->item_name }}</td><td>{{ $item->color }}</td><td>{{ number_format((float)$item->quantity, 2) }} میٹر</td><td class="num">Rs {{ number_format((float)$item->unit_price, 2) }}</td><td class="num">Rs {{ number_format((float)$item->line_total, 2) }}</td></tr>
+                    <tr><td>{{ $loop->iteration }}</td><td>{{ $item->item_name }}</td><td>{{ $item->cloth?->hasSelectableColors() ? $item->color : '—' }}</td><td>{{ number_format((float)$item->quantity, 2) }} میٹر</td><td class="num">Rs {{ number_format((float)$item->unit_price, 2) }}</td><td class="num">Rs {{ number_format((float)$item->line_total, 2) }}</td></tr>
                 @endforeach
             </tbody>
         </table>
+        @if($order->tailoringItems->isNotEmpty())
+            <table>
+                <thead><tr><th>#</th><th>سلائی خدمت</th><th>کپڑا</th><th>پیمائش</th><th>تعداد</th><th>کل</th></tr></thead>
+                <tbody>
+                @foreach($order->tailoringItems as $item)
+                    <tr>
+                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $item->service_name }}@if($item->notes)<br><small>{{ $item->notes }}</small>@endif</td>
+                        <td>{{ $item->clothingItem?->item_name ?: 'گاہک کا اپنا کپڑا' }}</td>
+                        <td>{{ \App\Models\StorefrontTailoringService::measurementMethodLabels()[$item->measurement_method] ?? $item->measurement_method }}@if($item->standard_size) — {{ $item->standard_size }}@endif @if($item->measurementTemplate)<br><small>{{ $item->measurementTemplate->name }}</small>@endif</td>
+                        <td>{{ $item->quantity }}</td>
+                        <td class="num">Rs {{ number_format((float)$item->line_total, 2) }}</td>
+                    </tr>
+                    @if($item->measurement_values)
+                        <tr><td colspan="6"><strong>پیمائش:</strong> {{ collect($item->measurement_values)->map(fn($row) => ($row['label'] ?? $row['source_key'] ?? '').': '.($row['value'] ?? '').($row['unit'] ?? ''))->filter()->join('، ') }}</td></tr>
+                    @endif
+                @endforeach
+                </tbody>
+            </table>
+        @endif
         <div class="totals box">
             <div class="row"><strong>آرڈر کل</strong><span class="num">Rs {{ number_format((float)$order->subtotal, 2) }}</span></div>
             <div class="row"><strong>وصول شدہ</strong><span class="num">Rs {{ number_format((float)$order->paid_amount, 2) }}</span></div>

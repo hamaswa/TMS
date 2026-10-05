@@ -26,10 +26,9 @@ class PublicStorefrontCheckoutController extends Controller
         StorefrontPaymentEvidenceService $evidenceService,
     ) {
         $this->ensureVisible($storefront);
-        abort_unless($storefront->clothingOrderingEnabled(), 404);
         $methods = array_values(array_filter([
-            $storefront->clothingPickupEnabled() ? 'pickup' : null,
-            $storefront->clothingDeliveryEnabled() ? 'delivery' : null,
+            $storefront->offersPickup() ? 'pickup' : null,
+            $storefront->offersDelivery() ? 'delivery' : null,
         ]));
         $request->mergeIfMissing(['payment_method' => StorefrontOrder::PAYMENT_UNPAID]);
         $paymentMethod = $request->input('payment_method');
@@ -47,7 +46,7 @@ class PublicStorefrontCheckoutController extends Controller
                 'max:1000',
             ],
             'customer_note' => ['nullable', 'string', 'max:1000'],
-            'payment_method' => ['required', Rule::in(array_keys($storefront->acceptedPaymentMethods()))],
+            'payment_method' => ['required', Rule::in(array_keys($storefront->acceptedUnifiedOrderPaymentMethods()))],
             'payment_sender_phone' => [
                 Rule::requiredIf($mobileWallet),
                 'nullable',
@@ -115,7 +114,10 @@ class PublicStorefrontCheckoutController extends Controller
             ->where('reference', $reference)
             ->with([
                 'customer',
-                'items',
+                'items.cloth:id,color_tracking_mode',
+                'tailoringItems.service:id,name,name_ur,name_en',
+                'tailoringItems.measurementTemplate:id,name',
+                'tailoringItems.clothingItem:id,item_name,color',
                 'refunds:id,storefront_order_id,reference,amount,method,external_reference,refunded_at',
                 'returns:id,storefront_order_id,reference,type,refund_amount,refund_method,external_reference,processed_at',
                 'returns.items:id,storefront_order_return_id,storefront_order_item_id,quantity,line_total,restocked,replacement_cloth_color_id,replacement_quantity',
@@ -154,9 +156,9 @@ class PublicStorefrontCheckoutController extends Controller
         abort_unless(
             $storefront->is_published
             && $storefront->isModerationActive()
-            && $storefront->show_clothing
             && $storefront->business?->isActive()
-            && $storefront->business->clothing_enabled,
+            && (($storefront->show_clothing && $storefront->clothingOrderingEnabled() && $storefront->business->clothing_enabled)
+                || ($storefront->show_tailoring && $storefront->tailoringInquiriesEnabled() && $storefront->business->tailoring_enabled)),
             404
         );
     }

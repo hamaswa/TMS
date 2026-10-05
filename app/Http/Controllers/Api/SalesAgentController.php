@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class SalesAgentController extends Controller
@@ -88,9 +89,17 @@ class SalesAgentController extends Controller
                 'brand' => $cloth->brand?->name,
                 'clothTypeId' => $cloth->cloth_type_id,
                 'clothType' => $cloth->type?->name,
-                'salePrice' => (string) ($cloth->sale_price ?? ''),
+                'salePrice' => (string) (($cloth->sellsPerSuit() ? $cloth->suit_sale_price : $cloth->sale_price) ?? ''),
+                'defaultSaleLength' => (string) ($cloth->default_sale_length ?? ''),
+                'salePriceBasis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
                 'colorTrackingMode' => $cloth->color_tracking_mode,
-                'colors' => $cloth->colors->map->only(['color', 'length'])->values(),
+                'availableLength' => (string) $cloth->colors->sum('length'),
+                'colors' => collect($cloth->selectableColorNames())->map(fn ($name) => [
+                    'color' => $name,
+                    'length' => $cloth->tracksColors()
+                        ? (string) ($cloth->colors->firstWhere('color', $name)?->length ?? 0)
+                        : null,
+                ])->values(),
             ]);
 
         return response()->json(['data' => $cloths]);
@@ -100,7 +109,10 @@ class SalesAgentController extends Controller
     {
         $normalized = str_starts_with($code, 'BNS-SET:') ? substr($code, 8) : $code;
         $cloth = Cloth::where('user_id', $request->user()->businessOwnerId())
-            ->where('set_code', $normalized)
+            ->where(function ($query) use ($normalized) {
+                $query->where('set_code', $normalized)
+                    ->orWhere('stock_code', $normalized);
+            })
             ->with(['brand:id,name', 'type:id,name', 'colors:id,cloth_id,color,length'])
             ->firstOrFail();
 
@@ -110,11 +122,16 @@ class SalesAgentController extends Controller
             'brand' => $cloth->brand?->name,
             'clothTypeId' => $cloth->cloth_type_id,
             'clothType' => $cloth->type?->name,
-            'salePrice' => (string) ($cloth->sale_price ?? ''),
+            'salePrice' => (string) (($cloth->sellsPerSuit() ? $cloth->suit_sale_price : $cloth->sale_price) ?? ''),
+            'defaultSaleLength' => (string) ($cloth->default_sale_length ?? ''),
+            'salePriceBasis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
             'colorTrackingMode' => $cloth->color_tracking_mode,
-            'colors' => $cloth->colors->map(fn ($color) => [
-                'name' => $color->color,
-                'availableLength' => (string) $color->length,
+            'availableLength' => (string) $cloth->colors->sum('length'),
+            'colors' => collect($cloth->selectableColorNames())->map(fn ($name) => [
+                'name' => $name,
+                'availableLength' => $cloth->tracksColors()
+                    ? (string) ($cloth->colors->firstWhere('color', $name)?->length ?? 0)
+                    : null,
             ])->values(),
         ]]);
     }
@@ -186,6 +203,7 @@ class SalesAgentController extends Controller
             'items.*.quantity' => ['nullable'],
             'items.*.length' => ['nullable'],
             'items.*.unitPrice' => ['nullable'],
+            'items.*.salePriceBasis' => ['nullable', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
             'items.*.rack' => ['nullable', 'string', 'max:100'],
             'payment' => ['required', 'array'],
             'payment.method' => ['required', 'string', 'max:50'],

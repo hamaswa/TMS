@@ -117,18 +117,100 @@ class SaleSessionWorkflowTest extends TestCase
     {
         [$owner, $agent] = $this->businessUsers();
         [$cloth, $color] = $this->stock($owner);
+        $cloth->update([
+            'default_sale_length' => 4.5,
+            'suit_sale_price' => 900,
+            'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
+        ]);
         $token = $this->login($agent);
 
         $this->withToken($token)->getJson('/api/sales-agent/inventory/sets/'.urlencode($cloth->set_code))
             ->assertOk()
             ->assertJsonPath('data.setCode', $cloth->set_code)
             ->assertJsonPath('data.brandId', $cloth->cloth_brand_id)
+            ->assertJsonPath('data.defaultSaleLength', '4.50')
+            ->assertJsonPath('data.salePriceBasis', Cloth::SALE_PRICE_PER_SUIT)
+            ->assertJsonPath('data.salePrice', '900.00')
             ->assertJsonPath('data.colors.0.name', $color->color);
+
+        // Already-printed legacy labels remain usable while newly generated
+        // labels use the canonical opaque set code.
+        $this->withToken($token)->getJson('/api/sales-agent/inventory/sets/'.urlencode($cloth->stock_code))
+            ->assertOk()
+            ->assertJsonPath('data.setCode', $cloth->set_code);
 
         $this->actingAs($owner)->get(route('admin.cloth.qr-labels'))
             ->assertOk()
             ->assertSeeText($cloth->set_code)
             ->assertSee('<svg', false);
+
+        $this->actingAs($owner)->get(route('admin.cloth.qr-label', $cloth))
+            ->assertOk()
+            ->assertSeeText($cloth->set_code)
+            ->assertDontSeeText($cloth->stock_code);
+    }
+
+    public function test_mobile_inventory_exposes_display_colors_with_one_shared_stock_total(): void
+    {
+        [$owner, $agent] = $this->businessUsers();
+        [$cloth, $stock] = $this->stock($owner);
+        $cloth->update([
+            'color_tracking_mode' => Cloth::COLOR_TRACKING_DISPLAY_ONLY,
+            'display_colors' => ['Navy', 'Maroon'],
+        ]);
+        $stock->update(['color' => 'عام']);
+        $token = $this->login($agent);
+
+        $this->withToken($token)->getJson('/api/sales-agent/inventory/sets/'.urlencode($cloth->set_code))
+            ->assertOk()
+            ->assertJsonPath('data.colorTrackingMode', Cloth::COLOR_TRACKING_DISPLAY_ONLY)
+            ->assertJsonPath('data.availableLength', '10')
+            ->assertJsonPath('data.colors.0.name', 'Navy')
+            ->assertJsonPath('data.colors.0.availableLength', null)
+            ->assertJsonPath('data.colors.1.name', 'Maroon')
+            ->assertJsonPath('data.colors.1.availableLength', null);
+
+        $this->withToken($token)->getJson('/api/sales-agent/inventory')
+            ->assertOk()
+            ->assertJsonPath('data.0.colorTrackingMode', Cloth::COLOR_TRACKING_DISPLAY_ONLY)
+            ->assertJsonPath('data.0.availableLength', '10')
+            ->assertJsonPath('data.0.colors.0.color', 'Navy')
+            ->assertJsonPath('data.0.colors.0.length', null);
+    }
+
+    public function test_per_suit_mobile_sale_uses_default_cut_length_and_fixed_suit_price(): void
+    {
+        [$owner, $agent] = $this->businessUsers();
+        [$cloth, $color] = $this->stock($owner);
+        $cloth->update([
+            'sale_price' => 1200,
+            'suit_sale_price' => 1200,
+            'default_sale_length' => 4.5,
+            'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
+        ]);
+        $customer = Customers::create(['name' => 'Suit Buyer', 'phone_number1' => '', 'user_id' => $owner->id]);
+        $token = $this->login($agent);
+
+        $payload = $this->payload(0, [
+            'customerMode' => 'existing',
+            'customerId' => $customer->id,
+            'customer' => ['name' => $customer->name, 'phone' => ''],
+            'items' => [[
+                'localId' => 'suit-line', 'setCode' => $cloth->set_code,
+                'brandId' => $cloth->cloth_brand_id, 'brand' => $cloth->brand->name,
+                'clothTypeId' => $cloth->cloth_type_id, 'clothType' => $cloth->type->name,
+                'color' => $color->color, 'quantity' => '1', 'length' => '4.5',
+                'unitPrice' => '1200', 'salePriceBasis' => Cloth::SALE_PRICE_PER_SUIT,
+            ]],
+            'payment' => ['method' => 'Cash', 'receivedAmount' => '1200', 'reference' => null],
+        ]);
+
+        $this->withToken($token)->postJson('/api/sales-agent/sessions/per-suit-completion/complete', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.status', SaleSession::STATUS_COMPLETED);
+
+        $this->assertEquals(5.5, (float) $color->fresh()->length);
+        $this->assertDatabaseHas('transactions', ['recivedPayment' => 1200, 'remainingBalance' => 0]);
     }
 
     public function test_manual_sale_selectors_only_return_current_shop_customers_and_stock(): void

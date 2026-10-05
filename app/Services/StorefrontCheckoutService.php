@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ClothColor;
 use App\Models\StorefrontCart;
 use App\Models\StorefrontOrder;
+use App\Models\StorefrontTailoringService;
 use App\Models\StorefrontOrderRefund;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class StorefrontCheckoutService
 {
-    public function __construct(private InventoryService $inventory) {}
+    public function __construct(
+        private InventoryService $inventory,
+        private MeasurementService $measurements,
+    ) {}
 
     public function checkout(
         StorefrontCart $cart,
@@ -54,7 +58,11 @@ class StorefrontCheckoutService
                 ->with(['listing.cloth', 'color'])
                 ->lockForUpdate()
                 ->get();
-            if ($items->isEmpty()) {
+            $tailoringItems = $lockedCart->tailoringItems()
+                ->with(['service.measurementTemplate', 'clothingItem'])
+                ->lockForUpdate()
+                ->get();
+            if ($items->isEmpty() && $tailoringItems->isEmpty()) {
                 throw ValidationException::withMessages(['checkout' => __('storefront.messages.cart_empty')]);
             }
             if ($items->contains(fn ($item) => $item->reserved_until->isPast())) {
@@ -89,7 +97,40 @@ class StorefrontCheckoutService
                 }
             }
 
-            $subtotal = round($items->sum(fn ($item) => $item->line_total), 2);
+            foreach ($tailoringItems as $item) {
+                $validService = $item->service
+                    && $item->service->storefront_id === $storefront->id
+                    && $item->service->is_published
+                    && $item->service->is_available
+                    && $item->service->accepts_inquiries
+                    && in_array($item->measurement_method, $item->service->availableMeasurementMethods(), true);
+                if (! $validService) {
+                    throw ValidationException::withMessages(['checkout' => __('storefront.messages.tailoring_changed')]);
+                }
+                if ($item->measurement_method === StorefrontTailoringService::MEASUREMENT_EXISTING_PROFILE) {
+                    $missing = $this->measurements->missingRequiredMeasurements(
+                        $lockedCart->customer,
+                        $ownerId,
+                        $item->service->measurementTemplate,
+                    );
+                    if ($missing->isNotEmpty()) {
+                        throw ValidationException::withMessages([
+                            'checkout' => __('storefront.messages.saved_measurements_missing', ['fields' => $missing->implode('، ')]),
+                        ]);
+                    }
+                } elseif ($item->measurement_method === StorefrontTailoringService::MEASUREMENT_STANDARD_SIZE
+                    && (! $item->standard_measurement_profile_id || empty($item->measurement_values))) {
+                    throw ValidationException::withMessages([
+                        'checkout' => __('storefront.messages.select_standard_size'),
+                    ]);
+                }
+            }
+
+            $subtotal = round(
+                $items->sum(fn ($item) => $item->line_total)
+                + $tailoringItems->sum(fn ($item) => $item->line_total),
+                2
+            );
             $order = StorefrontOrder::create([
                 'storefront_id' => $storefront->id,
                 'storefront_cart_id' => $lockedCart->id,
@@ -115,6 +156,7 @@ class StorefrontCheckoutService
                 'placed_at' => now(),
             ]);
 
+            $clothingOrderItemIds = [];
             foreach ($items as $cartItem) {
                 $color = $lockedColors->get($cartItem->cloth_color_id);
                 $cost = (float) $color->average_unit_cost ?: (float) $cartItem->listing->cloth->price;
@@ -123,13 +165,14 @@ class StorefrontCheckoutService
                     'cloth_id' => $cartItem->listing->cloth_id,
                     'cloth_color_id' => $color->id,
                     'item_name' => $cartItem->listing->display_name,
-                    'color' => $color->color,
+                    'color' => $cartItem->selected_color ?: ($cartItem->listing->cloth->tracksColors() ? $color->color : ''),
                     'quantity' => $cartItem->quantity,
                     'unit_price' => $cartItem->unit_price_snapshot,
                     'line_total' => $cartItem->line_total,
                     'cost_per_meter' => $cost,
                     'cost_total' => round($cost * (float) $cartItem->quantity, 2),
                 ]);
+                $clothingOrderItemIds[$cartItem->id] = $orderItem->id;
                 $this->inventory->issue(
                     $color,
                     (float) $cartItem->quantity,
@@ -138,6 +181,34 @@ class StorefrontCheckoutService
                     'Storefront order '.$order->reference,
                     $cost
                 );
+            }
+
+            foreach ($tailoringItems as $cartItem) {
+                $measurementRows = $cartItem->measurement_values ?: [];
+                if ($cartItem->measurement_method === StorefrontTailoringService::MEASUREMENT_EXISTING_PROFILE) {
+                    $measurementRows = $this->measurements->measurementRows(
+                        $lockedCart->customer,
+                        $ownerId,
+                        $cartItem->service->measurementTemplate,
+                    )->values()->all();
+                }
+                $order->tailoringItems()->create([
+                    'tailoring_service_id' => $cartItem->tailoring_service_id,
+                    'clothing_order_item_id' => $cartItem->clothing_cart_item_id
+                        ? ($clothingOrderItemIds[$cartItem->clothing_cart_item_id] ?? null) : null,
+                    'measurement_template_id' => $cartItem->measurement_template_id,
+                    'standard_measurement_profile_id' => $cartItem->standard_measurement_profile_id,
+                    'service_name' => $cartItem->service->localizedName(),
+                    'measurement_method' => $cartItem->measurement_method,
+                    'standard_size' => $cartItem->standard_size,
+                    'quantity' => $cartItem->quantity,
+                    'unit_price' => $cartItem->unit_price_snapshot,
+                    'line_total' => $cartItem->line_total,
+                    'estimated_days' => $cartItem->service->estimated_days,
+                    'measurement_values' => $measurementRows,
+                    'notes' => $cartItem->notes,
+                    'preferred_date' => $cartItem->preferred_date,
+                ]);
             }
 
             $transaction = Transaction::create([
@@ -151,8 +222,9 @@ class StorefrontCheckoutService
             $order->update(['transaction_id' => $transaction->id]);
             $lockedCart->update(['checked_out_at' => now(), 'last_activity_at' => now()]);
             $lockedCart->items()->delete();
+            $lockedCart->tailoringItems()->delete();
 
-            return $order->fresh(['customer', 'items']);
+            return $order->fresh(['customer', 'items', 'tailoringItems']);
         }, 3);
 
         return [$order, $trackingToken];
@@ -184,6 +256,12 @@ class StorefrontCheckoutService
             if ($status === StorefrontOrder::STATUS_COMPLETE) {
                 if ($lockedOrder->status !== StorefrontOrder::STATUS_CONFIRMED) {
                     throw ValidationException::withMessages(['status' => 'آرڈر مکمل کرنے سے پہلے اس کی تصدیق کریں۔']);
+                }
+                if ($lockedOrder->payment_method === StorefrontOrder::PAYMENT_COD
+                    && (float) $lockedOrder->balance_amount > 0) {
+                    throw ValidationException::withMessages([
+                        'status' => 'کیش آن ڈیلیوری آرڈر مکمل کرنے سے پہلے وصول شدہ رقم درج کریں۔',
+                    ]);
                 }
                 $lockedOrder->update([
                     'status' => StorefrontOrder::STATUS_COMPLETE,
@@ -241,6 +319,54 @@ class StorefrontCheckoutService
             ]);
 
             return $lockedOrder;
+        }, 3);
+    }
+
+    public function collectOutstandingPayment(
+        StorefrontOrder $order,
+        int $collectedByUserId,
+        ?string $reference = null,
+        ?string $notes = null,
+    ): StorefrontOrder {
+        return DB::transaction(function () use ($order, $collectedByUserId, $reference, $notes) {
+            $lockedOrder = StorefrontOrder::query()->lockForUpdate()->findOrFail($order->id);
+            if ($lockedOrder->status !== StorefrontOrder::STATUS_CONFIRMED) {
+                throw ValidationException::withMessages([
+                    'payment_collection' => 'رقم وصول کرنے سے پہلے آرڈر کی تصدیق کریں۔',
+                ]);
+            }
+            if (! in_array($lockedOrder->payment_method, [
+                StorefrontOrder::PAYMENT_COD,
+                StorefrontOrder::PAYMENT_UNPAID,
+            ], true)) {
+                throw ValidationException::withMessages([
+                    'payment_collection' => 'اس ادائیگی طریقے کی رقم الگ تصدیقی عمل سے درج ہوتی ہے۔',
+                ]);
+            }
+            $amount = round((float) $lockedOrder->balance_amount, 2);
+            if ($amount <= 0 || $lockedOrder->payment_collected_at) {
+                throw ValidationException::withMessages([
+                    'payment_collection' => 'اس آرڈر کی رقم پہلے ہی وصول یا ایڈجسٹ ہو چکی ہے۔',
+                ]);
+            }
+
+            $transaction = Transaction::query()->lockForUpdate()->findOrFail($lockedOrder->transaction_id);
+            $transaction->update([
+                'recivedPayment' => round((float) $transaction->recivedPayment + $amount, 2),
+                'remainingBalance' => max(0, round((float) $transaction->remainingBalance - $amount, 2)),
+                'comment' => trim(($transaction->comment ? $transaction->comment.' · ' : '')
+                    .'آرڈر رقم وصول '.($reference ?: 'نقد')),
+            ]);
+            $lockedOrder->update([
+                'paid_amount' => round((float) $lockedOrder->paid_amount + $amount, 2),
+                'balance_amount' => 0,
+                'payment_collected_at' => now(),
+                'payment_collected_by_user_id' => $collectedByUserId,
+                'payment_collection_reference' => $reference,
+                'payment_collection_notes' => $notes,
+            ]);
+
+            return $lockedOrder->fresh();
         }, 3);
     }
 

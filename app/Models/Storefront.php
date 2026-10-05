@@ -20,15 +20,72 @@ class Storefront extends Model
         'business_id',
         'slug',
         'display_name',
+        'display_name_ur',
+        'display_name_en',
         'tagline',
+        'tagline_ur',
+        'tagline_en',
         'description',
+        'description_ur',
+        'description_en',
         'public_phone',
         'public_email',
         'address',
+        'address_ur',
+        'address_en',
         'city',
+        'city_ur',
+        'city_en',
         'default_locale',
         'logo_path',
         'cover_path',
+        'hero_video_path',
+        'hero_video_poster_path',
+        'hero_title_ur',
+        'hero_title_en',
+        'hero_text_ur',
+        'hero_text_en',
+        'announcement_ur',
+        'announcement_en',
+        'theme_primary_color',
+        'theme_accent_color',
+        'theme_background_color',
+        'theme_surface_color',
+        'theme_text_color',
+        'font_style',
+        'hero_layout',
+        'hero_alignment',
+        'hero_overlay_strength',
+        'hero_height',
+        'hero_media_type',
+        'hero_media_fit',
+        'hero_media_position',
+        'hero_text_animation',
+        'corner_style',
+        'product_columns',
+        'product_columns_tablet',
+        'product_columns_mobile',
+        'product_image_ratio',
+        'show_product_brand',
+        'show_product_category',
+        'show_product_stock',
+        'header_layout',
+        'sticky_header',
+        'show_nav_categories',
+        'show_nav_brands',
+        'show_featured_products',
+        'show_benefits',
+        'show_services',
+        'show_about',
+        'navigation_links',
+        'footer_style',
+        'footer_text_ur',
+        'footer_text_en',
+        'facebook_url',
+        'instagram_url',
+        'tiktok_url',
+        'youtube_url',
+        'whatsapp_number',
         'show_clothing',
         'show_tailoring',
         'inquiries_enabled',
@@ -108,6 +165,21 @@ class Storefront extends Model
             'pickup_enabled' => 'boolean',
             'delivery_enabled' => 'boolean',
             'is_published' => 'boolean',
+            'show_nav_categories' => 'boolean',
+            'show_nav_brands' => 'boolean',
+            'show_featured_products' => 'boolean',
+            'show_benefits' => 'boolean',
+            'show_services' => 'boolean',
+            'show_about' => 'boolean',
+            'hero_overlay_strength' => 'integer',
+            'product_columns' => 'integer',
+            'product_columns_tablet' => 'integer',
+            'product_columns_mobile' => 'integer',
+            'show_product_brand' => 'boolean',
+            'show_product_category' => 'boolean',
+            'show_product_stock' => 'boolean',
+            'sticky_header' => 'boolean',
+            'navigation_links' => 'array',
             'published_at' => 'datetime',
             'moderated_at' => 'datetime',
         ];
@@ -118,9 +190,40 @@ class Storefront extends Model
         return $this->belongsTo(Business::class);
     }
 
+    public function localized(string $field, ?string $locale = null): ?string
+    {
+        $locale = in_array($locale ?: app()->getLocale(), ['ur', 'en'], true)
+            ? ($locale ?: app()->getLocale())
+            : ($this->default_locale ?: 'ur');
+
+        return $this->getAttribute($field.'_'.$locale)
+            ?: $this->getAttribute($field)
+            ?: $this->getAttribute($field.'_'.($locale === 'ur' ? 'en' : 'ur'));
+    }
+
+    public function localizedName(?string $locale = null): string
+    {
+        return $this->localized('display_name', $locale) ?: $this->display_name;
+    }
+
     public function clothingListings()
     {
         return $this->hasMany(StorefrontClothingListing::class);
+    }
+
+    public function collections()
+    {
+        return $this->hasMany(StorefrontCollection::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function menuItems()
+    {
+        return $this->hasMany(StorefrontMenuItem::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function heroSlides()
+    {
+        return $this->hasMany(StorefrontHeroSlide::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function tailoringServices()
@@ -213,6 +316,11 @@ class Storefront extends Model
         ]));
     }
 
+    public function acceptedUnifiedOrderPaymentMethods(): array
+    {
+        return $this->acceptedPaymentMethods() + $this->acceptedInquiryPaymentMethods();
+    }
+
     public function tailoringInquiriesEnabled(): bool
     {
         return $this->moduleSetting('tailoring_inquiries_enabled', 'inquiries_enabled');
@@ -275,6 +383,16 @@ class Storefront extends Model
     public function getCoverUrlAttribute(): ?string
     {
         return $this->publicAssetUrl($this->cover_path);
+    }
+
+    public function getHeroVideoUrlAttribute(): ?string
+    {
+        return $this->publicAssetUrl($this->hero_video_path);
+    }
+
+    public function getHeroVideoPosterUrlAttribute(): ?string
+    {
+        return $this->publicAssetUrl($this->hero_video_poster_path);
     }
 
     public function getRaastQrUrlAttribute(): ?string

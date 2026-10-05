@@ -6,9 +6,6 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/66712576-1847-4f96-b6e2-7aa8013568de"
-    },
     "scheme": "buynstitch-sales",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -60,9 +57,14 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "66712576-1847-4f96-b6e2-7aa8013568de"
+        "projectId": "d996dab7-9ef3-4aad-8d70-9d3d45a46b2b"
       }
     },
-    "owner": "asjadnaveed"
+    "owner": "hkhan.swa",
+    "updates": {
+      "url": "https://u.expo.dev/d996dab7-9ef3-4aad-8d70-9d3d45a46b2b",
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

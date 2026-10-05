@@ -8,7 +8,8 @@
     .cloth-form-card{overflow:hidden;border:1px solid var(--cc-line);border-radius:15px;background:#fff;box-shadow:0 8px 28px rgba(28,62,104,.06)}.cloth-form-section{padding:25px 28px;border-bottom:1px solid var(--cc-line)}.cloth-section-heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:20px}.cloth-section-number{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:10px;background:#eaf2ff;color:var(--cc-blue);font:800 .92rem Arial,sans-serif}.cloth-section-heading h2{margin:0 0 4px;font-size:1.08rem;font-weight:800}.cloth-section-heading p{margin:0;color:var(--cc-muted);font-size:.86rem}.cloth-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.cloth-field{margin:0}.cloth-field.is-wide{grid-column:1/-1}.cloth-field label{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;color:#273b57;font-weight:800}.cloth-required{color:#dc3545}.cloth-field .form-control{min-height:47px;border:1px solid #d5dfeb;border-radius:9px;background:#fff;color:var(--cc-ink);box-shadow:none}.cloth-field .form-control:focus{border-color:#70a6ff;box-shadow:0 0 0 3px rgba(23,105,239,.1)}.cloth-field small{display:block;margin-top:6px;color:var(--cc-muted);line-height:1.8}.cloth-error{margin-top:6px;color:#c93643;font-size:.82rem;font-weight:700}.cloth-color-picker{display:grid;grid-template-columns:minmax(190px,.35fr) minmax(0,1fr);gap:10px}.cloth-price-wrap{position:relative}.cloth-price-wrap .form-control{direction:ltr;padding-left:48px;text-align:left}.cloth-price-prefix{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#8795a8;font:700 .8rem Arial,sans-serif}
     .cloth-toolbar-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 13px}.cloth-toolbar-row p{margin:0;color:var(--cc-muted);font-size:.84rem}.cloth-add-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:39px;padding:7px 13px;border:1px solid #bcd2f7;border-radius:8px;background:#f4f8ff;color:#1769ef;font-weight:800}.cloth-add-btn:hover{background:#eaf2ff}.cloth-entry-list{display:grid;gap:10px}.cloth-entry-empty{padding:22px;border:1px dashed #cbd7e7;border-radius:11px;background:#fafcff;color:#7d8ca0;text-align:center}.cloth-entry-empty i{display:block;margin-bottom:7px;color:#aab8ca;font-size:22px}.cloth-entry{display:grid;grid-template-columns:42px minmax(0,1fr) minmax(0,1fr) 38px;align-items:end;gap:12px;padding:14px;border:1px solid #e2e9f2;border-radius:11px;background:#fbfcfe}.cloth-entry-index{display:grid;place-items:center;width:32px;height:32px;margin-bottom:7px;border-radius:8px;background:#edf3fb;color:#526985;font:800 .82rem Arial,sans-serif}.cloth-entry-field label{display:block;margin-bottom:6px;color:#53647b;font-size:.78rem;font-weight:800}.cloth-entry-field .form-control{min-height:42px;border-color:#d8e1ec;border-radius:8px}.cloth-entry-remove{display:grid;place-items:center;width:38px;height:38px;margin-bottom:2px;border:1px solid #f0cbd0;border-radius:8px;background:#fff6f7;color:#d14350}.cloth-entry-remove:hover{background:#ffebed}.cloth-media-entry{grid-template-columns:42px minmax(0,1.35fr) minmax(190px,.65fr) 38px}.cloth-file-input{height:auto!important;padding:7px!important;direction:ltr;text-align:left;font-family:Arial,sans-serif;font-size:.82rem}
     .cloth-form-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:19px 28px;background:#fbfcfe}.cloth-form-actions small{color:var(--cc-muted)}.cloth-action-buttons{display:flex;gap:10px}.cloth-save-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:150px;min-height:45px;border:0;border-radius:9px;background:linear-gradient(135deg,#1769ef,#287fff);color:#fff;font-weight:800;box-shadow:0 8px 20px rgba(23,105,239,.2)}.cloth-save-btn:hover{color:#fff;background:#135fdc}.cloth-cancel-btn{display:inline-flex;align-items:center;justify-content:center;min-height:45px;padding:9px 17px;border:1px solid var(--cc-line);border-radius:9px;background:#fff;color:#58697e!important;font-weight:700}
-    @media(max-width:767.98px){.cloth-create-page{padding-top:18px}.cloth-create-shell{padding:0 12px}.cloth-create-header{align-items:stretch;flex-direction:column}.cloth-back-link{align-self:flex-start}.cloth-form-section{padding:20px 16px}.cloth-field-grid,.cloth-color-picker{grid-template-columns:1fr}.cloth-field.is-wide{grid-column:auto}.cloth-toolbar-row{align-items:stretch;flex-direction:column}.cloth-add-btn{width:100%}.cloth-entry,.cloth-media-entry{grid-template-columns:34px 1fr 38px}.cloth-entry-index{grid-column:1;grid-row:1}.cloth-entry-field{grid-column:1/-1}.cloth-entry-remove{grid-column:3;grid-row:1}.cloth-form-actions{align-items:stretch;flex-direction:column;padding:16px}.cloth-action-buttons{flex-direction:column}.cloth-save-btn,.cloth-cancel-btn{width:100%}}
+    .cloth-availability-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.cloth-availability-option{position:relative;display:block;margin:0;padding:17px 18px 17px 50px;border:2px solid var(--cc-line);border-radius:13px;background:#fff;cursor:pointer}.cloth-availability-option:has(input:checked){border-color:var(--cc-blue);background:#f3f7ff}.cloth-availability-option input{position:absolute;left:18px;top:20px}.cloth-availability-option strong,.cloth-availability-option span{display:block}.cloth-availability-option span{margin-top:4px;color:var(--cc-muted);font-size:.84rem;line-height:1.7}.cloth-availability-option.is-disabled{cursor:not-allowed;opacity:.58}
+    @media(max-width:767.98px){.cloth-create-page{padding-top:18px}.cloth-create-shell{padding:0 12px}.cloth-create-header{align-items:stretch;flex-direction:column}.cloth-back-link{align-self:flex-start}.cloth-form-section{padding:20px 16px}.cloth-field-grid,.cloth-color-picker,.cloth-availability-grid{grid-template-columns:1fr}.cloth-field.is-wide{grid-column:auto}.cloth-toolbar-row{align-items:stretch;flex-direction:column}.cloth-add-btn{width:100%}.cloth-entry,.cloth-media-entry{grid-template-columns:34px 1fr 38px}.cloth-entry-index{grid-column:1;grid-row:1}.cloth-entry-field{grid-column:1/-1}.cloth-entry-remove{grid-column:3;grid-row:1}.cloth-form-actions{align-items:stretch;flex-direction:column;padding:16px}.cloth-action-buttons{flex-direction:column}.cloth-save-btn,.cloth-cancel-btn{width:100%}}
 </style>
 @endpush
 
@@ -24,14 +25,17 @@
     <form id="clothCreateForm" action="{{ route('admin.cloth.store') }}" method="post" enctype="multipart/form-data" class="cloth-form-card">
         @csrf
         <section class="cloth-form-section">
-            <div class="cloth-section-heading"><span class="cloth-section-number">1</span><div><h2>کپڑے کی بنیادی معلومات</h2><p>قسم، برانڈ اور فی میٹر قیمت درج کریں</p></div></div>
+            <div class="cloth-section-heading"><span class="cloth-section-number">1</span><div><h2>کپڑے کی بنیادی معلومات</h2><p>قسم، برانڈ، ڈیفالٹ سوٹ لمبائی اور فروخت کا ریٹ درج کریں</p></div></div>
             <div class="cloth-field-grid">
                 <div class="cloth-field"><label for="cloth_type_id">کپڑے کی قسم <span class="cloth-required">*</span></label><select id="cloth_type_id" name="cloth_type_id" class="form-control" required><option value="">قسم منتخب کریں</option>@foreach($cloth_types as $cloth_type)<option value="{{ $cloth_type->id }}" @selected(old('cloth_type_id') == $cloth_type->id)>{{ $cloth_type->name }}</option>@endforeach</select>@error('cloth_type_id')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field"><label for="cloth_brand_id">برانڈ / کمپنی <span class="cloth-required">*</span></label><select id="cloth_brand_id" name="cloth_brand_id" class="form-control" required><option value="">برانڈ منتخب کریں</option>@foreach($cloth_brands as $cloth_brand)<option value="{{ $cloth_brand->id }}" @selected(old('cloth_brand_id') == $cloth_brand->id)>{{ $cloth_brand->name }}</option>@endforeach</select>@error('cloth_brand_id')<div class="cloth-error">{{ $message }}</div>@enderror</div>
-                <div class="cloth-field is-wide"><label for="color_tracking_mode">رنگ کے حساب سے اسٹاک <span class="cloth-required">*</span></label><select id="color_tracking_mode" name="color_tracking_mode" class="form-control" required><option value="none" @selected(old('color_tracking_mode', 'none') === 'none')>نہیں — پورے سیٹ کی ایک مجموعی مقدار</option><option value="per_color" @selected(old('color_tracking_mode') === 'per_color')>ہاں — ہر رنگ کی مقدار الگ</option></select><small>یہ انتخاب فروخت کا اصول طے کرے گا: رنگ والا سیٹ فروخت کرتے وقت رنگ لازمی ہوگا، جبکہ بغیر رنگ والے سیٹ میں رنگ کا انتخاب نظر نہیں آئے گا۔</small>@error('color_tracking_mode')<div class="cloth-error">{{ $message }}</div>@enderror</div>
+                <div class="cloth-field is-wide"><label for="color_tracking_mode">رنگ اور اسٹاک کا طریقہ <span class="cloth-required">*</span></label><select id="color_tracking_mode" name="color_tracking_mode" class="form-control" required><option value="none" @selected(old('color_tracking_mode', 'none') === 'none')>کوئی رنگ نہیں — پورے سیٹ کی ایک مجموعی مقدار</option><option value="display_only" @selected(old('color_tracking_mode') === 'display_only')>رنگ دکھائیں — انتخاب لازم، مگر اسٹاک مجموعی</option><option value="per_color" @selected(old('color_tracking_mode') === 'per_color')>رنگ دکھائیں اور ہر رنگ کا اسٹاک الگ رکھیں</option></select><small>آن لائن دستیابی الگ ترتیب ہے۔ درمیانی انتخاب میں گاہک رنگ منتخب کرے گا، مگر ہر فروخت پورے سیٹ کے مشترکہ اسٹاک سے کم ہوگی۔</small>@error('color_tracking_mode')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field is-wide" id="trackedColorFields"><label for="colors">دستیاب رنگ <span class="cloth-required">*</span></label><div class="cloth-color-picker"><select id="colorPreset" class="form-control" aria-label="محفوظ رنگ منتخب کریں"><option value="">فہرست سے رنگ شامل کریں</option><option value="سفید">سفید</option><option value="کالا">کالا</option><option value="نیلا">نیلا</option><option value="سرمئی">سرمئی</option><option value="بھورا">بھورا</option><option value="سبز">سبز</option><option value="سرخ">سرخ</option><option value="کریم">کریم</option><option value="خاکی">خاکی</option><option value="میرون">میرون</option></select><input id="colors" type="text" name="colors" class="form-control" value="{{ old('colors') }}" placeholder="رنگ درج کریں، مثلاً سفید، کالا، نیلا" autocomplete="off"></div><small><i class="fas fa-info-circle ml-1"></i>ہر درج شدہ رنگ کے لیے الگ اسٹاک مقدار بنے گی۔</small>@error('colors')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field"><label for="price">فی میٹر قیمت خرید <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="price" type="number" name="price" class="form-control" value="{{ old('price') }}" min="0" step="0.01" placeholder="0.00" required inputmode="decimal"></div>@error('price')<div class="cloth-error">{{ $message }}</div>@enderror</div>
-                <div class="cloth-field"><label for="sale_price">فی میٹر قیمت فروخت <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="sale_price" type="number" name="sale_price" class="form-control" value="{{ old('sale_price') }}" min="0" step="0.01" placeholder="0.00" required inputmode="decimal"></div>@error('sale_price')<div class="cloth-error">{{ $message }}</div>@enderror</div>
+                <div class="cloth-field"><label for="sale_price_basis">فروخت کے ریٹ کی بنیاد <span class="cloth-required">*</span></label><select id="sale_price_basis" name="sale_price_basis" class="form-control" required><option value="per_meter" @selected(old('sale_price_basis', 'per_meter') === 'per_meter')>فی میٹر</option><option value="per_suit" @selected(old('sale_price_basis') === 'per_suit')>فی سوٹ</option></select><small>فی سوٹ منتخب کرنے پر ایک سوٹ کی قیمت درج ہوگی؛ اسٹاک پھر بھی اصل میٹر کے مطابق کم ہوگا۔</small>@error('sale_price_basis')<div class="cloth-error">{{ $message }}</div>@enderror</div>
+                <div class="cloth-field"><label for="default_sale_length">ڈیفالٹ سوٹ لمبائی (میٹر)</label><input id="default_sale_length" type="number" name="default_sale_length" class="form-control" value="{{ old('default_sale_length') }}" min="0.01" step="0.01" placeholder="مثلاً 4 یا 4.5" inputmode="decimal"><small>QR اسکین پر یہی لمبائی خود بھرے گی؛ سیلز ایجنٹ یا ایڈمن اسے تبدیل کر سکتا ہے۔</small>@error('default_sale_length')<div class="cloth-error">{{ $message }}</div>@enderror</div>
+                <div class="cloth-field"><label for="sale_price">فی میٹر قیمت فروخت <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="sale_price" type="number" name="sale_price" class="form-control" value="{{ old('sale_price') }}" min="0" step="0.01" placeholder="0.00" required inputmode="decimal"></div><small>آن لائن میٹر آرڈر اور POS کے فی میٹر انتخاب کے لیے استعمال ہوگی۔</small>@error('sale_price')<div class="cloth-error">{{ $message }}</div>@enderror</div>
+                <div id="suitSalePriceField" class="cloth-field"><label for="suit_sale_price">فی سوٹ قیمت فروخت <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="suit_sale_price" type="number" name="suit_sale_price" class="form-control" value="{{ old('suit_sale_price') }}" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div><small>سیلز ایجنٹ یا POS پر ایک مکمل سوٹ کی قیمت۔</small>@error('suit_sale_price')<div class="cloth-error">{{ $message }}</div>@enderror</div>
             </div>
         </section>
 
@@ -47,6 +51,28 @@
             <div class="cloth-toolbar-row"><p>واضح تصویر گاہک اور عملے کے لیے کپڑا پہچاننا آسان بناتی ہے۔</p><div><button type="button" id="addMoreImages" class="cloth-add-btn ml-2"><i class="fas fa-image"></i> تصویر شامل کریں</button><button type="button" id="addMoreVideos" class="cloth-add-btn"><i class="fas fa-video"></i> ویڈیو شامل کریں</button></div></div>
             @error('images')<div class="cloth-error mb-2">{{ $message }}</div>@enderror @error('videos')<div class="cloth-error mb-2">{{ $message }}</div>@enderror
             <div id="mediaUploads" class="cloth-entry-list"><div class="cloth-entry-empty"><i class="fas fa-photo-video"></i>تصویر یا ویڈیو شامل کرنا ضروری نہیں</div></div>
+        </section>
+
+        <section class="cloth-form-section">
+            <div class="cloth-section-heading"><span class="cloth-section-number">4</span><div><h2>فروخت کی دستیابی</h2><p>طے کریں کہ یہ کپڑا صرف دکان کے POS میں فروخت ہوگا یا گاہک آن لائن بھی آرڈر کر سکیں گے۔</p></div></div>
+            <div class="cloth-availability-grid">
+                <label class="cloth-availability-option">
+                    <input type="radio" name="online_availability" value="pos_only" @checked(old('online_availability', 'pos_only') === 'pos_only')>
+                    <strong><i class="fas fa-cash-register ml-1"></i> صرف POS / دکان کی فروخت</strong>
+                    <span>اسٹاک کاؤنٹر سیل اور سیلز ایجنٹ ایپ میں دستیاب ہوگا، مگر عوامی آن لائن دکان پر نظر نہیں آئے گا۔</span>
+                </label>
+                <label class="cloth-availability-option {{ $canConfigureOnline ? '' : 'is-disabled' }}">
+                    <input type="radio" name="online_availability" value="online_order" @checked(old('online_availability') === 'online_order') @disabled(! $canConfigureOnline)>
+                    <strong><i class="fas fa-globe ml-1"></i> POS اور آن لائن آرڈر</strong>
+                    <span>یہ کپڑا عوامی کیٹلاگ میں شائع ہوگا، موجودہ اسٹاک دکھائے گا اور گاہک اسے کارٹ میں شامل کر سکیں گے۔</span>
+                </label>
+            </div>
+            @error('online_availability')<div class="cloth-error">{{ $message }}</div>@enderror
+            @if(!$canConfigureOnline)
+                <div class="cloth-setup-note cloth-alert-warning mt-3 mb-0"><i class="fas fa-info-circle"></i><div><strong>آن لائن انتخاب ابھی دستیاب نہیں</strong><p>@if(!$storefront) پہلے <a href="{{ route('admin.storefront.edit') }}">آن لائن دکان بنائیں</a>۔@elseif(!$storefront->show_clothing) آن لائن دکان کی ترتیب میں کپڑے کا شعبہ فعال کریں۔@else آپ کے موجودہ کردار کو آن لائن دکان کی مصنوعات تبدیل کرنے کی اجازت نہیں ہے۔@endif</p></div></div>
+            @elseif(!$storefront->is_published)
+                <div class="cloth-setup-note mt-3 mb-0"><i class="fas fa-info-circle"></i><div><strong>دکان ابھی مسودہ ہے</strong><p>کپڑا آن لائن فہرست کے لیے تیار ہو جائے گا، مگر دکان شائع ہونے کے بعد ہی عوام کو نظر آئے گا۔</p></div></div>
+            @endif
         </section>
 
         <footer class="cloth-form-actions"><small><span class="cloth-required">*</span> والی معلومات لازمی ہیں</small><div class="cloth-action-buttons"><a href="{{ route('admin.cloth.index') }}" class="cloth-cancel-btn">منسوخ کریں</a><button type="submit" class="cloth-save-btn"><i class="fas fa-check"></i> کپڑا محفوظ کریں</button></div></footer>
@@ -65,11 +91,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const lengths = document.getElementById('lengthUploads');
     const media = document.getElementById('mediaUploads');
     const lengthHelp = document.getElementById('lengthHelp');
+    const salePriceBasis = document.getElementById('sale_price_basis');
+    const defaultSaleLength = document.getElementById('default_sale_length');
+    const suitSalePriceField = document.getElementById('suitSalePriceField');
+    const suitSalePrice = document.getElementById('suit_sale_price');
     const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     const enteredColors = () => [...new Set(colorsInput.value.split(/[,،]/).map(color => color.trim()).filter(Boolean))];
-    const colors = () => trackingMode.value === 'per_color' ? enteredColors() : ['عام'];
+    const selectableColors = () => trackingMode.value === 'none' ? ['عام'] : enteredColors();
+    const stockColors = () => trackingMode.value === 'per_color' ? enteredColors() : ['عام'];
     const emptyState = (icon, text) => `<div class="cloth-entry-empty"><i class="fas ${icon}"></i>${text}</div>`;
-    const optionList = () => colors().map(color => `<option value="${escapeHtml(color)}">${escapeHtml(color)}</option>`).join('');
+    const optionList = () => selectableColors().map(color => `<option value="${escapeHtml(color)}">${escapeHtml(color)}</option>`).join('');
 
     function syncLengthRows() {
         const current = {};
@@ -77,18 +108,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const oldLengths = JSON.parse(lengths.dataset.oldLengths || '[]');
         const oldColors = JSON.parse(lengths.dataset.oldColors || '[]');
         oldColors.forEach((color, index) => { if (current[color] === undefined) current[color] = oldLengths[index] || ''; });
-        const availableColors = colors();
+        const availableColors = stockColors();
         lengths.innerHTML = availableColors.length ? '' : emptyState('fa-ruler-combined', 'پہلے اوپر دستیاب رنگ درج کریں');
         availableColors.forEach((color, index) => {
             const row = document.createElement('div'); row.className = 'cloth-entry';
             row.innerHTML = `<span class="cloth-entry-index">${index + 1}</span><div class="cloth-entry-field"><label>${trackingMode.value === 'per_color' ? 'رنگ' : 'اسٹاک'}</label><input type="text" class="form-control" value="${trackingMode.value === 'per_color' ? escapeHtml(color) : 'پورا سیٹ'}" readonly><input type="hidden" name="length_colors[]" value="${escapeHtml(color)}"></div><div class="cloth-entry-field"><label>افتتاحی لمبائی (میٹر)</label><input type="number" name="length[]" class="form-control" min="0" step="0.01" value="${escapeHtml(current[color] ?? '0')}" placeholder="0.00" inputmode="decimal"></div><span></span>`;
             lengths.appendChild(row);
         });
-        lengthHelp.textContent = trackingMode.value === 'per_color' ? `${availableColors.length} رنگوں کے لیے لمبائی درج کریں۔` : 'پورے سیٹ کی مجموعی افتتاحی لمبائی درج کریں۔';
+        lengthHelp.textContent = trackingMode.value === 'per_color' ? `${availableColors.length} رنگوں کے لیے الگ لمبائی درج کریں۔` : 'پورے سیٹ کی ایک مجموعی افتتاحی لمبائی درج کریں۔';
     }
 
     function addMediaRow(type) {
-        if (!colors().length) { colorsInput.focus(); lengthHelp.textContent = 'تصویر یا ویڈیو سے پہلے کم از کم ایک رنگ درج کریں۔'; return; }
+        if (!selectableColors().length) { colorsInput.focus(); lengthHelp.textContent = 'تصویر یا ویڈیو سے پہلے کم از کم ایک رنگ درج کریں۔'; return; }
         media.querySelector('.cloth-entry-empty')?.remove();
         const isImage = type === 'image';
         const row = document.createElement('div'); row.className = 'cloth-entry cloth-media-entry';
@@ -114,21 +145,29 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function syncTrackingMode() {
-        const tracked = trackingMode.value === 'per_color';
-        trackedColorFields.hidden = !tracked;
-        colorsInput.required = tracked;
-        if (!tracked) colorsInput.value = '';
+        const hasColors = trackingMode.value !== 'none';
+        trackedColorFields.hidden = !hasColors;
+        colorsInput.required = hasColors;
+        if (!hasColors) colorsInput.value = '';
         if (lengths.querySelector('.cloth-entry')) syncLengthRows();
     }
+    function syncSalePricing() {
+        const perSuit = salePriceBasis.value === 'per_suit';
+        defaultSaleLength.required = perSuit;
+        suitSalePrice.required = perSuit;
+        suitSalePriceField.hidden = !perSuit;
+    }
     trackingMode.addEventListener('change', syncTrackingMode);
+    salePriceBasis.addEventListener('change', syncSalePricing);
 
     document.getElementById('syncLengths').addEventListener('click', syncLengthRows);
     colorsInput.addEventListener('blur', function () { if (enteredColors().length) syncLengthRows(); });
     document.getElementById('addMoreImages').addEventListener('click', () => addMediaRow('image'));
     document.getElementById('addMoreVideos').addEventListener('click', () => addMediaRow('video'));
-    document.getElementById('clothCreateForm').addEventListener('submit', function (event) { if (trackingMode.value === 'per_color' && !enteredColors().length) { event.preventDefault(); colorsInput.focus(); return; } if (!lengths.querySelector('[name="length[]"]')) { event.preventDefault(); syncLengthRows(); lengths.scrollIntoView({behavior:'smooth', block:'center'}); } });
+    document.getElementById('clothCreateForm').addEventListener('submit', function (event) { if (trackingMode.value !== 'none' && !enteredColors().length) { event.preventDefault(); colorsInput.focus(); return; } if (!lengths.querySelector('[name="length[]"]')) { event.preventDefault(); syncLengthRows(); lengths.scrollIntoView({behavior:'smooth', block:'center'}); } });
     syncTrackingMode();
-    if (trackingMode.value === 'none' || enteredColors().length) syncLengthRows();
+    syncSalePricing();
+    if (trackingMode.value !== 'per_color' || enteredColors().length) syncLengthRows();
 });
 </script>
 @endpush

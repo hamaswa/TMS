@@ -5,14 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\ClothBrand;
 use App\Models\ClothType;
 use App\Models\Customers;
+use App\Models\MeasurementField;
 use App\Models\Storefront;
 use App\Models\StorefrontClothingListing;
+use App\Models\StorefrontCollection;
 use App\Models\StorefrontInquiry;
 use App\Models\StorefrontOrder;
 use App\Models\StorefrontTailoringService;
 use App\Models\SubscriptionPlan;
 use App\Notifications\NewStorefrontTailoringBookingNotification;
 use App\Services\StorefrontPaymentEvidenceService;
+use App\Services\MeasurementService;
 use App\Support\PakistanPhoneNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -29,11 +32,11 @@ class PublicStorefrontController extends Controller
     {
         $publicQuery = Storefront::query()->publiclyVisible();
         $cities = (clone $publicQuery)
-            ->whereNotNull('city')
-            ->where('city', '!=', '')
-            ->orderBy('city')
+            ->whereNotNull(app()->getLocale() === 'ur' ? 'city_ur' : 'city_en')
+            ->where(app()->getLocale() === 'ur' ? 'city_ur' : 'city_en', '!=', '')
+            ->orderBy(app()->getLocale() === 'ur' ? 'city_ur' : 'city_en')
             ->distinct()
-            ->pluck('city');
+            ->pluck(app()->getLocale() === 'ur' ? 'city_ur' : 'city_en');
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'city' => ['nullable', 'string', 'max:100'],
@@ -66,7 +69,7 @@ class PublicStorefrontController extends Controller
                 ->whereHas('business', fn ($business) => $business->where('clothing_enabled', true)));
         $topProducts = (clone $publicProducts)
             ->with([
-                'storefront:id,business_id,slug,display_name,city',
+                'storefront:id,business_id,slug,display_name,display_name_ur,display_name_en,city,city_ur,city_en',
                 'cloth.brand',
                 'cloth.type',
                 'cloth.images',
@@ -95,12 +98,24 @@ class PublicStorefrontController extends Controller
             ->when($filters['q'] ?? null, function ($query, $term) {
                 $query->where(function ($query) use ($term) {
                     $query->where('display_name', 'like', '%'.$term.'%')
+                        ->orWhere('display_name_ur', 'like', '%'.$term.'%')
+                        ->orWhere('display_name_en', 'like', '%'.$term.'%')
                         ->orWhere('tagline', 'like', '%'.$term.'%')
+                        ->orWhere('tagline_ur', 'like', '%'.$term.'%')
+                        ->orWhere('tagline_en', 'like', '%'.$term.'%')
                         ->orWhere('description', 'like', '%'.$term.'%')
-                        ->orWhere('city', 'like', '%'.$term.'%');
+                        ->orWhere('description_ur', 'like', '%'.$term.'%')
+                        ->orWhere('description_en', 'like', '%'.$term.'%')
+                        ->orWhere('city', 'like', '%'.$term.'%')
+                        ->orWhere('city_ur', 'like', '%'.$term.'%')
+                        ->orWhere('city_en', 'like', '%'.$term.'%');
                 });
             })
-            ->when($filters['city'] ?? null, fn ($query, $city) => $query->where('city', $city))
+            ->when($filters['city'] ?? null, function ($query, $city) {
+                $query->where(function ($query) use ($city) {
+                    $query->where('city', $city)->orWhere('city_ur', $city)->orWhere('city_en', $city);
+                });
+            })
             ->when($filters['delivery'] ?? null, function ($query) {
                 $query->where(function ($delivery) {
                     $delivery->where(function ($tailoring) {
@@ -189,6 +204,7 @@ class PublicStorefrontController extends Controller
 
         $storefront->load([
             'business',
+            'heroSlides' => fn ($query) => $query->currentlyVisible()->with(['primaryCollection', 'secondaryCollection']),
             'clothingListings' => fn ($query) => $query
                 ->where('is_published', true)
                 ->whereHas('cloth', fn ($cloth) => $cloth->where('user_id', $storefront->business->owner_user_id))
@@ -231,7 +247,7 @@ class PublicStorefrontController extends Controller
         $types = ClothType::query()
             ->whereIn('id', $typeIds)
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'name_ur', 'name_en']);
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'color' => ['nullable', 'string', 'max:100'],
@@ -254,9 +270,16 @@ class PublicStorefrontController extends Controller
             ->when($filters['q'] ?? null, function ($query, $term) {
                 $query->where(function ($query) use ($term) {
                     $query->where('public_name', 'like', '%'.$term.'%')
+                        ->orWhere('public_name_ur', 'like', '%'.$term.'%')
+                        ->orWhere('public_name_en', 'like', '%'.$term.'%')
                         ->orWhere('description', 'like', '%'.$term.'%')
+                        ->orWhere('description_ur', 'like', '%'.$term.'%')
+                        ->orWhere('description_en', 'like', '%'.$term.'%')
                         ->orWhereHas('cloth.brand', fn ($brand) => $brand->where('name', 'like', '%'.$term.'%'))
-                        ->orWhereHas('cloth.type', fn ($type) => $type->where('name', 'like', '%'.$term.'%'));
+                        ->orWhereHas('cloth.type', fn ($type) => $type
+                            ->where('name', 'like', '%'.$term.'%')
+                            ->orWhere('name_ur', 'like', '%'.$term.'%')
+                            ->orWhere('name_en', 'like', '%'.$term.'%'));
                 });
             })
             ->when($filters['color'] ?? null, fn ($query, $color) => $query->whereHas(
@@ -315,9 +338,36 @@ class PublicStorefrontController extends Controller
             404
         );
 
+        $canAddStitching = $storefront->show_tailoring
+            && $storefront->tailoringInquiriesEnabled()
+            && $storefront->business->tailoring_enabled
+            && $storefront->tailoringServices()->where('is_published', true)->where('is_available', true)
+                ->where('accepts_inquiries', true)->whereNotNull('price_from')->exists();
+
         return view('storefront.public.clothing.show', [
             'storefront' => $storefront,
             'listing' => $listing->load(['cloth.brand', 'cloth.type', 'cloth.colors', 'cloth.images']),
+            'canAddStitching' => $canAddStitching,
+        ]);
+    }
+
+    public function collection(Storefront $storefront, StorefrontCollection $collection)
+    {
+        $this->ensureClothingVisible($storefront);
+        abort_unless($collection->storefront_id === $storefront->id && $collection->is_published, 404);
+
+        $collection->setRelation('storefront', $storefront->loadMissing('business'));
+        $listings = $collection->resolvedListings()
+            ->with(['cloth.brand', 'cloth.type', 'cloth.colors', 'cloth.images'])
+            ->paginate(12);
+
+        return view('storefront.public.clothing.index', [
+            'storefront' => $storefront,
+            'collection' => $collection,
+            'listings' => $listings,
+            'colors' => collect(),
+            'types' => collect(),
+            'filters' => [],
         ]);
     }
 
@@ -351,7 +401,27 @@ class PublicStorefrontController extends Controller
         $this->ensureTailoringVisible($storefront);
         abort_unless($service->storefront_id === $storefront->id && $service->is_published, 404);
 
-        return view('storefront.public.tailoring.show', compact('storefront', 'service'));
+        $service->load('measurementTemplate.standardProfiles');
+        $systemFields = collect($service->measurementTemplate?->system_fields ?? [])
+            ->mapWithKeys(fn ($key) => isset(MeasurementService::SYSTEM_FIELDS[$key])
+                ? [$key => MeasurementService::SYSTEM_FIELDS[$key]] : []);
+        $customFields = MeasurementField::query()
+            ->where('user_id', $storefront->business->owner_user_id)
+            ->where('is_active', true)
+            ->whereIn('id', array_map('intval', $service->measurementTemplate?->custom_field_ids ?? []))
+            ->orderBy('sort_order')->get();
+
+        $standardProfiles = $service->availableStandardProfiles();
+
+        return view('storefront.public.tailoring.show', compact('storefront', 'service', 'systemFields', 'customFields', 'standardProfiles'));
+    }
+
+    public function legacyTailoringBooking(Storefront $storefront)
+    {
+        $this->ensureTailoringVisible($storefront);
+
+        return redirect()->route('storefront.tailoring.index', $storefront, 303)
+            ->with('inquiry_success', __('storefront.messages.tailoring_booking_moved'));
     }
 
     public function submitInquiry(

@@ -14,7 +14,7 @@
     <div class="container-fluid px-3 px-md-4 py-4" dir="rtl">
         <div class="catalog-hero mb-4 d-flex flex-wrap justify-content-between align-items-center">
             <div><div class="small mb-1">آن لائن دکان</div><h1 class="h3 mb-1">کپڑوں کی عوامی فہرست</h1><p class="mb-0 text-white-50">موجودہ اسٹاک میں سے وہ کپڑے منتخب کریں جو گاہکوں کو دکھانے ہیں۔</p></div>
-            <a href="{{ route('admin.storefront.edit') }}" class="btn btn-light mt-3 mt-md-0">دکان کی ترتیب</a>
+            <div class="mt-3 mt-md-0"><a href="{{ route('admin.storefront.merchandising.index') }}" class="btn btn-warning ml-2">کلیکشن اور مینو</a><a href="{{ route('admin.storefront.edit') }}" class="btn btn-light">دکان کی ترتیب</a></div>
         </div>
 
         @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
@@ -32,14 +32,18 @@
                             @csrf @method('PUT')
                             <input type="hidden" name="product_controls_present" value="1">
                             <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
-                                <div><h2 class="h5 mb-1">{{ $cloth->brand->name ?? 'بغیر برانڈ' }} — {{ $cloth->type->name ?? 'کپڑا' }}</h2><div class="text-muted">{{ $cloth->tracksColors() ? ($cloth->colors->pluck('color')->filter()->implode('، ') ?: 'رنگ درج نہیں') : 'رنگ کے بغیر مجموعی سیٹ' }}</div></div>
+                                <div><h2 class="h5 mb-1">{{ $cloth->brand->name ?? 'بغیر برانڈ' }} — {{ $cloth->type->name ?? 'کپڑا' }}</h2><div class="text-muted">@if($cloth->tracksColors()){{ collect($cloth->selectableColorNames())->implode('، ') ?: 'رنگ درج نہیں' }} — ہر رنگ کا الگ اسٹاک @elseif($cloth->usesDisplayOnlyColors()){{ collect($cloth->selectableColorNames())->implode('، ') }} — مجموعی مشترکہ اسٹاک @else رنگ کے بغیر مجموعی سیٹ @endif</div></div>
                                 <div class="text-left"><span class="stock-pill {{ (float)$cloth->available_length>0?'stock-in':'stock-out' }}">{{ (float)$cloth->available_length>0 ? number_format($cloth->available_length,2).' میٹر دستیاب' : 'اسٹاک ختم' }}</span><div class="mt-2 font-weight-bold">Rs {{ number_format((float)($cloth->sale_price ?: $cloth->price),2) }} فی میٹر</div></div>
                             </div>
+                            <input type="hidden" name="public_name" value="{{ old('public_name',$listing?->public_name) }}">
+                            <input type="hidden" name="description" value="{{ old('description',$listing?->description) }}">
                             <div class="form-row">
-                                <div class="form-group col-md-7"><label>عوامی نام <span class="text-muted">(اختیاری)</span></label><input name="public_name" maxlength="180" class="form-control" value="{{ old('public_name',$listing?->public_name) }}" placeholder="{{ $cloth->brand->name ?? '' }} {{ $cloth->type->name ?? '' }}"></div>
-                                <div class="form-group col-md-5"><label>ترتیب</label><input type="number" min="0" max="9999" name="sort_order" class="form-control" value="{{ old('sort_order',$listing?->sort_order ?? 0) }}"></div>
+                                <div class="form-group col-md-6"><label>عوامی نام — اردو</label><input name="public_name_ur" dir="rtl" maxlength="180" class="form-control" value="{{ old('public_name_ur',$listing?->public_name_ur) }}"></div>
+                                <div class="form-group col-md-6"><label>Public name — English</label><input name="public_name_en" dir="ltr" maxlength="180" class="form-control text-left" value="{{ old('public_name_en',$listing?->public_name_en) }}"></div>
+                                <div class="form-group col-md-4"><label>ترتیب</label><input type="number" min="0" max="9999" name="sort_order" class="form-control" value="{{ old('sort_order',$listing?->sort_order ?? 0) }}"></div>
                             </div>
-                            <div class="form-group"><label>عوامی تفصیل</label><textarea name="description" maxlength="2000" rows="3" class="form-control" placeholder="کپڑے کی ساخت، موسم، استعمال یا دوسری خصوصیات لکھیں۔">{{ old('description',$listing?->description) }}</textarea></div>
+                            <div class="form-row"><div class="form-group col-md-6"><label>تفصیل — اردو</label><textarea name="description_ur" dir="rtl" maxlength="2000" rows="3" class="form-control">{{ old('description_ur',$listing?->description_ur) }}</textarea></div><div class="form-group col-md-6"><label>Description — English</label><textarea name="description_en" dir="ltr" maxlength="2000" rows="3" class="form-control text-left">{{ old('description_en',$listing?->description_en) }}</textarea></div></div>
+                            <div class="form-group"><label>پروڈکٹ ٹیگز</label><input name="tags" class="form-control" maxlength="500" value="{{ old('tags',collect($listing?->tags)->join(', ')) }}" placeholder="مثلاً summer, wedding, premium"><small class="text-muted">کوما سے الگ ٹیگز کلیکشن بنانے اور دکان میں مصنوعات گروپ کرنے کے لیے استعمال ہوتے ہیں۔</small></div>
                             <div class="border rounded p-3 mb-3" style="background:#f8fbfa">
                                 <h3 class="h6 mb-3">فروخت اور دستیابی</h3>
                                 <div class="form-row">

@@ -16,18 +16,25 @@ class StorefrontTailoringService extends Model
     public const MEASUREMENT_SHOP_VISIT = 'shop_visit';
     public const MEASUREMENT_EXISTING_PROFILE = 'existing_profile';
     public const MEASUREMENT_HOME_VISIT = 'home_visit';
+    public const MEASUREMENT_STANDARD_SIZE = 'standard_size';
+    public const MEASUREMENT_CUSTOM = 'custom_measurements';
 
     protected $fillable = [
         'storefront_id',
         'measurement_template_id',
         'name',
+        'name_ur',
+        'name_en',
         'description',
+        'description_ur',
+        'description_en',
         'price_from',
         'price_unit',
         'estimated_days',
         'deposit_type',
         'deposit_value',
         'measurement_methods',
+        'standard_sizes',
         'weekly_booking_limit',
         'is_featured',
         'is_published',
@@ -41,6 +48,7 @@ class StorefrontTailoringService extends Model
         'estimated_days' => 'integer',
         'deposit_value' => 'decimal:2',
         'measurement_methods' => 'array',
+        'standard_sizes' => 'array',
         'weekly_booking_limit' => 'integer',
         'is_featured' => 'boolean',
         'is_published' => 'boolean',
@@ -52,6 +60,34 @@ class StorefrontTailoringService extends Model
     public function storefront()
     {
         return $this->belongsTo(Storefront::class);
+    }
+
+    public function localizedName(?string $locale = null): string
+    {
+        $locale = in_array($locale ?: app()->getLocale(), ['ur', 'en'], true) ? ($locale ?: app()->getLocale()) : 'ur';
+
+        return $this->getAttribute('name_'.$locale) ?: $this->name;
+    }
+
+    public function localizedDescription(?string $locale = null): ?string
+    {
+        $locale = in_array($locale ?: app()->getLocale(), ['ur', 'en'], true) ? ($locale ?: app()->getLocale()) : 'ur';
+
+        return $this->getAttribute('description_'.$locale) ?: $this->description;
+    }
+
+    public function localizedPriceUnit(?string $locale = null): string
+    {
+        $locale = $locale ?: app()->getLocale();
+        if ($locale !== 'en') {
+            return $this->price_unit;
+        }
+
+        return [
+            'فی سوٹ' => 'per suit',
+            'فی لباس' => 'per garment',
+            'فی کام' => 'per job',
+        ][$this->price_unit] ?? $this->price_unit;
     }
 
     public function inquiries()
@@ -76,6 +112,8 @@ class StorefrontTailoringService extends Model
     public static function measurementMethodLabels(): array
     {
         return [
+            self::MEASUREMENT_STANDARD_SIZE => 'معیاری سائز منتخب کریں',
+            self::MEASUREMENT_CUSTOM => 'اپنی مکمل پیمائش درج کریں',
             self::MEASUREMENT_SHOP_VISIT => 'دکان پر نئی پیمائش',
             self::MEASUREMENT_EXISTING_PROFILE => 'محفوظ شدہ پیمائش',
             self::MEASUREMENT_HOME_VISIT => 'گھر پر پیمائش',
@@ -88,6 +126,30 @@ class StorefrontTailoringService extends Model
             self::MEASUREMENT_SHOP_VISIT,
             self::MEASUREMENT_EXISTING_PROFILE,
         ];
+    }
+
+    public function availableStandardSizes(): array
+    {
+        $profiles = $this->availableStandardProfiles();
+        if ($profiles->isNotEmpty()) {
+            return $profiles->pluck('name')->all();
+        }
+
+        return collect($this->standard_sizes ?: [])
+            ->map(fn ($size) => trim((string) $size))->filter()->unique()->values()->all();
+    }
+
+    public function availableStandardProfiles()
+    {
+        if (! $this->measurementTemplate) {
+            return collect();
+        }
+
+        if ($this->measurementTemplate->relationLoaded('standardProfiles')) {
+            return $this->measurementTemplate->standardProfiles->where('is_active', true)->values();
+        }
+
+        return $this->measurementTemplate->standardProfiles()->where('is_active', true)->get();
     }
 
     public function depositAmount(): ?float

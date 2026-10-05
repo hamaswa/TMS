@@ -16,7 +16,8 @@ class MeasurementTemplateController extends Controller
     public function index()
     {
         $ownerId = Auth::user()->businessOwnerId();
-        $templates = MeasurementTemplate::where('user_id', $ownerId)->orderByDesc('is_default')->orderBy('name')->get();
+        $templates = MeasurementTemplate::with('standardProfiles')
+            ->where('user_id', $ownerId)->orderByDesc('is_default')->orderBy('name')->get();
         $customFields = MeasurementField::where('user_id', $ownerId)->where('is_active', true)
             ->orderBy('sort_order')->orderBy('label')->get();
         $systemFields = MeasurementService::SYSTEM_FIELDS;

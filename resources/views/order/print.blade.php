@@ -442,13 +442,29 @@
             }
         }
 
+        body.tms-order-print #orderSection,
+        body.tms-order-print #sizeSection { max-width: none !important; }
+        body.tms-order-print.tms-paper-receipt_80 #invoice-POS { width: 80mm; padding: 4mm; }
+        body.tms-order-print.tms-paper-a4 #invoice-POS { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 14mm; }
+        body.tms-order-print.tms-paper-a4 #fullSection { display: grid; grid-template-columns: minmax(0, 56%) minmax(0, 44%); gap: 10mm; }
+        body.tms-order-print.tms-paper-a4 .order-section,
+        body.tms-order-print.tms-paper-a4 .size-section { margin-top: 0 !important; }
+        .measurement-row > .measurement-column-empty { min-height: 1px; }
+        .receipt-date { direction: ltr; white-space: nowrap; }
+        .order-summary-row { break-inside: avoid; }
+        .order-note { unicode-bidi: plaintext; white-space: pre-wrap; }
+        @media screen and (max-width: 520px) {
+            body.tms-order-print #invoice-POS { width: 100%; padding: 10px; }
+            body.tms-order-print.tms-paper-a4 #fullSection { display: block; }
+        }
+
         /* .printbtn{
                 position: relative;
             } */
     </style>
 </head>
 
-<body>
+<body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
     @php
         $displaySerial = $orderDetail->customers?->serial_number
             ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
@@ -485,11 +501,14 @@
                             </h2>
                         </div>
                         <div style="font-weight:900;">
-                            <h3>{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
+                            <h3 class="receipt-date">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
                         </div>
                     </div>
                     <hr>
                     <div class="order-detail-list">
+                        @if($orderDetail->measurementTemplate)
+                            <div class="order-detail-row order-summary-row"><span class="order-detail-label">لباس / ٹیمپلیٹ:</span><strong class="order-detail-value" dir="auto">{{ $orderDetail->measurementTemplate->name }}</strong></div>
+                        @endif
                         <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong
                                 class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong
@@ -525,9 +544,12 @@
                         <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
                     </aside>
                     <div>
-                        <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">
+                        <h3 class="text-center font-weight-900 order-note" dir="auto" style="font-size: 18px; margin: 25px 0 0 0;">
                             {{ $orderDetail->remarks }}</h3>
                     </div>
+                    @if($printConfig['show_qr'] && $printConfig['qr_svg'])
+                        <aside class="order-tracking-qr"><div>{!! $printConfig['qr_svg'] !!}</div><div class="order-tracking-qr__text">TMS REF: {{ $printConfig['reference'] }}</div></aside>
+                    @endif
                     <div class="order-footer">
                         <p>{!! $setting->address !!}</p>
                         <p class="order-footer-contact">{{ $setting->contact_no }}</p>

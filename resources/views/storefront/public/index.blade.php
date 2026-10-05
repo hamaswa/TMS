@@ -12,7 +12,7 @@
     measurements, inventory, QR sales, purchases, payments and business reports in Pakistan.')
 @section('canonical_url', route('storefront.index'))
 @push('structured_data')
-    @php($marketplaceItems = $topStorefronts->map(fn($storefront, $index) => ['@type' => 'ListItem', 'position' => $index + 1, 'name' => $storefront->display_name, 'url' => route('storefront.show', $storefront)])->values()->all())
+    @php($marketplaceItems = $topStorefronts->map(fn($storefront, $index) => ['@type' => 'ListItem', 'position' => $index + 1, 'name' => $storefront->localizedName(), 'url' => route('storefront.show', $storefront)])->values()->all())
     <script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(\App\Support\StorefrontSeo::website(__('storefront.common.marketplace'),__('storefront.marketplace.hero_text'),route('storefront.index')),$marketplaceItems ? ['@type'=>'ItemList','@id'=>route('storefront.index').'#top-stores','name'=>__('storefront.marketplace.top_stores'),'itemListElement'=>$marketplaceItems] : [])) !!}</script>
 @endpush
 @push('styles')
@@ -382,16 +382,16 @@
                                 <article class="card product"><a class="product-image"
                                         href="{{ route('storefront.clothing.show', [$listing->storefront, $listing]) }}">
                                         @if ($image)
-                                            <img src="{{ $image->image_url }}" alt="{{ $listing->display_name }}"
+                                            <img src="{{ $image->image_url }}" alt="{{ $listing->localizedName() }}"
                                             loading="lazy">@else @include('storefront.public.partials.icon', ['name' => 'shirt'])
                                             @endif @if ($listing->is_featured)
                                                 <span class="product-badge">{{ __('storefront.common.featured') }}</span>
                                             @endif
                                     </a>
                                     <div class="product-body">
-                                        <h3>{{ $listing->display_name }}</h3>
+                                        <h3>{{ $listing->localizedName() }}</h3>
                                         <div class="product-shop">
-                                            {{ __('storefront.marketplace.product_shop', ['shop' => $listing->storefront->display_name]) }}
+                                            {{ __('storefront.marketplace.product_shop', ['shop' => $listing->storefront->localizedName()]) }}
                                         </div>
                                         <div class="product-price">{!! \App\Support\PakistanCurrency::html($listing->cloth?->sale_price ?: $listing->cloth?->price) !!} <small
                                                 class="muted">/{{ __('storefront.common.metre') }}</small></div><a

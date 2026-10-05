@@ -6,11 +6,14 @@
     $depositType = old('deposit_type', $service?->deposit_type ?? \App\Models\StorefrontTailoringService::DEPOSIT_NONE);
 @endphp
 <div data-service-form="{{ $formKey }}">
+    <input type="hidden" name="name" value="{{ old('name', $service?->name ?: 'ٹیلرنگ خدمت') }}">
+    <input type="hidden" name="description" value="{{ old('description', $service?->description) }}">
     <div class="form-row">
-        <div class="form-group col-md-8"><label>خدمت کا نام</label><input name="name" required maxlength="180" class="form-control" placeholder="مثلاً مردانہ شلوار قمیض سلائی" value="{{ old('name', $service?->name) }}"></div>
+        <div class="form-group col-md-6"><label>خدمت کا نام — اردو</label><input name="name_ur" dir="rtl" maxlength="180" class="form-control" value="{{ old('name_ur', $service?->name_ur) }}"></div>
+        <div class="form-group col-md-6"><label>Service name — English</label><input name="name_en" dir="ltr" maxlength="180" class="form-control text-left" value="{{ old('name_en', $service?->name_en) }}"></div>
         <div class="form-group col-md-4"><label>فہرست میں ترتیب</label><input type="number" name="sort_order" min="0" max="9999" class="form-control" value="{{ old('sort_order', $service?->sort_order ?? 0) }}"></div>
     </div>
-    <div class="form-group"><label>تفصیل</label><textarea name="description" maxlength="2000" rows="3" class="form-control" placeholder="شامل کام، کپڑے کی ضرورت اور اہم شرائط واضح کریں۔">{{ old('description', $service?->description) }}</textarea></div>
+    <div class="form-row"><div class="form-group col-md-6"><label>تفصیل — اردو</label><textarea name="description_ur" dir="rtl" maxlength="2000" rows="3" class="form-control">{{ old('description_ur', $service?->description_ur) }}</textarea></div><div class="form-group col-md-6"><label>Description — English</label><textarea name="description_en" dir="ltr" maxlength="2000" rows="3" class="form-control text-left">{{ old('description_en', $service?->description_en) }}</textarea></div></div>
     <div class="form-row">
         <div class="form-group col-md-4"><label>ابتدائی قیمت</label><input type="number" name="price_from" min="0" step="0.01" class="form-control" value="{{ old('price_from', $service?->price_from) }}"></div>
         <div class="form-group col-md-4"><label>قیمت کی اکائی</label><select name="price_unit" class="form-control">@foreach(['فی سوٹ','فی لباس','فی کام'] as $unit)<option @selected(old('price_unit', $service?->price_unit ?? 'فی سوٹ') === $unit)>{{ $unit }}</option>@endforeach</select></div>
@@ -36,8 +39,9 @@
                     <option value="{{ $template->id }}" @selected((string) old('measurement_template_id', $service?->measurement_template_id) === (string) $template->id)>{{ $template->name }}{{ $template->is_default ? ' — ڈیفالٹ' : '' }}</option>
                 @endforeach
             </select>
-            <small class="form-text text-muted">آن لائن بکنگ کے ساتھ یہی ٹیمپلیٹ محفوظ ہوگا؛ منظوری کے وقت اسے بدلا بھی جا سکتا ہے۔</small>
+            <small class="form-text text-muted">آن لائن آرڈر میں اپنی پیمائش کے خانے اور اسی ٹیمپلیٹ کی معیاری پیمائشیں استعمال ہوں گی۔</small>
         </div>
+        <div class="alert alert-light border mt-3 mb-0">Small، Medium A یا کسی بھی نام کی مکمل معیاری پیمائش <a href="{{ route('admin.measurement-templates.index') }}">پیمائش ٹیمپلیٹس</a> میں محفوظ کریں۔ یہاں منتخب ٹیمپلیٹ کی فعال پیمائشیں خودکار طور پر آن لائن نظر آئیں گی۔</div>
     </div>
 
     <div class="control-panel mb-3">

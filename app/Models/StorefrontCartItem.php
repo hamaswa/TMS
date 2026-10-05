@@ -13,6 +13,7 @@ class StorefrontCartItem extends Model
         'storefront_cart_id',
         'clothing_listing_id',
         'cloth_color_id',
+        'selected_color',
         'quantity',
         'unit_price_snapshot',
         'reserved_until',

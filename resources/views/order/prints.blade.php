@@ -429,13 +429,27 @@ body {
             }
         }
 
+        body.tms-order-print #orderSection,
+        body.tms-order-print #sizeSection { max-width: none !important; }
+        body.tms-order-print.tms-paper-receipt_80 #invoice-POS { width: 80mm; padding: 4mm; }
+        body.tms-order-print.tms-paper-a4 #invoice-POS { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 14mm; }
+        body.tms-order-print.tms-paper-a4 #fullSection { display: grid; grid-template-columns: minmax(0, 56%) minmax(0, 44%); gap: 10mm; }
+        .measurement-row > .measurement-column-empty { min-height: 1px; }
+        .receipt-date { direction: ltr; white-space: nowrap; }
+        .order-summary-row { break-inside: avoid; }
+        .order-note { unicode-bidi: plaintext; white-space: pre-wrap; }
+        @media screen and (max-width: 520px) {
+            body.tms-order-print #invoice-POS { width: 100%; padding: 10px; }
+            body.tms-order-print.tms-paper-a4 #fullSection { display: block; }
+        }
+
         /* .printbtn{
                 position: relative;
             } */
     </style>
 </head>
 
-<body>
+<body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
     @php
         $displaySerial = $orderDetail->customers?->serial_number
             ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);

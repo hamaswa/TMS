@@ -681,6 +681,55 @@ class StorefrontCheckoutTest extends TestCase
         $this->assertSame(StorefrontOrder::PAYMENT_COD, StorefrontOrder::firstOrFail()->payment_method);
     }
 
+    public function test_confirmed_cod_order_requires_and_records_real_payment_before_completion(): void
+    {
+        [$owner, $storefront, $listing, $color, $customer] = $this->catalog();
+        $storefront->update(['cod_enabled' => true, 'delivery_enabled' => true]);
+        $this->reservedLinkedCart($storefront, $listing, $color, $customer, 1);
+        $this->post(route('storefront.checkout.store', $storefront), [
+            'fulfillment_method' => 'delivery',
+            'delivery_address' => 'مکان 12، راولپنڈی',
+            'payment_method' => StorefrontOrder::PAYMENT_COD,
+        ])->assertRedirect();
+        $order = StorefrontOrder::firstOrFail();
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_CONFIRMED,
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_COMPLETE,
+        ])->assertSessionHasErrors('status');
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.collect-payment', $order), [
+            'payment_collection_reference' => 'COD-RECEIPT-1001',
+            'payment_collection_notes' => 'Received by shop counter',
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+
+        $order->refresh();
+        $this->assertSame('1450.00', $order->paid_amount);
+        $this->assertSame('0.00', $order->balance_amount);
+        $this->assertNotNull($order->payment_collected_at);
+        $this->assertSame($owner->id, $order->payment_collected_by_user_id);
+        $this->assertSame('COD-RECEIPT-1001', $order->payment_collection_reference);
+        $this->assertDatabaseHas('transactions', [
+            'id' => $order->transaction_id,
+            'recivedPayment' => 1450,
+            'remainingBalance' => 0,
+        ]);
+        $this->get(route('storefront.orders.show', [$storefront, $order->reference]))
+            ->assertOk()
+            ->assertSeeText('مکمل ادا شدہ')
+            ->assertSeeText('دکان نے اس آرڈر کی مکمل رقم وصول درج کر دی۔')
+            ->assertDontSeeText('Received by shop counter');
+
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.collect-payment', $order), [])
+            ->assertSessionHasErrors('payment_collection');
+        $this->actingAs($owner)->patch(route('admin.storefront.orders.update', $order), [
+            'status' => StorefrontOrder::STATUS_COMPLETE,
+        ])->assertRedirect(route('admin.storefront.orders.index'));
+        $this->assertSame(StorefrontOrder::STATUS_COMPLETE, $order->fresh()->status);
+    }
+
     public function test_client_can_keep_public_catalogue_without_accepting_online_orders(): void
     {
         [, $storefront, $listing, $color] = $this->catalog();

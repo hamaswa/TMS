@@ -29,6 +29,19 @@
 
                     <div class="form-group row">
                         <div class="col-md-8">
+                            <label class="font-weight-bold d-block">فروخت کی دستیابی</label>
+                            <div class="border rounded p-3 mb-2">
+                                <label class="d-block mb-2"><input type="radio" name="online_availability" value="pos_only" @checked(old('online_availability', $onlineAvailability) === 'pos_only') @disabled(! $canConfigureOnline)> صرف POS / دکان کی فروخت</label>
+                                <label class="d-block mb-0 text-success"><input type="radio" name="online_availability" value="online_order" @checked(old('online_availability', $onlineAvailability) === 'online_order') @disabled(! $canConfigureOnline)> POS اور عوامی دکان پر آن لائن آرڈر</label>
+                                @unless($canConfigureOnline)<input type="hidden" name="online_availability" value="{{ $onlineAvailability }}">@endunless
+                            </div>
+                            @if(!$canConfigureOnline)<small class="text-muted">آن لائن دکان بنائیں، کپڑے کا شعبہ فعال کریں، یا مجاز صارف سے یہ ترتیب تبدیل کرائیں۔</small>@endif
+                            @error('online_availability')<div class="text-danger">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <div class="col-md-8">
                             <div class="form-row m-0">
                                 <label class="col-sm-3 col-form-label f"><span class="english">کپڑے کی کمپنی</span> </label>
                                 <div class="col-sm-9">
@@ -48,8 +61,17 @@
                             <div class="form-row m-0">
                                 <label class="col-sm-3 col-form-label f"><span class="english">رنگ</span> </label>
                                 <div class="col-sm-9">
-                                    <input type="text" class="form-control" id="colors" name="colors"
-                                        value="{{ $data['specificColor']->color }}" required>
+                                    @if($data['cloth']->usesDisplayOnlyColors())
+                                        <input type="hidden" name="colors" value="{{ $data['specificColor']->color }}">
+                                        <input type="text" class="form-control" id="colors" name="display_colors" value="{{ old('display_colors', collect($data['cloth']->selectableColorNames())->join('، ')) }}" required>
+                                        <small class="text-muted">یہ رنگ گاہک منتخب کر سکے گا، مگر مقدار مجموعی اسٹاک سے کم ہوگی۔</small>
+                                    @elseif($data['cloth']->tracksColors())
+                                        <input type="text" class="form-control" id="colors" name="colors" value="{{ $data['specificColor']->color }}" required readonly>
+                                        <small class="text-muted">اس رنگ کا اسٹاک الگ ٹریک ہو رہا ہے۔</small>
+                                    @else
+                                        <input type="hidden" id="colors" name="colors" value="{{ $data['specificColor']->color }}">
+                                        <input type="text" class="form-control" value="رنگ لاگو نہیں" disabled>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -82,11 +104,29 @@
 
                     {{-- sale price for customers side --}}
                     <div class="form-group row">
+                        <div class="col-md-8"><div class="form-row m-0">
+                            <label class="col-sm-3 col-form-label f">فروخت کے ریٹ کی بنیاد</label>
+                            <div class="col-sm-9"><select id="sale_price_basis" name="sale_price_basis" class="form-control" required><option value="per_meter" @selected(old('sale_price_basis', $data['cloth']->sale_price_basis ?? 'per_meter') === 'per_meter')>فی میٹر</option><option value="per_suit" @selected(old('sale_price_basis', $data['cloth']->sale_price_basis) === 'per_suit')>فی سوٹ</option></select></div>
+                        </div></div>
+                    </div>
+                    <div id="suitSalePriceField" class="form-group row">
+                        <div class="col-md-8"><div class="form-row m-0">
+                            <label class="col-sm-3 col-form-label f">فی سوٹ قیمت فروخت</label>
+                            <div class="col-sm-9"><input id="suit_sale_price" type="number" min="0" step="0.01" value="{{ old('suit_sale_price', $data['cloth']->suit_sale_price) }}" class="form-control" name="suit_sale_price"></div>
+                        </div></div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-8"><div class="form-row m-0">
+                            <label class="col-sm-3 col-form-label f">ڈیفالٹ سوٹ لمبائی (میٹر)</label>
+                            <div class="col-sm-9"><input id="default_sale_length" type="number" min="0.01" step="0.01" value="{{ old('default_sale_length', $data['cloth']->default_sale_length) }}" class="form-control" name="default_sale_length"><small class="text-muted">QR اسکین پر خود بھرے گی؛ فروخت کے وقت تبدیل کی جا سکتی ہے۔</small></div>
+                        </div></div>
+                    </div>
+                    <div class="form-group row">
                         <div class="col-md-8">
                             <div class="form-row m-0">
-                                <label class="col-sm-3 col-form-label f"><span class="english">قیمت فروخت</span> </label>
+                                <label class="col-sm-3 col-form-label f"><span class="english">فی میٹر قیمت فروخت</span> </label>
                                 <div class="col-sm-9">
-                                    <input type="text" value="{{ old('price') ?? $data['cloth']->sale_price }}"
+                                    <input type="text" value="{{ old('sale_price') ?? $data['cloth']->sale_price }}"
                                         class="form-control" name="sale_price" required>
                                 </div>
                             </div>
@@ -115,6 +155,19 @@
     </section>
 
     <script>
+        const salePriceBasis = document.getElementById('sale_price_basis');
+        const defaultSaleLength = document.getElementById('default_sale_length');
+        const suitSalePriceField = document.getElementById('suitSalePriceField');
+        const suitSalePrice = document.getElementById('suit_sale_price');
+        function syncSalePricing() {
+            const perSuit = salePriceBasis.value === 'per_suit';
+            defaultSaleLength.required = perSuit;
+            suitSalePrice.required = perSuit;
+            suitSalePriceField.hidden = !perSuit;
+        }
+        salePriceBasis.addEventListener('change', syncSalePricing);
+        syncSalePricing();
+
         // Add More Images
         document.getElementById('add-more-images').addEventListener('click', function() {
             var colors = document.getElementById('colors').value.split(',');

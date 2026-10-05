@@ -51,6 +51,7 @@ class AdminStorefrontTailoringController extends Controller
     {
         $storefront = $this->storefront();
         $validated = $this->validateService($request);
+        $validated = $this->withLegacyLocalizedServiceContent($validated, $storefront->default_locale);
 
         $storefront->tailoringServices()->create([
             ...$validated,
@@ -73,6 +74,7 @@ class AdminStorefrontTailoringController extends Controller
         $storefront = $this->storefront();
         abort_unless($service->storefront_id === $storefront->id, 404);
         $validated = $this->validateService($request);
+        $validated = $this->withLegacyLocalizedServiceContent($validated, $storefront->default_locale);
         $service->update([
             ...$validated,
             'is_featured' => $request->boolean('is_featured'),
@@ -287,7 +289,11 @@ class AdminStorefrontTailoringController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:180'],
+            'name_ur' => ['nullable', 'string', 'max:180'],
+            'name_en' => ['nullable', 'string', 'max:180'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'description_ur' => ['nullable', 'string', 'max:2000'],
+            'description_en' => ['nullable', 'string', 'max:2000'],
             'price_from' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
             'price_unit' => ['required', Rule::in(['فی سوٹ', 'فی لباس', 'فی کام'])],
             'estimated_days' => ['nullable', 'integer', 'min:1', 'max:365'],
@@ -343,10 +349,32 @@ class AdminStorefrontTailoringController extends Controller
                 'measurement_methods' => 'درخواست قبول کرنے کے لیے کم از کم ایک پیمائش کا طریقہ منتخب کریں۔',
             ]);
         }
+        $templateMethods = [
+            StorefrontTailoringService::MEASUREMENT_STANDARD_SIZE,
+            StorefrontTailoringService::MEASUREMENT_CUSTOM,
+        ];
+        if (array_intersect($templateMethods, $validated['measurement_methods'] ?? [])
+            && empty($validated['measurement_template_id'])) {
+            throw ValidationException::withMessages([
+                'measurement_template_id' => 'معیاری یا اپنی پیمائش کے لیے اس خدمت کا پیمائش ٹیمپلیٹ منتخب کریں۔',
+            ]);
+        }
         if ($request->boolean('is_published') && ! Auth::user()->business->storefront->show_tailoring) {
             throw ValidationException::withMessages([
                 'is_published' => 'پہلے آن لائن دکان کی ترتیب میں ٹیلرنگ شعبہ فعال کریں۔',
             ]);
+        }
+
+        return $validated;
+    }
+
+    private function withLegacyLocalizedServiceContent(array $validated, ?string $defaultLocale): array
+    {
+        $locale = $defaultLocale === 'en' ? 'en' : 'ur';
+        foreach (['name', 'description'] as $field) {
+            if (filled($validated[$field.'_'.$locale] ?? null)) {
+                $validated[$field] = $validated[$field.'_'.$locale];
+            }
         }
 
         return $validated;

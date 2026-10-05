@@ -62,7 +62,7 @@ class CustomMeasurementFieldTest extends TestCase
 
         $this->actingAs($owner)->post(route('admin.Customers.store'), $payload + [
             'custom_measurements' => [$field->id => '3.25'],
-        ])->assertRedirect('admin/Customers');
+        ])->assertRedirect(route('admin.Customers.index', ['created' => 1]));
 
         $customer = Customers::where('user_id', $owner->id)->firstOrFail();
         $this->assertDatabaseHas('customer_measurement_values', [

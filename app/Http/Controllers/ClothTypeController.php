@@ -49,11 +49,15 @@ class ClothTypeController extends Controller
     {
         try {
 
-            $validated = $request->validate(['name' => ['required', 'string', 'max:255']]);
-            $name = $validated['name'];
+            $validated = $request->validate([
+                'name_ur' => ['required', 'string', 'max:255'],
+                'name_en' => ['required', 'string', 'max:255'],
+            ]);
             $user_id = Auth::user()->businessOwnerId();
             ClothType::create([
-                'name' => $name,
+                'name' => $validated['name_ur'],
+                'name_ur' => $validated['name_ur'],
+                'name_en' => $validated['name_en'],
                 'user_id' => $user_id
             ]);
             return redirect()->route('admin.clothtype.index')->with('insert', 'کپڑے کی قسم کامیابی کے ساتھ شامل کی گئی۔');
@@ -102,7 +106,11 @@ class ClothTypeController extends Controller
     {
         try {
 
-            $validated = $request->validate(['name' => ['required', 'string', 'max:255']]);
+            $validated = $request->validate([
+                'name_ur' => ['required', 'string', 'max:255'],
+                'name_en' => ['required', 'string', 'max:255'],
+            ]);
+            $validated['name'] = $validated['name_ur'];
             ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id)->update($validated);
             return redirect()->route('admin.clothtype.index')->with('insert', 'کپڑے کی قسم کامیابی کے ساتھ اپ ڈیٹ ہو گئی۔');
         } catch (\Throwable $th) {

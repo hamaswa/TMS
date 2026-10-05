@@ -177,17 +177,21 @@ class InventoryLedgerTest extends TestCase
         $this->assertEquals(8, (float) $color->fresh()->length);
     }
 
-    public function test_counter_sale_allows_selecting_an_existing_color_for_aggregate_stock(): void
+    public function test_counter_sale_records_a_display_color_while_deducting_shared_stock(): void
     {
         [$owner, $cloth, $color] = $this->stock(10, 100);
-        $cloth->update(['color_tracking_mode' => Cloth::COLOR_TRACKING_NONE]);
-        $customer = Customers::create(['name' => 'Optional Color Buyer', 'phone_number1' => '', 'user_id' => $owner->id]);
+        $cloth->update([
+            'color_tracking_mode' => Cloth::COLOR_TRACKING_DISPLAY_ONLY,
+            'display_colors' => ['Blue', 'Maroon'],
+        ]);
+        $color->update(['color' => 'عام']);
+        $customer = Customers::create(['name' => 'Shared Stock Buyer', 'phone_number1' => '', 'user_id' => $owner->id]);
 
         $this->actingAs($owner)->post(route('admin.sellStock'), [
             'brand_name' => [$cloth->cloth_brand_id],
             'cloth_id' => [$cloth->id],
             'cloth_type' => [$cloth->cloth_type_id],
-            'color' => [$color->color],
+            'color' => ['Maroon'],
             'item_total' => [300],
             'clothes_rack' => [null],
             'length' => [2],
@@ -198,20 +202,25 @@ class InventoryLedgerTest extends TestCase
         ])->assertRedirect();
 
         $sale = SaleStock::where('user_id', $owner->id)->firstOrFail();
-        $this->assertSame($color->color, $sale->color);
+        $this->assertSame('Maroon', $sale->color);
         $this->assertSame($color->id, $sale->cloth_color_id);
         $this->assertEquals(8, (float) $color->fresh()->length);
     }
 
-    public function test_counter_sale_form_shows_available_colors_for_aggregate_stock(): void
+    public function test_counter_sale_form_requires_display_colors_for_shared_stock(): void
     {
         [$owner, $cloth, $color] = $this->stock(10, 100);
-        $cloth->update(['color_tracking_mode' => Cloth::COLOR_TRACKING_NONE]);
+        $cloth->update([
+            'color_tracking_mode' => Cloth::COLOR_TRACKING_DISPLAY_ONLY,
+            'display_colors' => ['Blue', 'Maroon'],
+        ]);
+        $color->update(['color' => 'عام']);
 
         $this->actingAs($owner)->get(route('admin.sellCloth'))
             ->assertOk()
-            ->assertSeeText($color->color)
-            ->assertSeeText('رنگ منتخب کریں (اختیاری)');
+            ->assertSeeText('Blue')
+            ->assertSeeText('Maroon')
+            ->assertSee('"requires_color":true', false);
     }
 
     public function test_counter_sale_creates_random_customer_and_derives_rate_from_item_total(): void

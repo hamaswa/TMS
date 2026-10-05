@@ -58,6 +58,60 @@
         @case('map-pin')
             <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
             @break
+        @case('search')
+            <circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>
+            @break
+        @case('cart')
+            <path d="M3 4h2l2 11h10l3-8H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/>
+            @break
+        @case('grid')
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            @break
+        @case('bag')
+            <path d="M5 8h14l1 13H4L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/>
+            @break
+        @case('tag')
+            <path d="M20 13 11 22 2 13V4h9l9 9Z"/><circle cx="7" cy="9" r="1.5"/>
+            @break
+        @case('chevron-down')
+            <path d="m6 9 6 6 6-6"/>
+            @break
+        @case('chevron-left')
+            <path d="m15 18-6-6 6-6"/>
+            @break
+        @case('phone')
+            <path d="M6 3h4l2 5-3 2c2 4 4 6 8 8l2-3 5 2v4c0 2-2 3-4 3C10 23 1 14 2 6c0-2 2-3 4-3Z"/>
+            @break
+        @case('headset')
+            <path d="M4 14v-2a8 8 0 0 1 16 0v7h-5"/><rect x="3" y="13" width="4" height="6" rx="2"/><rect x="17" y="13" width="4" height="6" rx="2"/><path d="M15 21h-3"/>
+            @break
+        @case('box')
+            <path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/>
+            @break
+        @case('copyright')
+            <circle cx="12" cy="12" r="9"/><path d="M15 9a4 4 0 1 0 0 6"/>
+            @break
+        @case('globe')
+            <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9c-3-3-4-6-4-9s1-6 4-9Z"/>
+            @break
+        @case('wifi')
+            <path d="M4 10a12 12 0 0 1 16 0M7 14a7 7 0 0 1 10 0m-7 4a3 3 0 0 1 4 0"/><circle cx="12" cy="21" r="1"/>
+            @break
+        @case('settings')
+            <circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2.1-.7-.8-1.9 1-2-2.1-2.1-2 1-1.9-.8-.6-2.1h-3L7.8 4l-1.9.8-2-1-2.1 2.1 1 2-.8 1.9-2.1.7v3l2.1.7.8 1.9-1 2L3.9 20l2-1 1.9.8.7 2.1h3l.7-2.1 1.9-.8 2 1 2.1-2.1-1-2 .8-1.9 2-.5Z" transform="translate(2) scale(.83)"/>
+            @break
+        @case('smile')
+            <circle cx="12" cy="12" r="9"/><path d="M8 14c1 3 7 3 8 0M9 9h.01M15 9h.01"/>
+            @break
+        @case('eye')
+            <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
+            @break
+        @case('edit')
+            <path d="m4 16-1 5 5-1L20 8l-4-4L4 16Z"/><path d="m14 6 4 4"/>
+            @break
+        @case('external-link')
+            <path d="M14 4h6v6M20 4 10 14"/><path d="M18 13v7H4V6h7"/>
+            @break
         @default
             <rect x="4" y="4" width="16" height="16" rx="2"/>
     @endswitch

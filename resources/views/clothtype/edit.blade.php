@@ -13,10 +13,14 @@
             <div class="form-group row">
                 <div class="col-md-8">
                     <div class="form-row m-0">
-                        <label class="col-sm-3 col-form-label f"><span class="english">نام</span> </label>
+                        <label class="col-sm-3 col-form-label f"><span class="english">نام (اردو)</span> </label>
                         <div class="col-sm-9">
-                            <input type="text" value="{{ old('name') ?? $cloth_type->name }}" class="form-control" name="name" required>
+                            <input type="text" value="{{ old('name_ur', $cloth_type->name_ur ?: $cloth_type->name) }}" class="form-control" name="name_ur" required>
                         </div>
+                    </div>
+                    <div class="form-row m-0 mt-3">
+                        <label class="col-sm-3 col-form-label f"><span class="english">Name (English)</span></label>
+                        <div class="col-sm-9"><input type="text" value="{{ old('name_en', $cloth_type->name_en) }}" class="form-control" name="name_en" dir="ltr" required></div>
                     </div>
                 </div>
                 <div class="button-group">

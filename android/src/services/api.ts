@@ -104,8 +104,11 @@ export type InventorySet = {
   clothTypeId: number;
   clothType: string;
   salePrice: string;
-  colorTrackingMode: 'none' | 'per_color';
-  colors: { name: string; availableLength: string }[];
+  defaultSaleLength: string;
+  salePriceBasis: 'per_meter' | 'per_suit';
+  colorTrackingMode: 'none' | 'display_only' | 'per_color';
+  availableLength: string;
+  colors: { name: string; availableLength: string | null }[];
 };
 
 export type InventoryListItem = {
@@ -116,8 +119,11 @@ export type InventoryListItem = {
   clothTypeId: number;
   clothType: string;
   salePrice: string;
-  colorTrackingMode: 'none' | 'per_color';
-  colors: { color: string; length: string }[];
+  defaultSaleLength: string;
+  salePriceBasis: 'per_meter' | 'per_suit';
+  colorTrackingMode: 'none' | 'display_only' | 'per_color';
+  availableLength: string;
+  colors: { color: string; length: string | null }[];
 };
 
 export const listInventory = () =>

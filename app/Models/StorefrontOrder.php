@@ -61,6 +61,10 @@ class StorefrontOrder extends Model
         'payment_verified_by_user_id',
         'payment_verified_at',
         'payment_rejected_at',
+        'payment_collected_at',
+        'payment_collected_by_user_id',
+        'payment_collection_reference',
+        'payment_collection_notes',
         'subtotal',
         'paid_amount',
         'balance_amount',
@@ -122,6 +126,7 @@ class StorefrontOrder extends Model
         'cancelled_at' => 'datetime',
         'payment_verified_at' => 'datetime',
         'payment_rejected_at' => 'datetime',
+        'payment_collected_at' => 'datetime',
         'payment_evidence_size' => 'integer',
         'payment_evidence_submitted_at' => 'datetime',
     ];
@@ -151,6 +156,11 @@ class StorefrontOrder extends Model
         return $this->hasMany(StorefrontOrderItem::class);
     }
 
+    public function tailoringItems()
+    {
+        return $this->hasMany(StorefrontOrderTailoringItem::class);
+    }
+
     public function paymentVerifier()
     {
         return $this->belongsTo(User::class, 'payment_verified_by_user_id');
@@ -159,6 +169,11 @@ class StorefrontOrder extends Model
     public function confirmedBy()
     {
         return $this->belongsTo(User::class, 'confirmed_by_user_id');
+    }
+
+    public function paymentCollectedBy()
+    {
+        return $this->belongsTo(User::class, 'payment_collected_by_user_id');
     }
 
     public function refunds()

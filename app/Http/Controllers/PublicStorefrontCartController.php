@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customers;
+use App\Models\ClothColor;
 use App\Models\Storefront;
 use App\Models\StorefrontCart;
 use App\Models\StorefrontClothingListing;
@@ -14,6 +15,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class PublicStorefrontCartController extends Controller
@@ -22,7 +24,11 @@ class PublicStorefrontCartController extends Controller
     {
         $this->ensureVisible($storefront);
         $cart = $cartService->find($storefront, $request->session()->get($this->sessionKey($storefront)));
-        $cart?->load(['customer', 'items.listing.cloth.brand', 'items.listing.cloth.type', 'items.color']);
+        $cart?->load([
+            'customer', 'items.listing.cloth.brand', 'items.listing.cloth.type', 'items.color',
+            'tailoringItems.service', 'tailoringItems.measurementTemplate',
+            'tailoringItems.clothingItem.listing.cloth.brand', 'tailoringItems.clothingItem.listing.cloth.type',
+        ]);
 
         return view('storefront.public.cart', compact('storefront', 'cart'));
     }
@@ -34,6 +40,8 @@ class PublicStorefrontCartController extends Controller
         StorefrontCartService $cartService
     ) {
         $this->ensureVisible($storefront);
+        abort_unless($storefront->show_clothing && $storefront->clothingOrderingEnabled()
+            && $storefront->business->clothing_enabled, 404);
         abort_unless(
             $listing->storefront_id === $storefront->id
             && $listing->is_published
@@ -43,16 +51,31 @@ class PublicStorefrontCartController extends Controller
         );
         $validated = $request->validate([
             'cloth_color_id' => ['required', 'integer'],
+            'selected_color' => ['nullable', 'string', 'max:100'],
             'quantity' => ['required', 'numeric', 'min:0.01', 'max:1000'],
+            'purchase_mode' => ['nullable', Rule::in(['fabric_only', 'fabric_and_stitching'])],
         ]);
         $this->ensureValidQuantity($listing, (float) $validated['quantity']);
         $color = $listing->cloth->colors()->findOrFail($validated['cloth_color_id']);
+        $selectedColor = $this->selectedColor($listing, $color, $validated['selected_color'] ?? null);
         [$cart, $plainToken] = $cartService->getOrCreate(
             $storefront,
             $request->session()->get($this->sessionKey($storefront))
         );
-        $cartService->reserve($cart, $listing, $color, round((float) $validated['quantity'], 2));
+        $cartItem = $cartService->reserve($cart, $listing, $color, round((float) $validated['quantity'], 2), $selectedColor);
         $request->session()->put($this->sessionKey($storefront), $plainToken);
+
+        if (($validated['purchase_mode'] ?? 'fabric_only') === 'fabric_and_stitching'
+            && $storefront->show_tailoring
+            && $storefront->tailoringInquiriesEnabled()
+            && $storefront->business->tailoring_enabled
+            && $storefront->tailoringServices()->where('is_published', true)->where('is_available', true)
+                ->where('accepts_inquiries', true)->whereNotNull('price_from')->exists()) {
+            return redirect()->route('storefront.tailoring.index', [
+                $storefront,
+                'cloth_item' => $cartItem->id,
+            ])->with('success', __('storefront.messages.fabric_reserved_choose_stitching'));
+        }
 
         return redirect()->route('storefront.cart.show', $storefront)
             ->with('success', __('storefront.messages.cart_reserved'));
@@ -76,7 +99,8 @@ class PublicStorefrontCartController extends Controller
             $cart,
             $cartItem->listing,
             $cartItem->color,
-            round((float) $validated['quantity'], 2)
+            round((float) $validated['quantity'], 2),
+            $cartItem->selected_color,
         );
 
         return redirect()->route('storefront.cart.show', $storefront)
@@ -94,6 +118,28 @@ class PublicStorefrontCartController extends Controller
                 ]),
             ]);
         }
+    }
+
+    private function selectedColor(StorefrontClothingListing $listing, ClothColor $stock, ?string $requested): string
+    {
+        $cloth = $listing->cloth;
+        if ($cloth->tracksColors()) {
+            return $stock->color;
+        }
+        if (! $cloth->usesDisplayOnlyColors()) {
+            return '';
+        }
+
+        $requested = trim((string) $requested);
+        if ($requested === '' || ! in_array($requested, $cloth->selectableColorNames(), true)) {
+            throw ValidationException::withMessages([
+                'selected_color' => __('storefront.messages.select_valid_color'),
+            ]);
+        }
+
+        abort_unless((int) $stock->id === (int) $cloth->colors()->value('id'), 422);
+
+        return $requested;
     }
 
     public function destroy(
@@ -206,7 +252,7 @@ class PublicStorefrontCartController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (! $lockedCart || ! $lockedCart->items()->exists()) {
+                if (! $lockedCart || ! $lockedCart->hasOrderableItems()) {
                     throw ValidationException::withMessages([
                         'registration' => __('storefront.messages.cart_unavailable'),
                     ]);
@@ -256,10 +302,9 @@ class PublicStorefrontCartController extends Controller
         abort_unless(
             $storefront->is_published
             && $storefront->isModerationActive()
-            && $storefront->show_clothing
-            && $storefront->clothingOrderingEnabled()
             && $storefront->business?->isActive()
-            && $storefront->business->clothing_enabled,
+            && (($storefront->show_clothing && $storefront->clothingOrderingEnabled() && $storefront->business->clothing_enabled)
+                || ($storefront->show_tailoring && $storefront->tailoringInquiriesEnabled() && $storefront->business->tailoring_enabled)),
             404
         );
     }

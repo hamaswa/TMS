@@ -6,6 +6,7 @@ use App\Models\Customers;
 use App\Models\MeasurementField;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
+use App\Models\StandardMeasurementProfile;
 use App\Models\User;
 use App\Services\MeasurementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,7 +69,7 @@ class MeasurementTemplateTest extends TestCase
             'length' => 42,
             'arms' => 24,
             'custom_measurements' => [$included->id => '3.5'],
-        ])->assertRedirect('admin/Customers');
+        ])->assertRedirect(route('admin.Customers.index', ['created' => 1]));
 
         $customer = Customers::where('user_id', $owner->id)->firstOrFail();
         $this->assertSame($template->id, $customer->measurement_template_id);
@@ -220,6 +221,43 @@ class MeasurementTemplateTest extends TestCase
             ->assertSeeText('منتخب لباس کی ضروری پیمائش نامکمل ہے')
             ->assertSee('data-missing=', false)
             ->assertSee('تیرا', false);
+    }
+
+    public function test_shop_owner_can_save_arbitrarily_named_standard_measurements_per_template(): void
+    {
+        $owner = $this->owner();
+        $otherOwner = $this->owner();
+        $field = $this->field($owner, 'کالر اونچائی', true);
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'مردانہ شلوار قمیض',
+            'system_fields' => ['length', 'arms'],
+            'custom_field_ids' => [$field->id],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.standard-measurement-profiles.store', $template), [
+            'name' => 'Medium A',
+            'sort_order' => 20,
+            'values' => [
+                'system' => ['length' => '41.5', 'arms' => '24'],
+                'custom' => [$field->id => '3.25'],
+            ],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $profile = StandardMeasurementProfile::firstOrFail();
+        $this->assertSame('Medium A', $profile->name);
+        $this->assertSame($template->id, $profile->measurement_template_id);
+        $this->assertSame(['system.length', 'system.arms', 'custom.'.$field->id], collect($profile->measurement_values)->pluck('source_key')->all());
+        $this->actingAs($owner)->get(route('admin.measurement-templates.index'))
+            ->assertOk()->assertSeeText('Medium A')->assertSeeText('3 پیمائشیں');
+
+        $this->actingAs($otherOwner)->put(route('admin.standard-measurement-profiles.update', $profile), [
+            'name' => 'Changed',
+            'values' => ['system' => ['length' => '40', 'arms' => '23']],
+        ])->assertNotFound();
+        $this->assertSame('Medium A', $profile->fresh()->name);
     }
 
     private function field(User $owner, string $label, bool $required = false): MeasurementField

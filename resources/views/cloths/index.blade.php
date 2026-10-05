@@ -47,7 +47,7 @@
             @forelse($colorRows as $row)
                 @php
                     $cloth = $row['cloth']; $color = $row['color']; $latestCost = $row['cost']; $length = (float) $color->length;
-                    $displayColor = $cloth->tracksColors() ? $color->color : 'رنگ لاگو نہیں';
+                    $displayColor = $cloth->tracksColors() ? $color->color : ($cloth->usesDisplayOnlyColors() ? collect($cloth->selectableColorNames())->join('، ') : 'رنگ لاگو نہیں');
                     $image = $cloth->tracksColors() ? $cloth->images->firstWhere('image_color', $color->color) : $cloth->images->first();
                     $stockStatus = $length <= 0 ? 'empty' : ($length <= 10 ? 'low' : 'available');
                     $stockLabel = $stockStatus === 'empty' ? 'ختم' : ($stockStatus === 'low' ? 'کم اسٹاک' : 'دستیاب');

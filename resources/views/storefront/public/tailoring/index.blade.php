@@ -1,42 +1,57 @@
 @extends('storefront.public.layout')
-@section('title', __('storefront.tailoring.title').' — '.$storefront->display_name)
+@section('title', __('storefront.tailoring.title').' — '.$storefront->localizedName())
 @section('meta_description', __('storefront.tailoring.intro'))
 @section('canonical_url', route('storefront.tailoring.index',$storefront))
 @section('meta_image', $storefront->cover_url ?: $storefront->logo_url ?: '')
 @push('structured_data')
 <script type="application/ld+json">{!! \App\Support\StorefrontSeo::json(\App\Support\StorefrontSeo::graph(
     \App\Support\StorefrontSeo::collection(
-        __('storefront.tailoring.title').' — '.$storefront->display_name,
-        __('storefront.tailoring.intro'),
+        __('storefront.tailoring.title').' — '.$storefront->localizedName(),
+        __('storefront.tailoring.unified_intro'),
         route('storefront.tailoring.index',$storefront),
         $storefront
     )
 )) !!}</script>
 @endpush
 @push('styles')
-:root{--primary:#314f7e;--primary-dark:#253d63;--ink:#23364d;--bg:#f5f6f8;--line:#e0e5eb}.inquiry-wrap{background:#e9eef5}.inquiry-grid{display:grid;grid-template-columns:.8fr 1.25fr;gap:30px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.wide{grid-column:1/-1}.payment-instructions{background:#fff8df;border:1px solid #ead79c;border-radius:12px;padding:12px;margin-top:10px}.payment-instructions div{margin-top:5px}.raast-payment-qr{display:block;width:min(220px,100%);height:auto;margin:12px auto 0;border-radius:10px}@media(max-width:850px){.inquiry-grid{grid-template-columns:1fr}}@media(max-width:600px){.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}}
+@include('storefront.public.partials.shop-navigation-styles')
+.service-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:15px}.unified-note{margin-bottom:22px;padding:16px;border:1px solid var(--line);border-radius:14px;background:#edf7f2}.service-card{display:flex;flex-direction:column}.service-card .service-actions{margin-top:auto;padding-top:16px}
 @endpush
 @section('body')
-<nav class="nav"><div class="shell"><a class="nav-brand" href="{{ route('storefront.show',$storefront) }}">{{ $storefront->display_name }}</a><div class="nav-actions">@include('storefront.public.partials.language-switch')<a class="nav-link" href="{{ route('storefront.show',$storefront) }}">{{ __('storefront.common.shop_home') }}</a></div></div></nav>
-<header class="hero"><div class="shell"><h1>{{ __('storefront.tailoring.title') }}</h1><p>{{ __('storefront.tailoring.intro') }}</p></div></header>
-<main><section class="section"><div class="shell grid">@forelse($services as $service)<article class="card">@if($service->is_featured)<div class="featured">{{ __('storefront.tailoring.featured') }}</div>@endif<div class="pill">{{ $service->is_available ? __('storefront.tailoring.available') : __('storefront.tailoring.temporarily_unavailable') }}</div><h2>{{ $service->name }}</h2><p>{{ \Illuminate\Support\Str::limit($service->description,150) ?: __('storefront.tailoring.default_description') }}</p><div>@if($service->price_from!==null)<span class="pill">{!! \App\Support\PakistanCurrency::html($service->price_from) !!} {{ __('storefront.tailoring.from') }} · {{ $service->price_unit }}</span>@endif @if($service->estimated_days)<span class="pill">{{ __('storefront.tailoring.estimated_days',['days'=>$service->estimated_days]) }}</span>@endif @if($service->deposit_type !== \App\Models\StorefrontTailoringService::DEPOSIT_NONE)<span class="pill">{{ __('storefront.tailoring.deposit_required') }}: @if($service->deposit_type === \App\Models\StorefrontTailoringService::DEPOSIT_PERCENTAGE){{ rtrim(rtrim(number_format((float)$service->deposit_value,2),'0'),'.') }}%@else{!! \App\Support\PakistanCurrency::html($service->deposit_value) !!}@endif</span>@endif</div><a class="btn" style="display:block;margin-top:15px" href="{{ route('storefront.tailoring.show',[$storefront,$service]) }}">{{ __('storefront.tailoring.details') }}</a></article>@empty<div class="card empty" style="grid-column:1/-1"><h2>{{ __('storefront.tailoring.empty_title') }}</h2><p>{{ __('storefront.tailoring.empty_text') }}</p></div>@endforelse</div></section>
-@if($storefront->tailoringInquiriesEnabled())<section class="section inquiry-wrap" id="inquiry"><div class="shell inquiry-grid"><div><h2>{{ __('storefront.tailoring.inquiry_title') }}</h2><p>{{ __('storefront.tailoring.inquiry_intro') }}</p>@if($storefront->public_phone)<p><strong>{{ __('storefront.common.phone') }}:</strong> <span dir="ltr">{{ $storefront->public_phone }}</span></p>@endif</div><div class="card">@if(session('inquiry_success'))<div class="success">{{ session('inquiry_success') }}</div>@endif @if($errors->any())<div class="errors"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-<form method="POST" action="{{ route('storefront.tailoring.bookings.store',$storefront) }}" enctype="multipart/form-data">@csrf<div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div><div class="form-grid">
-<div class="form-group"><label for="customer_name">{{ __('storefront.tailoring.name') }}</label><input id="customer_name" name="customer_name" required maxlength="150" class="control" value="{{ old('customer_name') }}"></div>
-<div class="form-group"><label for="phone">{{ __('storefront.common.phone') }}</label><input id="phone" name="phone" type="tel" inputmode="tel" required minlength="7" maxlength="50" dir="ltr" class="control" value="{{ old('phone') }}" placeholder="{{ __('storefront.common.phone_placeholder') }}"></div>
-<div class="form-group"><label for="service">{{ __('storefront.tailoring.service') }}</label><select id="service" name="tailoring_service_id" class="control" required><option value="">{{ __('storefront.tailoring.general') }}</option>@foreach($services as $service)<option value="{{ $service->id }}" data-methods='@json($service->availableMeasurementMethods())' @disabled(! $service->is_available || ! $service->accepts_inquiries) @selected((string)old('tailoring_service_id',request('service'))===(string)$service->id)>{{ $service->name }}{{ ! $service->is_available || ! $service->accepts_inquiries ? ' — '.__('storefront.tailoring.inquiries_paused') : '' }}</option>@endforeach</select></div>
-<div class="form-group"><label for="measurement_method">{{ __('storefront.tailoring.measurement_method') }}</label><select id="measurement_method" name="measurement_method" class="control" data-selected="{{ old('measurement_method') }}"><option value="">{{ __('storefront.common.select') }}</option>@foreach(\App\Models\StorefrontTailoringService::measurementMethodLabels() as $value=>$label)<option value="{{ $value }}" @selected(old('measurement_method')===$value)>{{ __('storefront.tailoring.measurement_methods.'.$value) }}</option>@endforeach</select></div>
-<div class="form-group"><label for="preferred_date">{{ __('storefront.tailoring.preferred_date') }}</label><input id="preferred_date" type="date" min="{{ now()->toDateString() }}" name="preferred_date" class="control" value="{{ old('preferred_date') }}"></div>
-<div class="form-group"><label for="suit_quantity">{{ __('storefront.tailoring.suit_quantity') }}</label><input id="suit_quantity" type="number" min="1" max="20" name="suit_quantity" required class="control" value="{{ old('suit_quantity',1) }}"></div>
-<div class="form-group"><label for="email">{{ __('storefront.common.email') }} ({{ __('storefront.common.optional') }})</label><input id="email" type="email" name="email" maxlength="150" dir="ltr" class="control" value="{{ old('email') }}"></div>
-<div class="form-group"><label for="city">{{ __('storefront.common.city') }} ({{ __('storefront.common.optional') }})</label><input id="city" name="city" maxlength="100" class="control" value="{{ old('city') }}"></div>
-<div class="form-group"><label for="booking_pin">{{ __('storefront.tailoring.booking_pin') }}</label><input id="booking_pin" name="booking_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required dir="ltr" class="control" autocomplete="new-password"></div>
-<div class="form-group"><label for="booking_pin_confirmation">{{ __('storefront.tailoring.booking_pin_confirmation') }}</label><input id="booking_pin_confirmation" name="booking_pin_confirmation" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required dir="ltr" class="control" autocomplete="new-password"><small>{{ __('storefront.tailoring.booking_pin_help') }}</small></div>
-<div class="form-group wide"><label for="tailoring_payment_method">{{ __('storefront.tailoring.payment_preference') }}</label><select id="tailoring_payment_method" name="payment_method" class="control">@foreach($storefront->acceptedInquiryPaymentMethods() as $value=>$label)<option value="{{ $value }}" @selected(old('payment_method','unpaid')===$value)>{{ $label }}</option>@endforeach</select><small>{{ __('storefront.tailoring.payment_help') }}</small>@include('storefront.public.partials.payment-instructions')</div>
-<div id="tailoring-manual-fields" class="wide"><div class="form-grid"><div id="tailoring-payment-phone-group" class="form-group"><label for="tailoring_payment_phone">{{ __('storefront.cart.sender_phone') }}</label><input id="tailoring_payment_phone" name="payment_sender_phone" dir="ltr" maxlength="50" class="control" value="{{ old('payment_sender_phone') }}"></div><div class="form-group"><label for="tailoring_payment_reference">{{ __('storefront.cart.payment_reference') }}</label><input id="tailoring_payment_reference" name="payment_reference" dir="ltr" maxlength="100" class="control" value="{{ old('payment_reference') }}"></div><div class="form-group"><label for="tailoring_payment_claimed_amount">{{ __('storefront.tailoring.claimed_amount') }}</label><input id="tailoring_payment_claimed_amount" name="payment_claimed_amount" type="number" min="0" step="0.01" class="control" value="{{ old('payment_claimed_amount') }}"></div><div class="form-group wide"><label for="tailoring_payment_evidence">{{ __('storefront.cart.payment_evidence') }}</label><input id="tailoring_payment_evidence" name="payment_evidence" type="file" class="control" accept=".jpg,.jpeg,.png,.webp,.pdf"><small>{{ __('storefront.cart.payment_evidence_help') }}</small></div></div></div>
-<div class="form-group wide"><label for="message">{{ __('storefront.tailoring.details_question') }}</label><textarea id="message" name="message" maxlength="3000" rows="4" class="control">{{ old('message') }}</textarea></div><div class="wide"><button class="btn">{{ __('storefront.tailoring.send') }}</button></div>
-</div></form></div></div></section>@endif</main>
+@include('storefront.public.partials.shop-navigation')
+<header class="hero"><div class="shell"><h1>{{ __('storefront.tailoring.title') }}</h1><p>{{ __('storefront.tailoring.unified_intro') }}</p></div></header>
+<main class="section"><div class="shell">
+@if(session('inquiry_success'))<div class="success">{{ session('inquiry_success') }}</div>@endif
+<div class="unified-note"><strong>{{ __('storefront.tailoring.one_order_title') }}</strong><div>{{ __('storefront.tailoring.one_order_text') }}</div></div>
+@php
+    $publicPaymentMethods = $storefront->acceptedUnifiedOrderPaymentMethods();
+@endphp
+@if(collect(array_keys($publicPaymentMethods))->contains(fn($method) => \App\Models\StorefrontOrder::requiresManualVerification($method)))
+<section class="card" style="margin-bottom:22px"><strong>{{ __('storefront.cart.payment_method') }}</strong>
+@foreach($publicPaymentMethods as $method => $label)
+    @if(\App\Models\StorefrontOrder::requiresManualVerification($method))
+        <div class="row"><span>{{ $label }}</span><span>
+            @if($method === \App\Models\StorefrontOrder::PAYMENT_EASYPAISA){{ $storefront->easypaisa_account_title }} · <b dir="ltr">{{ $storefront->easypaisa_account_number }}</b>
+            @elseif($method === \App\Models\StorefrontOrder::PAYMENT_JAZZCASH){{ $storefront->jazzcash_account_title }} · <b dir="ltr">{{ $storefront->jazzcash_account_number }}</b>
+            @elseif($method === \App\Models\StorefrontOrder::PAYMENT_BANK_TRANSFER){{ $storefront->bank_account_title }} · <b dir="ltr">{{ $storefront->bank_iban ?: $storefront->bank_account_number }}</b>
+            @elseif($method === \App\Models\StorefrontOrder::PAYMENT_RAAST){{ $storefront->raast_account_title }} · <b dir="ltr">{{ $storefront->raast_id }}</b>
+            @endif
+        </span></div>
+    @endif
+@endforeach
+</section>
+@endif
+<div class="grid">
+@forelse($services as $service)
+<article class="card service-card">
+    @if($service->is_featured)<div class="featured">{{ __('storefront.tailoring.featured') }}</div>@endif
+    <div class="pill">{{ $service->is_available ? __('storefront.tailoring.available') : __('storefront.tailoring.temporarily_unavailable') }}</div>
+    <h2>{{ $service->localizedName() }}</h2>
+    <p>{{ \Illuminate\Support\Str::limit($service->localizedDescription(),150) ?: __('storefront.tailoring.default_description') }}</p>
+    <div>@if($service->price_from!==null)<span class="pill">{!! \App\Support\PakistanCurrency::html($service->price_from) !!} {{ __('storefront.tailoring.from') }} · {{ $service->localizedPriceUnit() }}</span>@endif @if($service->estimated_days)<span class="pill">{{ __('storefront.tailoring.estimated_days',['days'=>$service->estimated_days]) }}</span>@endif</div>
+    <div class="service-actions"><a class="btn" href="{{ route('storefront.tailoring.show',[$storefront,$service,'cloth_item'=>request('cloth_item')]) }}">{{ __('storefront.tailoring.configure_order') }}</a></div>
+</article>
+@empty<div class="card empty" style="grid-column:1/-1"><h2>{{ __('storefront.tailoring.empty_title') }}</h2><p>{{ __('storefront.tailoring.empty_text') }}</p></div>@endforelse
+</div></div></main>
+@include('storefront.public.partials.shop-footer')
 @endsection
-@push('scripts')
-<script>(()=>{const manual=@json(\App\Models\StorefrontInquiry::manualPaymentMethods()),wallets=['easypaisa','jazzcash'],method=document.getElementById('tailoring_payment_method'),fields=document.getElementById('tailoring-manual-fields'),phoneGroup=document.getElementById('tailoring-payment-phone-group'),phone=document.getElementById('tailoring_payment_phone'),reference=document.getElementById('tailoring_payment_reference'),amount=document.getElementById('tailoring_payment_claimed_amount'),service=document.getElementById('service'),measurement=document.getElementById('measurement_method');const refreshPayment=()=>{const value=method?.value,visible=manual.includes(value),wallet=wallets.includes(value);if(fields)fields.hidden=!visible;if(phoneGroup)phoneGroup.hidden=!wallet;if(phone)phone.required=wallet;if(reference)reference.required=visible;if(amount)amount.required=visible;document.querySelectorAll('[data-payment-instructions]').forEach(panel=>panel.hidden=panel.dataset.paymentInstructions!==value)};const refreshMeasurements=()=>{if(!service||!measurement)return;let allowed=[];try{allowed=JSON.parse(service.options[service.selectedIndex]?.dataset.methods||'[]')}catch(e){};Array.from(measurement.options).forEach(option=>{if(!option.value)return;option.hidden=!allowed.includes(option.value);option.disabled=!allowed.includes(option.value)});if(measurement.value&&!allowed.includes(measurement.value))measurement.value='';measurement.required=Boolean(service.value)};method?.addEventListener('change',refreshPayment);service?.addEventListener('change',refreshMeasurements);refreshPayment();refreshMeasurements()})()</script>
-@endpush

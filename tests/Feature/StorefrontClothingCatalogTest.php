@@ -165,6 +165,7 @@ class StorefrontClothingCatalogTest extends TestCase
             'cloth_brand_id' => $brand->id,
             'cloth_type_id' => $type->id,
             'user_id' => $ownerId,
+            'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR,
             'price' => 1000,
             'sale_price' => 1450,
         ]);

@@ -41,6 +41,16 @@ class StorefrontCart extends Model
         return $this->hasMany(StorefrontCartItem::class);
     }
 
+    public function tailoringItems()
+    {
+        return $this->hasMany(StorefrontCartTailoringItem::class);
+    }
+
+    public function hasOrderableItems(): bool
+    {
+        return $this->items()->exists() || $this->tailoringItems()->exists();
+    }
+
     public function order()
     {
         return $this->hasOne(StorefrontOrder::class);

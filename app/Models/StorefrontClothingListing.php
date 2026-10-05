@@ -14,7 +14,12 @@ class StorefrontClothingListing extends Model
         'storefront_id',
         'cloth_id',
         'public_name',
+        'public_name_ur',
+        'public_name_en',
         'description',
+        'description_ur',
+        'description_en',
+        'tags',
         'is_featured',
         'is_published',
         'is_available',
@@ -38,6 +43,7 @@ class StorefrontClothingListing extends Model
         'preorder_enabled' => 'boolean',
         'preorder_lead_days' => 'integer',
         'sort_order' => 'integer',
+        'tags' => 'array',
     ];
 
     public function storefront()
@@ -80,6 +86,23 @@ class StorefrontClothingListing extends Model
         return $this->public_name
             ?: collect([$this->cloth?->brand?->name, $this->cloth?->type?->name])->filter()->implode(' — ')
             ?: 'کپڑا';
+    }
+
+    public function localizedName(?string $locale = null): string
+    {
+        $locale = in_array($locale ?: app()->getLocale(), ['ur', 'en'], true) ? ($locale ?: app()->getLocale()) : 'ur';
+
+        return $this->getAttribute('public_name_'.$locale)
+            ?: $this->public_name
+            ?: collect([$this->cloth?->brand?->name, $this->cloth?->type?->localizedName($locale)])->filter()->implode(' — ')
+            ?: __('storefront.clothing.fabric');
+    }
+
+    public function localizedDescription(?string $locale = null): ?string
+    {
+        $locale = in_array($locale ?: app()->getLocale(), ['ur', 'en'], true) ? ($locale ?: app()->getLocale()) : 'ur';
+
+        return $this->getAttribute('description_'.$locale) ?: $this->description;
     }
 
     public function minimumOrderQuantity(): float

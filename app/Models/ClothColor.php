@@ -9,13 +9,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class ClothColor extends Model
 {
     use HasFactory;
-    protected $fillable = ['cloth_id', 'color','user_id','length', 'average_unit_cost'];
+    protected $fillable = ['cloth_id', 'color', 'color_ur', 'color_en', 'user_id', 'length', 'average_unit_cost'];
 
     protected $casts = ['length' => 'decimal:2', 'average_unit_cost' => 'decimal:4'];
 
     public function cloth()
     {
         return $this->belongsTo(Cloth::class);
+    }
+
+    public function localizedName(?string $locale = null): string
+    {
+        $locale = in_array($locale ?: app()->getLocale(), ['ur', 'en'], true) ? ($locale ?: app()->getLocale()) : 'ur';
+
+        return $this->getAttribute('color_'.$locale) ?: $this->color;
     }
 
     public function storefrontCartItems()

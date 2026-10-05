@@ -8,6 +8,8 @@ use App\Models\ClothBrand;
 use App\Models\ClothColor;
 use App\Models\ClothImage;
 use App\Models\ClothVideo;
+use App\Models\Storefront;
+use App\Models\StorefrontClothingListing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -62,7 +64,8 @@ class ClothController extends Controller
         try {
             $cloth_types = ClothType::where('user_id', auth()->user()->businessOwnerId())->latest()->get();
             $cloth_brands = ClothBrand::where('user_id', auth()->user()->businessOwnerId())->latest()->get();
-            return view('cloths.create', compact('cloth_types', 'cloth_brands'));
+            [$storefront, $canConfigureOnline] = $this->storefrontContext();
+            return view('cloths.create', compact('cloth_types', 'cloth_brands', 'storefront', 'canConfigureOnline'));
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -77,7 +80,11 @@ class ClothController extends Controller
     public function store(Request $request)
     {
         try {
-
+            $request->mergeIfMissing([
+                'color_tracking_mode' => Cloth::COLOR_TRACKING_NONE,
+                'online_availability' => 'pos_only',
+                'sale_price_basis' => Cloth::SALE_PRICE_PER_METER,
+            ]);
             $validated = $request->validate([
                 'cloth_type_id' => ['required', 'integer'],
                 'cloth_brand_id' => ['required', 'integer'],
@@ -87,7 +94,14 @@ class ClothController extends Controller
                 'length_colors.*' => ['required', 'string', 'max:100'],
                 'price' => ['required', 'numeric', 'min:0'],
                 'sale_price' => ['required', 'numeric', 'min:0'],
-                'color_tracking_mode' => ['required', Rule::in([Cloth::COLOR_TRACKING_NONE, Cloth::COLOR_TRACKING_PER_COLOR])],
+                'suit_sale_price' => ['nullable', 'numeric', 'min:0'],
+                'default_sale_length' => ['nullable', 'numeric', 'gt:0'],
+                'sale_price_basis' => ['required', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
+                'color_tracking_mode' => ['required', Rule::in([
+                    Cloth::COLOR_TRACKING_NONE,
+                    Cloth::COLOR_TRACKING_DISPLAY_ONLY,
+                    Cloth::COLOR_TRACKING_PER_COLOR,
+                ])],
                 'colors' => ['nullable', 'string', 'max:1000'],
                 'images' => ['nullable', 'array'],
                 'images.*' => ['image', 'max:4096'],
@@ -97,7 +111,21 @@ class ClothController extends Controller
                 'video_colors.*' => ['nullable', 'string', 'max:100'],
                 'videos' => ['nullable', 'array'],
                 'videos.*' => ['nullable', 'mimes:mp4,mov,ogg,qt', 'max:20000'],
+                'online_availability' => ['required', Rule::in(['pos_only', 'online_order'])],
             ]);
+            if ($validated['sale_price_basis'] === Cloth::SALE_PRICE_PER_SUIT
+                && (empty($validated['default_sale_length']) || empty($validated['suit_sale_price']))) {
+                throw ValidationException::withMessages(array_filter([
+                    'default_sale_length' => empty($validated['default_sale_length']) ? 'فی سوٹ قیمت کے لیے سوٹ کی ڈیفالٹ لمبائی درج کریں۔' : null,
+                    'suit_sale_price' => empty($validated['suit_sale_price']) ? 'فی سوٹ قیمت درج کریں۔' : null,
+                ]));
+            }
+            [$storefront, $canConfigureOnline] = $this->storefrontContext();
+            $this->validateOnlineAvailability(
+                $validated['online_availability'],
+                $storefront,
+                $canConfigureOnline
+            );
             // dd($validated);
             ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
             ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
@@ -112,8 +140,18 @@ class ClothController extends Controller
                                 )
                             );
 
+                            $displayColors = [];
                             if ($trackingMode === Cloth::COLOR_TRACKING_NONE) {
-                                $colors = ['عام'];
+                                $stockColors = ['عام'];
+                            } elseif ($trackingMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY) {
+                                $colors = array_values(array_filter($colors, fn ($color) => mb_strtolower($color) !== 'عام'));
+                                if ($colors === []) {
+                                    throw ValidationException::withMessages([
+                                        'colors' => 'آن لائن انتخاب کے لیے کم از کم ایک رنگ درج کریں۔',
+                                    ]);
+                                }
+                                $displayColors = $colors;
+                                $stockColors = ['عام'];
                             } else {
                                 $colors = array_values(array_filter($colors, fn ($color) => mb_strtolower($color) !== 'عام'));
                                 if ($colors === []) {
@@ -121,6 +159,7 @@ class ClothController extends Controller
                                         'colors' => 'رنگ کے حساب سے اسٹاک رکھنے کے لیے کم از کم ایک رنگ درج کریں۔',
                                     ]);
                                 }
+                                $stockColors = $colors;
                             }
 
                             $lengths = $validated['length'] ?? [];
@@ -137,7 +176,7 @@ class ClothController extends Controller
 
                                 foreach ($validated['length_colors'] as $index => $color) {
                                     if (
-                                        !in_array($color, $colors, true) ||
+                                        !in_array($color, $stockColors, true) ||
                                         array_key_exists($color, $lengthByColor)
                                     ) {
                                         throw ValidationException::withMessages([
@@ -148,7 +187,7 @@ class ClothController extends Controller
                                     $lengthByColor[$color] = $lengths[$index];
                                 }
 
-                                if (count($lengthByColor) !== count($colors)) {
+                                if (count($lengthByColor) !== count($stockColors)) {
                                     throw ValidationException::withMessages([
                                         'length' => 'تمام رنگوں کی لمبائی درج کریں۔'
                                     ]);
@@ -156,12 +195,12 @@ class ClothController extends Controller
 
                                 $lengths = array_map(
                                     fn ($color) => $lengthByColor[$color],
-                                    $colors
+                                    $stockColors
                                 );
 
                             } elseif ($lengths === []) {
-                                $lengths = array_fill(0, count($colors), 0);
-                            } elseif (count($colors) !== count($lengths)) {
+                                $lengths = array_fill(0, count($stockColors), 0);
+                            } elseif (count($stockColors) !== count($lengths)) {
 
                                 throw ValidationException::withMessages([
                                     'length' => 'ہر رنگ کے لیے ایک لمبائی درج کریں۔'
@@ -200,17 +239,21 @@ class ClothController extends Controller
             // ]);
 
             // Save the cloth
-            DB::transaction(function () use ($request, $validated, $colors, $lengths, $trackingMode) {
+            DB::transaction(function () use ($request, $validated, $stockColors, $displayColors, $lengths, $trackingMode, $storefront, $canConfigureOnline) {
                 $cloth = Cloth::create([
                     'cloth_type_id' => $validated['cloth_type_id'],
                     'cloth_brand_id' => $validated['cloth_brand_id'],
                     'price' => $validated['price'],
                     'sale_price' => $validated['sale_price'],
+                    'suit_sale_price' => $validated['suit_sale_price'] ?? null,
+                    'default_sale_length' => $validated['default_sale_length'] ?? null,
+                    'sale_price_basis' => $validated['sale_price_basis'],
                     'color_tracking_mode' => $trackingMode,
+                    'display_colors' => $displayColors,
                     'user_id' => Auth::user()->businessOwnerId(),
                 ]);
 
-                foreach ($colors as $index => $color) {
+                foreach ($stockColors as $index => $color) {
                     ClothColor::create([
                         'cloth_id' => $cloth->id,
                         'color' => $color,
@@ -245,12 +288,17 @@ class ClothController extends Controller
                         ]);
                     }
                 }
+                if ($canConfigureOnline) {
+                    $this->syncStorefrontListing($cloth, $storefront, $validated['online_availability']);
+                }
             });
 
             return redirect()->route('admin.cloth.index')->with('insert', 'کپڑا کامیابی کے ساتھ شامل کیا گیا۔');
-        } catch (\Exception $e) {
-            return response()->json($e->getMessage());
-            // dd($e->getMessage(), $e->getFile(), $e->getLine());
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            report($e);
+            return back()->withInput()->withErrors(['inventory' => 'کپڑا محفوظ نہیں ہو سکا۔ دوبارہ کوشش کریں۔']);
         }
     }
 
@@ -262,7 +310,7 @@ class ClothController extends Controller
 
         return view('cloths.qr-label', [
             'cloth' => $cloth,
-            'qrSvg' => $printDocuments->qrSvg($cloth->stock_code, 240),
+            'qrSvg' => $printDocuments->qrSvg('BNS-SET:'.$cloth->set_code, 240),
         ]);
     }
 
@@ -300,7 +348,9 @@ class ClothController extends Controller
             abort_unless($specificColor, 404);
             $data = compact('cloth', 'specificColor');
 
-            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands'));
+            [$storefront, $canConfigureOnline] = $this->storefrontContext();
+            $onlineAvailability = $this->onlineAvailability($cloth, $storefront);
+            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands', 'storefront', 'canConfigureOnline', 'onlineAvailability'));
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -325,7 +375,9 @@ class ClothController extends Controller
                 'specificColor' => $specificColor,
             ];
 
-            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands'));
+            [$storefront, $canConfigureOnline] = $this->storefrontContext();
+            $onlineAvailability = $this->onlineAvailability($cloth, $storefront);
+            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands', 'storefront', 'canConfigureOnline', 'onlineAvailability'));
         }
     }
 
@@ -340,13 +392,29 @@ class ClothController extends Controller
     {
         try {
             abort_unless((int) $cloth->user_id === (int) Auth::user()->businessOwnerId(), 404);
+            [$storefront, $canConfigureOnline] = $this->storefrontContext();
+            $currentOnlineAvailability = $this->onlineAvailability($cloth, $storefront);
+            if ($canConfigureOnline) {
+                $request->mergeIfMissing(['online_availability' => $currentOnlineAvailability]);
+            } else {
+                // Inventory staff may edit stock, but only storefront managers may
+                // change whether the item is offered to online customers.
+                $request->merge(['online_availability' => $currentOnlineAvailability]);
+            }
+            $request->mergeIfMissing([
+                'sale_price_basis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
+            ]);
             $validated = $request->validate([
                 'cloth_type_id' => ['required', 'integer'],
                 'cloth_brand_id' => ['required', 'integer'],
                 'length' => ['required', 'numeric', 'min:0'],
                 'price' => ['required', 'numeric', 'min:0'],
                 'sale_price' => ['required', 'numeric', 'min:0'],
+                'suit_sale_price' => ['nullable', 'numeric', 'min:0'],
+                'default_sale_length' => ['nullable', 'numeric', 'gt:0'],
+                'sale_price_basis' => ['required', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
                 'colors' => ['required', 'string', 'max:100'],
+                'display_colors' => ['nullable', 'string', 'max:1000'],
                 'images' => ['nullable', 'array'],
                 'images.*' => ['image', 'max:4096'],
                 'image_colors' => ['nullable', 'array'],
@@ -355,17 +423,49 @@ class ClothController extends Controller
                 'video_colors.*' => ['nullable', 'string', 'max:100'],
                 'videos' => ['nullable', 'array'],
                 'videos.*' => ['nullable', 'mimetypes:video/avi,video/mpeg,video/quicktime,video/mp4', 'max:20000'],
+                'online_availability' => ['required', Rule::in(['pos_only', 'online_order'])],
             ]);
+            if ($validated['sale_price_basis'] === Cloth::SALE_PRICE_PER_SUIT
+                && (empty($validated['default_sale_length']) || empty($validated['suit_sale_price']))) {
+                throw ValidationException::withMessages(array_filter([
+                    'default_sale_length' => empty($validated['default_sale_length']) ? 'فی سوٹ قیمت کے لیے سوٹ کی ڈیفالٹ لمبائی درج کریں۔' : null,
+                    'suit_sale_price' => empty($validated['suit_sale_price']) ? 'فی سوٹ قیمت درج کریں۔' : null,
+                ]));
+            }
+            if ($canConfigureOnline) {
+                $this->validateOnlineAvailability(
+                    $validated['online_availability'],
+                    $storefront,
+                    $canConfigureOnline
+                );
+            }
             ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
             ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
 
-            DB::transaction(function () use ($request, $validated, $cloth) {
+            $displayColors = $cloth->display_colors ?? [];
+            if ($cloth->usesDisplayOnlyColors()) {
+                $displayColors = array_values(array_unique(array_filter(array_map(
+                    'trim',
+                    preg_split('/[,،]/u', $validated['display_colors'] ?? '')
+                ))));
+                if ($displayColors === []) {
+                    throw ValidationException::withMessages([
+                        'display_colors' => 'کم از کم ایک قابل انتخاب رنگ درج کریں۔',
+                    ]);
+                }
+            }
+
+            DB::transaction(function () use ($request, $validated, $cloth, $displayColors, $storefront, $canConfigureOnline) {
                 $inventory = app(InventoryService::class);
                 $cloth->update([
                     'cloth_type_id' => $validated['cloth_type_id'],
                     'cloth_brand_id' => $validated['cloth_brand_id'],
                     'price' => $validated['price'],
                     'sale_price' => $validated['sale_price'],
+                    'suit_sale_price' => $validated['suit_sale_price'] ?? null,
+                    'default_sale_length' => $validated['default_sale_length'] ?? null,
+                    'sale_price_basis' => $validated['sale_price_basis'],
+                    'display_colors' => $displayColors,
                 ]);
 
                 $colors = $validated['colors'];
@@ -402,6 +502,9 @@ class ClothController extends Controller
                         ]);
                     }
                 }
+                if ($canConfigureOnline) {
+                    $this->syncStorefrontListing($cloth, $storefront, $validated['online_availability']);
+                }
             });
 
 
@@ -415,6 +518,85 @@ class ClothController extends Controller
                 'errors' => $e instanceof \Illuminate\Validation\ValidationException ? $e->errors() : $e->getMessage()
             ], 422);
         }
+    }
+
+    private function storefrontContext(): array
+    {
+        $business = Auth::user()->business;
+        $storefront = $business && $business->clothing_enabled ? $business->storefront : null;
+        $canConfigureOnline = (bool) ($storefront
+            && $storefront->show_clothing
+            && Auth::user()->hasBusinessPermission('storefront.manage'));
+
+        return [$storefront, $canConfigureOnline];
+    }
+
+    private function validateOnlineAvailability(
+        string $availability,
+        ?Storefront $storefront,
+        bool $canConfigureOnline
+    ): void {
+        if ($availability !== 'online_order') {
+            return;
+        }
+        if (! $storefront || ! $storefront->show_clothing) {
+            throw ValidationException::withMessages([
+                'online_availability' => 'پہلے آن لائن دکان بنائیں اور کپڑے کی دکان عوام کے لیے فعال کریں۔',
+            ]);
+        }
+        if (! $canConfigureOnline) {
+            throw ValidationException::withMessages([
+                'online_availability' => 'آپ کو آن لائن دکان کی مصنوعات تبدیل کرنے کی اجازت نہیں ہے۔',
+            ]);
+        }
+    }
+
+    private function onlineAvailability(Cloth $cloth, ?Storefront $storefront): string
+    {
+        if (! $storefront) {
+            return 'pos_only';
+        }
+        $listing = StorefrontClothingListing::query()
+            ->where('storefront_id', $storefront->id)
+            ->where('cloth_id', $cloth->id)
+            ->first();
+
+        return $listing?->is_published && $listing?->online_order_enabled
+            ? 'online_order' : 'pos_only';
+    }
+
+    private function syncStorefrontListing(
+        Cloth $cloth,
+        Storefront $storefront,
+        string $availability
+    ): void {
+        $online = $availability === 'online_order';
+        $listing = StorefrontClothingListing::query()
+            ->where('storefront_id', $storefront->id)
+            ->where('cloth_id', $cloth->id)
+            ->first();
+
+        if (! $online && ! $listing) {
+            return;
+        }
+
+        if (! $listing) {
+            $listing = new StorefrontClothingListing([
+                'storefront_id' => $storefront->id,
+                'cloth_id' => $cloth->id,
+            ]);
+            $cloth->loadMissing(['brand', 'type']);
+            $listing->public_name = collect([$cloth->brand?->name, $cloth->type?->name])
+                ->filter()->implode(' — ');
+            $listing->is_featured = false;
+            $listing->sort_order = 0;
+        }
+
+        $listing->fill([
+            'is_published' => $online,
+            'is_available' => $online,
+            'online_order_enabled' => $online,
+        ])->save();
     }
 
 

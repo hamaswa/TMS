@@ -53,7 +53,11 @@ class AdminStorefrontOrderController extends Controller
                 'items.cloth:id',
                 'items.cloth.colors:id,cloth_id,color,length',
                 'items.returnItems:id,storefront_order_item_id,quantity',
+                'tailoringItems:id,storefront_order_id,tailoring_service_id,clothing_order_item_id,measurement_template_id,standard_measurement_profile_id,service_name,measurement_method,standard_size,quantity,unit_price,line_total,estimated_days,measurement_values,notes,preferred_date',
+                'tailoringItems.measurementTemplate:id,name',
+                'tailoringItems.clothingItem:id,item_name,color',
                 'paymentVerifier:id,name,username',
+                'paymentCollectedBy:id,name,username',
                 'confirmedBy:id,name,username',
                 'refunds:id,storefront_order_id,reference,amount,method,external_reference,refunded_at',
                 'returns:id,storefront_order_id,reference,type,refund_amount,refund_method,external_reference,processed_at',
@@ -143,11 +147,37 @@ class AdminStorefrontOrderController extends Controller
 
         $order->load([
             'customer:id,name,phone_number1,phone_number2',
-            'items:id,storefront_order_id,item_name,color,quantity,unit_price,line_total',
+            'items:id,storefront_order_id,cloth_id,item_name,color,quantity,unit_price,line_total',
+            'items.cloth:id,color_tracking_mode',
+            'tailoringItems:id,storefront_order_id,clothing_order_item_id,measurement_template_id,standard_measurement_profile_id,service_name,measurement_method,standard_size,quantity,unit_price,line_total,estimated_days,measurement_values,notes,preferred_date',
+            'tailoringItems.measurementTemplate:id,name',
+            'tailoringItems.clothingItem:id,item_name,color',
             'confirmedBy:id,name,username',
         ]);
 
         return view('storefront.admin.dispatch-print', compact('storefront', 'order'));
+    }
+
+    public function collectPayment(
+        Request $request,
+        StorefrontOrder $order,
+        StorefrontCheckoutService $checkout
+    ) {
+        $storefront = Auth::user()->business?->storefront;
+        abort_unless($storefront && $order->storefront_id === $storefront->id, 404);
+        $validated = $request->validate([
+            'payment_collection_reference' => ['nullable', 'string', 'max:100'],
+            'payment_collection_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $checkout->collectOutstandingPayment(
+            $order,
+            (int) Auth::id(),
+            $validated['payment_collection_reference'] ?? null,
+            $validated['payment_collection_notes'] ?? null,
+        );
+
+        return redirect()->route('admin.storefront.orders.index')
+            ->with('success', 'آرڈر کی مکمل رقم وصول اور گاہک کے کھاتے میں درج ہو گئی ہے۔');
     }
 
     public function verifyPayment(

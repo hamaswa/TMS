@@ -24,6 +24,26 @@
                         @include('measurement-templates.partials.fields', ['prefix' => 'template-'.$template->id, 'selectedSystem' => $template->system_fields ?? [], 'selectedCustom' => $template->custom_field_ids ?? []])
                         <button class="btn btn-success mt-3">تبدیلی محفوظ کریں</button>
                     </form></details>
+                    <details class="mt-3"><summary class="btn btn-outline-success btn-block">معیاری پیمائشیں — {{ $template->standardProfiles->where('is_active', true)->count() }}</summary>
+                        <div class="standard-profile-panel mt-3">
+                            <p class="text-muted">اس لباس کے لیے Small، Small A، Medium یا اپنی مرضی کے نام سے مکمل معیاری پیمائش محفوظ کریں۔ فعال پیمائشیں متعلقہ آن لائن سلائی خدمات میں خودکار طور پر نظر آئیں گی۔</p>
+                            @foreach($template->standardProfiles->where('is_active', true) as $profile)
+                                <details class="saved-profile mb-2"><summary><strong>{{ $profile->name }}</strong><span>{{ count($profile->measurement_values ?? []) }} پیمائشیں</span></summary>
+                                    <form class="p-3" method="POST" action="{{ route('admin.standard-measurement-profiles.update', $profile) }}">@csrf @method('PUT')
+                                        @include('measurement-templates.partials.standard-profile-form', ['profile' => $profile])
+                                        <button class="btn btn-success mt-3">پیمائش محفوظ کریں</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.standard-measurement-profiles.destroy', $profile) }}" class="px-3 pb-3" data-confirm="کیا اس معیاری پیمائش کو غیر فعال کرنا ہے؟">@csrf @method('DELETE')<button class="btn btn-sm btn-link text-danger">غیر فعال کریں</button></form>
+                                </details>
+                            @endforeach
+                            <details class="new-profile"><summary><strong>نئی معیاری پیمائش شامل کریں</strong></summary>
+                                <form class="p-3" method="POST" action="{{ route('admin.standard-measurement-profiles.store', $template) }}">@csrf
+                                    @include('measurement-templates.partials.standard-profile-form', ['profile' => null])
+                                    <button class="btn btn-primary mt-3">نئی معیاری پیمائش محفوظ کریں</button>
+                                </form>
+                            </details>
+                        </div>
+                    </details>
                     <form method="POST" action="{{ route('admin.measurement-templates.destroy', $template) }}" class="text-left mt-2" data-confirm="کیا اس ٹیمپلیٹ کو غیر فعال کرنا ہے؟">@csrf @method('DELETE')<button class="btn btn-sm btn-link text-danger">غیر فعال کریں</button></form>
                 @endif
             </div></div></div>
@@ -31,6 +51,6 @@
     </div>
 </div></section>
 <style>
-    .template-page{background:#f4f7fa;min-height:calc(100vh - 70px)}.template-hero{background:linear-gradient(135deg,#102a43,#1769aa);color:#fff;border-radius:22px;padding:1.7rem 2rem;box-shadow:0 14px 34px rgba(16,42,67,.16)}.template-hero h1{color:#fff!important}.template-hero p{color:rgba(255,255,255,.8)}.template-card{border:0;border-radius:18px;box-shadow:0 9px 25px rgba(31,45,61,.08);overflow:hidden}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem}.field-group{border:1px solid #dfe7f0;border-radius:15px;padding:1rem;background:#fbfdff}.field-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.55rem}.field-choice{display:flex;align-items:flex-start;gap:.55rem;border:1px solid #e1e8ef;border-radius:11px;padding:.7rem;background:#fff;margin:0;cursor:pointer}.field-choice input{margin-top:.25rem}.field-choice small{display:block;color:#718096}.template-default{border:1px solid #cfe0ed;background:#eef7fd;border-radius:12px;padding:.65rem .8rem;margin:0}.template-count{background:#edf5fb;color:#1769aa;border-radius:999px;padding:.35rem .65rem;font-weight:700;white-space:nowrap}.template-inactive{opacity:.65}.empty-state{text-align:center;color:#718096;padding:3rem}details summary{cursor:pointer;list-style:none}details summary::-webkit-details-marker{display:none}@media(max-width:767px){.template-hero{padding:1.3rem}.section-heading{align-items:flex-start;flex-direction:column}}
+    .template-page{background:#f4f7fa;min-height:calc(100vh - 70px)}.template-hero{background:linear-gradient(135deg,#102a43,#1769aa);color:#fff;border-radius:22px;padding:1.7rem 2rem;box-shadow:0 14px 34px rgba(16,42,67,.16)}.template-hero h1{color:#fff!important}.template-hero p{color:rgba(255,255,255,.8)}.template-card{border:0;border-radius:18px;box-shadow:0 9px 25px rgba(31,45,61,.08);overflow:hidden}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem}.field-group{border:1px solid #dfe7f0;border-radius:15px;padding:1rem;background:#fbfdff}.field-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.55rem}.field-choice{display:flex;align-items:flex-start;gap:.55rem;border:1px solid #e1e8ef;border-radius:11px;padding:.7rem;background:#fff;margin:0;cursor:pointer}.field-choice input{margin-top:.25rem}.field-choice small{display:block;color:#718096}.template-default{border:1px solid #cfe0ed;background:#eef7fd;border-radius:12px;padding:.65rem .8rem;margin:0}.template-count{background:#edf5fb;color:#1769aa;border-radius:999px;padding:.35rem .65rem;font-weight:700;white-space:nowrap}.template-inactive{opacity:.65}.empty-state{text-align:center;color:#718096;padding:3rem}details summary{cursor:pointer;list-style:none}details summary::-webkit-details-marker{display:none}.standard-profile-panel{border:1px solid #d8eadf;background:#f7fcf9;border-radius:14px;padding:1rem}.saved-profile,.new-profile{border:1px solid #d7e4dc;background:#fff;border-radius:11px;overflow:hidden}.saved-profile>summary,.new-profile>summary{display:flex;justify-content:space-between;padding:.8rem 1rem;color:#17633c}.profile-measurement-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem}@media(max-width:767px){.template-hero{padding:1.3rem}.section-heading{align-items:flex-start;flex-direction:column}}
 </style>
 @endsection

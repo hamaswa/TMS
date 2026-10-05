@@ -33,6 +33,8 @@ class AdminStorefrontController extends Controller
         [$business, $storefront] = $this->storefrontForCurrentBusiness();
         $validated = $request->validate([
             'display_name' => ['required', 'string', 'max:150'],
+            'display_name_ur' => ['nullable', 'string', 'max:150'],
+            'display_name_en' => ['nullable', 'string', 'max:150'],
             'slug' => [
                 'required',
                 'string',
@@ -41,12 +43,71 @@ class AdminStorefrontController extends Controller
                 Rule::unique('storefronts', 'slug')->ignore($storefront->id),
             ],
             'tagline' => ['nullable', 'string', 'max:180'],
+            'tagline_ur' => ['nullable', 'string', 'max:180'],
+            'tagline_en' => ['nullable', 'string', 'max:180'],
             'description' => ['nullable', 'string', 'max:3000'],
+            'description_ur' => ['nullable', 'string', 'max:3000'],
+            'description_en' => ['nullable', 'string', 'max:3000'],
             'public_phone' => ['nullable', 'string', 'max:50'],
+            'whatsapp_number' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9][0-9\s-]{6,28}$/'],
             'public_email' => ['nullable', 'email', 'max:150'],
             'address' => ['nullable', 'string', 'max:1000'],
+            'address_ur' => ['nullable', 'string', 'max:1000'],
+            'address_en' => ['nullable', 'string', 'max:1000'],
             'city' => ['nullable', 'string', 'max:100'],
+            'city_ur' => ['nullable', 'string', 'max:100'],
+            'city_en' => ['nullable', 'string', 'max:100'],
             'default_locale' => ['required', Rule::in(['ur', 'en'])],
+            'hero_title_ur' => ['nullable', 'string', 'max:180'],
+            'hero_title_en' => ['nullable', 'string', 'max:180'],
+            'hero_text_ur' => ['nullable', 'string', 'max:500'],
+            'hero_text_en' => ['nullable', 'string', 'max:500'],
+            'announcement_ur' => ['nullable', 'string', 'max:180'],
+            'announcement_en' => ['nullable', 'string', 'max:180'],
+            'design_settings_present' => ['nullable', 'boolean'],
+            'theme_primary_color' => ['sometimes', 'required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'theme_accent_color' => ['sometimes', 'required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'theme_background_color' => ['sometimes', 'required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'theme_surface_color' => ['sometimes', 'required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'theme_text_color' => ['sometimes', 'required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'font_style' => ['sometimes', 'required', Rule::in(['modern', 'classic', 'minimal'])],
+            'hero_layout' => ['sometimes', 'required', Rule::in(['overlay', 'split', 'minimal'])],
+            'hero_alignment' => ['sometimes', 'required', Rule::in(['start', 'center'])],
+            'hero_overlay_strength' => ['sometimes', 'required', 'integer', 'min:20', 'max:90'],
+            'hero_height' => ['sometimes', 'required', Rule::in(['compact', 'standard', 'tall'])],
+            'hero_media_type' => ['sometimes', 'required', Rule::in(['image', 'video', 'color'])],
+            'hero_media_fit' => ['sometimes', 'required', Rule::in(['cover', 'contain'])],
+            'hero_media_position' => ['sometimes', 'required', Rule::in(['center', 'top', 'bottom'])],
+            'hero_text_animation' => ['sometimes', 'required', Rule::in(['none', 'fade', 'fade_up', 'slide'])],
+            'corner_style' => ['sometimes', 'required', Rule::in(['square', 'soft', 'rounded'])],
+            'product_columns' => ['sometimes', 'required', 'integer', Rule::in([2, 3, 4])],
+            'product_columns_tablet' => ['sometimes', 'required', 'integer', Rule::in([1, 2, 3])],
+            'product_columns_mobile' => ['sometimes', 'required', 'integer', Rule::in([1, 2])],
+            'product_image_ratio' => ['sometimes', 'required', Rule::in(['square', 'portrait', 'landscape', 'natural'])],
+            'show_product_brand' => ['nullable', 'boolean'],
+            'show_product_category' => ['nullable', 'boolean'],
+            'show_product_stock' => ['nullable', 'boolean'],
+            'header_layout' => ['sometimes', 'required', Rule::in(['menu_first', 'search_first'])],
+            'sticky_header' => ['nullable', 'boolean'],
+            'show_nav_categories' => ['nullable', 'boolean'],
+            'show_nav_brands' => ['nullable', 'boolean'],
+            'show_featured_products' => ['nullable', 'boolean'],
+            'show_benefits' => ['nullable', 'boolean'],
+            'show_services' => ['nullable', 'boolean'],
+            'show_about' => ['nullable', 'boolean'],
+            'navigation_links' => ['nullable', 'array', 'max:6'],
+            'navigation_links.*.label_ur' => ['nullable', 'string', 'max:50'],
+            'navigation_links.*.label_en' => ['nullable', 'string', 'max:50'],
+            'navigation_links.*.url' => ['nullable', 'string', 'max:500', 'regex:/^(https?:\/\/|\/|#)/i'],
+            'navigation_links.*.location' => ['nullable', Rule::in(['header', 'footer', 'both'])],
+            'navigation_links.*.new_tab' => ['nullable', 'boolean'],
+            'footer_style' => ['sometimes', 'required', Rule::in(['simple', 'columns', 'brand'])],
+            'footer_text_ur' => ['nullable', 'string', 'max:500'],
+            'footer_text_en' => ['nullable', 'string', 'max:500'],
+            'facebook_url' => ['nullable', 'url:http,https', 'max:500'],
+            'instagram_url' => ['nullable', 'url:http,https', 'max:500'],
+            'tiktok_url' => ['nullable', 'url:http,https', 'max:500'],
+            'youtube_url' => ['nullable', 'url:http,https', 'max:500'],
             'show_clothing' => ['nullable', 'boolean'],
             'show_tailoring' => ['nullable', 'boolean'],
             'inquiries_enabled' => ['nullable', 'boolean'],
@@ -74,6 +135,11 @@ class AdminStorefrontController extends Controller
             'delivery_enabled' => ['nullable', 'boolean'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'cover' => ['nullable', 'image', 'max:4096'],
+            'hero_video' => ['nullable', 'file', 'mimes:mp4,webm,mov', 'max:51200'],
+            'hero_video_poster' => ['nullable', 'image', 'max:4096'],
+            'remove_logo' => ['nullable', 'boolean'],
+            'remove_cover' => ['nullable', 'boolean'],
+            'remove_hero_video' => ['nullable', 'boolean'],
         ], [
             'slug.regex' => 'دکان کے لنک میں صرف انگریزی حروف، اعداد اور ڈیش استعمال کریں۔',
             'slug.unique' => 'یہ دکان لنک پہلے سے استعمال ہو رہا ہے۔',
@@ -209,6 +275,26 @@ class AdminStorefrontController extends Controller
             ))
             ->all();
 
+        $contentLocale = $validated['default_locale'];
+        foreach (['display_name', 'tagline', 'description', 'address', 'city'] as $field) {
+            $localized = $validated[$field.'_'.$contentLocale] ?? null;
+            if (filled($localized)) {
+                $validated[$field] = $localized;
+            }
+        }
+        $designSettingsPresent = $request->boolean('design_settings_present');
+        $navigationLinks = collect($validated['navigation_links'] ?? [])
+            ->map(fn (array $link) => [
+                'label_ur' => trim((string) ($link['label_ur'] ?? '')),
+                'label_en' => trim((string) ($link['label_en'] ?? '')),
+                'url' => trim((string) ($link['url'] ?? '')),
+                'location' => $link['location'] ?? 'both',
+                'new_tab' => filter_var($link['new_tab'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            ])
+            ->filter(fn (array $link) => $link['url'] !== ''
+                && ($link['label_ur'] !== '' || $link['label_en'] !== ''))
+            ->values()->all();
+
         $storefront->fill([
             ...collect($validated)->except([
                 'logo',
@@ -223,6 +309,16 @@ class AdminStorefrontController extends Controller
                 'bank_transfer_enabled',
                 'raast_enabled',
                 'raast_qr',
+                'navigation_links',
+                'design_settings_present',
+                'hero_video',
+                'hero_video_poster',
+                'remove_logo',
+                'remove_cover',
+                'remove_hero_video',
+                'show_product_brand',
+                'show_product_category',
+                'show_product_stock',
                 ...$paymentDetailFields,
             ])->all(),
             ...$selectedPaymentDetails,
@@ -240,13 +336,47 @@ class AdminStorefrontController extends Controller
             'raast_enabled' => $raastEnabled,
             'pickup_enabled' => $request->boolean('pickup_enabled'),
             'delivery_enabled' => $request->boolean('delivery_enabled'),
+            'show_nav_categories' => $designSettingsPresent
+                ? $request->boolean('show_nav_categories') : ($storefront->show_nav_categories ?? true),
+            'show_nav_brands' => $designSettingsPresent
+                ? $request->boolean('show_nav_brands') : ($storefront->show_nav_brands ?? true),
+            'show_featured_products' => $designSettingsPresent
+                ? $request->boolean('show_featured_products') : ($storefront->show_featured_products ?? true),
+            'show_benefits' => $designSettingsPresent
+                ? $request->boolean('show_benefits') : ($storefront->show_benefits ?? true),
+            'show_services' => $designSettingsPresent
+                ? $request->boolean('show_services') : ($storefront->show_services ?? true),
+            'show_about' => $designSettingsPresent
+                ? $request->boolean('show_about') : ($storefront->show_about ?? true),
+            'sticky_header' => $designSettingsPresent
+                ? $request->boolean('sticky_header') : ($storefront->sticky_header ?? true),
+            'show_product_brand' => $designSettingsPresent
+                ? $request->boolean('show_product_brand') : ($storefront->show_product_brand ?? true),
+            'show_product_category' => $designSettingsPresent
+                ? $request->boolean('show_product_category') : ($storefront->show_product_category ?? true),
+            'show_product_stock' => $designSettingsPresent
+                ? $request->boolean('show_product_stock') : ($storefront->show_product_stock ?? true),
+            'navigation_links' => $designSettingsPresent
+                ? $navigationLinks : ($storefront->navigation_links ?? []),
         ]);
 
         if ($request->hasFile('logo')) {
             $storefront->logo_path = $this->storeImage($request->file('logo'));
+        } elseif ($request->boolean('remove_logo')) {
+            $storefront->logo_path = null;
         }
         if ($request->hasFile('cover')) {
             $storefront->cover_path = $this->storeImage($request->file('cover'));
+        } elseif ($request->boolean('remove_cover')) {
+            $storefront->cover_path = null;
+        }
+        if ($request->hasFile('hero_video')) {
+            $storefront->hero_video_path = $this->storeImage($request->file('hero_video'));
+        } elseif ($request->boolean('remove_hero_video')) {
+            $storefront->hero_video_path = null;
+        }
+        if ($request->hasFile('hero_video_poster')) {
+            $storefront->hero_video_poster_path = $this->storeImage($request->file('hero_video_poster'));
         }
         if ($raastEnabled && $request->hasFile('raast_qr')) {
             $storefront->raast_qr_path = $this->storeImage($request->file('raast_qr'));
@@ -290,6 +420,7 @@ class AdminStorefrontController extends Controller
 
         $storefront->load([
             'business',
+            'heroSlides' => fn ($query) => $query->where('is_active', true)->with(['primaryCollection', 'secondaryCollection']),
             'clothingListings' => fn ($query) => $query
                 ->where('is_published', true)
                 ->whereHas('cloth', fn ($cloth) => $cloth->where('user_id', $storefront->business->owner_user_id))
@@ -344,6 +475,37 @@ class AdminStorefrontController extends Controller
             'pickup_enabled' => true,
             'delivery_enabled' => false,
             'default_locale' => 'ur',
+            'theme_primary_color' => '#126b4f',
+            'theme_accent_color' => '#d98a12',
+            'theme_background_color' => '#f5f7f6',
+            'theme_surface_color' => '#ffffff',
+            'theme_text_color' => '#17372e',
+            'font_style' => 'modern',
+            'hero_layout' => 'overlay',
+            'hero_alignment' => 'start',
+            'hero_overlay_strength' => 70,
+            'hero_height' => 'standard',
+            'hero_media_type' => 'image',
+            'hero_media_fit' => 'cover',
+            'hero_media_position' => 'center',
+            'hero_text_animation' => 'fade_up',
+            'corner_style' => 'soft',
+            'product_columns' => 3,
+            'product_columns_tablet' => 2,
+            'product_columns_mobile' => 1,
+            'product_image_ratio' => 'portrait',
+            'show_product_brand' => true,
+            'show_product_category' => true,
+            'show_product_stock' => true,
+            'header_layout' => 'menu_first',
+            'sticky_header' => true,
+            'show_nav_categories' => true,
+            'show_nav_brands' => true,
+            'show_featured_products' => true,
+            'show_benefits' => true,
+            'show_services' => true,
+            'show_about' => true,
+            'footer_style' => 'columns',
         ]);
 
         return [$business, $storefront];

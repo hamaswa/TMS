@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ClothColor;
 use App\Models\Storefront;
 use App\Models\StorefrontCart;
+use App\Models\StorefrontCartItem;
 use App\Models\StorefrontClothingListing;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -52,13 +53,16 @@ class StorefrontCartService
         StorefrontCart $cart,
         StorefrontClothingListing $listing,
         ClothColor $color,
-        float $quantity
-    ): void {
-        DB::transaction(function () use ($cart, $listing, $color, $quantity) {
+        float $quantity,
+        ?string $selectedColor = null,
+    ): StorefrontCartItem {
+        return DB::transaction(function () use ($cart, $listing, $color, $quantity, $selectedColor) {
             $lockedColor = ClothColor::query()->lockForUpdate()->findOrFail($color->id);
+            $selectedColor = trim((string) $selectedColor);
             $existing = $cart->items()
                 ->where('clothing_listing_id', $listing->id)
                 ->where('cloth_color_id', $lockedColor->id)
+                ->where('selected_color', $selectedColor)
                 ->lockForUpdate()
                 ->first();
             $reservedByOthers = (float) $lockedColor->storefrontCartItems()
@@ -75,10 +79,11 @@ class StorefrontCartService
                 ]);
             }
 
-            $cart->items()->updateOrCreate(
+            $item = $cart->items()->updateOrCreate(
                 [
                     'clothing_listing_id' => $listing->id,
                     'cloth_color_id' => $lockedColor->id,
+                    'selected_color' => $selectedColor,
                 ],
                 [
                     'quantity' => $quantity,
@@ -90,6 +95,8 @@ class StorefrontCartService
                 'expires_at' => now()->addDay(),
                 'last_activity_at' => now(),
             ]);
+
+            return $item;
         });
     }
 

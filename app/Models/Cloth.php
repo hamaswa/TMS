@@ -19,17 +19,64 @@ class Cloth extends Model
         'length',
         'price',
         'sale_price',
+        'suit_sale_price',
+        'default_sale_length',
+        'sale_price_basis',
         'color_tracking_mode',
+        'display_colors',
         'user_id',
         'stock_code',
     ];
 
     public const COLOR_TRACKING_NONE = 'none';
+    public const COLOR_TRACKING_DISPLAY_ONLY = 'display_only';
     public const COLOR_TRACKING_PER_COLOR = 'per_color';
+    public const SALE_PRICE_PER_METER = 'per_meter';
+    public const SALE_PRICE_PER_SUIT = 'per_suit';
+
+    protected $casts = [
+        'suit_sale_price' => 'decimal:2',
+        'default_sale_length' => 'decimal:2',
+        'display_colors' => 'array',
+    ];
+
+    public function sellsPerSuit(): bool
+    {
+        return $this->sale_price_basis === self::SALE_PRICE_PER_SUIT;
+    }
 
     public function tracksColors(): bool
     {
         return $this->color_tracking_mode === self::COLOR_TRACKING_PER_COLOR;
+    }
+
+    public function hasSelectableColors(): bool
+    {
+        return in_array($this->color_tracking_mode, [
+            self::COLOR_TRACKING_DISPLAY_ONLY,
+            self::COLOR_TRACKING_PER_COLOR,
+        ], true);
+    }
+
+    public function usesDisplayOnlyColors(): bool
+    {
+        return $this->color_tracking_mode === self::COLOR_TRACKING_DISPLAY_ONLY;
+    }
+
+    public function selectableColorNames(): array
+    {
+        if ($this->usesDisplayOnlyColors()) {
+            return collect($this->display_colors ?? [])->map(fn ($color) => trim((string) $color))
+                ->filter()->unique()->values()->all();
+        }
+
+        if ($this->tracksColors()) {
+            return $this->relationLoaded('colors')
+                ? $this->colors->pluck('color')->filter()->unique()->values()->all()
+                : $this->colors()->pluck('color')->filter()->unique()->values()->all();
+        }
+
+        return [];
     }
 
     protected static function booted(): void

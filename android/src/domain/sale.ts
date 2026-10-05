@@ -2,6 +2,7 @@ export const EXISTING_SALES_PERMISSION = 'clothing.sales' as const;
 
 export type CustomerMode = 'existing' | 'new' | 'walk-in';
 export type LocalSaveState = 'loading' | 'saving' | 'saved' | 'failed';
+export type SalePriceBasis = 'per_meter' | 'per_suit';
 
 export type SaleLine = {
   localId: string;
@@ -16,6 +17,7 @@ export type SaleLine = {
   quantity: string;
   length: string;
   unitPrice: string;
+  salePriceBasis: SalePriceBasis;
 };
 
 export type SaleDraft = {
@@ -51,6 +53,7 @@ export const createSaleLine = (): SaleLine => ({
   quantity: '1',
   length: '',
   unitPrice: '',
+  salePriceBasis: 'per_meter',
 });
 
 export const createSaleDraft = (): SaleDraft => ({
@@ -76,7 +79,8 @@ const numberValue = (value: string) => {
 };
 
 export const lineTotal = (line: SaleLine) =>
-  numberValue(line.quantity) * numberValue(line.unitPrice);
+  numberValue(line.salePriceBasis === 'per_suit' ? line.quantity : (line.length || line.quantity))
+    * numberValue(line.unitPrice);
 
 export const saleTotal = (draft: SaleDraft) =>
   draft.lines.reduce((total, line) => total + lineTotal(line), 0);

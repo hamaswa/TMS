@@ -6,6 +6,7 @@ use App\Http\Controllers\AdministratorSubscriptionController;
 use App\Http\Controllers\AdminStorefrontClothingController;
 use App\Http\Controllers\AdminStorefrontController;
 use App\Http\Controllers\AdminStorefrontModuleSettingsController;
+use App\Http\Controllers\AdminStorefrontMerchandisingController;
 use App\Http\Controllers\AdminStorefrontOrderController;
 use App\Http\Controllers\AdminStorefrontTailoringController;
 use App\Http\Controllers\BusinessActivityController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryLedgerController;
 use App\Http\Controllers\MeasurementFieldController;
 use App\Http\Controllers\MeasurementTemplateController;
+use App\Http\Controllers\StandardMeasurementProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfflineWorkspaceController;
 use App\Http\Controllers\OptionsController;
@@ -39,6 +41,7 @@ use App\Http\Controllers\PublicBusinessSignupController;
 use App\Http\Controllers\PublicStorefrontCartController;
 use App\Http\Controllers\PublicStorefrontCheckoutController;
 use App\Http\Controllers\PublicStorefrontController;
+use App\Http\Controllers\PublicStorefrontTailoringCartController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\SaleController;
@@ -89,6 +92,7 @@ Route::redirect('/shops', '/', 301)->name('storefront.legacy.index');
 Route::get('/shops/{storefront:slug}', [PublicStorefrontController::class, 'show'])->middleware('public.locale')->name('storefront.show');
 Route::get('/shops/{storefront:slug}/clothes', [PublicStorefrontController::class, 'clothing'])->middleware('public.locale')->name('storefront.clothing.index');
 Route::get('/shops/{storefront:slug}/clothes/{listing}', [PublicStorefrontController::class, 'clothingShow'])->middleware('public.locale')->name('storefront.clothing.show');
+Route::get('/shops/{storefront:slug}/collections/{collection:slug}', [PublicStorefrontController::class, 'collection'])->scopeBindings()->middleware('public.locale')->name('storefront.collections.show');
 Route::get('/shops/{storefront:slug}/cart', [PublicStorefrontCartController::class, 'show'])->middleware('public.locale')->name('storefront.cart.show');
 Route::post('/shops/{storefront:slug}/clothes/{listing}/cart', [PublicStorefrontCartController::class, 'store'])
     ->middleware(['public.locale', 'throttle:30,1'])->name('storefront.cart.store');
@@ -107,9 +111,14 @@ Route::post('/shops/{storefront:slug}/orders/{reference}/access', [PublicStorefr
     ->middleware(['public.locale', 'throttle:5,1'])->name('storefront.orders.authenticate');
 Route::get('/shops/{storefront:slug}/tailoring', [PublicStorefrontController::class, 'tailoring'])->middleware('public.locale')->name('storefront.tailoring.index');
 Route::get('/shops/{storefront:slug}/tailoring/{service}', [PublicStorefrontController::class, 'tailoringShow'])->middleware('public.locale')->name('storefront.tailoring.show');
+Route::post('/shops/{storefront:slug}/tailoring/{service}/cart', [PublicStorefrontTailoringCartController::class, 'store'])
+    ->middleware(['public.locale', 'throttle:30,1'])->name('storefront.tailoring.cart.store');
+Route::delete('/shops/{storefront:slug}/cart/tailoring/{item}', [PublicStorefrontTailoringCartController::class, 'destroy'])
+    ->middleware('public.locale')->name('storefront.tailoring.cart.destroy');
 Route::post('/shops/{storefront:slug}/inquiries', [PublicStorefrontController::class, 'submitInquiry'])
     ->middleware(['public.locale', 'throttle:10,1'])
     ->name('storefront.inquiries.store');
+// Compatibility endpoint for already-open legacy booking forms. New storefront pages use the unified cart.
 Route::post('/shops/{storefront:slug}/tailoring-bookings', [PublicStorefrontController::class, 'submitInquiry'])
     ->middleware(['public.locale', 'throttle:10,1'])
     ->name('storefront.tailoring.bookings.store');
@@ -210,6 +219,16 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::get('/storefront/preview', [AdminStorefrontController::class, 'preview'])->name('storefront.preview');
         Route::get('/storefront/clothing', [AdminStorefrontClothingController::class, 'index'])->name('storefront.clothing.index');
         Route::put('/storefront/clothing/{cloth}', [AdminStorefrontClothingController::class, 'update'])->name('storefront.clothing.update');
+        Route::get('/storefront/merchandising', [AdminStorefrontMerchandisingController::class, 'index'])->name('storefront.merchandising.index');
+        Route::post('/storefront/hero-slides', [AdminStorefrontMerchandisingController::class, 'storeHeroSlide'])->name('storefront.hero-slides.store');
+        Route::put('/storefront/hero-slides/{heroSlide}', [AdminStorefrontMerchandisingController::class, 'updateHeroSlide'])->name('storefront.hero-slides.update');
+        Route::delete('/storefront/hero-slides/{heroSlide}', [AdminStorefrontMerchandisingController::class, 'destroyHeroSlide'])->name('storefront.hero-slides.destroy');
+        Route::post('/storefront/collections', [AdminStorefrontMerchandisingController::class, 'storeCollection'])->name('storefront.collections.store');
+        Route::put('/storefront/collections/{collection}', [AdminStorefrontMerchandisingController::class, 'updateCollection'])->name('storefront.collections.update');
+        Route::delete('/storefront/collections/{collection}', [AdminStorefrontMerchandisingController::class, 'destroyCollection'])->name('storefront.collections.destroy');
+        Route::post('/storefront/menu-items', [AdminStorefrontMerchandisingController::class, 'storeMenuItem'])->name('storefront.menu-items.store');
+        Route::put('/storefront/menu-items/{menuItem}', [AdminStorefrontMerchandisingController::class, 'updateMenuItem'])->name('storefront.menu-items.update');
+        Route::delete('/storefront/menu-items/{menuItem}', [AdminStorefrontMerchandisingController::class, 'destroyMenuItem'])->name('storefront.menu-items.destroy');
         Route::get('/storefront/tailoring', [AdminStorefrontTailoringController::class, 'services'])->name('storefront.tailoring.services');
         Route::post('/storefront/tailoring', [AdminStorefrontTailoringController::class, 'storeService'])->name('storefront.tailoring.store');
         Route::put('/storefront/tailoring/{service}', [AdminStorefrontTailoringController::class, 'updateService'])->name('storefront.tailoring.update');
@@ -229,6 +248,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::middleware('business.permission:clothing.sales')->group(function () {
         Route::get('/storefront/orders', [AdminStorefrontOrderController::class, 'index'])->name('storefront.orders.index');
         Route::patch('/storefront/orders/{order}', [AdminStorefrontOrderController::class, 'update'])->name('storefront.orders.update');
+        Route::patch('/storefront/orders/{order}/collect-payment', [AdminStorefrontOrderController::class, 'collectPayment'])
+            ->name('storefront.orders.collect-payment');
         Route::get('/storefront/orders/{order}/dispatch-print', [AdminStorefrontOrderController::class, 'dispatchPrint'])
             ->name('storefront.orders.dispatch-print');
         Route::patch('/storefront/orders/{order}/payment-verification', [AdminStorefrontOrderController::class, 'verifyPayment'])
@@ -322,6 +343,9 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::resource('/Options', OptionsController::class);
         Route::resource('/measurement-fields', MeasurementFieldController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('/measurement-templates', MeasurementTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::post('/measurement-templates/{template}/standard-profiles', [StandardMeasurementProfileController::class, 'store'])->name('standard-measurement-profiles.store');
+        Route::put('/standard-measurement-profiles/{profile}', [StandardMeasurementProfileController::class, 'update'])->name('standard-measurement-profiles.update');
+        Route::delete('/standard-measurement-profiles/{profile}', [StandardMeasurementProfileController::class, 'destroy'])->name('standard-measurement-profiles.destroy');
         Route::get('Options/add/{id}', [OptionsController::class, 'add'])->name('options.add');
 
         // design

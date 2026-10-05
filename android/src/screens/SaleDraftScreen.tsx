@@ -207,7 +207,7 @@ export function SaleDraftScreen() {
     try {
       const result = await lookupInventorySet(code);
       const colors = uniqueColors(result.data.colors.map((color) => color.name));
-      const requiresColor = result.data.colorTrackingMode === 'per_color';
+      const requiresColor = result.data.colorTrackingMode !== 'none';
       addScannedLine({
         setCode: result.data.setCode,
         brandId: result.data.brandId,
@@ -215,6 +215,8 @@ export function SaleDraftScreen() {
         clothTypeId: result.data.clothTypeId,
         clothType: result.data.clothType,
         unitPrice: result.data.salePrice,
+        length: result.data.defaultSaleLength || '',
+        salePriceBasis: result.data.salePriceBasis || 'per_meter',
         availableColors: colors,
         requiresColor,
         color: defaultColor(colors, requiresColor),
@@ -256,7 +258,7 @@ export function SaleDraftScreen() {
 
   const addManualInventoryItem = (item: InventoryListItem) => {
     const colors = uniqueColors(item.colors.map((color) => color.color));
-    const requiresColor = item.colorTrackingMode === 'per_color';
+    const requiresColor = item.colorTrackingMode !== 'none';
     addScannedLine({
       setCode: item.setCode,
       brandId: item.brandId,
@@ -264,6 +266,8 @@ export function SaleDraftScreen() {
       clothTypeId: item.clothTypeId,
       clothType: item.clothType,
       unitPrice: item.salePrice,
+      length: item.defaultSaleLength || '',
+      salePriceBasis: item.salePriceBasis || 'per_meter',
       availableColors: colors,
       requiresColor,
       color: defaultColor(colors, requiresColor),
@@ -620,7 +624,7 @@ function ManualInventoryModal({
             </>
           ) : null}
           {!loading && !error ? brandStock.map((item) => {
-            const availableLength = item.colors.reduce((total, color) => total + (Number(color.length) || 0), 0);
+            const availableLength = Number(item.availableLength) || 0;
             return (
               <Pressable
                 accessibilityRole="button"
@@ -631,7 +635,7 @@ function ManualInventoryModal({
                 <View style={styles.inventoryText}>
                   <Text style={styles.inventoryName}>{item.clothType}</Text>
                   <Text style={styles.inventoryMeta}>
-                    {item.brand} · Set {item.setCode || 'without code'} · {item.colorTrackingMode === 'per_color' ? `${item.colors.length} colors` : 'no color tracking'} · {availableLength.toLocaleString('en-PK')} available
+                    {item.brand} · Set {item.setCode || 'without code'} · {item.colorTrackingMode === 'per_color' ? `${item.colors.length} tracked colors` : item.colorTrackingMode === 'display_only' ? `${item.colors.length} selectable colors · shared stock` : 'no colors'} · {availableLength.toLocaleString('en-PK')} available
                   </Text>
                 </View>
                 <View style={styles.inventoryPriceWrap}>
@@ -764,7 +768,7 @@ function SaleLineCard({
           </View>
           <View style={styles.twoColumns}>
             <View style={styles.column}>
-              <Field label="Unit price" value={line.unitPrice} onChangeText={(value) => onChange({ unitPrice: value })} keyboardType="decimal-pad" />
+              <Field label={line.salePriceBasis === 'per_suit' ? 'Price per suit' : 'Price per metre'} value={line.unitPrice} onChangeText={(value) => onChange({ unitPrice: value })} keyboardType="decimal-pad" />
             </View>
             <View style={styles.column}>
               <Text style={styles.itemTotal}>Item total: {money(lineTotal(line))}</Text>

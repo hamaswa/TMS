@@ -14,7 +14,7 @@
         <div class="card">
             <div class="card-body">
                 <div class="storefront-orders-head mb-3">
-                    <div><div class="text-muted small">آن لائن دکان</div><h1 class="h3 mb-0">کپڑے کے آن لائن آرڈرز</h1></div>
+                    <div><div class="text-muted small">آن لائن دکان</div><h1 class="h3 mb-0">کپڑے اور سلائی کے آن لائن آرڈرز</h1></div>
                     @if(Auth::user()->hasBusinessPermission('storefront.manage'))<a class="btn btn-outline-secondary" href="{{ route('admin.storefront.edit') }}">دکان کی ترتیب</a>@endif
                 </div>
                 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
@@ -48,7 +48,18 @@
                                 · <code>{{ $order->payment_reference }}</code>
                                 <span class="badge badge-{{ $order->payment_verification_status === \App\Models\StorefrontOrder::VERIFICATION_VERIFIED ? 'success' : ($order->payment_verification_status === \App\Models\StorefrontOrder::VERIFICATION_REJECTED ? 'danger' : 'info') }}">{{ \App\Models\StorefrontOrder::verificationStatuses()[$order->payment_verification_status] ?? 'دستی تصدیق درکار' }}</span>
                             @endif
+                            · وصول شدہ <strong>{{ \App\Support\PakistanCurrency::format($order->paid_amount) }}</strong>
+                            · بقایا <strong>{{ \App\Support\PakistanCurrency::format($order->balance_amount) }}</strong>
                         </div>
+                        @if($order->payment_collected_at)
+                            <div class="alert alert-success mt-3 mb-0">
+                                <strong>رقم وصول ہو گئی:</strong> {{ \App\Support\PakistanCurrency::format($order->paid_amount) }}
+                                · {{ $order->payment_collected_at->format('d-m-Y h:i A') }}
+                                @if($order->paymentCollectedBy) · {{ $order->paymentCollectedBy->name ?: $order->paymentCollectedBy->username }}@endif
+                                @if($order->payment_collection_reference) · حوالہ: <span dir="ltr">{{ $order->payment_collection_reference }}</span>@endif
+                                @if($order->payment_collection_notes)<div class="small mt-1">{{ $order->payment_collection_notes }}</div>@endif
+                            </div>
+                        @endif
                         @if(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method))
                             @php
                                 $verificationLabels = \App\Models\StorefrontOrder::verificationStatuses();
@@ -93,7 +104,23 @@
                                 @endif
                             </div>
                         @endif
-                        <ul class="mt-2 mb-3">@foreach($order->items as $item)<li>{{ $item->item_name }} — {{ $item->color }}، {{ number_format($item->quantity,2) }} میٹر</li>@endforeach</ul>
+                        <ul class="mt-2 mb-3">
+                            @foreach($order->items as $item)<li><strong>کپڑا:</strong> {{ $item->item_name }}@if($item->cloth?->hasSelectableColors()) — {{ $item->color }}@endif، {{ number_format($item->quantity,2) }} میٹر</li>@endforeach
+                            @foreach($order->tailoringItems as $item)
+                                <li>
+                                    <strong>سلائی:</strong> {{ $item->service_name }} — {{ \App\Models\StorefrontTailoringService::measurementMethodLabels()[$item->measurement_method] ?? $item->measurement_method }}
+                                    @if($item->standard_size) ({{ $item->standard_size }}) @endif
+                                    · {{ $item->quantity }} لباس
+                                    · {{ $item->clothingItem?->item_name ?: 'گاہک کا اپنا کپڑا' }}
+                                    @if($item->preferred_date) · مطلوبہ تاریخ {{ $item->preferred_date->format('d-m-Y') }} @endif
+                                    <div class="small text-muted">
+                                        @if($item->measurementTemplate)ٹیمپلیٹ: {{ $item->measurementTemplate->name }} @endif
+                                        @if($item->measurement_values) · پیمائش: {{ collect($item->measurement_values)->map(fn($row) => ($row['label'] ?? $row['source_key'] ?? '').': '.($row['value'] ?? '').($row['unit'] ?? ''))->filter()->join('، ') }} @endif
+                                        @if($item->notes) · نوٹ: {{ $item->notes }} @endif
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
                         @if($order->returns->isNotEmpty())
                             <div class="border rounded bg-light p-3 mt-3">
                                 <strong>جزوی واپسی اور تبدیلی کی تاریخ</strong>
@@ -163,7 +190,22 @@
                                     <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="confirmed"><button class="btn btn-primary" @disabled(\App\Models\StorefrontOrder::requiresManualVerification($order->payment_method) && $order->payment_verification_status !== \App\Models\StorefrontOrder::VERIFICATION_VERIFIED)>آرڈر کی تصدیق کریں</button></form>
                                 @else
                                     <a class="btn btn-dark ml-2" target="_blank" rel="noopener" href="{{ route('admin.storefront.orders.dispatch-print', $order) }}"><i class="fas fa-print ml-1"></i> ڈسپیچ شیٹ پرنٹ کریں</a>
-                                    <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success">مکمل کریں</button></form>
+                                    @if(in_array($order->payment_method, [\App\Models\StorefrontOrder::PAYMENT_COD, \App\Models\StorefrontOrder::PAYMENT_UNPAID], true) && (float) $order->balance_amount > 0)
+                                        <details class="border border-success rounded p-3 mt-3">
+                                            <summary class="font-weight-bold text-success" style="cursor:pointer">مکمل رقم وصول کریں</summary>
+                                            <form method="POST" action="{{ route('admin.storefront.orders.collect-payment',$order) }}" class="mt-3" data-confirm="کیا مکمل رقم واقعی وصول ہو گئی ہے؟">
+                                                @csrf @method('PATCH')
+                                                <p>وصول کی جانے والی رقم: <strong>{{ \App\Support\PakistanCurrency::format($order->balance_amount) }}</strong></p>
+                                                <div class="form-row">
+                                                    <div class="col-md-5 mb-2"><label for="collection_reference_{{ $order->id }}">رسید / ادائیگی حوالہ <small class="text-muted">(اختیاری)</small></label><input id="collection_reference_{{ $order->id }}" name="payment_collection_reference" class="form-control" maxlength="100" dir="ltr"></div>
+                                                    <div class="col-md-7 mb-2"><label for="collection_notes_{{ $order->id }}">اندرونی نوٹ <small class="text-muted">(اختیاری)</small></label><input id="collection_notes_{{ $order->id }}" name="payment_collection_notes" class="form-control" maxlength="1000"></div>
+                                                </div>
+                                                <button class="btn btn-success">مکمل رقم وصول درج کریں</button>
+                                            </form>
+                                        </details>
+                                    @endif
+                                    <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2 mt-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success" @disabled($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_COD && (float) $order->balance_amount > 0)>مکمل کریں</button></form>
+                                    @if($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_COD && (float) $order->balance_amount > 0)<small class="text-danger d-block mt-1">COD آرڈر مکمل کرنے سے پہلے رقم وصول درج کریں۔</small>@endif
                                 @endif
                                 @if($order->returns->isNotEmpty())
                                     <div class="alert alert-light mt-2 mb-0">اس آرڈر پر جزوی واپسی یا تبدیلی موجود ہے، اس لیے مکمل منسوخی دستیاب نہیں۔ باقی مقدار الگ واپسی یا تبدیلی سے درج کریں۔</div>

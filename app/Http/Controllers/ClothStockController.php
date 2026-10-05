@@ -176,14 +176,22 @@ class ClothStockController extends Controller
             $inventoryOptions = $cloths->map(fn ($cloth) => [
                 'cloth_id' => (string) $cloth->id,
                 'stock_code' => $cloth->stock_code,
+                'set_code' => $cloth->set_code,
                 'brand_id' => (string) $cloth->cloth_brand_id,
                 'brand_name' => $cloth->brand?->name,
                 'type_id' => (string) $cloth->cloth_type_id,
                 'type_name' => $cloth->type?->name,
                 'tracks_colors' => $cloth->tracksColors(),
-                'colors' => $cloth->colors->map(fn ($color) => [
-                    'name' => $color->color,
-                    'length' => (float) $color->length,
+                'requires_color' => $cloth->hasSelectableColors(),
+                'available_length' => (float) $cloth->colors->sum('length'),
+                'default_sale_length' => (float) ($cloth->default_sale_length ?? 0),
+                'sale_price_basis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
+                'unit_price' => (float) ($cloth->sellsPerSuit() ? $cloth->suit_sale_price : $cloth->sale_price),
+                'colors' => collect($cloth->selectableColorNames())->map(fn ($name) => [
+                    'name' => $name,
+                    'length' => $cloth->tracksColors()
+                        ? (float) ($cloth->colors->firstWhere('color', $name)?->length ?? 0)
+                        : null,
                 ])->values(),
             ])->values();
 
@@ -213,6 +221,7 @@ class ClothStockController extends Controller
                     $quantity = (float) ($item['quantity'] ?? 1);
                     $length = (float) (($item['length'] ?? '') ?: $quantity);
                     $unitPrice = (float) ($item['unitPrice'] ?? 0);
+                    $salePriceBasis = $item['salePriceBasis'] ?? ($cloth?->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER);
 
                     return [
                         'brand_id' => $item['brandId'] ?? $cloth?->cloth_brand_id,
@@ -221,7 +230,8 @@ class ClothStockController extends Controller
                         'color' => $item['color'] ?? '',
                         'length' => $length,
                         'per_meter' => $unitPrice,
-                        'item_total' => round($length * $unitPrice, 2),
+                        'sale_price_basis' => $salePriceBasis,
+                        'item_total' => round(($salePriceBasis === Cloth::SALE_PRICE_PER_SUIT ? $quantity : $length) * $unitPrice, 2),
                         'rack' => $item['rack'] ?? '',
                     ];
                 })->values()->all();
