@@ -25,18 +25,112 @@ class ClothController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        try {
-            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
-                ->with(['type', 'brand', 'colors.latestCostedStockAddition', 'images', 'videos'])
-                ->latest()
-                ->get();
+        $ownerId = auth()->user()->businessOwnerId();
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'brand' => ['nullable', 'integer'],
+            'type' => ['nullable', 'integer'],
+            'color' => ['nullable', 'string', 'max:100'],
+            'stock' => ['nullable', Rule::in(['all', 'available', 'low', 'empty'])],
+            'basis' => ['nullable', Rule::in(['all', Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
+            'availability' => ['nullable', Rule::in(['all', 'pos_only', 'online_order'])],
+            'sort' => ['nullable', Rule::in(['newest', 'oldest', 'brand', 'type', 'stock_high', 'stock_low'])],
+            'per_page' => ['nullable', Rule::in([25, 50, 100])],
+        ]);
 
-            return view('cloths.index', compact('cloths'));
-        } catch (\Throwable $th) {
-            throw $th;
+        $query = Cloth::query()->where('user_id', $ownerId);
+        $search = trim((string) ($filters['q'] ?? ''));
+        if ($search !== '') {
+            $query->where(function ($query) use ($search) {
+                $like = '%'.$search.'%';
+                $query->where('name', 'like', $like)
+                    ->orWhere('set_code', 'like', $like)
+                    ->orWhere('stock_code', 'like', $like)
+                    ->orWhere('display_colors', 'like', $like)
+                    ->orWhereHas('brand', fn ($brand) => $brand->where('name', 'like', $like))
+                    ->orWhereHas('type', fn ($type) => $type->where('name', 'like', $like))
+                    ->orWhereHas('colors', fn ($color) => $color->where('color', 'like', $like));
+            });
         }
+        if (! empty($filters['brand'])) {
+            $query->where('cloth_brand_id', $filters['brand']);
+        }
+        if (! empty($filters['type'])) {
+            $query->where('cloth_type_id', $filters['type']);
+        }
+        if (! empty($filters['color'])) {
+            $color = $filters['color'];
+            $query->where(function ($query) use ($color) {
+                $query->whereHas('colors', fn ($colors) => $colors->where('color', $color))
+                    ->orWhereJsonContains('display_colors', $color);
+            });
+        }
+
+        $stockExpression = 'COALESCE((SELECT SUM(cloth_colors.length) FROM cloth_colors WHERE cloth_colors.cloth_id = cloths.id), 0)';
+        if (($filters['stock'] ?? 'all') === 'available') {
+            $query->whereRaw($stockExpression.' > 10');
+        } elseif (($filters['stock'] ?? 'all') === 'low') {
+            $query->whereRaw($stockExpression.' > 0 AND '.$stockExpression.' <= 10');
+        } elseif (($filters['stock'] ?? 'all') === 'empty') {
+            $query->whereRaw($stockExpression.' <= 0');
+        }
+        if (($filters['basis'] ?? 'all') !== 'all') {
+            $query->where('sale_price_basis', $filters['basis']);
+        }
+
+        $onlineListing = fn ($listing) => $listing
+            ->where('is_published', true)
+            ->where('is_available', true)
+            ->where('online_order_enabled', true);
+        if (($filters['availability'] ?? 'all') === 'online_order') {
+            $query->whereHas('storefrontListings', $onlineListing);
+        } elseif (($filters['availability'] ?? 'all') === 'pos_only') {
+            $query->whereDoesntHave('storefrontListings', $onlineListing);
+        }
+
+        $matchedSets = (clone $query)->count();
+        $matchedIds = (clone $query)->select('cloths.id');
+        $colorSummary = ClothColor::query()
+            ->whereIn('cloth_id', $matchedIds)
+            ->selectRaw('COUNT(*) as color_count, COALESCE(SUM(length), 0) as total_meters')
+            ->first();
+        $lowOrEmptySets = (clone $query)->whereRaw($stockExpression.' <= 10')->count();
+
+        match ($filters['sort'] ?? 'newest') {
+            'oldest' => $query->oldest('cloths.id'),
+            'brand' => $query->orderBy(
+                ClothBrand::select('name')->whereColumn('cloth_brands.id', 'cloths.cloth_brand_id')
+            )->orderBy('cloths.id'),
+            'type' => $query->orderBy(
+                ClothType::select('name')->whereColumn('cloth_types.id', 'cloths.cloth_type_id')
+            )->orderBy('cloths.id'),
+            'stock_high' => $query->orderByRaw($stockExpression.' DESC')->orderByDesc('cloths.id'),
+            'stock_low' => $query->orderByRaw($stockExpression.' ASC')->orderByDesc('cloths.id'),
+            default => $query->latest('cloths.id'),
+        };
+
+        $cloths = $query
+            ->with(['type', 'brand', 'colors.latestCostedStockAddition', 'images', 'storefrontListings'])
+            ->paginate((int) ($filters['per_page'] ?? 25))
+            ->withQueryString();
+        $brands = ClothBrand::where('user_id', $ownerId)->orderBy('name')->get();
+        $types = ClothType::where('user_id', $ownerId)->orderBy('name')->get();
+        $stockColors = ClothColor::where('user_id', $ownerId)->whereNotNull('color')
+            ->distinct()->pluck('color');
+        $displayColors = Cloth::where('user_id', $ownerId)->whereNotNull('display_colors')
+            ->get(['display_colors'])->flatMap(fn (Cloth $cloth) => $cloth->display_colors ?? []);
+        $colors = $stockColors->merge($displayColors)->map(fn ($color) => trim((string) $color))
+            ->filter()->unique()->sort()->values();
+        $summary = [
+            'sets' => $matchedSets,
+            'colors' => (int) ($colorSummary->color_count ?? 0),
+            'meters' => (float) ($colorSummary->total_meters ?? 0),
+            'low_or_empty' => $lowOrEmptySets,
+        ];
+
+        return view('cloths.index', compact('cloths', 'brands', 'types', 'colors', 'summary', 'filters'));
     }
 
     public function qrLabels(PrintDocumentService $documents)
@@ -86,6 +180,7 @@ class ClothController extends Controller
                 'sale_price_basis' => Cloth::SALE_PRICE_PER_METER,
             ]);
             $validated = $request->validate([
+                'name' => ['nullable', 'string', 'max:100'],
                 'cloth_type_id' => ['required', 'integer'],
                 'cloth_brand_id' => ['required', 'integer'],
                 'length' => ['nullable', 'array'],
@@ -241,6 +336,7 @@ class ClothController extends Controller
             // Save the cloth
             DB::transaction(function () use ($request, $validated, $stockColors, $displayColors, $lengths, $trackingMode, $storefront, $canConfigureOnline) {
                 $cloth = Cloth::create([
+                    'name' => trim((string) ($validated['name'] ?? '')) ?: null,
                     'cloth_type_id' => $validated['cloth_type_id'],
                     'cloth_brand_id' => $validated['cloth_brand_id'],
                     'price' => $validated['price'],
@@ -405,6 +501,7 @@ class ClothController extends Controller
                 'sale_price_basis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
             ]);
             $validated = $request->validate([
+                'name' => ['nullable', 'string', 'max:100'],
                 'cloth_type_id' => ['required', 'integer'],
                 'cloth_brand_id' => ['required', 'integer'],
                 'length' => ['required', 'numeric', 'min:0'],
@@ -458,6 +555,7 @@ class ClothController extends Controller
             DB::transaction(function () use ($request, $validated, $cloth, $displayColors, $storefront, $canConfigureOnline) {
                 $inventory = app(InventoryService::class);
                 $cloth->update([
+                    'name' => trim((string) ($validated['name'] ?? '')) ?: $cloth->name,
                     'cloth_type_id' => $validated['cloth_type_id'],
                     'cloth_brand_id' => $validated['cloth_brand_id'],
                     'price' => $validated['price'],
@@ -586,7 +684,7 @@ class ClothController extends Controller
                 'cloth_id' => $cloth->id,
             ]);
             $cloth->loadMissing(['brand', 'type']);
-            $listing->public_name = collect([$cloth->brand?->name, $cloth->type?->name])
+            $listing->public_name = collect([$cloth->name, $cloth->brand?->name, $cloth->type?->name])
                 ->filter()->implode(' — ');
             $listing->is_featured = false;
             $listing->sort_order = 0;

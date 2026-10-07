@@ -85,6 +85,7 @@ class OrderController extends Controller
             ->whereIn('type', ['necktype', 'sleeve', 'daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
             ->with(['options' => fn ($query) => $query
                 ->where('user_id', Auth::user()->businessOwnerId())
+                ->where('measurement_template_id', $data->measurement_template_id)
                 ->orderBy('Name')])
             ->get()
             ->mapWithKeys(fn (OptionType $type) => [
@@ -844,13 +845,20 @@ class OrderController extends Controller
 
     public function updateRackNo(Request $request, $orderId)
     {
-        $validated = $request->validate(['rack_no' => ['nullable', 'string', 'max:255']]);
         $order = $this->ownedOrder($orderId);
+        abort_unless(in_array($order->status, ['ready', 'delivered'], true), 422, 'ریک نمبر صرف تیار لباس کے لیے مقرر کیا جا سکتا ہے۔');
+        $ownerId = Auth::user()->businessOwnerId();
+        $validated = $request->validate([
+            'rack_no' => [
+                'nullable', 'string', 'max:100',
+                Rule::exists('racks', 'rack_no')->where('user_id', $ownerId),
+            ],
+        ]);
 
         $order->rack_no = $validated['rack_no'] ?? null;
         $order->save();
 
-        return response()->json(['message' => 'Rack number updated successfully'], 200);
+        return response()->json(['message' => 'ریک نمبر محفوظ ہو گیا ہے۔'], 200);
     }
 
     public function orderCompleteNotify(Request $request)

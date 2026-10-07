@@ -3,6 +3,10 @@
     @include('purchases._styles')
 @endpush
 @section('content')
+@php
+    $hasAdvancedPurchaseFilters = filled($filters['from_date'] ?? null) || filled($filters['to_date'] ?? null) || (int)($filters['per_page'] ?? 25) !== 25;
+    $hasPurchaseFilters = filled($filters['q'] ?? null) || filled($filters['supplier_id'] ?? null) || filled($filters['status'] ?? null) || $hasAdvancedPurchaseFilters;
+@endphp
 <section class="main-content purchase-page" dir="rtl"><div class="purchase-shell">
     <header class="purchase-page-header">
         <div class="purchase-title-wrap"><span class="purchase-title-icon"><i class="fas fa-shopping-cart"></i></span><div><h1 class="h3 mb-1">خریداری کی فہرست</h1><div class="purchase-breadcrumb"><a href="{{ route('admin.home') }}">ڈیش بورڈ</a> <span class="mx-2">•</span> خریداری</div></div></div>
@@ -20,16 +24,18 @@
     </div>
 
     <form class="purchase-panel purchase-filter" method="GET">
-        <h2 class="purchase-section-title"><i class="fas fa-filter"></i> فلٹرز</h2>
         <div class="form-row align-items-end">
-            <div class="form-group col-xl-3 col-lg-4"><label for="purchase_q">بل نمبر / حوالہ</label><input id="purchase_q" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" class="form-control" placeholder="بل نمبر درج کریں"></div>
-            <div class="form-group col-xl-2 col-lg-4"><label for="purchase_supplier">سپلائر</label><select id="purchase_supplier" name="supplier_id" class="form-control"><option value="">تمام سپلائرز</option>@foreach($suppliers as $supplier)<option value="{{ $supplier->id }}" @selected((int)($filters['supplier_id'] ?? 0)===$supplier->id)>{{ $supplier->name }}</option>@endforeach</select></div>
-            <div class="form-group col-xl-2 col-lg-4"><label for="purchase_status">حالت</label><select id="purchase_status" name="status" class="form-control"><option value="">تمام حالتیں</option>@foreach(['draft','received','cancelled'] as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ['draft'=>'زیرِ تیاری','received'=>'وصول شدہ','cancelled'=>'منسوخ'][$status] }}</option>@endforeach</select></div>
-            <div class="form-group col-xl-2 col-lg-4"><label for="purchase_from">تاریخ سے</label><input id="purchase_from" type="date" name="from_date" value="{{ $filters['from_date'] ?? '' }}" class="form-control"></div>
-            <div class="form-group col-xl-2 col-lg-4"><label for="purchase_to">تاریخ تک</label><input id="purchase_to" type="date" name="to_date" value="{{ $filters['to_date'] ?? '' }}" class="form-control"></div>
-            <div class="form-group col-xl-1 col-lg-4"><label for="purchase_rows">قطاریں</label><select id="purchase_rows" name="per_page" class="form-control">@foreach([15,25,50,100] as $size)<option value="{{ $size }}" @selected((int)($filters['per_page'] ?? 25)===$size)>{{ $size }}</option>@endforeach</select></div>
+            <div class="form-group col-lg-5"><label for="purchase_q">بل نمبر / حوالہ</label><input id="purchase_q" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}" class="form-control" placeholder="بل نمبر درج کریں"></div>
+            <div class="form-group col-lg-3"><label for="purchase_supplier">سپلائر</label><select id="purchase_supplier" name="supplier_id" class="form-control"><option value="">تمام سپلائرز</option>@foreach($suppliers as $supplier)<option value="{{ $supplier->id }}" @selected((int)($filters['supplier_id'] ?? 0)===$supplier->id)>{{ $supplier->name }}</option>@endforeach</select></div>
+            <div class="form-group col-lg-2"><label for="purchase_status">حالت</label><select id="purchase_status" name="status" class="form-control"><option value="">تمام حالتیں</option>@foreach(['draft','received','cancelled'] as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ['draft'=>'زیرِ تیاری','received'=>'وصول شدہ','cancelled'=>'منسوخ'][$status] }}</option>@endforeach</select></div>
+            <div class="form-group col-lg-2"><button class="btn btn-primary btn-block"><i class="fas fa-search ml-1"></i> تلاش کریں</button></div>
         </div>
-        <div class="purchase-filter-actions"><button class="btn btn-primary"><i class="fas fa-search ml-1"></i> تلاش کریں</button><a href="{{ route('admin.purchases.index') }}" class="btn btn-outline-secondary"><i class="fas fa-redo ml-1"></i> ری سیٹ کریں</a></div>
+        <details class="purchase-advanced-filters" @if($hasAdvancedPurchaseFilters) open @endif><summary><i class="fas fa-sliders-h ml-1"></i>مزید فلٹر</summary><div class="form-row mt-3">
+            <div class="form-group col-md-5"><label for="purchase_from">تاریخ سے</label><input id="purchase_from" type="date" name="from_date" value="{{ $filters['from_date'] ?? '' }}" class="form-control"></div>
+            <div class="form-group col-md-5"><label for="purchase_to">تاریخ تک</label><input id="purchase_to" type="date" name="to_date" value="{{ $filters['to_date'] ?? '' }}" class="form-control"></div>
+            <div class="form-group col-md-2"><label for="purchase_rows">قطاریں</label><select id="purchase_rows" name="per_page" class="form-control">@foreach([15,25,50,100] as $size)<option value="{{ $size }}" @selected((int)($filters['per_page'] ?? 25)===$size)>{{ $size }}</option>@endforeach</select></div>
+        </div></details>
+        @if($hasPurchaseFilters)<a href="{{ route('admin.purchases.index') }}" class="small text-muted"><i class="fas fa-times ml-1"></i>تمام فلٹر ختم کریں</a>@endif
     </form>
 
     <div class="purchase-panel purchase-list-card">

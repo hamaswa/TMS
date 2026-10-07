@@ -14,7 +14,7 @@
 @endunless
         @foreach($measurementFields as $field)
             @php($value = old('custom_measurements.'.$field->id, $measurementValues->get($field->id)))
-            <div class="form-group {{ $embedded ? 'edit-field mb-0' : 'col-md-6' }}" data-measurement-field="custom.{{ $field->id }}">
+            <div class="form-group {{ $embedded ? 'edit-field mb-0' : 'col-md-6' }}" data-measurement-field="custom.{{ $field->id }}" data-template-field="custom.{{ $field->id }}" data-default-column="{{ $field->field_type === 'number' ? 'right' : 'left' }}">
                 <label for="custom_measurement_{{ $field->id }}">{{ $field->label }} @if($field->unit && $field->unit !== 'none')<small class="text-muted">({{ $field->unit === 'inch' ? 'انچ' : 'سینٹی میٹر' }})</small>@endif @if($field->is_required)<span class="text-danger">*</span>@endif</label>
                 @if($field->field_type === 'select')
                     <select class="form-control" id="custom_measurement_{{ $field->id }}" name="custom_measurements[{{ $field->id }}]" @required($field->is_required)>

@@ -151,7 +151,7 @@ class CounterSaleService
             }
 
             $receipt = CounterSaleReceipt::create([
-                'receipt_number' => 'TMSC-'.Str::upper(Str::random(6)),
+                'receipt_number' => 'SALE-'.Str::upper(Str::random(6)),
                 'user_id' => $ownerId,
                 'customer_id' => $customer->id,
                 'status' => 'completed',

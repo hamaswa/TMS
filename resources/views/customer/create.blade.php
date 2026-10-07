@@ -159,6 +159,10 @@
             min-width: 0
         }
 
+        .customer-details-grid.template-one-column {
+            grid-template-columns: minmax(0, 1fr)
+        }
+
         .preference-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -340,9 +344,12 @@
                                             'is_default',
                                             true)?->id,
                                     ])
-                                    <div class="measurement-grid">
+                                    <div class="measurement-grid" data-template-column="right">
                                         @foreach (['length' => 'لمبائی', 'arms' => 'بازو', 'teraa' => 'تیرا', 'senaChorai' => 'سینہ چوڑائی', 'damanchorai' => 'دامن چوڑائی', 'shalwar' => 'شلوار', 'pancha' => 'پائنچہ', 'shalwarGheer' => 'شلوار گھیر', 'monda' => 'مونڈھا', 'chuta' => 'چوٹا'] as $name => $label)
-                                            <div class="form-group measurement-field"><label
+                                            @php
+                                                $templateKey = $name === 'monda' ? 'shoulder' : $name;
+                                            @endphp
+                                            <div class="form-group measurement-field" data-template-field="system.{{ $templateKey }}" data-default-column="right"><label
                                                     for="measurement-{{ $name }}">{{ $label }} <span
                                                         class="text-danger">*</span></label><input
                                                     id="measurement-{{ $name }}" type="number" step="0.01"
@@ -365,18 +372,13 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="preference-grid">
+                                    <div class="preference-grid" data-template-column="left">
                                         @foreach ($data['optionTypes'] as $type)
-                                            @php(
-    $options = DB::table('options')->where('option_id', $type->option_id)->where('user_id', Auth::user()->businessOwnerId())->get()
-)
-                                            <div class="form-group"><label>{{ $type->otn }}</label><select
-                                                    class="form-control" name="{{ $type->slug }}">
-                                                    <option value="0">{{ $type->otn }} منتخب کریں</option>
-                                                    @foreach ($options as $option)
-                                                        <option value="{{ $option->id . ' - ' . $option->Name }}"
-                                                            @selected(old($type->slug) === $option->id . ' - ' . $option->Name)>{{ $option->Name }}</option>
-                                                    @endforeach
+                                            @php($templateSystemField = $type->type === 'daaman' ? 'Daaman' : $type->type)
+                                            <div class="form-group" data-template-field="system.{{ $templateSystemField }}" data-default-column="left"><label>{{ $type->otn }}</label><select
+                                                    class="form-control" name="{{ $type->slug }}" data-template-system-field="{{ $templateSystemField }}">
+                                                    <option value="">{{ $type->otn }} منتخب کریں</option>
+                                                    @if(old($type->slug))<option value="{{ old($type->slug) }}" selected>{{ old($type->slug) }}</option>@endif
                                                 </select></div>
                                         @endforeach
                                     </div>

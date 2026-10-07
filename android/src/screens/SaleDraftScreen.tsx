@@ -26,7 +26,6 @@ import {
 import { useSaleDraft } from '../hooks/useSaleDraft';
 import {
   ApiError,
-  completeSession,
   CustomerResult,
   getShopContext,
   InventoryListItem,
@@ -60,7 +59,6 @@ export function SaleDraftScreen() {
   const [online, setOnline] = useState<boolean | null>(null);
   const [shopConnection, setShopConnection] = useState<ShopConnection | null>(null);
   const [syncState, setSyncState] = useState<'waiting' | 'syncing' | 'offline' | 'conflict' | 'claimed'>('waiting');
-  const [completing, setCompleting] = useState(false);
   const [forwarding, setForwarding] = useState(false);
   const [customerPickerVisible, setCustomerPickerVisible] = useState(false);
   const [customerResults, setCustomerResults] = useState<CustomerResult[]>([]);
@@ -77,13 +75,6 @@ export function SaleDraftScreen() {
   const rememberServerRevision = (revision: number) => {
     serverRevisionRef.current = revision;
   };
-
-  async function handleRemoteCompletion(receipt?: string) {
-    await startNewDraft();
-    rememberServerRevision(0);
-    setSyncState('waiting');
-    Alert.alert('Sale completed', receipt ? `Receipt ${receipt} is ready on the dashboard.` : 'The dashboard completed this sale. You can start the next customer now.');
-  }
 
   useEffect(() => NetInfo.addEventListener((state) => {
     const networkAvailable = Boolean(state.isConnected);
@@ -145,19 +136,16 @@ export function SaleDraftScreen() {
     [draft],
   );
 
-  const saleProblem = (completingSale: boolean): string | null => {
+  const saleProblem = (): string | null => {
     if (draft.lines.length === 0) return 'Scan a QR code or add an item from shop inventory first.';
     if (draft.customerMode === 'existing' && !draft.customerId) return 'Select an existing customer.';
     if (draft.customerMode === 'new' && !draft.newCustomerName.trim()) return 'Enter the new customer name.';
     if (draft.lines.some((line) => line.requiresColor && !line.color)) return 'Select a color for every color-tracked cloth set.';
-    if (completingSale && draft.customerMode === 'walk-in' && totals.remaining > 0.009) {
-      return 'A walk-in sale must be fully paid. Otherwise save the buyer as a new customer.';
-    }
     return null;
   };
 
   const forwardToAdmin = async () => {
-    const problem = saleProblem(false);
+    const problem = saleProblem();
     if (problem) {
       Alert.alert('Sale is incomplete', problem);
       return;
@@ -175,25 +163,6 @@ export function SaleDraftScreen() {
       Alert.alert('Could not forward sale', error instanceof ApiError ? error.message : 'Check the connection and try again.');
     } finally {
       setForwarding(false);
-    }
-  };
-
-  const finishSale = async () => {
-    const problem = saleProblem(true);
-    if (problem) {
-      Alert.alert('Sale is incomplete', problem);
-      return;
-    }
-    setCompleting(true);
-    setSyncState('syncing');
-    try {
-      const completed = await completeSession(draft, serverRevisionRef.current);
-      await handleRemoteCompletion(completed.data.receipt?.receipt_number);
-    } catch (error) {
-      setSyncState('offline');
-      Alert.alert('Sale not completed', error instanceof ApiError ? error.message : 'Check the connection and try again.');
-    } finally {
-      setCompleting(false);
     }
   };
 
@@ -378,7 +347,8 @@ export function SaleDraftScreen() {
             ))
           )}
 
-          <Section title="Payment">
+          <Section title="Payment details for admin">
+            <Text style={styles.boundaryNote}>The admin desk will verify the amount and complete the order.</Text>
             <Text style={styles.fieldLabel}>Payment method</Text>
             <View style={styles.choiceGrid}>
               {PAYMENT_METHODS.map((method) => (
@@ -404,8 +374,7 @@ export function SaleDraftScreen() {
             <MoneyRow label="Remaining" value={totals.remaining} emphasized />
           </View>
 
-          <PrimaryButton label={completing ? 'Completing…' : 'Complete sale'} onPress={finishSale} fullWidth />
-          <SecondaryButton label={forwarding ? 'Forwarding…' : 'Forward to admin'} onPress={forwardToAdmin} fullWidth />
+          <PrimaryButton label={forwarding ? 'Forwarding…' : 'Forward order to admin'} onPress={forwardToAdmin} fullWidth />
           <Pressable
             accessibilityRole="button"
             onPress={() =>
@@ -422,8 +391,8 @@ export function SaleDraftScreen() {
           </Pressable>
 
           <Text style={styles.boundaryNote}>
-            Changes stay on this phone while you prepare the cart. Data is sent only when you complete
-            the sale or forward it to an admin.
+            Changes stay on this phone while you prepare the cart. Forward the order to the admin desk
+            for pricing, payment verification, stock deduction, and completion.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

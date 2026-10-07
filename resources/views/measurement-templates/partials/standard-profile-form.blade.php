@@ -1,6 +1,6 @@
 @php
     $profileValues = collect($profile?->measurement_values ?? [])->keyBy('source_key');
-    $templateCustomFields = $customFields->whereIn('id', array_map('intval', $template->custom_field_ids ?? []));
+    $templateCustomFields = $customFields->whereIn('id', array_map('intval', $template->custom_field_ids ?? []))->where('field_type', 'number');
     $formPrefix = $profile ? 'profile-'.$profile->id : 'new-profile-'.$template->id;
 @endphp
 <div class="standard-profile-fields">
@@ -17,7 +17,7 @@
     </div>
     <div class="profile-measurement-grid">
         @foreach($template->system_fields ?? [] as $key)
-            @if(isset($systemFields[$key]))
+            @if(isset($systemFields[$key]) && $systemFields[$key]['unit'] !== '')
                 @php($meta = $systemFields[$key])
                 <div class="form-group mb-0">
                     <label for="{{ $formPrefix }}-system-{{ $key }}">{{ $meta['label'] }} @if($meta['unit'])<small>({{ $meta['unit'] }})</small>@endif</label>

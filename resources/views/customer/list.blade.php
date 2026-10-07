@@ -387,25 +387,23 @@
                 <div class="customer-page-title">
                     <span class="customer-page-title__icon"><i class="fas fa-users"></i></span>
                     <div>
-                        <h1>گاہک اور پیمائش</h1>
-                        <p>گاہک کی معلومات، پیمائش، آرڈر اور بقایا ایک جگہ منظم کریں۔</p>
+                        <h1>{{ $canManageMeasurements ? 'گاہک اور پیمائش' : 'گاہک' }}</h1>
+                        <p>{{ $canManageMeasurements ? 'گاہک کی معلومات، پیمائش، آرڈر اور بقایا ایک جگہ منظم کریں۔' : 'دکان کے گاہک، رابطہ اور آرڈر ایک جگہ دیکھیں۔' }}</p>
                     </div>
                 </div>
 
                 <div class="customer-actions">
-                    <a href="{{ route('admin.Customers.create') }}" class="customer-action-btn is-primary">
+                    @if($canManageMeasurements || $canCreateBasicCustomer)<a href="{{ $canManageMeasurements ? route('admin.Customers.create') : route('admin.customers.sale') }}" class="customer-action-btn is-primary">
                         <i class="fas fa-user-plus" aria-hidden="true"></i>
                         نیا گاہک شامل کریں
-                    </a>
-                    <button type="button" class="customer-action-btn" data-toggle="modal" data-target="#customersCsvModal">
+                    </a>@endif
+                    @if($canManageMeasurements)<button type="button" class="customer-action-btn" data-toggle="modal" data-target="#customersCsvModal">
                         <i class="fas fa-file-import"></i> ایکسل سے درآمد
                     </button>
                     <a href="{{ route('admin.customercsv') }}" class="customer-action-btn">
                         <i class="fas fa-file-export"></i> ایکسل میں برآمد
                     </a>
-                    <button type="button" class="customer-action-btn" data-toggle="modal" data-target="#myRackModal">
-                        <i class="fas fa-layer-group"></i> نیا ریک نمبر
-                    </button>
+                    @endif
                 </div>
             </div>
 
@@ -540,29 +538,6 @@
                         </div>
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-success"><i class="fas fa-check ml-1"></i> ادائیگی محفوظ کریں</button>
-                            <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade" id="myRackModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content">
-                    <form action="{{ url('admin/RackNo') }}" method="post">
-                        @csrf
-                        <div class="modal-header">
-                            <h4 class="modal-title"><i class="fas fa-layer-group text-primary ml-2"></i> نیا ریک نمبر شامل کریں</h4>
-                            <button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
-                        </div>
-                        <div class="modal-body">
-                            <label for="rackNumber" class="font-weight-bold">ریک نمبر / نام</label>
-                            <input id="rackNumber" type="text" name="RackNo" class="form-control" required placeholder="مثلاً A-01">
-                            <small class="form-text text-muted mt-2">یہ ریک نمبر آرڈر محفوظ کرنے اور تلاش کرنے میں مدد دے گا۔</small>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-plus ml-1"></i> ریک شامل کریں</button>
                             <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
                         </div>
                     </form>

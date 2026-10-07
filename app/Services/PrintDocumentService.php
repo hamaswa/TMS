@@ -17,11 +17,25 @@ class PrintDocumentService
         string $documentType,
         string|int $reference
     ): array {
-        $allowedPapers = array_keys(Setting::printPaperSizes());
+        $receiptTypes = [
+            'counter-order',
+            'cloth-sale',
+            'cloth-sale-copy',
+            'tailor-order',
+            'tailor-order-copy',
+            'sale-invoice',
+        ];
+        $isReceipt = in_array($documentType, $receiptTypes, true);
+        $paperOptions = $isReceipt
+            ? [Setting::PRINT_PAPER_RECEIPT_80 => Setting::printPaperSizes()[Setting::PRINT_PAPER_RECEIPT_80]]
+            : Setting::printPaperSizes();
+        $allowedPapers = array_keys($paperOptions);
         $requestedPaper = $request->query('paper');
-        $paper = in_array($requestedPaper, $allowedPapers, true)
+        $paper = $isReceipt
+            ? Setting::PRINT_PAPER_RECEIPT_80
+            : (in_array($requestedPaper, $allowedPapers, true)
             ? $requestedPaper
-            : ($setting?->print_paper_size ?: Setting::PRINT_PAPER_RECEIPT_80);
+            : ($setting?->print_paper_size ?: Setting::PRINT_PAPER_RECEIPT_80));
 
         if (! in_array($paper, $allowedPapers, true)) {
             $paper = Setting::PRINT_PAPER_RECEIPT_80;
@@ -37,7 +51,7 @@ class PrintDocumentService
 
         return [
             'paper' => $paper,
-            'paper_options' => Setting::printPaperSizes(),
+            'paper_options' => $paperOptions,
             'show_qr' => (bool) $setting?->print_show_qr,
             'qr_svg' => $setting?->print_show_qr ? $this->qrSvg($payload) : null,
             'reference' => $reference,

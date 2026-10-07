@@ -182,7 +182,7 @@ class StorefrontReturnService
     private function reference(): string
     {
         do {
-            $reference = 'TMSRT-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
+            $reference = 'RET-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
         } while (StorefrontOrderReturn::where('reference', $reference)->exists());
 
         return $reference;

@@ -11,6 +11,13 @@
                     @method('put')
 
                     <div class="form-group row">
+                        <div class="col-md-8"><div class="form-row m-0">
+                            <label class="col-sm-3 col-form-label f">سیٹ کا نام</label>
+                            <div class="col-sm-9"><input type="text" value="{{ old('name', $data['cloth']->name) }}" class="form-control" name="name" maxlength="100" required><small class="text-muted">مثلاً Dilbar، Waqar یا Premium Gold</small></div>
+                        </div></div>
+                    </div>
+
+                    <div class="form-group row">
                         <div class="col-md-8">
                             <div class="form-row m-0">
                                 <label class="col-sm-3 col-form-label f"><span class="english">کپڑے کی قسم</span> </label>

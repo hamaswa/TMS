@@ -203,7 +203,7 @@ class StorefrontInquiry extends Model
 
     public function getReferenceAttribute(): string
     {
-        return ($this->booking_pin_hash ? 'TMSB-' : 'TMSI-').str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+        return ($this->booking_pin_hash ? 'BOOK-' : 'INQ-').str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
     }
 
     public function isBooking(): bool

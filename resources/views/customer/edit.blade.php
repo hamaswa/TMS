@@ -20,11 +20,13 @@
     .edit-field label{display:block;font-weight:700;color:#334e68;line-height:2;margin-bottom:.55rem}.edit-field .form-control{min-height:50px;height:auto;border-color:#d8e2ec;border-radius:10px;background:#fff}
     .edit-field textarea.form-control{height:auto;min-height:120px;resize:vertical}.edit-field .form-control:focus{border-color:#1769aa;box-shadow:0 0 0 .18rem rgba(23,105,170,.12)}
     .measurement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}
+    .template-layout-grid{display:grid;grid-template-columns:1fr 1fr;align-items:start}.template-layout-grid>.edit-section{height:100%}.template-layout-grid>.edit-section:first-child{border-left:1px solid #e8eef5}
+    .template-layout-grid.template-one-column{grid-template-columns:1fr}.template-layout-grid.template-one-column>.edit-section:first-child{border-left:0;border-bottom:1px solid #e8eef5}
     .measurement-template-picker{background:#f7fbff;border:1px solid #cfe3f3;border-radius:14px;padding:1rem 1.1rem}.measurement-template-picker select{border-radius:10px;border-color:#b9d5e8}
     .preference-empty{border:1px dashed #cbd5e0;border-radius:12px;padding:1rem;color:#718096;background:#fafcff}
     .security-panel{height:100%;background:#fff8e8;border:1px solid #f5dfaa;border-radius:14px;padding:1.1rem}
     .edit-actions{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1.25rem 1.5rem;background:#fbfdff}
-    @media(max-width:991px){.measurement-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:991px){.measurement-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.template-layout-grid{grid-template-columns:1fr}.template-layout-grid>.edit-section:first-child{border-left:0}}
     @media(max-width:767px){.measurement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-edit-hero{border-radius:14px;padding:1.25rem}.edit-section{padding:1.1rem}.edit-actions{position:static;flex-direction:column-reverse}.edit-actions .btn{width:100%}}
     @media(max-width:420px){.measurement-grid{grid-template-columns:1fr}}
 </style>
@@ -69,6 +71,8 @@
                 @method('PUT')
                 <input type="hidden" name="return_customer" value="{{ old('return_customer', request('return_customer')) }}">
                 <input type="hidden" name="return_search" value="{{ old('return_search', request('return_search')) }}">
+                <input type="hidden" name="return_counter_order" value="{{ old('return_counter_order', request('return_counter_order')) }}">
+                <input type="hidden" name="return_profile" value="{{ old('return_profile', request('return_profile')) }}">
 
                 <section class="edit-section">
                     <div class="edit-section-heading">
@@ -90,12 +94,13 @@
                     </div>
                 </section>
 
+                <div class="template-layout-grid">
                 <section class="edit-section">
                     <div class="edit-section-heading">
                         <div><h2>پیمائش</h2><p>لباس منتخب کریں اور صرف اس سے متعلق پیمائش تبدیل کریں۔</p></div>
                         <span class="section-icon"><i class="fas fa-ruler-combined"></i></span>
                     </div>
-                    @include('customer.partials.measurement-template-selector', ['selectedTemplateId' => $customer->measurement_template_id])
+                    @include('customer.partials.measurement-template-selector', ['selectedTemplateId' => old('measurement_template_id', request('measurement_template_id', $customer->measurement_template_id))])
                     @php
                         $systemMeasurements = [
                             'length' => ['لمبائی', $customer->length],
@@ -110,9 +115,12 @@
                             'chuta' => ['چوٹا', $customer->chuta],
                         ];
                     @endphp
-                    <div class="measurement-grid">
+                    <div class="measurement-grid" data-template-column="right">
                         @foreach($systemMeasurements as $name => [$label, $value])
-                            <div class="form-group edit-field mb-0" data-measurement-field="system.{{ $name }}">
+                            @php
+                                $templateKey = $name === 'monda' ? 'shoulder' : $name;
+                            @endphp
+                            <div class="form-group edit-field mb-0" data-measurement-field="system.{{ $templateKey }}" data-template-field="system.{{ $templateKey }}" data-default-column="right">
                                 <label for="measurement-{{ $name }}">{{ $label }}</label>
                                 <div class="input-group">
                                     <input id="measurement-{{ $name }}" type="number" step="0.01" min="0" class="form-control" name="{{ $name }}" value="{{ old($name, $value) }}" dir="ltr">
@@ -130,21 +138,18 @@
                         <span class="section-icon"><i class="fas fa-cut"></i></span>
                     </div>
                     @if($optionTypes->isNotEmpty())
-                        <div class="row">
+                        <div class="measurement-grid" data-template-column="left">
                             @foreach($optionTypes as $type)
                                 @php
-                                    $options = DB::table('options')->where('option_id', $type->option_id)->where('user_id', Auth::user()->businessOwnerId())->get();
                                     $column = $type->type === 'daaman' ? 'Daaman' : $type->type;
+                                    $templateSystemField = $column;
                                     $customerValue = trim((string) data_get($customer, $column, ''));
                                 @endphp
-                                <div class="col-md-6 form-group edit-field">
+                                <div class="form-group edit-field mb-0" data-template-field="system.{{ $templateSystemField }}" data-default-column="left">
                                     <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
-                                    <select id="preference-{{ $type->slug }}" class="form-control" name="{{ $type->slug }}">
-                                        <option value="0">{{ $type->otn }} منتخب کریں</option>
-                                        @foreach($options as $option)
-                                            @php($optionValue = $option->id.' - '.$option->Name)
-                                            <option value="{{ $optionValue }}" @selected(old($type->slug, $customerValue) === $optionValue || (!old($type->slug) && trim($option->Name) === $customerValue))>{{ $option->Name }}</option>
-                                        @endforeach
+                                    <select id="preference-{{ $type->slug }}" class="form-control" name="{{ $type->slug }}" data-template-system-field="{{ $templateSystemField }}">
+                                        <option value="">{{ $type->otn }} منتخب کریں</option>
+                                        @if(old($type->slug, $customerValue))<option value="{{ old($type->slug, $customerValue) }}" selected>{{ old($type->slug, $customerValue) }}</option>@endif
                                     </select>
                                 </div>
                             @endforeach
@@ -153,6 +158,7 @@
                         <div class="preference-empty">ابھی سلائی کی کوئی پسند شامل نہیں۔ پیمائش کے اختیارات سے کالر، کف، جیب اور دوسرے انتخاب بنائے جا سکتے ہیں۔</div>
                     @endif
                 </section>
+                </div>
 
                 <section class="edit-section">
                     <div class="row">

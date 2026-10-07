@@ -1,6 +1,6 @@
 {
-  "name": "TMS Offline Workspaces",
-  "short_name": "TMS",
+  "name": "BuyNStitch Offline Workspaces",
+  "short_name": "BuyNStitch",
   "description": "Offline-first tailor and shop workspaces",
   "start_url": "/",
   "scope": "/",

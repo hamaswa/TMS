@@ -84,7 +84,7 @@ class StorefrontClothingListing extends Model
     public function getDisplayNameAttribute(): string
     {
         return $this->public_name
-            ?: collect([$this->cloth?->brand?->name, $this->cloth?->type?->name])->filter()->implode(' — ')
+            ?: collect([$this->cloth?->name, $this->cloth?->brand?->name, $this->cloth?->type?->name])->filter()->implode(' — ')
             ?: 'کپڑا';
     }
 
@@ -94,7 +94,7 @@ class StorefrontClothingListing extends Model
 
         return $this->getAttribute('public_name_'.$locale)
             ?: $this->public_name
-            ?: collect([$this->cloth?->brand?->name, $this->cloth?->type?->localizedName($locale)])->filter()->implode(' — ')
+            ?: collect([$this->cloth?->name, $this->cloth?->brand?->name, $this->cloth?->type?->localizedName($locale)])->filter()->implode(' — ')
             ?: __('storefront.clothing.fabric');
     }
 

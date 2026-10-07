@@ -82,6 +82,11 @@
             text-decoration: none !important
         }
 
+        .tj-head-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+        .tj-rack-field{display:none;min-width:190px}
+        .tj-rack-field.is-visible{display:block}
+        .tj-rack-badge{display:inline-flex;align-items:center;gap:6px;color:#1769e0}
+
         .tj-stats {
             display: grid;
             grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -532,8 +537,10 @@
                     <p>ہر آرڈر کا درزی، تاریخ اور موجودہ مرحلہ ایک جگہ دیکھیں۔</p>
                 </div>
                 @if (!$isTailor)
-                    <a href="{{ route('admin.Tailor.index') }}" class="tj-button"><i class="fas fa-user-cog"></i> درزیوں کی
-                        فہرست</a>
+                    <div class="tj-head-actions">
+                        <button type="button" class="tj-button" data-toggle="modal" data-target="#rackSetupModal"><i class="fas fa-layer-group"></i> ریک نمبرز <span class="badge badge-light">{{ $racks->count() }}</span></button>
+                        <a href="{{ route('admin.Tailor.index') }}" class="tj-button"><i class="fas fa-user-cog"></i> درزیوں کی فہرست</a>
+                    </div>
                 @endif
             </header>
 
@@ -666,6 +673,7 @@
                                 <div class="tj-info"><small><i class="fas fa-tasks ml-1"></i>موجودہ
                                         مرحلہ</small><strong>{{ $statusLabels[$order->status] ?? $order->status }}</strong>
                                 </div>
+                                <div class="tj-info"><small><i class="fas fa-layer-group ml-1"></i>تیار لباس کا ریک</small><strong class="tj-rack-badge">{{ $order->rack_no ?: 'تیار ہونے پر مقرر ہوگا' }}</strong></div>
                             </div>
                             @if(!$isTailor && $order->status === 'unassigned')
                                 <div class="tj-card-body" style="grid-template-columns:1fr">
@@ -698,36 +706,37 @@
                                 <div class="tj-action-box">
                                     <h4><i class="fas fa-exchange-alt ml-1 text-primary"></i>کام کی حالت</h4>
                                     @if($detailedWorkflow && $nextStatusOptions->isNotEmpty())
-                                        <form class="tj-progress-form" method="POST" action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}"
+                                        <form class="tj-progress-form js-job-status-form" method="POST" action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}"
                                             data-offline-command="order.status.change" data-order-id="{{ $order->id }}" data-base-status="{{ $order->status }}">
                                             @csrf @method('PATCH')
-                                            <select name="status" class="form-control" required>
+                                            <select name="status" class="form-control js-job-status" required>
                                                 @foreach($nextStatusOptions as $nextStatus)
                                                     <option value="{{ $nextStatus['value'] }}">{{ $nextStatus['label'] }}</option>
                                                 @endforeach
                                             </select>
+                                            <div class="tj-rack-field js-rack-field"><label class="small font-weight-bold mb-1">تیار لباس کہاں رکھا؟ <span class="text-muted">(اختیاری)</span></label><select name="rack_no" class="form-control js-rack-select"><option value="">ریک نمبر منتخب نہ کریں</option>@foreach($racks as $rack)<option value="{{ $rack->rack_no }}" @selected($order->rack_no === $rack->rack_no)>{{ $rack->rack_no }}</option>@endforeach</select></div>
                                             <button class="tj-button tj-primary" type="submit"><i class="fas fa-check"></i> مرحلہ بدلیں</button>
                                         </form>
-                                    @elseif(! $detailedWorkflow && ! $isDelivered)
-                                        <form class="tj-progress-form" method="POST"
+                                    @elseif(! $detailedWorkflow && ! $isDelivered && ! $isReady)
+                                        <form class="tj-progress-form js-job-status-form" method="POST"
                                             action="{{ $isTailor ? route('tailor.order.status') : route('admin.order.status') }}"
                                             data-offline-command="order.status.change" data-order-id="{{ $order->id }}" data-base-status="{{ $order->status }}">
                                             @csrf
                                             <input type="hidden" name="order_id" value="{{ $order->id }}">
-                                            <select name="order_status" class="form-control" required>
+                                            <select name="order_status" class="form-control js-job-status" required>
                                                 <option value="start" @selected(! $isReady)>کارخانے میں ہے</option>
                                                 <option value="complete" @selected($isReady)>تیار ہے</option>
                                             </select>
+                                            <div class="tj-rack-field js-rack-field"><label class="small font-weight-bold mb-1">تیار لباس کہاں رکھا؟ <span class="text-muted">(اختیاری)</span></label><select name="rack_no" class="form-control js-rack-select"><option value="">ریک نمبر منتخب نہ کریں</option>@foreach($racks as $rack)<option value="{{ $rack->rack_no }}" @selected($order->rack_no === $rack->rack_no)>{{ $rack->rack_no }}</option>@endforeach</select></div>
                                             <button class="tj-button tj-primary" type="submit"><i class="fas fa-check"></i> حالت بدلیں</button>
                                         </form>
-                                        @if($isReady && ! $isTailor)
-                                            <form class="mt-2" method="POST" action="{{ route('admin.order.status') }}"
-                                                data-offline-command="order.status.change" data-order-id="{{ $order->id }}" data-base-status="{{ $order->status }}">
-                                                @csrf
-                                                <input type="hidden" name="order_id" value="{{ $order->id }}">
-                                                <button class="tj-button tj-success" type="submit" name="order_status" value="deliver"><i class="fas fa-handshake"></i> گاہک کے حوالے کریں</button>
-                                            </form>
-                                        @endif
+                                    @elseif(! $detailedWorkflow && $isReady && ! $isTailor)
+                                        <form method="POST" action="{{ route('admin.order.status') }}"
+                                            data-offline-command="order.status.change" data-order-id="{{ $order->id }}" data-base-status="{{ $order->status }}">
+                                            @csrf
+                                            <input type="hidden" name="order_id" value="{{ $order->id }}">
+                                            <button class="tj-button tj-success" type="submit" name="order_status" value="deliver"><i class="fas fa-handshake"></i> گاہک کے حوالے کریں</button>
+                                        </form>
                                     @else<span class="text-muted small"><i
                                                 class="fas fa-check-circle ml-1 text-success"></i>یہ کام مکمل ہو چکا
                                             ہے۔</span>
@@ -797,6 +806,22 @@
             </section>
         </div>
     </section>
+    @if(!$isTailor)
+        <div class="modal fade" id="rackSetupModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+                <form method="POST" action="{{ route('admin.tailor-racks.store') }}">@csrf
+                    <div class="modal-header"><h2 class="h5 modal-title"><i class="fas fa-layer-group text-primary ml-2"></i>ورکشاپ کے ریک نمبرز</h2><button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں"><span>&times;</span></button></div>
+                    <div class="modal-body text-right">
+                        @if($racks->isNotEmpty())<div class="mb-3"><div class="small text-muted mb-2">موجودہ ریک</div><div class="d-flex flex-wrap" style="gap:7px">@foreach($racks as $rack)<span class="badge badge-light border px-3 py-2">{{ $rack->rack_no }}</span>@endforeach</div></div>@endif
+                        <label for="newRackNumber" class="font-weight-bold">نیا ریک نمبر</label>
+                        <input id="newRackNumber" name="rack_no" class="form-control" required maxlength="100" placeholder="مثلاً A-01 یا عید-12">
+                        <small class="form-text text-muted">درزی لباس تیار کرتے وقت انہی میں سے ریک منتخب کرے گا۔</small>
+                    </div>
+                    <div class="modal-footer"><button class="btn btn-primary" type="submit"><i class="fas fa-plus ml-1"></i>ریک شامل کریں</button><button class="btn btn-light" type="button" data-dismiss="modal">منسوخ کریں</button></div>
+                </form>
+            </div></div>
+        </div>
+    @endif
     <script>
         document.addEventListener('change', function (event) {
             if (!event.target.matches('.js-assignment-tailor')) return;
@@ -809,6 +834,19 @@
             });
             const firstRate = rates.querySelector('option[data-tailor="' + tailorId + '"]');
             if (firstRate) firstRate.selected = true;
+        });
+        const syncRackField = function (select) {
+            const form = select.closest('.js-job-status-form');
+            if (!form) return;
+            const field = form.querySelector('.js-rack-field');
+            const rack = form.querySelector('.js-rack-select');
+            const ready = select.value === 'ready' || select.value === 'complete';
+            field?.classList.toggle('is-visible', ready);
+            if (rack) rack.required = false;
+        };
+        document.querySelectorAll('.js-job-status').forEach(function (select) {
+            syncRackField(select);
+            select.addEventListener('change', function () { syncRackField(select); });
         });
     </script>
 @endsection

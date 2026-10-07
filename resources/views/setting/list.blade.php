@@ -1,131 +1,26 @@
 @extends('main')
+
 @section('content')
-<section class="main-content">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-12">
-                @if(Session::has('delete'))
-                <div class="alert alert-danger">{{Session::get('delete')}}</div>
-                @endif
-                @if(Session::has('success'))
-                <div class="alert alert-success">{{Session::get('success')}}</div>
-                @endif
-                @if(Session::has('error'))
-                <div class="alert alert-danger text-right" dir="rtl">{{Session::get('error')}}</div>
-                @endif
-
-                @if($business?->shop_code)
-                <div class="alert alert-info text-right mb-4">
-                    <strong>درزی پورٹل کا دکان کوڈ:</strong>
-                    <span dir="ltr" class="d-inline-block font-weight-bold mx-2">{{ $business->shop_code }}</span>
-                    <div class="small mt-1">یہ کوڈ اپنے درزیوں کو فون نمبر اور پاس ورڈ کے ساتھ دیں۔</div>
-                </div>
-                @endif
-
-                <div class="bg-white px-3 py-4">
-                    <div class="tab-content" id="v-pills-tabContent">
-                        <div class="tab-pane fade show active" id="v-pills-sewing" role="tabpanel"
-                            aria-labelledby="v-pills-sewing-tab">
-                            <form id="cc-form__optionsForm" action="{{ url('admin/OptionType')}}" method="post"
-                                class="cc-form__box">
-                                @csrf
-
-                                <div class="row text-right">
-                                    <div class=" col-md-12">
-                                        <a href="{{url('admin/setting/add')}}" class="btn btn-blue mt-md-0 mt-3">ترتیب +
-                                        </a>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="table-title  mb-4 mt-4">
-                            <h5 class="text-right">تمام ترتیب کی تاریخ</h5>
-                        </div>
-                        @if($settings->isEmpty())
-                            <div class="alert alert-warning text-right" dir="rtl">
-                                رسید اور آرڈر پرنٹ کے لیے دکان کی ترتیب بنائیں۔
-                                <a href="{{ route('admin.add-setting') }}" class="alert-link">ابھی ترتیب بنائیں</a>
-                            </div>
-                        @endif
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div class="table-responsive">
-                                    <table class="table js-sortable-table cc-table-data-options-history"
-                                        id="cc-table-data-options-history">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col" class="no-sort"></th>
-                                                <th scope="col" class="no-sort">نام</th>
-                                                <th scope="col" class="no-sort">تصویر</th>
-                                                <th scope="col" class="no-sort">نمبر</th>
-                                                <th scope="col" class="no-sort">نوٹ</th>
-                                                <th scope="col" class="no-sort">پتہ</th>
-                                                <th scope="col" class="no-sort">نوٹ</th>
-                                                <th scope="col" class="no-sort">تبدیل</th>
-                                                <th scope="col" class="no-sort"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($settings as $setting)
-                                            <tr>
-                                                <td></td>
-                                                <td>{{$setting->name}}</td>
-                                                <td>
-                                                    @if($setting->logo_url)
-                                                        <img src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو"
-                                                            style="width:150px; height:100px">
-                                                    @else
-                                                        <span class="text-muted">لوگو شامل نہیں</span>
-                                                    @endif
-                                                </td>
-                                                <td>{{$setting->contact_no}}</td>
-                                                <td>{{$setting->note}}</td>
-                                                <td>{{ $setting->address }}</td>
-
-                                                <td class="text-right">
-                                                    @if($setting->status ==0)
-                                                    <form action="{{ route('admin.active-setting', $setting->id) }}" method="POST" class="d-inline"
-                                                        data-confirm="کیا یہ دکان ترتیب فعال کرنا ہے؟" data-confirm-variant="success">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <button type="submit" class="btn btn-link p-0 delete-tr">فعال کریں</button>
-                                                    </form>
-                                                    @else
-                                                    <form action="{{ route('admin.deactive-setting', $setting->id) }}" method="POST" class="d-inline"
-                                                        data-confirm="کیا یہ دکان ترتیب غیر فعال کرنا ہے؟" data-confirm-variant="warning">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <button type="submit" class="btn btn-link p-0 delete-tr">غیر فعال کریں</button>
-                                                    </form>
-                                                    @endif
-                                                </td>
-                                                <td class="text-right">
-                                                    <a href="{{ url('admin/setting/edit',$setting->id)}}">
-                                                        <i class="fa fa-edit" aria-hidden="true"></i>
-                                                        </a>
-                                                    <form action="{{ route('admin.delete-setting', $setting->id) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ دکان ترتیب حذف کرنا چاہتے ہیں؟">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-link p-0 delete-tr" aria-label="Delete setting"><i class="fa fa-trash" aria-hidden="true"></i></button>
-                                                    </form>
-                                                </td>
-                                            </tr>
-                                            @endforeach
-
-                                        </tbody>
-                                    </table>
-
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </div>
-            </div>
-        </div>
+@php($activeSetting = $settings->firstWhere('status', 1) ?: $settings->first())
+<style>
+    .settings-page{min-height:calc(100vh - 65px);padding:30px 0 48px;background:#f5f8fc;direction:rtl}.settings-shell{width:min(100% - 32px,1180px);margin:auto}.settings-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:20px}.settings-head h1{margin:0;color:#102a43;font-size:1.65rem;font-weight:900}.settings-head p{margin:5px 0 0;color:#718096}.settings-card{overflow:hidden;margin-bottom:17px;border:1px solid #dfe7f1;border-radius:15px;background:#fff;box-shadow:0 7px 25px rgba(25,56,96,.055)}.settings-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 21px;border-bottom:1px solid #e6ecf3}.settings-card-head h2{margin:0;color:#183b5b;font-size:1.08rem;font-weight:900}.settings-body{padding:22px}.shop-code{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 20px;color:#164e75;background:#eef8ff;border:1px solid #cce8f8;border-radius:13px}.shop-code code{padding:7px 11px;color:#102a43;background:#fff;border:1px solid #cfe2f2;border-radius:8px;font-size:1rem}.profile-grid{display:grid;grid-template-columns:160px 1fr;gap:24px;align-items:start}.profile-logo{display:grid;place-items:center;min-height:130px;border:1px dashed #cbd7e5;border-radius:12px;background:#f8fafc;color:#8a98aa}.profile-logo img{max-width:100%;max-height:130px;object-fit:contain}.profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.profile-field{padding:13px 15px;border:1px solid #e6ecf3;border-radius:10px;background:#fbfcfe}.profile-field small{display:block;margin-bottom:5px;color:#7a889b}.profile-field strong{color:#243b53}.profile-field.is-wide{grid-column:1/-1}.settings-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:8px 15px;border-radius:9px;font-weight:800}.archive-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid #edf1f6}.archive-item:first-child{border-top:0}.archive-actions{display:flex;gap:8px;align-items:center}.archive-actions form{margin:0}.archive-delete{color:#b33442!important}.settings-empty{text-align:center;padding:42px 20px;color:#718096}.settings-empty i{display:block;margin-bottom:12px;color:#b8c5d4;font-size:2rem}@media(max-width:767px){.settings-head,.shop-code{align-items:stretch;flex-direction:column}.profile-grid{grid-template-columns:1fr}.profile-fields{grid-template-columns:1fr}.profile-field.is-wide{grid-column:auto}.settings-action{width:100%}}
+</style>
+<section class="main-content settings-page">
+    <div class="settings-shell">
+        <header class="settings-head"><div><h1><i class="fas fa-cog text-primary ml-2"></i>کاروباری سیٹنگز</h1><p>دکان کی شناخت، رسید اور پرنٹ میں استعمال ہونے والی بنیادی معلومات۔</p></div>@if($activeSetting)<a href="{{ url('admin/setting/edit',$activeSetting->id) }}" class="btn btn-primary settings-action"><i class="fas fa-pen"></i>معلومات تبدیل کریں</a>@else<a href="{{ route('admin.add-setting') }}" class="btn btn-primary settings-action"><i class="fas fa-plus"></i>دکان کی معلومات شامل کریں</a>@endif</header>
+        @foreach(['success'=>'success','update'=>'success','delete'=>'warning','error'=>'danger'] as $key=>$class)@if(session($key))<div class="alert alert-{{ $class }}">{{ session($key) }}</div>@endif @endforeach
+        @if($business?->shop_code)<div class="shop-code mb-3"><div><strong>درزی پورٹل کا دکان کوڈ</strong><div class="small mt-1">یہ کوڈ درزی کو اس کے فون نمبر اور پاس ورڈ کے ساتھ دیں۔</div></div><code dir="ltr">{{ $business->shop_code }}</code></div>@endif
+        @if($activeSetting)
+            <section class="settings-card"><div class="settings-card-head"><h2>موجودہ کاروباری پروفائل</h2><span class="badge badge-success">فعال</span></div><div class="settings-body"><div class="profile-grid">
+                <div class="profile-logo">@if($activeSetting->logo_url)<img src="{{ $activeSetting->logo_url }}" alt="{{ $activeSetting->name }} لوگو">@else<i class="fas fa-store fa-2x"></i><span class="small mt-2">لوگو شامل نہیں</span>@endif</div>
+                <div class="profile-fields"><div class="profile-field"><small>کاروبار کا نام</small><strong>{{ $activeSetting->name }}</strong></div><div class="profile-field"><small>رابطہ نمبر</small><strong dir="ltr">{{ $activeSetting->contact_no ?: 'درج نہیں' }}</strong></div><div class="profile-field is-wide"><small>پتہ</small><strong>{{ $activeSetting->address ?: 'درج نہیں' }}</strong></div><div class="profile-field is-wide"><small>رسید / کاروباری نوٹ</small><strong>{{ $activeSetting->note ?: 'درج نہیں' }}</strong></div><div class="profile-field"><small>پرنٹ سائز</small><strong>{{ \App\Models\Setting::printPaperSizes()[$activeSetting->print_paper_size] ?? $activeSetting->print_paper_size }}</strong></div><div class="profile-field"><small>QR کوڈ</small><strong>{{ $activeSetting->print_show_qr ? 'دکھائیں' : 'نہ دکھائیں' }}</strong></div></div>
+            </div></div></section>
+        @else
+            <section class="settings-card"><div class="settings-empty"><i class="fas fa-store"></i><strong>دکان کی معلومات ابھی شامل نہیں ہوئیں۔</strong><div class="mt-2">رسید اور آرڈر پرنٹ کے لیے کاروباری پروفائل بنائیں۔</div></div></section>
+        @endif
+        @if($settings->count() > 1)
+            <section class="settings-card"><div class="settings-card-head"><h2>غیر فعال سابقہ پروفائلز</h2><span class="text-muted small">صرف ضرورت کے وقت استعمال کریں</span></div><div class="settings-body"><details><summary class="font-weight-bold" style="cursor:pointer">{{ $settings->count() - 1 }} سابقہ پروفائل دکھائیں</summary><div class="mt-3">@foreach($settings->where('id','!=',$activeSetting?->id) as $setting)<div class="archive-item"><div><strong>{{ $setting->name }}</strong><div class="small text-muted">{{ $setting->contact_no ?: 'رابطہ درج نہیں' }}</div></div><div class="archive-actions"><form action="{{ route('admin.active-setting',$setting->id) }}" method="POST" data-confirm="کیا یہ پروفائل فعال کرنا ہے؟">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-success">فعال کریں</button></form><a href="{{ url('admin/setting/edit',$setting->id) }}" class="btn btn-sm btn-light">ترمیم</a><form action="{{ route('admin.delete-setting',$setting->id) }}" method="POST" data-confirm="کیا یہ سابقہ پروفائل حذف کرنا ہے؟">@csrf @method('DELETE')<button class="btn btn-sm btn-link archive-delete">حذف</button></form></div></div>@endforeach</div></details></div></section>
+        @endif
     </div>
 </section>
-
-
 @endsection

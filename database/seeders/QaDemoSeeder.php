@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\Options;
 use App\Models\OptionType;
 use App\Models\Purchase;
+use App\Models\rack as Rack;
 use App\Models\Sale;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
@@ -276,6 +277,12 @@ class QaDemoSeeder extends Seeder
             'type' => $sewingOption->Name,
             'price' => $combined ? 900 : 850,
         ]);
+
+        foreach (['R-1', 'R-2'] as $rackNumber) {
+            $rack = new Rack(['rack_no' => $rackNumber]);
+            $rack->user_id = $owner->id;
+            $rack->save();
+        }
 
         foreach ($customers as $index => $customer) {
             $total = $combined ? 3500 + ($index * 500) : 3000 + ($index * 400);

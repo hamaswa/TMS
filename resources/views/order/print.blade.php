@@ -12,7 +12,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
-    <title>Tailor Managment Order Recipt</title>
+    <title>سلائی آرڈر رسید</title>
     <style>
         @font-face {
             font-family: 'Noto Nastaliq Urdu';
@@ -24,6 +24,77 @@
 
         body {
             font-family: 'Noto Nastaliq Urdu', serif;
+        }
+
+        body.tms-order-print {
+            margin: 0;
+            background: #eef2f6;
+        }
+
+        body.tms-order-print #invoice-POS {
+            margin: 0 auto;
+        }
+
+        body.tms-order-print #orderSection {
+            background: #fff;
+        }
+
+        body.tms-order-print.tms-paper-receipt_80 #invoice-POS {
+            width: 80mm;
+            padding: 4mm;
+        }
+
+        body.tms-order-print.tms-paper-a4 #invoice-POS {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 14mm;
+        }
+
+        body.tms-order-print.tms-paper-a4 #orderSection,
+        body.tms-order-print.tms-paper-a4 #sizeSection {
+            max-width: none !important;
+            margin-top: 0 !important;
+        }
+
+        body.tms-order-print.tms-paper-a4 .order-detail-row {
+            display: grid;
+            grid-template-columns: minmax(0, 56%) minmax(0, 44%);
+        }
+
+        .measurement-row > .measurement-column-empty {
+            min-height: 1px;
+        }
+
+        .order-print-toolbar {
+            direction: rtl;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            width: min(760px, calc(100% - 24px));
+            margin: 12px auto 18px;
+        }
+
+        .order-print-toolbar a,
+        .order-print-toolbar button {
+            appearance: none;
+            border: 1px solid #1677c8;
+            border-radius: 7px;
+            padding: 7px 12px;
+            color: #155f9d;
+            background: #fff;
+            font: inherit;
+            line-height: 1.4;
+            text-decoration: none;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .order-print-toolbar .is-primary,
+        .order-print-toolbar .is-active {
+            color: #fff;
+            background: #1677c8;
         }
 
         /* #invoice-POS {
@@ -334,7 +405,8 @@
             font-size: 18px;
             font-weight: 800;
             line-height: 1.5;
-            overflow-wrap: anywhere;
+            overflow-wrap: normal;
+            word-break: normal;
             text-align: left;
         }
 
@@ -368,6 +440,21 @@
         .order-detail-date {
             font-size: 17px;
             white-space: nowrap;
+        }
+
+        body.tms-order-print.tms-paper-receipt_80 .order-detail-label,
+        body.tms-order-print.tms-paper-receipt_80 .order-detail-value {
+            min-width: 0;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        body.tms-order-print.tms-paper-receipt_80 .order-summary-row .order-detail-label {
+            flex: 0 0 28%;
+        }
+
+        body.tms-order-print.tms-paper-receipt_80 .order-summary-row .order-detail-value {
+            flex: 1 1 72%;
         }
 
         .order-tracking-qr {
@@ -406,7 +493,7 @@
 
         @media print {
             @page {
-                margin: 0;
+                margin: 6mm 0 3mm;
             }
 
             html,
@@ -440,6 +527,19 @@
             .btn {
                 display: none;
             }
+
+            .order-print-toolbar {
+                display: none !important;
+            }
+        }
+
+        @media screen and (max-width: 520px) {
+            body.tms-order-print #invoice-POS,
+            body.tms-order-print.tms-paper-a4 #invoice-POS {
+                width: 100%;
+                min-height: 0;
+                padding: 10px;
+            }
         }
 
         /* .printbtn{
@@ -448,49 +548,45 @@
     </style>
 </head>
 
-<body>
+<body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
     @php
         $displaySerial = $orderDetail->customers?->serial_number
             ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
     @endphp
 
+    <nav class="order-print-toolbar" aria-label="سلائی رسید پرنٹ اختیارات">
+        <button type="button" class="print-order is-primary">صرف آرڈر پرنٹ کریں</button>
+        <button type="button" class="print-length">صرف پیمائش پرنٹ کریں</button>
+        <button type="button" class="print-full">مکمل رسید پرنٹ کریں</button>
+        @if(count($printConfig['paper_options']) > 1)
+            @foreach($printConfig['paper_options'] as $paper => $label)
+                <a href="{{ request()->fullUrlWithQuery(['paper' => $paper]) }}"
+                    class="{{ $printConfig['paper'] === $paper ? 'is-active' : '' }}">{{ $label }}</a>
+            @endforeach
+        @endif
+        <button type="button" class="go">واپس جائیں</button>
+    </nav>
+
     <div id="invoice-POS">
-        <center id="top">
-            <!--Print Button-->
-            <div class="btn btn-group printbtn">
-                <button class="btn btn-primary print-order" style="padding: 5px 10px; font-size: 14px;">
-                    آرڈر
-                </button>
-                <button class="btn btn-primary go" style="padding: 5px 10px; font-size: 14px;">
-                    واپس جائیں
-                </button>
-                <button class="btn btn-primary print-length" style="padding: 5px 10px; font-size: 14px;">
-                    پمائیش
-                </button>
-                <button class="btn btn-primary print-full" style="padding: 5px 10px; font-size: 14px;">
-                    مکمل
-                </button>
-            </div>
-        </center><!--End InvoiceTop-->
 
         <div id="fullSection">
-            <div id="orderSection" style="max-width: 350px; margin-top:-60px;" class="ticket order-section">
-                <p align="center"><img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
+            <div id="orderSection" style="max-width: 350px;" class="ticket order-section">
+                @if($setting?->logo_url)<p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>@endif
                 <h1 class="text-center" style="text-align: center;margin-top:-10px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3" style="margin-top: 0px">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h2 class="receipt-reference">invoice No # {{ $orderDetail->id }}
+                            <h2 class="receipt-reference">رسید نمبر # {{ $orderDetail->id }}
                             </h2>
                         </div>
                         <div style="font-weight:900;">
-                            <h3 class="receipt-reference">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</h3>
+                            <h3 class="receipt-reference"><span class="receipt-date">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</span></h3>
                         </div>
                     </div>
                     <hr>
                     <div class="order-detail-list">
-                        <div class="order-detail-row"><span class="order-detail-label">نام:</span><strong
+                        <div class="order-detail-row order-summary-row"><span class="order-detail-label">نام:</span><strong
                                 class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong
                                 class="order-detail-value">{{ $orderDetail->suitQuantity }}</strong></div>
@@ -516,7 +612,7 @@
                                     الادا:</span><strong class="order-detail-value">{{ $latestBalance }}</strong></div>
                         @endif
                         <div class="order-detail-row"><span class="order-detail-label">واپسی کی تاریخ:</span><strong
-                                class="order-detail-value order-detail-date">{{ $orderDetail->returnDate }}</strong>
+                                class="order-detail-value order-detail-date">{{ $orderDetail->returnDate ? \Illuminate\Support\Carbon::parse($orderDetail->returnDate)->format('d-m-Y') : '—' }}</strong>
                         </div>
                     </div>
                     <aside class="order-tracking-qr" data-tracking-url="{{ $trackingUrl }}"
@@ -525,7 +621,7 @@
                         <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
                     </aside>
                     <div>
-                        <h3 class="text-center font-weight-900;" style="font-size: 18px; margin: 25px 0 0 0;">
+                        <h3 class="text-center font-weight-900 order-note" dir="auto" style="font-size: 18px; margin: 25px 0 0 0;">
                             {{ $orderDetail->remarks }}</h3>
                     </div>
                     <div class="order-footer">
@@ -533,6 +629,7 @@
                         <p class="order-footer-contact">{{ $setting->contact_no }}</p>
                         <p>{{ $setting->note }}</p>
                         <p class="receipt-builder-credit">Built by IT Linked</p>
+                        @if($printConfig['show_qr'])<p class="receipt-reference">ORDER REF: {{ $orderDetail->id }}</p>@endif
                     </div>
                 </div>
 
@@ -541,7 +638,7 @@
             </div>
             <div id="sizeSection" style="max-width: 350px;" class="ticket size-section">
                 <div class="measurement-header">
-                    <p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{ asset('images/setting/' . $setting->logo) }}" alt=""></p>
+                    @if($setting?->logo_url)<p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو"></p>@endif
                     <h1 class="text-center measurement-shop-name">{{ $setting->name }}</h1>
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
@@ -564,12 +661,17 @@
                     </div>
                     <div class="desing-flex measurement-meta-row">
                         <div class="measurement-meta-cell" style="direction:ltr;text-align:left;font-family:Arial,sans-serif;font-size:13px;white-space:nowrap;">
-                            {{ date('d-m-Y h:m A', strtotime($orderDetail->created_at)) }}
+                            {{ date('d-m-Y h:i A', strtotime($orderDetail->created_at)) }}
                         </div>
                         <div class="measurement-meta-cell" style="direction:ltr;text-align:right;font-family:Arial,sans-serif;font-size:14px;white-space:nowrap;">
                             {{ $orderDetail->customers->phone_number1 }}
                         </div>
                     </div>
+                    @if ($orderDetail->measurementTemplate)
+                        <div class="measurement-meta-cell" style="margin-bottom:7px;text-align:center;">
+                            {{ $orderDetail->measurementTemplate->name }}
+                        </div>
+                    @endif
                     @if ($printMeasurements->count())
                         @php
                             $allMeasurements = $printMeasurements->keyBy('source_key');
@@ -643,7 +745,7 @@
                                 style="display:flex;justify-content:space-between;padding:0 10px;">
 
                                 {{-- LEFT COLUMN --}}
-                                <div class="col-6" style="width:45%;">
+                                <div class="col-6 {{ !isset($leftFields[$i]) || !isset($allMeasurements[$leftFields[$i]]) ? 'measurement-column-empty' : '' }}" style="width:45%;">
 
                                     @if (isset($leftFields[$i]) && isset($allMeasurements[$leftFields[$i]]))
                                         @php
@@ -664,7 +766,7 @@
                                 </div>
 
                                 {{-- RIGHT COLUMN --}}
-                                <div class="col-6" style="width:45%;">
+                                <div class="col-6 {{ !isset($rightFields[$i]) || !isset($allMeasurements[$rightFields[$i]]) ? 'measurement-column-empty' : '' }}" style="width:45%;">
 
                                     @if (isset($rightFields[$i]) && isset($allMeasurements[$rightFields[$i]]))
                                         @php
@@ -996,17 +1098,17 @@
         }
 
         // Event listener for the رسید پرنٹ کریں۔ button
-        document.querySelector('.printbtn .print-order').addEventListener('click', function() {
+        document.querySelector('.order-print-toolbar .print-order').addEventListener('click', function() {
             printOrderDetails();
         });
 
         // Event listener for the مکمل رسید پرنٹ کریں۔ button
-        document.querySelector('.printbtn .print-full').addEventListener('click', function() {
+        document.querySelector('.order-print-toolbar .print-full').addEventListener('click', function() {
             printWholePage();
         });
 
         // Event listener for the length button
-        document.querySelector('.printbtn .print-length').addEventListener('click', function() {
+        document.querySelector('.order-print-toolbar .print-length').addEventListener('click', function() {
             printLength();
         });
         //to go back to order

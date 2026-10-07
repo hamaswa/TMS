@@ -400,7 +400,7 @@ body {
 
         @media print {
             @page {
-                margin: 0;
+                margin: 6mm 0 3mm;
             }
 
             html,
@@ -442,7 +442,7 @@ body {
     </style>
 </head>
 
-<body>
+<body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
     @php
         $displaySerial = $orderDetail->customers?->serial_number
             ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
@@ -454,7 +454,7 @@ body {
             <div class="info">
                 <div class="naap-button">
                     <button class="btn btn-primary btn-sm go">آرڈر پر واپس جائیں </button>
-                        <button class="btn btn-primary btn-sm naap">پمائیش</button>
+                        <button class="btn btn-primary btn-sm naap">پیمائش</button>
                         <button class="btn btn-primary btn-sm order">آرڈر تفصیل</button>
                         <button class="btn btn-primary btn-sm full">مکمل </button>
                 </div>
@@ -462,7 +462,7 @@ body {
         </center><!--End InvoiceTop-->
         <div id="fullSection">
             <div id="orderSection" style="max-width: 350px; margin-top:-60px;" class="ticket order-section">
-                <p align="center"><img src="{{ asset('images/setting/' . $setting->logo) }}" width="100"></p>
+                @if($setting?->logo_url)<p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>@endif
                 <h1 class="text-center"  style="font-size: 16px;font-weight: 600;text-align: center;margin-top:-20px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3">
@@ -491,7 +491,7 @@ body {
                         @if ($latestBalance > 0)
                             <div class="order-detail-row"><span class="order-detail-label">کل ادائیگی واجب الادا:</span><strong class="order-detail-value">{{ $latestBalance }}</strong></div>
                         @endif
-                        <div class="order-detail-row"><span class="order-detail-label">واپسی کی تاریخ:</span><strong class="order-detail-value order-detail-date">{{ $orderDetail->returnDate }}</strong></div>
+                        <div class="order-detail-row"><span class="order-detail-label">واپسی کی تاریخ:</span><strong class="order-detail-value order-detail-date">{{ $orderDetail->returnDate ? \Illuminate\Support\Carbon::parse($orderDetail->returnDate)->format('d-m-Y') : '—' }}</strong></div>
                     </div>
                     <aside class="order-tracking-qr" data-tracking-url="{{ $trackingUrl }}" aria-label="آرڈر کی صورتحال دیکھنے کا QR کوڈ">
                         {!! $trackingQrSvg !!}
@@ -514,7 +514,7 @@ body {
             </div>
             <div id="sizeSection" style="max-width: 350px;" class="ticket size-section">
                 <div class="measurement-header">
-                    <p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{asset('images/setting/' . $setting->logo)}}" alt=""></p>
+                    @if($setting?->logo_url)<p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو"></p>@endif
                     <h1 class="text-center measurement-shop-name">{{$setting->name}}</h1>
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
@@ -543,6 +543,11 @@ body {
                             {{$orderDetail->customers->phone_number1}}
                         </div>
                     </div>
+                    @if($orderDetail->measurementTemplate)
+                        <div class="measurement-meta-cell" style="margin-bottom:7px;text-align:center;">
+                            {{$orderDetail->measurementTemplate->name}}
+                        </div>
+                    @endif
                     @if($printMeasurements->count())
                     @php
                         $allMeasurements = $printMeasurements->keyBy('source_key');

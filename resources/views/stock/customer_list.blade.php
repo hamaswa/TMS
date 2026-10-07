@@ -229,7 +229,7 @@
                         <p>گاہک، بقایا، ادائیگی اور فروخت کی مکمل تفصیل ایک جگہ دیکھیں۔</p>
                     </div>
                 </div>
-                <a href="{{ url('admin/sellcloth') }}" class="sales-record-primary"><i class="fas fa-plus"></i> نئی فروخت درج کریں</a>
+                <a href="{{ route('admin.counter-orders.create') }}" class="sales-record-primary"><i class="fas fa-plus"></i> نیا آرڈر</a>
             </div>
 
             @include('inc.message')

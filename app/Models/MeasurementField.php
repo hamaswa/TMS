@@ -10,7 +10,7 @@ class MeasurementField extends Model
     public const UNITS = ['inch', 'cm', 'none'];
 
     protected $fillable = [
-        'user_id', 'label', 'key', 'field_type', 'unit', 'options',
+        'user_id', 'measurement_template_id', 'label', 'key', 'field_type', 'unit', 'options',
         'is_required', 'is_active', 'sort_order',
     ];
 
@@ -24,5 +24,10 @@ class MeasurementField extends Model
     public function values()
     {
         return $this->hasMany(CustomerMeasurementValue::class);
+    }
+
+    public function template()
+    {
+        return $this->belongsTo(MeasurementTemplate::class, 'measurement_template_id');
     }
 }

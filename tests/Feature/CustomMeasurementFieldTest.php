@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Customers;
 use App\Models\MeasurementField;
+use App\Models\MeasurementTemplate;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\MeasurementService;
@@ -19,8 +20,10 @@ class CustomMeasurementFieldTest extends TestCase
     {
         $owner = $this->owner();
         $otherOwner = $this->owner();
+        $template = app(\App\Services\TailoringOptionDefaultsService::class)->seedMeasurementTemplateForOwner($owner->id);
 
         $this->actingAs($owner)->post(route('admin.measurement-fields.store'), [
+            'measurement_template_id' => $template->id,
             'label' => 'گھٹنے کی چوڑائی',
             'field_type' => 'number',
             'unit' => 'inch',
@@ -34,6 +37,7 @@ class CustomMeasurementFieldTest extends TestCase
         $this->assertTrue($field->is_required);
 
         $this->actingAs($otherOwner)->put(route('admin.measurement-fields.update', $field), [
+            'measurement_template_id' => $template->id,
             'label' => 'Changed',
             'field_type' => 'text',
             'unit' => 'none',
@@ -81,8 +85,10 @@ class CustomMeasurementFieldTest extends TestCase
     public function test_urdu_commas_create_individual_select_options(): void
     {
         $owner = $this->owner();
+        $template = app(\App\Services\TailoringOptionDefaultsService::class)->seedMeasurementTemplateForOwner($owner->id);
 
         $this->actingAs($owner)->post(route('admin.measurement-fields.store'), [
+            'measurement_template_id' => $template->id,
             'label' => 'فٹنگ انداز',
             'field_type' => 'select',
             'unit' => 'none',
@@ -94,6 +100,40 @@ class CustomMeasurementFieldTest extends TestCase
             ['تنگ', 'درمیانہ', 'کھلا'],
             MeasurementField::where('user_id', $owner->id)->firstOrFail()->options,
         );
+        $this->assertNull(MeasurementField::where('user_id', $owner->id)->firstOrFail()->unit);
+
+        $this->actingAs($owner)->get(route('admin.measurement-templates.edit', $template))
+            ->assertOk()
+            ->assertSee('data-option-editor', false)
+            ->assertSee('template-option-add', false)
+            ->assertSeeText('ہر انتخاب الگ شامل کریں')
+            ->assertDontSeeText('اردو کوما (،) سے الگ کریں');
+    }
+
+    public function test_new_custom_field_belongs_only_to_its_template(): void
+    {
+        $owner = $this->owner();
+        $waistcoat = MeasurementTemplate::create([
+            'user_id' => $owner->id, 'name' => 'واسکٹ', 'system_fields' => ['length'],
+            'custom_field_ids' => [], 'is_default' => true, 'is_active' => true,
+        ]);
+        $suit = MeasurementTemplate::create([
+            'user_id' => $owner->id, 'name' => 'ڈریس سوٹ', 'system_fields' => ['length'],
+            'custom_field_ids' => [], 'is_default' => false, 'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.measurement-fields.store'), [
+            'label' => 'کالر اونچائی',
+            'measurement_template_id' => $waistcoat->id,
+            'field_type' => 'number',
+            'unit' => 'inch',
+            'is_active' => '1',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $field = MeasurementField::where('user_id', $owner->id)->firstOrFail();
+        $this->assertSame($waistcoat->id, $field->measurement_template_id);
+        $this->assertSame([$field->id], $waistcoat->fresh()->custom_field_ids);
+        $this->assertSame([], $suit->fresh()->custom_field_ids);
     }
 
     public function test_order_snapshot_remains_unchanged_after_customer_and_field_are_edited(): void

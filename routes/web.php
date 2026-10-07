@@ -5,8 +5,8 @@ use App\Http\Controllers\AdministratorController;
 use App\Http\Controllers\AdministratorSubscriptionController;
 use App\Http\Controllers\AdminStorefrontClothingController;
 use App\Http\Controllers\AdminStorefrontController;
-use App\Http\Controllers\AdminStorefrontModuleSettingsController;
 use App\Http\Controllers\AdminStorefrontMerchandisingController;
+use App\Http\Controllers\AdminStorefrontModuleSettingsController;
 use App\Http\Controllers\AdminStorefrontOrderController;
 use App\Http\Controllers\AdminStorefrontTailoringController;
 use App\Http\Controllers\BusinessActivityController;
@@ -19,6 +19,7 @@ use App\Http\Controllers\ClothStockController;
 use App\Http\Controllers\ClothTypeController;
 use App\Http\Controllers\CsvController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CounterOrderController;
 use App\Http\Controllers\DesignController;
 use App\Http\Controllers\EmployeePasswordController;
 use App\Http\Controllers\ExpensesController;
@@ -27,7 +28,6 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryLedgerController;
 use App\Http\Controllers\MeasurementFieldController;
 use App\Http\Controllers\MeasurementTemplateController;
-use App\Http\Controllers\StandardMeasurementProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfflineWorkspaceController;
 use App\Http\Controllers\OptionsController;
@@ -35,9 +35,9 @@ use App\Http\Controllers\OptionTypeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderWorkAssignmentController;
 use App\Http\Controllers\ProductionWorkerController;
-use App\Http\Controllers\PublicOrderTrackingController;
-use App\Http\Controllers\PublicLocaleController;
 use App\Http\Controllers\PublicBusinessSignupController;
+use App\Http\Controllers\PublicLocaleController;
+use App\Http\Controllers\PublicOrderTrackingController;
 use App\Http\Controllers\PublicStorefrontCartController;
 use App\Http\Controllers\PublicStorefrontCheckoutController;
 use App\Http\Controllers\PublicStorefrontController;
@@ -48,13 +48,14 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleCustomerController;
 use App\Http\Controllers\SaleSessionController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\StandardMeasurementProfileController;
 use App\Http\Controllers\StorefrontPaymentReconciliationController;
 use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TailorController;
+use App\Http\Controllers\TailoringWorkflowSettingController;
 use App\Http\Controllers\TailorJobController;
 use App\Http\Controllers\TailorRateController;
-use App\Http\Controllers\TailoringWorkflowSettingController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -197,6 +198,10 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/customers/{id}/statement', [CustomerController::class, 'statement'])
         ->middleware('business.permission:tailoring.customers|clothing.sales|customers.balances')
         ->name('customers.statement');
+    Route::middleware('business.permission:tailoring.customers|clothing.sales')->group(function () {
+        Route::get('/Customers/search-results', [CustomerController::class, 'searchDirectory'])->name('customers.search');
+        Route::get('/Customers', [CustomerController::class, 'index'])->name('Customers.index');
+    });
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->middleware('business.permission:finance.view')->name('financial-reports.index');
     Route::get('/financial-reports/export/{section}', [FinancialReportController::class, 'export'])->middleware('business.permission:finance.view')->name('financial-reports.export');
     Route::get('/payment-reconciliation', [StorefrontPaymentReconciliationController::class, 'index'])->middleware('business.permission:finance.view')->name('payment-reconciliation.index');
@@ -207,6 +212,20 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/workspace/{workspace}', [HomeController::class, 'switch'])->whereIn('workspace', ['tailoring', 'clothing'])->name('workspace.switch');
     Route::get('/activity-log', [BusinessActivityController::class, 'index'])->middleware('business.permission:activity.view')->name('activity.index');
     Route::get('/activity-log/export', [BusinessActivityController::class, 'export'])->middleware('business.permission:activity.view')->name('activity.export');
+
+    Route::middleware('business.permission:tailoring.orders|clothing.sales')->group(function () {
+        Route::get('/counter-orders/create', [CounterOrderController::class, 'create'])->name('counter-orders.create');
+        Route::post('/counter-orders', [CounterOrderController::class, 'store'])->name('counter-orders.store');
+        Route::get('/counter-orders/{counterOrder}/edit', [CounterOrderController::class, 'edit'])->name('counter-orders.edit');
+        Route::get('/counter-orders/{counterOrder}/print', [CounterOrderController::class, 'print'])->name('counter-orders.print');
+        Route::post('/counter-orders/{counterOrder}/cloth-items', [CounterOrderController::class, 'addCloth'])->name('counter-orders.cloth-items.store');
+        Route::post('/counter-orders/{counterOrder}/tailoring-items', [CounterOrderController::class, 'addTailoring'])->name('counter-orders.tailoring-items.store');
+        Route::patch('/counter-orders/{counterOrder}/items/{item}', [CounterOrderController::class, 'updateItem'])->name('counter-orders.items.update');
+        Route::delete('/counter-orders/{counterOrder}/items/{item}', [CounterOrderController::class, 'removeItem'])->name('counter-orders.items.destroy');
+        Route::post('/counter-orders/{counterOrder}/confirm', [CounterOrderController::class, 'confirm'])->name('counter-orders.confirm');
+        Route::post('/counter-orders/{counterOrder}/close', [CounterOrderController::class, 'close'])->name('counter-orders.close');
+        Route::get('/counter-orders/from-sale-session/{saleSession}', [CounterOrderController::class, 'importSaleSession'])->name('counter-orders.sale-session');
+    });
 
     Route::middleware('business.permission:storefront.manage')->group(function () {
         Route::get('/storefront', [AdminStorefrontController::class, 'edit'])->name('storefront.edit');
@@ -321,8 +340,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     // Route::get('/notifications-stream', [UserController::class, 'notificationsStream'])->name('notifications-stream');
 
     Route::middleware('business.permission:tailoring.customers')->group(function () {
-        Route::get('/Customers/search-results', [CustomerController::class, 'searchDirectory'])->name('customers.search');
-        Route::resource('/Customers', CustomerController::class);
+        Route::resource('/Customers', CustomerController::class)->except(['index']);
         Route::post('DirectPayment', [CustomerController::class, 'DirectPayment'])->middleware('business.permission:customers.balances')->name('DirectPayment');
         Route::post('RackNo', [CustomerController::class, 'RackNo'])->name('RackNo');
         Route::get('/export-csv-customers', [CsvController::class, 'exportCsv'])->name('customercsv');
@@ -331,7 +349,9 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
 
     // Sale
     Route::middleware('business.permission:tailoring.orders')->group(function () {
-        Route::resource('/sale', SaleController::class);
+        Route::get('/sale/create', [CounterOrderController::class, 'legacyGenericSale'])->name('sale.create');
+        Route::post('/sale', [SaleController::class, 'store'])->name('sale.store');
+        Route::resource('/sale', SaleController::class)->only(['index', 'show', 'edit', 'update', 'destroy']);
         Route::get('sale/print/{id}', [SaleController::class, 'print'])->name('sale-print');
     });
 
@@ -342,7 +362,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::resource('/OptionType', OptionTypeController::class);
         Route::resource('/Options', OptionsController::class);
         Route::resource('/measurement-fields', MeasurementFieldController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::resource('/measurement-templates', MeasurementTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('/measurement-templates', MeasurementTemplateController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::get('/measurement-templates/{template}/standard-profiles', [StandardMeasurementProfileController::class, 'index'])->name('standard-measurement-profiles.index');
         Route::post('/measurement-templates/{template}/standard-profiles', [StandardMeasurementProfileController::class, 'store'])->name('standard-measurement-profiles.store');
         Route::put('/standard-measurement-profiles/{profile}', [StandardMeasurementProfileController::class, 'update'])->name('standard-measurement-profiles.update');
         Route::delete('/standard-measurement-profiles/{profile}', [StandardMeasurementProfileController::class, 'destroy'])->name('standard-measurement-profiles.destroy');
@@ -366,6 +387,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         ->name('Tailor.restore');
     Route::middleware('business.permission:tailoring.workshop')->group(function () {
         Route::get('tailor-jobs', [TailorJobController::class, 'adminIndex'])->name('tailor-jobs.index');
+        Route::post('tailor-racks', [TailorJobController::class, 'storeRack'])->name('tailor-racks.store');
         Route::post('offline/sync', [OfflineWorkspaceController::class, 'sync'])->name('offline.sync');
         Route::get('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'index'])->name('orders.workforce.index');
         Route::post('orders/{order}/workforce', [OrderWorkAssignmentController::class, 'store'])->name('orders.workforce.store');
@@ -411,7 +433,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::get('/customers/{customer}/orders', [OrderController::class, 'customerOrders'])->name('customer.orders');
         Route::get('/order/edit/{id}', [OrderController::class, 'edit'])->name('order.edit');
         Route::put('/order/update/{id}', [OrderController::class, 'update'])->name('order.update');
-        Route::get('/order/{id}', [OrderController::class, 'createOrder'])->name('order.create');
+        Route::get('/order/{id}', [CounterOrderController::class, 'legacyTailoringCreate'])->name('order.create');
         Route::post('/order/insert', [OrderController::class, 'insert'])->name('order.insert');
         Route::get('/getCustomer', [OrderController::class, 'getCustomer'])->name('getCustomer');
         Route::get('order/print/{id}', [OrderController::class, 'print'])->name('order-print');
@@ -434,6 +456,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/shop-dashboard', [HomeController::class, 'clothing'])->name('dashboard.clothing');
     Route::middleware('business.permission:clothing.suppliers')->group(function () {
         Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+        Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
         Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
         Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
         Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
@@ -485,7 +508,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::post('/sales-sessions/{saleSession}/claim', [SaleSessionController::class, 'claim'])->name('sales-sessions.claim');
         Route::post('/sales-sessions/{saleSession}/complete', [SaleSessionController::class, 'complete'])->name('sales-sessions.complete');
         Route::get('/cloths-index', [ClothStockController::class, 'index'])->name('cloths.index');
-        Route::get('sellcloth', [ClothStockController::class, 'sellCloth'])->name('sellCloth');
+        Route::get('sellcloth', [CounterOrderController::class, 'legacyClothSale'])->name('sellCloth');
         Route::get('/getSale', [ClothStockController::class, 'getSale'])->name('getSale');
 
         // Define the route for processing the sell form

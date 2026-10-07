@@ -38,6 +38,7 @@ class SuperAdminClientLifecycleTest extends TestCase
         $this->assertSame(
             TailoringOptionDefaultsService::SEWING_TYPE_CHOICES,
             Options::where('user_id', $owner->id)
+                ->whereNull('measurement_template_id')
                 ->where('option_id', $sewingTypeId)
                 ->orderBy('id')
                 ->pluck('Name')

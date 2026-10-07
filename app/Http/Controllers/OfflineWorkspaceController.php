@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\OfflineOperation;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use App\Models\rack as Rack;
 use App\Models\Tailor;
 use App\Models\User;
 use App\Services\OrderLifecycleNotificationService;
@@ -19,7 +20,7 @@ use Illuminate\Validation\Rule;
 
 class OfflineWorkspaceController extends Controller
 {
-    private const WORKSPACE_VERSION = '20260924m';
+    private const WORKSPACE_VERSION = '20261006a';
 
     public function fallback()
     {
@@ -62,6 +63,7 @@ class OfflineWorkspaceController extends Controller
             'commands.*.payload' => ['required', 'array'],
             'commands.*.payload.status' => ['required', Rule::in(Order::STATUSES)],
             'commands.*.payload.note' => ['nullable', 'string', 'max:1000'],
+            'commands.*.payload.rack_no' => ['nullable', 'string', 'max:100'],
             'commands.*.created_at' => ['nullable', 'date'],
         ]);
 
@@ -148,6 +150,21 @@ class OfflineWorkspaceController extends Controller
                 );
             }
 
+            $rackNo = null;
+            if ($target === 'ready') {
+                $rackNo = trim((string) ($command['payload']['rack_no'] ?? ''));
+                if ($rackNo !== '' && ! Rack::where('user_id', $actor['owner_id'])->where('rack_no', $rackNo)->exists()) {
+                    return $this->recordConflict(
+                        $command,
+                        $actor,
+                        $order,
+                        'rack_unavailable',
+                        'منتخب ریک نمبر دستیاب نہیں ہے۔',
+                    );
+                }
+                $rackNo = $rackNo !== '' ? $rackNo : null;
+            }
+
             $fromStatus = $current;
             $updates = ['status' => $target, 'status_changed_at' => now()];
             if ($target === 'cutting' && ! $order->started_at) {
@@ -155,6 +172,7 @@ class OfflineWorkspaceController extends Controller
             }
             if ($target === 'ready') {
                 $updates['ready_at'] = now();
+                $updates['rack_no'] = $rackNo;
             }
             if ($target === 'delivered') {
                 $updates['delivered_at'] = now();
@@ -375,7 +393,7 @@ class OfflineWorkspaceController extends Controller
             'admin.Customers.create' => 'نیا گاہک',
             'admin.tailor-jobs.index' => 'ورکشاپ',
             'admin.order.total' => 'ٹیلرنگ آرڈرز',
-            'admin.sellCloth' => 'نئی فروخت',
+            'admin.counter-orders.create' => 'نیا آرڈر',
             'admin.stock.index' => 'اسٹاک',
             'admin.purchases.index' => 'خریداری',
             'admin.suppliers.index' => 'سپلائرز',

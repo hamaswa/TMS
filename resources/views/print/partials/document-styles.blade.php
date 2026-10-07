@@ -364,7 +364,7 @@
 
         @page tms-receipt {
             size: 80mm auto;
-            margin: 3mm;
+            margin: 6mm 3mm 3mm;
         }
 
         .tms-print-toolbar,

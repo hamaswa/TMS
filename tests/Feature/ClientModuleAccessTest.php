@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ClothBrand;
 use App\Models\ClothType;
+use App\Models\MeasurementTemplate;
 use App\Models\Options;
 use App\Models\OptionType;
 use App\Models\User;
@@ -50,24 +51,30 @@ class ClientModuleAccessTest extends TestCase
 
         $this->actingAs($client)->get(route('admin.home'))->assertOk()->assertSee('ٹیلرنگ ورک اسپیس')->assertSee('دکان اور فروخت ورک اسپیس');
         $this->actingAs($client)->get(route('admin.workspace.switch', 'tailoring'))
-            ->assertRedirect(route('admin.dashboard.tailoring'))->assertSessionHas('active_workspace', 'tailoring');
-        $this->actingAs($client)->get(route('admin.dashboard.clothing'))->assertOk()->assertSessionHas('active_workspace', 'clothing');
+            ->assertRedirect(route('admin.dashboard.tailoring'))->assertSessionMissing('active_workspace');
+        $this->assertSame('tailoring', $client->fresh()->preferred_workspace);
+        $this->actingAs($client)->get(route('admin.dashboard.clothing'))
+            ->assertOk()
+            ->assertSeeText('ٹیلرنگ')
+            ->assertSeeText('کپڑے کی خرید و فروخت')
+            ->assertSessionMissing('active_workspace');
+        $this->actingAs($client)->get(route('admin.dashboard.tailoring'))
+            ->assertOk()
+            ->assertSeeText('ٹیلرنگ')
+            ->assertSeeText('کپڑے کی خرید و فروخت');
         $this->actingAs($client)->get(route('admin.tailor-jobs.index'))->assertOk();
         $this->actingAs($client)->get(route('admin.inventory-ledger.index'))->assertOk();
     }
 
-    public function test_new_tailoring_client_can_access_global_sewing_option_types(): void
+    public function test_new_tailoring_client_can_access_template_specific_sewing_choices(): void
     {
         $this->seed(OptionTypesSeeder::class);
         $client = $this->client(true, false);
+        $template = app(TailoringOptionDefaultsService::class)->seedMeasurementTemplateForOwner($client->id);
 
-        $this->actingAs($client)
-            ->get(route('admin.options.add', 1))
-            ->assertRedirect(route('admin.OptionType.index'))
-            ->assertSessionHas('openChoiceModal', 1);
-
-        $this->actingAs($client)->get(route('admin.OptionType.index'))
+        $this->actingAs($client)->get(route('admin.OptionType.index', ['template' => $template->id]))
             ->assertOk()
+            ->assertSeeText($template->name)
             ->assertSeeText('سلائی کی قسم')
             ->assertSee('choiceModal_1', false);
     }
@@ -125,6 +132,7 @@ class ClientModuleAccessTest extends TestCase
         $this->assertSame(
             TailoringOptionDefaultsService::SEWING_TYPE_CHOICES,
             Options::where('user_id', $client->id)
+                ->whereNull('measurement_template_id')
                 ->where('option_id', $sewingTypeId)
                 ->orderBy('id')
                 ->pluck('Name')
@@ -135,7 +143,11 @@ class ClientModuleAccessTest extends TestCase
         $this->seed(TailoringShopOptionsSeeder::class);
         $this->assertSame(
             $this->defaultTailoringChoiceCount(),
-            Options::where('user_id', $client->id)->count()
+            Options::where('user_id', $client->id)->whereNull('measurement_template_id')->count()
+        );
+        $this->assertSame(
+            $this->defaultTailoringChoiceCount(),
+            Options::where('user_id', $client->id)->whereNotNull('measurement_template_id')->count()
         );
     }
 
@@ -157,14 +169,24 @@ class ClientModuleAccessTest extends TestCase
 
             $owner = User::where('email', $email)->firstOrFail();
             $this->assertSame(
-                $this->defaultTailoringChoiceCount(),
+                $this->defaultTailoringChoiceCount() * 2,
                 Options::where('user_id', $owner->id)->count()
+            );
+            $template = MeasurementTemplate::where('user_id', $owner->id)
+                ->where('name', TailoringOptionDefaultsService::DEFAULT_MEASUREMENT_TEMPLATE_NAME)
+                ->firstOrFail();
+            $this->assertTrue($template->is_default);
+            $this->assertTrue($template->is_active);
+            $this->assertSame(
+                $this->defaultTailoringChoiceCount(),
+                Options::where('user_id', $owner->id)
+                    ->where('measurement_template_id', $template->id)->count()
             );
         }
 
         $this->assertDatabaseCount(
             'options',
-            $this->defaultTailoringChoiceCount() * 2
+            $this->defaultTailoringChoiceCount() * 4
         );
     }
 

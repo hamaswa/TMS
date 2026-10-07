@@ -227,11 +227,19 @@ class BusinessEmployeeAccessTest extends TestCase
 
         $this->actingAs($employee)->get(route('admin.dashboard.clothing'))
             ->assertOk()
-            ->assertSeeText('نئی فروخت')
+            ->assertSeeText('نیا آرڈر')
+            ->assertSee(route('admin.counter-orders.create'), false)
             ->assertDontSee(route('admin.stock.index'), false)
             ->assertDontSee(route('admin.purchases.index'), false)
             ->assertDontSee(route('admin.suppliers.index'), false);
-        $this->actingAs($employee)->get(route('admin.sellCloth'))->assertOk();
+        $this->actingAs($employee)->get(route('admin.counter-orders.create'))->assertOk();
+        $this->actingAs($employee)->get(route('admin.Customers.index'))
+            ->assertOk()
+            ->assertSeeText('گاہک')
+            ->assertDontSeeText('گاہک اور پیمائش')
+            ->assertDontSee(route('admin.measurement-templates.index'), false);
+        $this->actingAs($employee)->get(route('admin.sellCloth'))
+            ->assertRedirect(route('admin.counter-orders.create'));
         $this->actingAs($employee)->get(route('admin.stock.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.purchases.index'))->assertForbidden();
         $this->actingAs($employee)->get(route('admin.suppliers.index'))->assertForbidden();

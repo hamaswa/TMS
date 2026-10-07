@@ -61,7 +61,7 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $item->service_name }}@if($item->notes)<br><small>{{ $item->notes }}</small>@endif</td>
-                        <td>{{ $item->clothingItem?->item_name ?: 'گاہک کا اپنا کپڑا' }}</td>
+                        <td>{{ $item->clothingItem?->item_name ?: '—' }}</td>
                         <td>{{ \App\Models\StorefrontTailoringService::measurementMethodLabels()[$item->measurement_method] ?? $item->measurement_method }}@if($item->standard_size) — {{ $item->standard_size }}@endif @if($item->measurementTemplate)<br><small>{{ $item->measurementTemplate->name }}</small>@endif</td>
                         <td>{{ $item->quantity }}</td>
                         <td class="num">Rs {{ number_format((float)$item->line_total, 2) }}</td>

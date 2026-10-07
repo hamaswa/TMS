@@ -3,7 +3,7 @@
 @section('content')
 <style>
     .storefront-orders-head{display:flex;justify-content:space-between;align-items:center;gap:18px}
-    .storefront-orders-head h1{line-height:1.8}
+    .storefront-orders-head h1{line-height:1.8}.storefront-order-card{border:1px solid #e0e7f0!important;border-radius:13px!important;background:#fff;box-shadow:0 4px 16px rgba(25,48,78,.04)}.storefront-order-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start}.storefront-order-details{margin-top:14px;border:1px solid #e6ebf2;border-radius:10px;background:#f9fbfd}.storefront-order-details>summary{padding:12px 14px;cursor:pointer;color:#3f536d;font-weight:800}.storefront-order-details-body{padding:0 14px 14px}.storefront-order-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.storefront-order-more{width:100%;margin-top:9px}.storefront-order-more>summary{cursor:pointer;color:#687b92;font-size:.88rem;font-weight:700}
     @media(max-width:575px){
         .storefront-orders-head{display:block}
         .storefront-orders-head .btn{display:inline-block;margin-top:10px}
@@ -29,12 +29,15 @@
                         $statusLabels=['pending'=>'زیرِ انتظار','confirmed'=>'تصدیق شدہ','complete'=>'مکمل','cancelled'=>'منسوخ'];
                         $statusClasses=['pending'=>'warning','confirmed'=>'primary','complete'=>'success','cancelled'=>'secondary'];
                     @endphp
-                    <article class="border rounded p-3 mb-3">
-                        <div class="d-flex flex-wrap justify-content-between">
+                    <article class="storefront-order-card p-3 mb-3">
+                        <div class="storefront-order-summary">
                             <div><strong dir="ltr">{{ $order->reference }}</strong><div>{{ $order->customer->name }} · <span dir="ltr">{{ $order->customer->phone_number1 }}</span></div><small class="text-muted">{{ $order->placed_at->format('d-m-Y h:i A') }}</small></div>
                             <div class="text-left"><span class="badge badge-{{ $statusClasses[$order->status] ?? 'secondary' }}">{{ $statusLabels[$order->status] ?? $order->status }}</span><div class="h5 mt-2">Rs {{ number_format($order->subtotal,2) }}</div></div>
                         </div>
-                        <div class="border rounded bg-light p-3 mt-3">
+                        <details class="storefront-order-details">
+                            <summary>آرڈر کی تفصیل، ادائیگی اور آئٹمز</summary>
+                            <div class="storefront-order-details-body">
+                        <div class="border rounded bg-light p-3">
                             <div><strong>وصولی:</strong> {{ $order->fulfillment_method === 'delivery' ? 'ڈیلیوری' : 'دکان سے وصولی' }}</div>
                             @if($order->delivery_address)<div class="mt-1"><strong>ڈیلیوری پتہ:</strong> {{ $order->delivery_address }}</div>@endif
                             @if($order->customer_note)<div class="mt-1"><strong>گاہک کا نوٹ:</strong> {{ $order->customer_note }}</div>@endif
@@ -111,7 +114,7 @@
                                     <strong>سلائی:</strong> {{ $item->service_name }} — {{ \App\Models\StorefrontTailoringService::measurementMethodLabels()[$item->measurement_method] ?? $item->measurement_method }}
                                     @if($item->standard_size) ({{ $item->standard_size }}) @endif
                                     · {{ $item->quantity }} لباس
-                                    · {{ $item->clothingItem?->item_name ?: 'گاہک کا اپنا کپڑا' }}
+                                    @if($item->clothingItem) · {{ $item->clothingItem->item_name }} @endif
                                     @if($item->preferred_date) · مطلوبہ تاریخ {{ $item->preferred_date->format('d-m-Y') }} @endif
                                     <div class="small text-muted">
                                         @if($item->measurementTemplate)ٹیمپلیٹ: {{ $item->measurementTemplate->name }} @endif
@@ -121,6 +124,8 @@
                                 </li>
                             @endforeach
                         </ul>
+                            </div>
+                        </details>
                         @if($order->returns->isNotEmpty())
                             <div class="border rounded bg-light p-3 mt-3">
                                 <strong>جزوی واپسی اور تبدیلی کی تاریخ</strong>
@@ -140,7 +145,7 @@
                             </div>
                         @endif
                         @if($order->status !== \App\Models\StorefrontOrder::STATUS_CANCELLED && $order->refunds->isEmpty())
-                            <div class="mt-3">
+                            <div class="storefront-order-actions mt-3">
                                 @foreach($order->items as $item)
                                     @php
                                         $processedQuantity = (float) $item->returnItems->sum('quantity');
@@ -207,6 +212,7 @@
                                     <form method="POST" action="{{ route('admin.storefront.orders.update',$order) }}" class="d-inline-block ml-2 mt-2">@csrf @method('PATCH')<input type="hidden" name="status" value="complete"><button class="btn btn-success" @disabled($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_COD && (float) $order->balance_amount > 0)>مکمل کریں</button></form>
                                     @if($order->payment_method === \App\Models\StorefrontOrder::PAYMENT_COD && (float) $order->balance_amount > 0)<small class="text-danger d-block mt-1">COD آرڈر مکمل کرنے سے پہلے رقم وصول درج کریں۔</small>@endif
                                 @endif
+                                <details class="storefront-order-more"><summary>مزید کارروائیاں</summary><div class="mt-2">
                                 @if($order->returns->isNotEmpty())
                                     <div class="alert alert-light mt-2 mb-0">اس آرڈر پر جزوی واپسی یا تبدیلی موجود ہے، اس لیے مکمل منسوخی دستیاب نہیں۔ باقی مقدار الگ واپسی یا تبدیلی سے درج کریں۔</div>
                                 @elseif((float) $order->paid_amount <= 0)
@@ -227,6 +233,7 @@
                                         </form>
                                     </div>
                                 @endif
+                                </div></details>
                             </div>
                         @endif
                     </article>

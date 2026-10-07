@@ -24,7 +24,7 @@
     <div class="supplier-breadcrumb"><a href="{{ route('admin.home') }}">ڈیش بورڈ</a><span class="mx-2">‹</span>سپلائرز</div>
     <header class="supplier-header">
         <div class="supplier-heading"><span class="supplier-heading-icon"><i class="fas fa-truck"></i></span><div><h1 class="h3 mb-1">سپلائرز</h1><p>سپلائر کی معلومات، خریداری اور واجب الادا رقوم ایک جگہ منظم کریں</p></div></div>
-        <div class="supplier-header-actions"><a href="{{ route('admin.purchases.create') }}" class="btn btn-primary"><i class="fas fa-plus ml-1"></i> نئی خریداری</a><a href="{{ route('admin.purchases.index') }}" class="btn btn-outline-primary"><i class="fas fa-shopping-cart ml-1"></i> خریداریاں دیکھیں</a></div>
+        <div class="supplier-header-actions"><a href="{{ route('admin.suppliers.create') }}" class="btn btn-primary"><i class="fas fa-user-plus ml-1"></i> نیا سپلائر</a><a href="{{ route('admin.purchases.index') }}" class="btn btn-outline-primary"><i class="fas fa-shopping-cart ml-1"></i> خریداریاں دیکھیں</a></div>
     </header>
 
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
@@ -37,20 +37,7 @@
         <article class="supplier-stat"><div><small>کل واجب الادا</small><strong>Rs. {{ number_format($totalOutstanding, 2) }}</strong></div><span class="supplier-stat-icon"><i class="fas fa-wallet"></i></span></article>
     </div>
 
-    <div class="supplier-grid">
-        <section class="supplier-panel">
-            <div class="supplier-panel-head"><h2 class="supplier-panel-title"><i class="fas fa-user-plus"></i> نیا سپلائر شامل کریں</h2></div>
-            <form class="supplier-form" method="POST" action="{{ route('admin.suppliers.store') }}">@csrf
-                <div class="form-group"><label for="supplier_name">سپلائر کا نام <span class="text-danger">*</span></label><div class="supplier-input"><i class="fas fa-building"></i><input id="supplier_name" name="name" value="{{ old('name') }}" class="form-control" placeholder="کاروبار یا سپلائر کا نام" required maxlength="255"></div></div>
-                <div class="form-group"><label for="supplier_contact">رابطہ شخص</label><div class="supplier-input"><i class="fas fa-user"></i><input id="supplier_contact" name="contact_person" value="{{ old('contact_person') }}" class="form-control" placeholder="رابطہ شخص کا نام" maxlength="255"></div></div>
-                <div class="form-row"><div class="form-group col-md-6"><label for="supplier_phone">فون نمبر</label><div class="supplier-input"><i class="fas fa-phone"></i><input id="supplier_phone" name="phone" value="{{ old('phone') }}" class="form-control" placeholder="03xx-xxxxxxx" maxlength="50"></div></div><div class="form-group col-md-6"><label for="supplier_email">ای میل</label><div class="supplier-input"><i class="fas fa-envelope"></i><input id="supplier_email" type="email" name="email" value="{{ old('email') }}" class="form-control" placeholder="name@example.com" maxlength="255"></div></div></div>
-                <div class="form-group"><label for="supplier_opening_balance">ابتدائی بقایا</label><div class="supplier-input supplier-money-input"><i class="fas fa-wallet"></i><input id="supplier_opening_balance" type="number" step="0.01" min="0" name="opening_balance" value="{{ old('opening_balance', 0) }}" class="form-control"><span class="supplier-input-suffix">Rs.</span></div><small class="form-text text-muted">اگر پہلے سے کوئی رقم واجب الادا ہے تو یہاں درج کریں۔</small></div>
-                <div class="form-group"><label for="supplier_address">پتہ</label><textarea id="supplier_address" name="address" class="form-control" placeholder="سپلائر کا مکمل پتہ" maxlength="1000">{{ old('address') }}</textarea></div>
-                <button class="supplier-save" type="submit"><i class="far fa-save ml-1"></i> سپلائر محفوظ کریں</button>
-            </form>
-        </section>
-
-        <section class="supplier-panel supplier-list-panel">
+    <section class="supplier-panel supplier-list-panel">
             <div class="supplier-panel-head"><div><h2 class="supplier-panel-title"><i class="fas fa-list-ul"></i> سپلائرز کی فہرست</h2><div class="supplier-list-meta mt-1">کل {{ $suppliers->count() }} سپلائرز</div></div></div>
             <div class="supplier-toolbar"><div class="supplier-search"><i class="fas fa-search"></i><input id="supplierSearch" type="search" class="form-control" placeholder="نام، فون یا ای میل سے تلاش کریں"></div><select id="supplierStatusFilter" class="form-control" aria-label="سپلائر حالت"><option value="all">تمام سپلائرز</option><option value="active">صرف فعال</option><option value="inactive">صرف غیر فعال</option></select></div>
             <div class="table-responsive"><table class="table table-hover supplier-table"><thead><tr><th>سپلائر</th><th>رابطہ</th><th>حالت</th><th>ابتدائی بقایا</th><th>خریداری بقایا</th><th>کل واجب الادا</th><th>عمل</th></tr></thead><tbody>
@@ -68,8 +55,7 @@
                 @empty<tr><td colspan="7" class="supplier-empty"><i class="fas fa-truck"></i>ابھی کوئی سپلائر شامل نہیں کیا گیا۔</td></tr>@endforelse
             </tbody></table></div>
             <div id="supplierNoResults" class="supplier-no-results"><i class="fas fa-search ml-1"></i> تلاش کے مطابق کوئی سپلائر نہیں ملا۔</div>
-        </section>
-    </div>
+    </section>
 </div>
 </section>
 @endsection

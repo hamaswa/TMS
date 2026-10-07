@@ -82,7 +82,7 @@ class SaleSessionWorkflowTest extends TestCase
             ->assertJsonPath('data.0.agent.name', $agent->name);
     }
 
-    public function test_agent_can_complete_local_draft_in_one_action_with_optional_color(): void
+    public function test_agent_cannot_complete_local_draft_and_must_forward_it_to_admin(): void
     {
         [$owner, $agent] = $this->businessUsers();
         [$cloth, $color] = $this->stock($owner);
@@ -105,12 +105,11 @@ class SaleSessionWorkflowTest extends TestCase
 
         $this->assertDatabaseMissing('sale_sessions', ['uuid' => $uuid]);
         $this->withToken($token)->postJson("/api/sales-agent/sessions/{$uuid}/complete", $payload)
-            ->assertOk()
-            ->assertJsonPath('data.status', SaleSession::STATUS_COMPLETED);
+            ->assertForbidden();
 
-        $this->assertDatabaseHas('sale_sessions', ['uuid' => $uuid, 'status' => SaleSession::STATUS_COMPLETED]);
-        $this->assertDatabaseCount('counter_sale_receipts', 1);
-        $this->assertEquals(8, (float) $color->fresh()->length);
+        $this->assertDatabaseMissing('sale_sessions', ['uuid' => $uuid]);
+        $this->assertDatabaseCount('counter_sale_receipts', 0);
+        $this->assertEquals(10, (float) $color->fresh()->length);
     }
 
     public function test_set_qr_lookup_is_tenant_scoped_and_labels_are_visible_on_dashboard(): void
@@ -178,7 +177,7 @@ class SaleSessionWorkflowTest extends TestCase
             ->assertJsonPath('data.0.colors.0.length', null);
     }
 
-    public function test_per_suit_mobile_sale_uses_default_cut_length_and_fixed_suit_price(): void
+    public function test_per_suit_mobile_sale_cannot_be_completed_on_the_agent_device(): void
     {
         [$owner, $agent] = $this->businessUsers();
         [$cloth, $color] = $this->stock($owner);
@@ -206,11 +205,10 @@ class SaleSessionWorkflowTest extends TestCase
         ]);
 
         $this->withToken($token)->postJson('/api/sales-agent/sessions/per-suit-completion/complete', $payload)
-            ->assertOk()
-            ->assertJsonPath('data.status', SaleSession::STATUS_COMPLETED);
+            ->assertForbidden();
 
-        $this->assertEquals(5.5, (float) $color->fresh()->length);
-        $this->assertDatabaseHas('transactions', ['recivedPayment' => 1200, 'remainingBalance' => 0]);
+        $this->assertEquals(10, (float) $color->fresh()->length);
+        $this->assertDatabaseCount('transactions', 0);
     }
 
     public function test_manual_sale_selectors_only_return_current_shop_customers_and_stock(): void
@@ -241,7 +239,7 @@ class SaleSessionWorkflowTest extends TestCase
             'user_id' => $otherOwner->id,
         ]);
 
-        $this->actingAs($owner)->get(route('admin.sellCloth'))
+        $this->actingAs($owner)->get(route('admin.counter-orders.create'))
             ->assertOk()
             ->assertSeeText('Current Shop Buyer')
             ->assertSeeText('Named Counter Buyer')
@@ -309,31 +307,15 @@ class SaleSessionWorkflowTest extends TestCase
 
         $session = SaleSession::where('uuid', $uuid)->firstOrFail();
         $this->actingAs($owner)->get(route('admin.sales-sessions.show', $session))
-            ->assertRedirect(route('admin.sellCloth', ['sale_session' => $uuid]));
-        $saleFormResponse = $this->actingAs($owner)->get(route('admin.sellCloth', ['sale_session' => $uuid]));
-        $saleFormResponse
-            ->assertOk()
-            ->assertSeeText('سیلز ایجنٹ کی لائیو فروخت')
-            ->assertSeeText('2 آئٹمز')
-            ->assertSee('name="sale_session_uuid" value="'.$uuid.'"', false)
-            ->assertDontSeeText('فیبرک رول / ریک');
-        $this->assertStringContainsString('name="item_total[]" value="600"', $saleFormResponse->getContent());
-        $this->assertStringContainsString('name="per_meter[]" value="300"', $saleFormResponse->getContent());
-        $this->actingAs($owner)->post(route('admin.sales-sessions.claim', $session))->assertRedirect();
-        $this->actingAs($owner)->post(route('admin.sellStock'), [
-            'sale_session_uuid' => $uuid,
-            'brand_name' => [$cloth->cloth_brand_id, $cloth->cloth_brand_id],
-            'cloth_type' => [$cloth->cloth_type_id, $cloth->cloth_type_id],
-            'color' => [$color->color, $color->color],
-            'length' => [2, 1],
-            'item_total' => [300, 300],
-            'per_meter' => [150, 300],
-            'clothes_rack' => ['A-1', 'A-2'],
-            'customer_mode' => 'regular',
-            'existing_customer_id' => $customer->id,
+            ->assertRedirect(route('admin.counter-orders.sale-session', $session));
+        $importResponse = $this->actingAs($owner)->get(route('admin.counter-orders.sale-session', $session));
+        $counterOrder = \App\Models\CounterOrder::where('sale_session_id', $session->id)->firstOrFail();
+        $importResponse->assertRedirect(route('admin.counter-orders.edit', $counterOrder));
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $counterOrder))
+            ->assertOk()->assertSeeText('موبائل سے بھیجا تھا')->assertSeeText('2');
+        $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $counterOrder), [
             'payment' => 600,
             'payment_method' => 'cash',
-            'paid_on' => now()->toDateString(),
         ])->assertRedirect();
 
         $completedSession = $session->fresh('receipt');

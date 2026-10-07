@@ -157,7 +157,7 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSeeText('Serial num: 1404');
     }
 
-    public function test_print_documents_support_safe_paper_overrides_and_qr_references(): void
+    public function test_receipts_are_locked_to_80mm_and_include_qr_references(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();
         $order->update(['suitNum' => json_encode(['Suit 1'])]);
@@ -185,7 +185,8 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)
             ->get(route('admin.order-print', $order).'?paper=a4')
             ->assertOk()
-            ->assertSee('tms-paper-a4', false)
+            ->assertSee('tms-paper-receipt_80', false)
+            ->assertDontSee('A4 مکمل صفحہ')
             ->assertSee('class="receipt-date"', false)
             ->assertSee('order-summary-row', false)
             ->assertSee('order-note', false)
@@ -195,7 +196,7 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertSee('grid-template-columns: minmax(0, 56%) minmax(0, 44%)', false)
             ->assertSee('.measurement-row > .measurement-column-empty', false)
             ->assertSee('@media screen and (max-width: 520px)', false)
-            ->assertSee('TMS REF: '.$order->id)
+            ->assertSee('ORDER REF: '.$order->id)
             ->assertSee('<svg', false);
 
         $this->actingAs($owner)
@@ -208,7 +209,7 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)
             ->get(route('admin.order-print', $order))
             ->assertOk()
-            ->assertDontSee('TMS REF: '.$order->id);
+            ->assertDontSee('ORDER REF: '.$order->id);
     }
 
     public function test_order_receipt_qr_opens_signed_public_status_and_payment_page(): void
@@ -491,16 +492,16 @@ class LegacyRouteCleanupTest extends TestCase
         ]);
     }
 
-    public function test_order_notes_field_has_an_explicit_accessible_label_and_direction(): void
+    public function test_legacy_order_creation_url_redirects_to_the_unified_order_desk(): void
     {
         [$owner, $order] = $this->orderWithoutActiveSetting();
 
         $this->actingAs($owner)
             ->get(route('admin.order.create', $order->customerId))
-            ->assertOk()
-            ->assertSee('for="order_remarks"', false)
-            ->assertSee('id="order_remarks"', false)
-            ->assertSee('dir="auto"', false);
+            ->assertRedirect(route('admin.counter-orders.create', [
+                'customer' => $order->customerId,
+                'profile' => $order->customerId,
+            ]));
     }
 
     private function orderWithoutActiveSetting(): array

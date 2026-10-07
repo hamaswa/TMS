@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Business;
+use App\Models\MeasurementTemplate;
 use App\Models\Options;
 use App\Models\OptionType;
 use App\Models\User;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 class TailoringOptionDefaultsService
 {
     public const SEWING_TYPE_SLUG = 'add_sewing_type';
+
+    public const DEFAULT_MEASUREMENT_TEMPLATE_NAME = 'مردانہ شلوار قمیض';
 
     public const SEWING_TYPE_CHOICES = [
         'چمک تین سیلائی مکمل',
@@ -329,6 +332,7 @@ class TailoringOptionDefaultsService
                     Options::firstOrCreate(
                         [
                             'user_id' => $ownerId,
+                            'measurement_template_id' => null,
                             'option_id' => $optionType->id,
                             'Name' => $choice,
                         ],
@@ -338,7 +342,48 @@ class TailoringOptionDefaultsService
                     );
                 }
             }
+
+            $this->seedMeasurementTemplateForOwner($ownerId);
         });
+    }
+
+    public function seedMeasurementTemplateForOwner(int $ownerId): MeasurementTemplate
+    {
+        $template = MeasurementTemplate::firstOrNew([
+            'user_id' => $ownerId,
+            'name' => self::DEFAULT_MEASUREMENT_TEMPLATE_NAME,
+        ]);
+
+        if (! $template->exists) {
+            $template->description = 'قمیض، شلوار اور متعلقہ سلائی کی پسند کے لیے مکمل بنیادی ٹیمپلیٹ';
+            $template->custom_field_ids = [];
+            $template->layout_columns = 2;
+        }
+
+        $template->forceFill([
+            'system_fields' => array_keys(MeasurementService::SYSTEM_FIELDS),
+            'is_builtin' => true,
+            'is_default' => true,
+            'is_active' => true,
+        ])->save();
+
+        MeasurementTemplate::where('user_id', $ownerId)
+            ->where('id', '!=', $template->id)
+            ->update(['is_default' => false, 'is_builtin' => false]);
+
+        Options::where('user_id', $ownerId)->whereNull('measurement_template_id')->get()
+            ->each(function (Options $option) use ($template): void {
+                Options::firstOrCreate([
+                    'user_id' => $option->user_id,
+                    'measurement_template_id' => $template->id,
+                    'option_id' => $option->option_id,
+                    'Name' => $option->Name,
+                ], [
+                    'slug' => $option->slug.'-template-'.$template->id,
+                ]);
+            });
+
+        return $template;
     }
 
     public function defaultOptionTypes(): array

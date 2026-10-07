@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\StandardMeasurementProfile;
 use App\Models\User;
 use App\Services\MeasurementService;
+use App\Services\TailoringOptionDefaultsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -17,24 +18,109 @@ class MeasurementTemplateTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_client_can_manage_only_their_own_templates_and_choose_a_default(): void
+    public function test_builtin_shalwar_kameez_is_the_permanent_default(): void
+    {
+        $owner = $this->owner();
+        $builtin = app(TailoringOptionDefaultsService::class)->seedMeasurementTemplateForOwner($owner->id);
+
+        $this->assertTrue($builtin->is_builtin);
+        $this->assertTrue($builtin->is_default);
+        $this->assertTrue($builtin->is_active);
+        $this->assertSame(array_keys(MeasurementService::SYSTEM_FIELDS), $builtin->system_fields);
+
+        $this->actingAs($owner)->post(route('admin.measurement-templates.store'), [
+            'name' => 'واسکٹ',
+            'system_fields' => ['length', 'necktype', 'jeab'],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $template = MeasurementTemplate::where('user_id', $owner->id)->where('name', 'واسکٹ')->firstOrFail();
+        $this->assertFalse($template->is_default);
+
+        $this->actingAs($owner)->delete(route('admin.measurement-templates.destroy', $builtin))
+            ->assertRedirect()->assertSessionHasErrors('template');
+
+        $this->assertTrue($builtin->fresh()->is_active);
+    }
+
+    public function test_template_selector_also_controls_sewing_preference_groups(): void
+    {
+        $owner = $this->owner();
+        app(TailoringOptionDefaultsService::class)->seedForOwner($owner->id);
+        $waistcoat = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'واسکٹ',
+            'system_fields' => ['length', 'necktype', 'jeab'],
+            'custom_field_ids' => [],
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('admin.Customers.create'));
+
+        $response->assertOk()
+            ->assertSee('data-template-system-field="necktype"', false)
+            ->assertSee('data-template-system-field="jeab"', false)
+            ->assertSee('data-template-system-field="sleeve"', false)
+            ->assertSee('selectedSystem.indexOf(input.dataset.templateSystemField)', false)
+            ->assertSee('value="'.$waistcoat->id.'"', false);
+    }
+
+    public function test_directory_stays_compact_and_each_template_has_its_own_builder(): void
+    {
+        $owner = $this->owner();
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'واسکٹ',
+            'system_fields' => ['length', 'necktype', 'jeab'],
+            'custom_field_ids' => [],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.measurement-templates.index'))
+            ->assertOk()
+            ->assertSeeText('واسکٹ')
+            ->assertSeeText('ٹیمپلیٹ کھولیں')
+            ->assertDontSee('name="system_fields[]"', false);
+
+        $this->actingAs($owner)->get(route('admin.measurement-templates.edit', $template))
+            ->assertOk()
+            ->assertSeeText('جسمانی پیمائش')
+            ->assertSeeText('سلائی اور ڈیزائن کی پسند')
+            ->assertSeeText('گاہک فارم کی ترتیب')
+            ->assertSeeText('ایک کالم')
+            ->assertSeeText('دو کالم')
+            ->assertSee('move-column', false)
+            ->assertSee('name="system_fields[]"', false);
+    }
+
+    public function test_client_can_manage_only_their_own_template_and_layout(): void
     {
         $owner = $this->owner();
         $otherOwner = $this->owner();
         $field = $this->field($owner, 'گھٹنے کی چوڑائی');
+        $template = app(TailoringOptionDefaultsService::class)->seedMeasurementTemplateForOwner($owner->id);
 
-        $this->actingAs($owner)->post(route('admin.measurement-templates.store'), [
-            'name' => 'مردانہ شلوار قمیض',
+        $this->actingAs($owner)->put(route('admin.measurement-templates.update', $template), [
+            'name' => 'نام تبدیل نہ ہو',
             'description' => 'مکمل سوٹ',
             'system_fields' => ['length', 'arms', 'chuta'],
             'custom_field_ids' => [$field->id],
-            'is_default' => 1,
+            'layout_columns' => 1,
+            'field_layout' => [
+                ['source' => 'system.length', 'column' => 'right', 'order' => 10],
+                ['source' => 'custom.'.$field->id, 'column' => 'left', 'order' => 20],
+            ],
         ])->assertRedirect();
 
-        $template = MeasurementTemplate::where('user_id', $owner->id)->firstOrFail();
+        $template->refresh();
         $this->assertTrue($template->is_default);
-        $this->assertSame(['length', 'arms', 'chuta'], $template->system_fields);
+        $this->assertTrue($template->is_builtin);
+        $this->assertSame('مردانہ شلوار قمیض', $template->name);
+        $this->assertSame(array_keys(MeasurementService::SYSTEM_FIELDS), $template->system_fields);
         $this->assertSame([$field->id], $template->custom_field_ids);
+        $this->assertSame(1, $template->layout_columns);
+        $this->assertSame('left', collect($template->field_layout)->firstWhere('source', 'custom.'.$field->id)['column']);
 
         $this->actingAs($otherOwner)->put(route('admin.measurement-templates.update', $template), [
             'name' => 'Changed',
@@ -42,7 +128,7 @@ class MeasurementTemplateTest extends TestCase
         ])->assertNotFound();
         $this->assertSame('مردانہ شلوار قمیض', $template->fresh()->name);
 
-        $this->actingAs($owner)->get(route('admin.measurement-templates.index'))
+        $this->actingAs($owner)->get(route('admin.measurement-templates.edit', $template))
             ->assertOk()
             ->assertSeeText('مردانہ شلوار قمیض')
             ->assertSeeText('گھٹنے کی چوڑائی');
@@ -191,9 +277,10 @@ class MeasurementTemplateTest extends TestCase
         $this->assertDatabaseMissing('order_measurement_values', ['order_id' => $order->id, 'source_key' => 'custom.'.$excluded->id]);
 
         $this->actingAs($owner)->get(route('admin.order.create', $customer))
-            ->assertOk()
-            ->assertSee('name="measurement_template_id"', false)
-            ->assertSeeText('واسکٹ');
+            ->assertRedirect(route('admin.counter-orders.create', [
+                'customer' => $customer->id,
+                'profile' => $customer->id,
+            ]));
     }
 
     public function test_order_form_exposes_missing_template_measurements_before_submit(): void
@@ -217,10 +304,10 @@ class MeasurementTemplateTest extends TestCase
         ]);
 
         $this->actingAs($owner)->get(route('admin.order.create', $customer))
-            ->assertOk()
-            ->assertSeeText('منتخب لباس کی ضروری پیمائش نامکمل ہے')
-            ->assertSee('data-missing=', false)
-            ->assertSee('تیرا', false);
+            ->assertRedirect(route('admin.counter-orders.create', [
+                'customer' => $customer->id,
+                'profile' => $customer->id,
+            ]));
     }
 
     public function test_shop_owner_can_save_arbitrarily_named_standard_measurements_per_template(): void
@@ -250,7 +337,7 @@ class MeasurementTemplateTest extends TestCase
         $this->assertSame('Medium A', $profile->name);
         $this->assertSame($template->id, $profile->measurement_template_id);
         $this->assertSame(['system.length', 'system.arms', 'custom.'.$field->id], collect($profile->measurement_values)->pluck('source_key')->all());
-        $this->actingAs($owner)->get(route('admin.measurement-templates.index'))
+        $this->actingAs($owner)->get(route('admin.standard-measurement-profiles.index', $template))
             ->assertOk()->assertSeeText('Medium A')->assertSeeText('3 پیمائشیں');
 
         $this->actingAs($otherOwner)->put(route('admin.standard-measurement-profiles.update', $profile), [
@@ -258,6 +345,35 @@ class MeasurementTemplateTest extends TestCase
             'values' => ['system' => ['length' => '40', 'arms' => '23']],
         ])->assertNotFound();
         $this->assertSame('Medium A', $profile->fresh()->name);
+    }
+
+    public function test_standard_sizes_contain_measurements_not_sewing_preferences(): void
+    {
+        $owner = $this->owner();
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'واسکٹ',
+            'system_fields' => ['length', 'necktype', 'jeab'],
+            'custom_field_ids' => [],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.standard-measurement-profiles.index', $template))
+            ->assertOk()
+            ->assertSee('name="values[system][length]"', false)
+            ->assertDontSee('name="values[system][necktype]"', false)
+            ->assertDontSee('name="values[system][jeab]"', false);
+
+        $this->actingAs($owner)->post(route('admin.standard-measurement-profiles.store', $template), [
+            'name' => 'Medium',
+            'values' => ['system' => ['length' => '26']],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            ['system.length'],
+            collect(StandardMeasurementProfile::firstOrFail()->measurement_values)->pluck('source_key')->all(),
+        );
     }
 
     private function field(User $owner, string $label, bool $required = false): MeasurementField

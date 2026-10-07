@@ -47,12 +47,7 @@ class ShopHubRelayService
                         $this->sessions->sync($actor, $event['aggregateUuid'], $payload),
                         $actor,
                     ),
-                    'sale_session.completed' => $this->sessions->complete(
-                        $session && $session->agent_user_id !== $actor->id
-                            ? $session
-                            : $this->sessions->sync($actor, $event['aggregateUuid'], $payload),
-                        $actor,
-                    ),
+                    'sale_session.completed' => throw new RuntimeException('agent_completion_disabled'),
                     'sale_session.claimed' => $this->sessions->claim(
                         $session ?: throw new RuntimeException('session_unavailable'),
                         $actor,

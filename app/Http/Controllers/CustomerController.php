@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BusinessRole;
+use App\Models\CounterOrder;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
@@ -12,6 +13,7 @@ use App\Models\rack;
 use App\Models\SaleStock;
 use App\Models\Tailor;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Rules\PakistanMobileNumber;
 use App\Rules\UniqueCustomerPhone;
 use App\Services\MeasurementService;
@@ -53,8 +55,14 @@ class CustomerController extends Controller
     {
         $user = Auth::user();
         $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
-        $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
-        $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
+        $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS)
+            || $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
+        $canManageMeasurements = $user->hasModule(User::MODULE_TAILORING)
+            && $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
+        $canCreateBasicCustomer = $user->hasModule(User::MODULE_CLOTHING)
+            && $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
+        $canViewTailoringOrders = $user->hasModule(User::MODULE_TAILORING)
+            && $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) request('search', ''))
             ->orderBy('id', 'desc')
             ->get();
@@ -65,7 +73,10 @@ class CustomerController extends Controller
             : null;
 
         return view('customer.list', array_merge(
-            compact('customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements', 'createdCustomer'),
+            compact(
+                'customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements',
+                'canCreateBasicCustomer', 'canViewTailoringOrders', 'createdCustomer'
+            ),
             $stats,
         ));
     }
@@ -77,8 +88,12 @@ class CustomerController extends Controller
         ]);
         $user = Auth::user();
         $canViewBalances = $user->hasBusinessPermission(BusinessRole::CUSTOMER_BALANCES);
-        $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
-        $canManageMeasurements = $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
+        $canCreateTailoringOrder = $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS)
+            || $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
+        $canManageMeasurements = $user->hasModule(User::MODULE_TAILORING)
+            && $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
+        $canViewTailoringOrders = $user->hasModule(User::MODULE_TAILORING)
+            && $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
         $customers = $this->customerDirectoryQuery($canViewBalances, (string) ($validated['search'] ?? ''))
             ->orderBy('id', 'desc')
             ->get();
@@ -86,7 +101,7 @@ class CustomerController extends Controller
 
         return response()->json([
             'html' => view('customer.partials.directory-rows', compact(
-                'customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements'
+                'customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements', 'canViewTailoringOrders'
             ))->render(),
             'count' => $customers->count(),
         ]);
@@ -121,17 +136,9 @@ class CustomerController extends Controller
         //                     ->where('options.user_id',Auth::user()->businessOwnerId())
         //                     ->groupBy('options.option_id')
         //                     ->get();
-        $data['optionTypes'] = OptionType::select(
-            'options.option_id',
-            'options.user_id',
-            DB::raw('MAX(option_types.Name) as otn'),
-            DB::raw('MAX(option_types.type) as type'),
-            DB::raw('MAX(option_types.slug) as slug')
-        )
-            ->join('options', 'options.option_id', '=', 'option_types.id')
-            ->where('options.user_id', auth()->user()->businessOwnerId())
-            ->groupBy('options.option_id', 'options.user_id') // Group by both option_id and user_id
-            ->get();
+        $data['optionTypes'] = OptionType::query()
+            ->whereIn('type', ['necktype', 'sleeve', 'daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
+            ->select('id as option_id', 'Name as otn', 'type', 'slug')->orderBy('id')->get();
 
         // $data['optionTypes'] = OptionType::with('options')->where('user_id',Auth::user()->businessOwnerId())->get();
         // dd($data);
@@ -367,47 +374,17 @@ class CustomerController extends Controller
             $obj->parent_id = $existingCustomer->id;
         }
 
-        // select option
-        $daamanparts = explode('-', $request->add_daaman_type);
-        $daaman = isset($daamanparts[1]) ? $daamanparts[1] : 0; // Using isset instead of null coalescing
-        // dd($daaman);
-
-        $obj->Daaman = $daaman;
-
-        $plate_typeparts = explode('-', $request->plate_type);
-        $platet_type = $request['plate_type'] = $plate_typeparts[1] ?? 0;
-        // dd($platet_type);
-        $obj->plate_type = $platet_type;
-
-        $necktypeparts = explode('-', $request->add_neck_type);
-        $neck_type = $request['neck_type'] = $necktypeparts[1] ?? 0;
-        // dd($neck_type);
-        $obj->necktype = $neck_type; //
-
-        $jeabparts = explode('-', $request->add_pocket_type);
-        $jeab_type = $request['jeab_type'] = $jeabparts[1] ?? 0;
-        // dd($jeab_type);
-        $obj->jeab = $jeab_type;
-
-        $buttonparts = explode('-', $request->add_button_type);
-        $button_type = $request['button_type'] = $buttonparts[1] ?? 0;
-        // dd($button_type);
-        $obj->button = $button_type;
-
-        $sewing_typeparts = explode('-', $request->add_sewing_type);
-        $sewing_type = $request['sewing_type'] = $sewing_typeparts[1] ?? 0;
-        // dd($sewing_type);
-        $obj->swingtype = $sewing_type;
-
-        $shirt_button_typeparts = explode('-', $request->add_shirt_button_type);
-        $shirt_button_type = $request['shirt_button_type'] = $shirt_button_typeparts[1] ?? 0;
-        // dd($shirt_button_type);
-        $obj->shirtbutton = $shirt_button_type;
-
-        $sleeve_opening_typeparts = explode('-', $request->add_sleeve_opening_type);
-        $sleeve_opening_type = $request['sleeve_opening_type'] = $sleeve_opening_typeparts[1] ?? 0;
-        // dd($sleeve_opening_type);
-        $obj->sleeve = $sleeve_opening_type;
+        // New template forms submit the readable label directly. Older forms
+        // submitted "option-id - label", so accept both without turning a
+        // valid modern selection into the legacy numeric zero sentinel.
+        $obj->Daaman = $this->preferenceValue($request->add_daaman_type);
+        $obj->plate_type = $this->preferenceValue($request->plate_type);
+        $obj->necktype = $this->preferenceValue($request->add_neck_type);
+        $obj->jeab = $this->preferenceValue($request->add_pocket_type);
+        $obj->button = $this->preferenceValue($request->add_button_type);
+        $obj->swingtype = $this->preferenceValue($request->add_sewing_type);
+        $obj->shirtbutton = $this->preferenceValue($request->add_shirt_button_type);
+        $obj->sleeve = $this->preferenceValue($request->add_sleeve_opening_type);
         $obj->user_id = Auth::user()->businessOwnerId();
         if (! $existingCustomer) {
             $obj->acquisition_source = 'tailoring';
@@ -464,11 +441,9 @@ class CustomerController extends Controller
         // ->get();
 
         // dd($customer);
-        $optionTypes = OptionType::select('options.option_id', 'options.user_id', 'option_types.Name as otn', 'option_types.type', 'option_types.slug')
-            ->join('options', 'options.option_id', '=', 'option_types.id')
-            ->where('options.user_id', auth()->user()->businessOwnerId())
-            ->groupBy('options.option_id')
-            ->get();
+        $optionTypes = OptionType::query()
+            ->whereIn('type', ['necktype', 'sleeve', 'daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
+            ->select('id as option_id', 'Name as otn', 'type', 'slug')->orderBy('id')->get();
         // dd($optionTypes);
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = $customer->measurementValues()->pluck('value', 'measurement_field_id');
@@ -517,6 +492,8 @@ class CustomerController extends Controller
             'mobile_pin' => ['nullable', 'digits:6'],
             'return_customer' => ['nullable', 'integer'],
             'return_search' => ['nullable', 'string', 'max:200'],
+            'return_counter_order' => ['nullable', 'integer'],
+            'return_profile' => ['nullable', 'integer'],
             'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
             'length' => ['nullable', 'numeric', 'min:0'],
             'arms' => ['nullable', 'numeric', 'min:0'],
@@ -540,45 +517,14 @@ class CustomerController extends Controller
         $obj->chuta = $request->chuta;
         $obj->note = $request->note;
 
-        // select option
-        $daamanparts = explode('-', $request->add_daaman_type);
-        $daaman = isset($daamanparts[1]) ? trim($daamanparts[1]) : 0;
-        $obj->Daaman = $daaman;
-
-        $plate_typeparts = explode('-', $request->plate_type);
-        $platet_type = $request['plate_type'] = $plate_typeparts[1] ?? 0;
-        // dd($platet_type);
-        $obj->plate_type = $platet_type;
-
-        $necktypeparts = explode('-', $request->add_neck_type);
-        $neck_type = $request['neck_type'] = $necktypeparts[1] ?? 0;
-        // dd($neck_type);
-        $obj->necktype = $neck_type; //
-
-        $jeabparts = explode('-', $request->add_pocket_type);
-        $jeab_type = $request['jeab_type'] = $jeabparts[1] ?? 0;
-        // dd($jeab_type);
-        $obj->jeab = $jeab_type;
-
-        $buttonparts = explode('-', $request->add_button_type);
-        $button_type = $request['button_type'] = $buttonparts[1] ?? 0;
-        // dd($button_type);
-        $obj->button = $button_type;
-
-        $sewing_typeparts = explode('-', $request->add_sewing_type);
-        $sewing_type = $request['sewing_type'] = $sewing_typeparts[1] ?? 0;
-        // dd($sewing_type);
-        $obj->swingtype = $sewing_type;
-
-        $shirt_button_typeparts = explode('-', $request->add_shirt_button_type);
-        $shirt_button_type = $request['shirt_button_type'] = $shirt_button_typeparts[1] ?? 0;
-        // dd($shirt_button_type);
-        $obj->shirtbutton = $shirt_button_type;
-
-        $sleeve_opening_typeparts = explode('-', $request->add_sleeve_opening_type);
-        $sleeve_opening_type = $request['sleeve_opening_type'] = $sleeve_opening_typeparts[1] ?? 0;
-        // dd($sleeve_opening_type);
-        $obj->sleeve = $sleeve_opening_type;
+        $obj->Daaman = $this->preferenceValue($request->add_daaman_type);
+        $obj->plate_type = $this->preferenceValue($request->plate_type);
+        $obj->necktype = $this->preferenceValue($request->add_neck_type);
+        $obj->jeab = $this->preferenceValue($request->add_pocket_type);
+        $obj->button = $this->preferenceValue($request->add_button_type);
+        $obj->swingtype = $this->preferenceValue($request->add_sewing_type);
+        $obj->shirtbutton = $this->preferenceValue($request->add_shirt_button_type);
+        $obj->sleeve = $this->preferenceValue($request->add_sleeve_opening_type);
         $obj->user_id = Auth::user()->businessOwnerId();
         $obj->measurement_template_id = $measurementTemplate?->id;
         DB::transaction(function () use ($obj, $validated, $measurementFields, $measurementTemplate, $previousTemplate, $previousRows, $previousFingerprint) {
@@ -625,6 +571,19 @@ class CustomerController extends Controller
         // dd($obj);
         $returnCustomer = (int) ($validated['return_customer'] ?? 0);
         $returnSearch = trim((string) ($validated['return_search'] ?? ''));
+        $returnCounterOrder = (int) ($validated['return_counter_order'] ?? 0);
+        if ($returnCounterOrder > 0) {
+            $counterOrder = CounterOrder::where('user_id', Auth::user()->businessOwnerId())
+                ->whereKey($returnCounterOrder)
+                ->where('customer_id', $obj->parent_id ?: $obj->id)
+                ->first();
+            if ($counterOrder) {
+                return redirect()->route('admin.counter-orders.edit', [
+                    'counterOrder' => $counterOrder,
+                    'profile' => (int) ($validated['return_profile'] ?? $obj->id),
+                ])->with('success', 'پیمائش محفوظ ہو گئی ہے۔ اب سلائی آرڈر شامل کریں۔');
+            }
+        }
         $returnContext = array_filter([
             'return_customer' => $returnCustomer > 0 ? $returnCustomer : null,
             'return_search' => $returnSearch !== '' ? $returnSearch : null,
@@ -842,7 +801,13 @@ class CustomerController extends Controller
                 'acquisition_source' => 'shop_customer',
             ]);
 
-            return redirect()->route('admin.stock.index')->with('insert', 'نیا کسٹمر شامل کیا گیا ہے۔');
+            $customer = Customers::where('user_id', auth()->user()->businessOwnerId())
+                ->where('phone_number1_normalized', PakistanPhoneNumber::normalize($validatedData['customer_num']))
+                ->latest('id')
+                ->first();
+
+            return redirect()->route('admin.Customers.index', ['created' => $customer?->id])
+                ->with('insert', 'نیا گاہک شامل کر دیا گیا ہے۔');
         } catch (\Exception $e) {
             return response()->json($e->getMessage());
         }
@@ -963,6 +928,21 @@ class CustomerController extends Controller
     private function measurementTemplates()
     {
         return MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())
-            ->where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
+            ->where('is_active', true)->with('templateOptions.optionType')
+            ->orderByDesc('is_default')->orderBy('name')->get();
+    }
+
+    private function preferenceValue(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d+\s*-\s*(.+)$/u', $value, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return $value;
     }
 }

@@ -13,6 +13,10 @@ use Illuminate\Validation\Rule;
 
 class MeasurementService
 {
+    private const PREFERENCE_SYSTEM_KEYS = [
+        'necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type',
+    ];
+
     public const SYSTEM_FIELDS = [
     'length' => ['label' => 'لمبائی', 'unit' => 'inch'],
     'necktype' => ['label' => 'گلہ', 'unit' => ''],
@@ -61,6 +65,23 @@ class MeasurementService
 
         if (! $customer) {
             return $values->sortBy('sort_order')->values();
+        }
+
+        foreach (self::PREFERENCE_SYSTEM_KEYS as $key) {
+            $sourceKey = 'system.'.$key;
+            $snapshotValue = trim((string) optional($values->get($sourceKey))->value);
+            $currentValue = trim((string) $customer->{$key});
+            if (($snapshotValue === '' || $snapshotValue === '0') && $currentValue !== '' && $currentValue !== '0') {
+                $values->put($sourceKey, new OrderMeasurementValue([
+                    'order_id' => $order->id,
+                    'measurement_field_id' => null,
+                    'source_key' => $sourceKey,
+                    'label' => self::SYSTEM_FIELDS[$key]['label'],
+                    'value' => $currentValue,
+                    'unit' => '',
+                    'sort_order' => array_search($key, array_keys(self::SYSTEM_FIELDS), true),
+                ]));
+            }
         }
 
         $fields = $this->fieldsForTemplate(

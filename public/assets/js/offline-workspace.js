@@ -379,7 +379,7 @@
             type: 'order.status.change',
             aggregate_id: Number(form.dataset.orderId),
             base_version: form.dataset.baseStatus,
-            payload: { status: targetStatus, note: data.get('note') || null },
+            payload: { status: targetStatus, note: data.get('note') || null, rack_no: data.get('rack_no') || null },
             created_at: new Date().toISOString(),
             status: 'pending',
             actor_key: actorKey
@@ -420,7 +420,7 @@
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('message', handleWorkerMessage);
-        navigator.serviceWorker.register('/service-worker.js?v=20260927c', { scope: '/', updateViaCache: 'none' })
+        navigator.serviceWorker.register('/service-worker.js?v=20261006a', { scope: '/', updateViaCache: 'none' })
             .then(() => navigator.serviceWorker.ready)
             .then((registration) => {
                 const worker = navigator.serviceWorker.controller || registration.active;

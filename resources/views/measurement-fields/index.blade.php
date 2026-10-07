@@ -590,6 +590,21 @@
             margin-left: 5px
         }
 
+        .mf-card-edit-button {
+            width: 100%;
+            padding: 10px 14px;
+            border: 0;
+            border-top: 1px solid #edf1f6;
+            color: var(--mf-blue);
+            background: #fff;
+            text-align: center;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer
+        }
+
+        .mf-card-edit-button:hover { background: #f7fbff }
+
         .mf-edit {
             padding: 14px
         }
@@ -738,6 +753,7 @@
                 padding: 14px
             }
         }
+        .mf-library-note{border:1px solid #dbe7f2;border-radius:14px;padding:1rem;background:#f8fbfe;color:#526575}.mf-library-note strong{display:block;color:#28445f;margin-bottom:.2rem}
     </style>
 
     <section class="main-content mf-page">
@@ -749,7 +765,7 @@
                         <p>صرف وہ پیمائش شامل کریں جو نیچے موجود تیار خانوں میں نہیں ہے۔</p>
                     </div>
                 </div>
-                <div class="mf-head-actions"><a href="{{ route('admin.measurement-templates.index') }}"
+                <div class="mf-head-actions"><button type="button" class="mf-btn is-primary border-0" data-toggle="modal" data-target="#newMeasurementField"><i class="fas fa-plus"></i> نیا خانہ</button><a href="{{ route('admin.measurement-templates.index') }}"
                         class="mf-btn is-primary"><i class="fas fa-clipboard-list"></i> لباس کے پیمائش فارم</a><a
                         href="{{ route('admin.Customers.index') }}" class="mf-btn"><i class="fas fa-users"></i> گاہک اور
                         پیمائش</a></div>
@@ -795,12 +811,12 @@
                 </div>
             </section>
 
-            <section class="mf-panel">
+            <div class="modal fade" id="newMeasurementField" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content" dir="rtl"><section class="mf-panel mb-0">
                 <div class="mf-panel-head"><span class="mf-panel-icon"><i class="fas fa-plus"></i></span>
                     <div>
                         <h2>نئی پیمائش شامل کریں</h2>
                         <p>مثال: کالر اونچائی — نمبر لکھیں — انچ</p>
-                    </div>
+                    </div><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں"><span>&times;</span></button>
                 </div>
                 <form method="POST" action="{{ route('admin.measurement-fields.store') }}" class="mf-form"
                     id="measurementFieldForm">
@@ -849,17 +865,16 @@
                                 کے درمیان اردو کوما (،) لگائیں۔ یہ صرف “فہرست سے چنیں” کے لیے ہے۔</small></div>
                         <label class="mf-required mf-field is-wide" for="newFieldRequired"><input type="hidden"
                                 name="is_required" value="0"><input id="newFieldRequired" type="checkbox"
-                                name="is_required" value="1" @checked(old('is_required'))><span><strong>ہر گاہک کے
-                                    لیے یہ پیمائش لازمی کریں</strong><small>صرف تب منتخب کریں جب اس پیمائش کے بغیر آرڈر مکمل
+                                name="is_required" value="1" @checked(old('is_required'))><span><strong>منتخب لباس میں یہ پیمائش لازمی کریں</strong><small>صرف تب منتخب کریں جب اس پیمائش کے بغیر آرڈر مکمل
                                     نہیں ہو سکتا۔</small></span></label>
+                        <div class="mf-field is-wide mf-library-note"><strong><i class="fas fa-layer-group ml-1"></i> پہلے خانہ بنائیں، ٹیمپلیٹ بعد میں منتخب کریں</strong>یہ خانہ قابلِ استعمال لائبریری میں محفوظ ہوگا۔ لباس ٹیمپلیٹ بناتے یا تبدیل کرتے وقت اسے منتخب کرکے دائیں یا بائیں کالم میں رکھا جا سکتا ہے۔</div>
                     </div>
                     <div class="mf-form-footer">
-                        <p><i class="fas fa-info-circle text-primary ml-1"></i> شامل کرنے کے بعد اسے لباس کے پیمائش فارم
-                            میں منتخب کریں۔</p><button class="mf-save" type="submit"><i class="fas fa-plus-circle"></i>
+                        <p><i class="fas fa-info-circle text-primary ml-1"></i> محفوظ ہونے کے بعد اسے کسی بھی موجودہ یا آئندہ لباس ٹیمپلیٹ میں شامل کیا جا سکتا ہے۔</p><button class="mf-save" type="submit"><i class="fas fa-plus-circle"></i>
                             پیمائش شامل کریں</button>
                     </div>
                 </form>
-            </section>
+            </section></div></div></div>
 
             <section class="mf-panel">
                 <div class="mf-list-head">
@@ -885,8 +900,9 @@
                                 </div>
                             </div>
                         </div>
-                        <details>
-                            <summary><i class="fas fa-edit"></i> تبدیل کریں</summary>
+                        <button type="button" class="mf-card-edit-button" data-toggle="modal" data-target="#editMeasurementField{{ $field->id }}"><i class="fas fa-edit"></i> تبدیل کریں</button>
+                        <div class="modal fade" id="editMeasurementField{{ $field->id }}" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content" dir="rtl">
+                            <div class="mf-panel-head"><span class="mf-panel-icon"><i class="fas fa-edit"></i></span><div><h2>{{ $field->label }}</h2><p>خانے کی بنیادی تعریف تبدیل کریں؛ ٹیمپلیٹ میں جگہ متعلقہ بلڈر سے طے ہوگی۔</p></div><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں"><span>&times;</span></button></div>
                             <div class="mf-edit">
                                 <form method="POST" action="{{ route('admin.measurement-fields.update', $field) }}">
                                     @csrf @method('PUT')<input type="hidden" name="sort_order"
@@ -915,12 +931,12 @@
                                                 placeholder="تنگ، درمیانہ، کھلا"></div>
                                         <label class="mf-required"><input type="hidden" name="is_required"
                                                 value="0"><input type="checkbox" name="is_required"
-                                                value="1" @checked($field->is_required)><span><strong>لازمی
-                                                    پیمائش</strong></span></label>
+                                                value="1" @checked($field->is_required)><span><strong>منتخب لباس میں لازمی</strong></span></label>
                                         <label class="mf-required"><input type="hidden" name="is_active"
                                                 value="0"><input type="checkbox" name="is_active"
                                                 value="1" @checked($field->is_active)><span><strong>گاہک کے فارم
                                                     میں دکھائیں</strong></span></label>
+                                        <div class="mf-field is-wide mf-library-note"><strong>ٹیمپلیٹس میں استعمال</strong>{{ count($fieldTemplateIds[$field->id] ?? []) }} فعال ٹیمپلیٹس — جگہ اور ترتیب متعلقہ ٹیمپلیٹ کے بلڈر سے تبدیل کریں۔</div>
                                     </div>
                                     <div class="mf-edit-actions"><button class="mf-update" type="submit"><i
                                                 class="fas fa-check"></i> تبدیلی محفوظ کریں</button></div>
@@ -935,7 +951,7 @@
                                     </form>
                                 @endif
                             </div>
-                        </details>
+                        </div></div></div>
                     </article>
                 @empty
                     <div class="mf-empty"><i class="fas fa-ruler-combined"></i><strong>ابھی کوئی اپنی پیمائش نہیں
@@ -949,6 +965,10 @@
 
 <script>
     $(function() {
+        // Keep Bootstrap dialogs outside the page shell's stacking context so
+        // the modal panel always sits above its backdrop.
+        $('#newMeasurementField, [id^="editMeasurementField"]').appendTo(document.body);
+
         var type = $('#newFieldType');
         var optionsBox = $('#newOptionsBox');
         var optionsInput = $('#newFieldOptions');

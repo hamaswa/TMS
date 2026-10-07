@@ -2,7 +2,7 @@
     <div class="container text-center">
         <div class="row">
             <div class="col-12">
-                <p class="mb-0">Copyright &copy; tms.itlinked.tech</p>
+                <p class="mb-0">Copyright &copy; BuyNStitch</p>
             </div>
             <!-- Uncomment to add social media links
             <div class="col-12 mt-2">

@@ -177,6 +177,7 @@ class ClothStockController extends Controller
                 'cloth_id' => (string) $cloth->id,
                 'stock_code' => $cloth->stock_code,
                 'set_code' => $cloth->set_code,
+                'set_name' => $cloth->name,
                 'brand_id' => (string) $cloth->cloth_brand_id,
                 'brand_name' => $cloth->brand?->name,
                 'type_id' => (string) $cloth->cloth_type_id,
@@ -1082,7 +1083,7 @@ class ClothStockController extends Controller
                 ]);
             }
             $receipt = CounterSaleReceipt::create([
-                'receipt_number' => 'TMSC-'.Str::upper(Str::random(6)),
+                'receipt_number' => 'SALE-'.Str::upper(Str::random(6)),
                 'user_id' => $ownerId,
                 'customer_id' => $customer->id,
                 'status' => 'completed',

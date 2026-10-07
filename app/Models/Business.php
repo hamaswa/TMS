@@ -50,7 +50,7 @@ class Business extends Model
 
     public static function makeShopCode(int $businessId): string
     {
-        return sprintf('TMS-%06d', $businessId);
+        return sprintf('SHOP-%06d', $businessId);
     }
 
     protected function casts(): array

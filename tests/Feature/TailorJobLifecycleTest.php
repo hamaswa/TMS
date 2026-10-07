@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\Customers;
 use App\Models\Order;
 use App\Models\OrderNotificationDelivery;
+use App\Models\rack as Rack;
 use App\Models\Tailor;
 use App\Models\TailorRecord;
 use App\Models\User;
@@ -169,10 +170,12 @@ class TailorJobLifecycleTest extends TestCase
     public function test_weekly_orders_status_control_switches_between_workshop_and_ready(): void
     {
         [$owner, , $order] = $this->job(['status' => 'cutting']);
+        $rack = Rack::where('user_id', $owner->id)->firstOrFail();
 
         $this->actingAs($owner)->post(route('admin.order.status'), [
             'order_id' => $order->id,
             'order_status' => 'complete',
+            'rack_no' => $rack->rack_no,
         ])->assertRedirect()->assertSessionHas('success');
 
         $this->assertSame('ready', $order->fresh()->status);
@@ -191,9 +194,41 @@ class TailorJobLifecycleTest extends TestCase
         ]);
     }
 
+    public function test_ready_garment_accepts_an_optional_rack_and_saves_a_selected_location(): void
+    {
+        [$owner, , $order] = $this->job(['status' => 'cutting']);
+
+        $this->actingAs($owner)->post(route('admin.order.status'), [
+            'order_id' => $order->id,
+            'order_status' => 'complete',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame('ready', $order->fresh()->status);
+        $this->assertNull($order->fresh()->rack_no);
+
+        [$secondOwner, , $secondOrder] = $this->job(['status' => 'cutting']);
+
+        $this->actingAs($secondOwner)->post(route('admin.tailor-racks.store'), [
+            'rack_no' => 'EID-12',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->actingAs($secondOwner)->post(route('admin.order.status'), [
+            'order_id' => $secondOrder->id,
+            'order_status' => 'complete',
+            'rack_no' => 'EID-12',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $secondOrder->id,
+            'status' => 'ready',
+            'rack_no' => 'EID-12',
+        ]);
+    }
+
     public function test_workshop_page_uses_two_statuses_and_tailor_can_mark_an_order_ready(): void
     {
         [$owner, $tailor, $order] = $this->job(['status' => 'assigned']);
+        $rack = Rack::where('user_id', $owner->id)->firstOrFail();
 
         $this->actingAs($owner)
             ->get(route('admin.tailor-jobs.index', ['status' => 'workshop']))
@@ -212,9 +247,11 @@ class TailorJobLifecycleTest extends TestCase
         $this->withSession($session)->post(route('tailor.order.status'), [
             'order_id' => $order->id,
             'order_status' => 'complete',
+            'rack_no' => $rack->rack_no,
         ])->assertRedirect()->assertSessionHas('success');
 
         $this->assertSame('ready', $order->fresh()->status);
+        $this->assertSame($rack->rack_no, $order->fresh()->rack_no);
         $this->assertDatabaseHas('order_status_histories', [
             'order_id' => $order->id,
             'from_status' => 'assigned',
@@ -636,6 +673,9 @@ class TailorJobLifecycleTest extends TestCase
             'status' => Business::STATUS_ACTIVE,
         ]);
         $owner->forceFill(['business_id' => $business->id])->save();
+        $rack = new Rack(['rack_no' => 'A-01']);
+        $rack->user_id = $owner->id;
+        $rack->save();
         $tailor = Tailor::create([
             'name' => fake()->name(),
             'phone_number1' => fake()->unique()->numerify('03#########'),
@@ -659,6 +699,7 @@ class TailorJobLifecycleTest extends TestCase
             'status' => 'assigned',
             'tailor_paid_amount' => 0,
             'tailor_payment_status' => 'unpaid',
+            'rack_no' => in_array($overrides['status'] ?? 'assigned', ['ready', 'delivered'], true) ? $rack->rack_no : null,
         ], $overrides));
 
         return [$owner, $tailor, $order];

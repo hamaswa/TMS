@@ -320,17 +320,10 @@ class TailorRateWorkflowTest extends TestCase
 
         $this->actingAs($owner)
             ->get(route('admin.order.create', $customer))
-            ->assertOk()
-            ->assertSeeText('گاہک کا پچھلا مشترکہ بقایا')
-            ->assertSee('<h1', false)
-            ->assertSeeText('اس آرڈر کی کل قیمت')
-            ->assertSeeText('ابھی وصول شدہ رقم')
-            ->assertSeeText('اس آرڈر کی باقی رقم')
-            ->assertSee('for="totalPayment"', false)
-            ->assertSee('for="recivedPayment"', false)
-            ->assertSee('id="totalPayment"', false)
-            ->assertSee('id="recivedPayment"', false)
-            ->assertSee('aria-label="محفوظ ناپ تلاش کریں"', false);
+            ->assertRedirect(route('admin.counter-orders.create', [
+                'customer' => $customer->id,
+                'profile' => $customer->id,
+            ]));
 
         $this->actingAs($owner)->post(route('admin.order.insert'), $payload)->assertRedirect();
 
@@ -366,9 +359,10 @@ class TailorRateWorkflowTest extends TestCase
 
         $this->actingAs($owner)
             ->get(route('admin.order.create', $customer))
-            ->assertOk()
-            ->assertSeeText('ابھی درزی مقرر نہ کریں')
-            ->assertSeeText('بعد میں ورکشاپ سے دستیابی اور جاری کام دیکھ کر مقرر کریں');
+            ->assertRedirect(route('admin.counter-orders.create', [
+                'customer' => $customer->id,
+                'profile' => $customer->id,
+            ]));
 
         $response = $this->actingAs($owner)->post(route('admin.order.insert'), [
             'customerId' => $customer->id,
@@ -615,10 +609,10 @@ class TailorRateWorkflowTest extends TestCase
             ->assertSessionHasInput('sub_id', $family->id);
 
         $this->actingAs($owner)->get(route('admin.order.create', $customer))
-            ->assertOk()
-            ->assertSee('data-serial="'.$family->id.'"', false)
-            ->assertSee('value="'.$family->name.'"', false)
-            ->assertSee('value="'.$family->id.'"', false);
+            ->assertRedirect(route('admin.counter-orders.create', [
+                'customer' => $customer->id,
+                'profile' => $customer->id,
+            ]));
     }
 
     public function test_note_only_edit_is_template_scoped_and_does_not_roll_back_the_profile(): void

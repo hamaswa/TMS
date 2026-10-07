@@ -85,6 +85,7 @@ class SalesAgentController extends Controller
             ->get()->map(fn (Cloth $cloth) => [
                 'id' => $cloth->id,
                 'setCode' => $cloth->set_code,
+                'setName' => $cloth->name,
                 'brandId' => $cloth->cloth_brand_id,
                 'brand' => $cloth->brand?->name,
                 'clothTypeId' => $cloth->cloth_type_id,
@@ -118,6 +119,7 @@ class SalesAgentController extends Controller
 
         return response()->json(['data' => [
             'setCode' => $cloth->set_code,
+            'setName' => $cloth->name,
             'brandId' => $cloth->cloth_brand_id,
             'brand' => $cloth->brand?->name,
             'clothTypeId' => $cloth->cloth_type_id,
@@ -255,32 +257,7 @@ class SalesAgentController extends Controller
         ShopHubService $hub,
     ): JsonResponse
     {
-        $baseRevision = (int) $request->input('revision', 0);
-        $session = $request->has('items')
-            ? DB::transaction(function () use ($request, $uuid, $sessions) {
-                $payload = $this->validateSessionPayload($request);
-                $current = SaleSession::where('uuid', $uuid)->where('agent_user_id', $request->user()->id)->first();
-                $payload['revision'] = $current?->revision ?? 0;
-
-                return $sessions->complete(
-                    $sessions->sync($request->user(), $uuid, $payload),
-                    $request->user(),
-                );
-            })
-            : $sessions->complete($this->agentSession($request, $uuid), $request->user());
-
-        $serialized = $sessions->serialize($session);
-        $hub->recordSaleEvent(
-            $request->user(),
-            $session,
-            'sale_session.completed',
-            $request->input('operationId'),
-            $request->header('X-Shop-Device-Id'),
-            $baseRevision,
-            $serialized,
-        );
-
-        return response()->json(['data' => $serialized, 'connection' => $hub->status($request->user())]);
+        abort(403, 'Sales agents can save and forward orders, but only the admin desk can confirm payment and complete them.');
     }
 
     private function agentSession(Request $request, string $uuid): SaleSession

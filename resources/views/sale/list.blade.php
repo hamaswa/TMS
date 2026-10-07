@@ -24,7 +24,7 @@
                 @include('inc.message')
 
                 <div class="bg-white px-3 py-4">
-                    <p class="text-right"><a href="{{url('admin/sale/create')}}" class="btn btn-primary">فروخت +</a>
+                    <p class="text-right"><a href="{{ route('admin.counter-orders.create') }}" class="btn btn-primary">نیا آرڈر +</a>
                     </p>
                     <div class="table-title  mb-4 mt-2">
                         <h1 class="h4 text-right">فروخت ریکارڈ</h1>

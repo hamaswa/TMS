@@ -62,7 +62,7 @@ class Setting extends Model
                 'address' => '',
                 'status' => 1,
                 'contact_no' => '',
-                'shop_slug' => 'tms-shop-'.$ownerId,
+                'shop_slug' => 'shop-'.$ownerId,
                 'print_paper_size' => self::PRINT_PAPER_RECEIPT_80,
                 'print_show_qr' => true,
             ]

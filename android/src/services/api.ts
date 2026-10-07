@@ -170,8 +170,3 @@ export const requestAttention = (draft: SaleDraft, revision: number) =>
   request<{ data: ServerSession }>(`/sales-agent/sessions/${encodeURIComponent(draft.localId)}/attention`, {
     method: 'POST', body: JSON.stringify(draftPayload(draft, revision)),
   });
-
-export const completeSession = (draft: SaleDraft, revision: number) =>
-  request<{ data: ServerSession }>(`/sales-agent/sessions/${encodeURIComponent(draft.localId)}/complete`, {
-    method: 'POST', body: JSON.stringify(draftPayload(draft, revision)),
-  });

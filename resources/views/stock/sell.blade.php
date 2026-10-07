@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
         calculateTotals();
         scanInput.value = '';
         if (!match.requires_color) {
-            scanFeedback.textContent = 'بغیر رنگ والا سیٹ شامل ہو گیا: ' + (match.brand_name || '') + ' / ' + (match.type_name || '');
+            scanFeedback.textContent = 'سیٹ شامل ہو گیا: ' + (match.set_name || '') + ' / ' + (match.brand_name || '') + ' / ' + (match.type_name || '');
             scanFeedback.className = 'counter-scan-feedback is-success';
             item.querySelector('[name="length[]"]').focus();
         } else {

@@ -11,8 +11,8 @@ The current Laravel `/api/login` endpoint authenticates customers using shop, ph
 3. Resolve a whole-set QR code to current tenant inventory, availability, brand, cloth type, optional/default color, price and rack.
 4. Idempotently create or update a sale draft using a client UUID and revision.
 5. Return HTTP 409 with the current server draft when the supplied revision is stale.
-6. Complete a sale through the same atomic domain workflow used by the web counter sale, including stock deduction, transaction and receipt creation.
-7. Optionally leave a draft for dashboard completion and notify authorized dashboard users.
+6. Forward the prepared order to the admin desk. The agent app never completes a sale, deducts stock, or creates the final receipt.
+7. Notify authorized dashboard users when the agent forwards an order.
 
 ## QR payload
 
@@ -20,4 +20,4 @@ The QR contains only an opaque, non-sequential set code such as `BNS-S-7F3K9Q`. 
 
 ## Current boundary
 
-QR capture and durable local draft autosave are implemented. Server lookup, continuous sync, completion, receipt creation and dashboard notifications intentionally report that the API is not connected instead of showing false success.
+QR capture, durable local draft autosave, employee login, inventory lookup, customer search, revision-safe sync, and forwarding are connected. Final pricing, payment verification, stock deduction, receipt creation, and tailoring-job creation belong to the admin desk.

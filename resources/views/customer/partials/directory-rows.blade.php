@@ -4,12 +4,9 @@
         $accountCustomer = $customer->primaryCustomer ?? $customer;
         $currentBalance = (float) ($customer->current_balance ?? 0);
         $initial = function_exists('mb_substr') ? mb_substr(trim($customer->name), 0, 1) : substr(trim($customer->name), 0, 1);
-        $statementUrl = $isFamilyProfile
+        $statementUrl = $isFamilyProfile && $canManageMeasurements
             ? route('admin.customers.statement', ['id' => $accountCustomer->id, 'tab' => 'measurements', 'profile' => $customer->id])
             : route('admin.customers.statement', $accountCustomer);
-        $orderUrl = $isFamilyProfile
-            ? route('admin.order.create', ['id' => $accountCustomer->id, 'profile' => $customer->id])
-            : route('admin.order.create', $accountCustomer);
     @endphp
     <tr data-customer-row="{{ $customer->id }}" @class(['family-profile-row' => $isFamilyProfile])>
         <td class="customer_serial customer-serial-cell" data-label="نمبر" data-order="{{ $customer->id }}">{{ $customer->serial_number ?? $customer->id }}</td>
@@ -37,9 +34,14 @@
         <td class="customer-actions-cell" data-label="فوری کارروائیاں">
             <div class="customer-row-actions">
                 @if ($canCreateTailoringOrder)
-                    <a href="{{ $orderUrl }}" class="customer-row-action is-blue customer-primary-action">
-                        <i class="fas fa-cut"></i> نیا آرڈر
-                    </a>
+                    <form method="POST" action="{{ route('admin.counter-orders.store') }}" class="m-0">
+                        @csrf
+                        <input type="hidden" name="customer_id" value="{{ $accountCustomer->id }}">
+                        <input type="hidden" name="profile_id" value="{{ $customer->id }}">
+                        <button type="submit" class="customer-row-action is-blue customer-primary-action">
+                            <i class="fas fa-plus"></i> نیا آرڈر
+                        </button>
+                    </form>
                 @endif
                 <div class="dropdown customer-more-actions">
                     <button type="button" class="customer-row-action customer-overflow-button"
@@ -52,7 +54,7 @@
                         <a href="{{ $statementUrl }}" class="dropdown-item">
                             <i class="fas fa-id-card"></i><span>پروفائل / کھاتہ کھولیں</span>
                         </a>
-                        @if ($canCreateTailoringOrder)
+                        @if ($canViewTailoringOrders)
                             <a href="{{ route('admin.customer.orders', $customer) }}" class="dropdown-item">
                                 <i class="fas fa-history"></i><span>حالیہ آرڈر دیکھیں</span>
                             </a>

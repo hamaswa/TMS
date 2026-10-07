@@ -26,14 +26,19 @@ class Options extends Model
     /**
      * @var array
      */
-    protected $fillable = ['user_id', 'option_id', 'slug', 'Name', 'created_at', 'updated_at'];
+    protected $fillable = ['user_id', 'measurement_template_id', 'option_id', 'slug', 'Name', 'created_at', 'updated_at'];
 
     /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function optionType()
     {
-        return $this->belongsTo(OptionType::class);
+        return $this->belongsTo(OptionType::class, 'option_id');
+    }
+
+    public function measurementTemplate()
+    {
+        return $this->belongsTo(MeasurementTemplate::class);
     }
 
     /**

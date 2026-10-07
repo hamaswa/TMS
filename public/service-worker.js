@@ -1,4 +1,4 @@
-const VERSION = '20260927c';
+const VERSION = '20261006a';
 const STATIC_CACHE = `tms-static-${VERSION}`;
 const PRIVATE_CACHE = `tms-private-${VERSION}`;
 const STATIC_ASSETS = [

@@ -23,11 +23,16 @@ class SupplierController extends Controller
         return view('suppliers.index', compact('suppliers'));
     }
 
+    public function create()
+    {
+        return view('suppliers.create');
+    }
+
     public function store(Request $request)
     {
         Supplier::create($this->validated($request) + ['user_id' => Auth::user()->businessOwnerId()]);
 
-        return back()->with('success', 'سپلائر کامیابی سے شامل کر دیا گیا ہے۔');
+        return redirect()->route('admin.suppliers.index')->with('success', 'سپلائر کامیابی سے شامل کر دیا گیا ہے۔');
     }
 
     public function edit(int $supplier)

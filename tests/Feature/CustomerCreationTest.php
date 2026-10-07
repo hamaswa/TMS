@@ -197,7 +197,7 @@ class CustomerCreationTest extends TestCase
         $this->assertDatabaseHas('customers', [
             'name' => 'QA Urdu Customer',
             'user_id' => $owner->id,
-            'Daaman' => '0',
+            'Daaman' => null,
             'phone_number1_normalized' => '+923001234567',
         ]);
         $this->assertTrue(Hash::check('482913', Customers::firstOrFail()->mobile_pin));
@@ -398,10 +398,9 @@ class CustomerCreationTest extends TestCase
             'tab' => 'measurements',
             'profile' => $profile->id,
         ])), $directoryHtml);
-        $this->assertStringContainsString(e(route('admin.order.create', [
-            'id' => $customer->id,
-            'profile' => $profile->id,
-        ])), $directoryHtml);
+        $this->assertStringContainsString('action="'.e(route('admin.counter-orders.store')).'"', $directoryHtml);
+        $this->assertStringContainsString('name="customer_id" value="'.$customer->id.'"', $directoryHtml);
+        $this->assertStringContainsString('name="profile_id" value="'.$profile->id.'"', $directoryHtml);
 
         $this->actingAs($owner)->get(route('admin.customers.statement', [
             'id' => $customer->id,

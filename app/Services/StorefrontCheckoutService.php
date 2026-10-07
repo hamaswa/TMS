@@ -510,7 +510,7 @@ class StorefrontCheckoutService
     private function reference(): string
     {
         do {
-            $reference = 'TMSO-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
+            $reference = 'ORD-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
         } while (StorefrontOrder::where('reference', $reference)->exists());
 
         return $reference;
@@ -519,7 +519,7 @@ class StorefrontCheckoutService
     private function refundReference(): string
     {
         do {
-            $reference = 'TMSR-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
+            $reference = 'RSV-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
         } while (StorefrontOrderRefund::where('reference', $reference)->exists());
 
         return $reference;

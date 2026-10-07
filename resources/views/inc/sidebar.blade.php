@@ -31,13 +31,17 @@
 </style>
 
 <aside class="tms-sidebar" aria-label="مرکزی نیویگیشن">
-    <a class="tms-sidebar-brand" href="{{ $activeWorkspace ? route('admin.workspace.current') : route('admin.home') }}">
+    <a class="tms-sidebar-brand" href="{{ route('admin.home') }}">
         <span class="tms-sidebar-brand-icon"><i class="fas fa-cut"></i></span><span class="tms-sidebar-brand-text">BuyNStitch</span>
     </a>
     <nav class="tms-sidebar-scroll">
-        <a class="tms-side-link {{ request()->routeIs('admin.home','admin.workspace.current') ? 'is-active' : '' }}" href="{{ $activeWorkspace ? route('admin.workspace.current') : route('admin.home') }}"><span class="tms-side-icon"><i class="fas fa-home"></i></span><span class="tms-side-label">ڈیش بورڈ</span></a>
+        <a class="tms-side-link {{ request()->routeIs('admin.home','admin.workspace.current') ? 'is-active' : '' }}" href="{{ route('admin.home') }}"><span class="tms-side-icon"><i class="fas fa-home"></i></span><span class="tms-side-label">ڈیش بورڈ</span></a>
 
-        @if(Auth::user()->hasModule('clothing') && (! $hasMultipleWorkspaces || $activeWorkspace === 'clothing'))
+        @if($canShopSales || $canTailorOrders)<a class="tms-side-link {{ request()->routeIs('admin.counter-orders.*') ? 'is-active' : '' }}" href="{{ route('admin.counter-orders.create') }}"><span class="tms-side-icon"><i class="fas fa-cash-register"></i></span><span class="tms-side-label">نیا آرڈر</span></a>@endif
+        @if($canTailorCustomers || $canShopSales)<a class="tms-side-link {{ request()->routeIs('admin.Customers.*','admin.customers.statement') ? 'is-active' : '' }}" href="{{ route('admin.Customers.index') }}"><span class="tms-side-icon"><i class="fas fa-user-friends"></i></span><span class="tms-side-label">گاہک</span></a>@endif
+        <div class="tms-side-section"></div>
+
+        @if(Auth::user()->hasModule('clothing'))
             @if($canShopPurchases)
                 <a class="tms-side-link {{ request()->routeIs('admin.purchases.*') ? 'is-active' : '' }}" href="{{ route('admin.purchases.index') }}"><span class="tms-side-icon"><i class="fas fa-shopping-cart"></i></span><span class="tms-side-label">خریداریاں</span><i class="fas fa-chevron-down tms-side-caret"></i></a>
                 <div class="tms-side-submenu {{ request()->routeIs('admin.purchases.*') ? 'is-open' : '' }}">
@@ -58,16 +62,13 @@
                     <a class="{{ request()->routeIs('admin.inventory-valuation.*') ? 'is-active' : '' }}" href="{{ route('admin.inventory-valuation.index') }}"><i class="fas fa-balance-scale"></i>اسٹاک کی مالیت</a>
                 </div>
             @endif
-            @if($canShopSales)<a class="tms-side-link {{ request()->routeIs('admin.sellCloth','admin.sales.*') ? 'is-active' : '' }}" href="{{ route('admin.sellCloth') }}"><span class="tms-side-icon"><i class="fas fa-dollar-sign"></i></span><span class="tms-side-label">فروخت</span></a>@endif
             @if($canShopSales && Auth::user()->business?->storefront)<a class="tms-side-link {{ request()->routeIs('admin.storefront.orders.*') ? 'is-active' : '' }}" href="{{ route('admin.storefront.orders.index') }}"><span class="tms-side-icon"><i class="fas fa-shopping-bag"></i></span><span class="tms-side-label">آن لائن آرڈرز</span></a>@endif
             @if(Auth::user()->hasBusinessPermission('storefront.manage'))<a class="tms-side-link {{ request()->routeIs('admin.storefront.edit','admin.storefront.update') ? 'is-active' : '' }}" href="{{ route('admin.storefront.edit') }}"><span class="tms-side-icon"><i class="fas fa-globe-asia"></i></span><span class="tms-side-label">آن لائن دکان</span></a>@endif
         @endif
 
-        @if(Auth::user()->hasModule('tailoring') && (! $hasMultipleWorkspaces || $activeWorkspace === 'tailoring'))
+        @if(Auth::user()->hasModule('tailoring'))
             @if($canTailorOrders)<a class="tms-side-link {{ request()->routeIs('admin.order.*') ? 'is-active' : '' }}" href="{{ route('admin.order.total') }}"><span class="tms-side-icon"><i class="fas fa-clipboard-list"></i></span><span class="tms-side-label">ٹیلرنگ آرڈرز</span></a>@endif
             {{-- @if($canTailorWorkshop)<a class="tms-side-link {{ request()->routeIs('admin.tailor-jobs.*') ? 'is-active' : '' }}" href="{{ route('admin.tailor-jobs.index') }}"><span class="tms-side-icon"><i class="fas fa-tasks"></i></span><span class="tms-side-label">ورکشاپ</span></a>@endif --}}
-            @if($canTailorCustomers)<a class="tms-side-link {{ request()->routeIs('admin.Customers.*') ? 'is-active' : '' }}" href="{{ route('admin.Customers.index') }}"><span class="tms-side-icon"><i class="fas fa-user-friends"></i></span><span class="tms-side-label">گاہک</span></a>@endif
-
             @if($canTailorTailors)
                 <a class="tms-side-link {{ request()->routeIs('admin.Tailor.*','admin.production-workers.*','admin.production-work-types.*','admin.tailor-orders','admin.tailor-report','admin.report-print','admin.tailor-rates*','admin.tailor.*') ? 'is-active' : '' }}" href="{{ route('admin.Tailor.index') }}">
                     <span class="tms-side-icon"><i class="fas fa-user-cog"></i></span>
@@ -81,16 +82,14 @@
             @endif
 
             @if($canTailorConfiguration)
-                <a class="tms-side-link {{ request()->routeIs('admin.tailoring-workflow.*','admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-templates.*','admin.measurement-fields.*','admin.design.*') ? 'is-active' : '' }}" href="{{ route('admin.OptionType.index') }}">
+                <a class="tms-side-link {{ request()->routeIs('admin.tailoring-workflow.*','admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-templates.*','admin.measurement-fields.*','admin.design.*') ? 'is-active' : '' }}" href="{{ route('admin.measurement-templates.index') }}">
                     <span class="tms-side-icon"><i class="fas fa-sliders-h"></i></span>
                     <span class="tms-side-label">ٹیلرنگ ترتیب</span>
                     <i class="fas fa-chevron-down tms-side-caret"></i>
                 </a>
                 <div class="tms-side-submenu {{ request()->routeIs('admin.tailoring-workflow.*','admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-templates.*','admin.measurement-fields.*','admin.design.*') ? 'is-open' : '' }}">
                     <a class="{{ request()->routeIs('admin.tailoring-workflow.*') ? 'is-active' : '' }}" href="{{ route('admin.tailoring-workflow.edit') }}"><i class="fas fa-project-diagram"></i>کام کی حالتیں</a>
-                    <a class="{{ request()->routeIs('admin.OptionType.*','admin.Options.*','admin.options.*') ? 'is-active' : '' }}" href="{{ route('admin.OptionType.index') }}"><i class="fas fa-ruler-combined"></i>پیمائش اور سلائی کے اختیارات</a>
-                    <a class="{{ request()->routeIs('admin.measurement-templates.*') ? 'is-active' : '' }}" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-clipboard-list"></i>پیمائش ٹیمپلیٹس</a>
-                    <a class="{{ request()->routeIs('admin.measurement-fields.*') ? 'is-active' : '' }}" href="{{ route('admin.measurement-fields.index') }}"><i class="fas fa-ruler"></i>اضافی پیمائش خانے</a>
+                    <a class="{{ request()->routeIs('admin.measurement-templates.*','admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-fields.*') ? 'is-active' : '' }}" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-clipboard-list"></i>لباس اور پیمائش ٹیمپلیٹس</a>
                 </div>
             @endif
         @endif
@@ -99,7 +98,6 @@
         @if(Auth::user()->hasBusinessPermission('finance.view'))<a class="tms-side-link {{ request()->routeIs('admin.financial-reports.*') ? 'is-active' : '' }}" href="{{ route('admin.financial-reports.index') }}"><span class="tms-side-icon"><i class="fas fa-chart-bar"></i></span><span class="tms-side-label">رپورٹس</span></a>@endif
         @if(Auth::user()->hasBusinessPermission('team.manage'))<a class="tms-side-link {{ request()->routeIs('admin.team.*') ? 'is-active' : '' }}" href="{{ route('admin.team.index') }}"><span class="tms-side-icon"><i class="fas fa-users-cog"></i></span><span class="tms-side-label">صارفین</span></a>@endif
         @if(Auth::user()->isBusinessOwner())<a class="tms-side-link {{ request()->routeIs('admin.setting.*') ? 'is-active' : '' }}" href="{{ route('admin.setting.index') }}"><span class="tms-side-icon"><i class="fas fa-cog"></i></span><span class="tms-side-label">سیٹنگز</span></a>@endif
-        @if($hasMultipleWorkspaces)<a class="tms-side-link" href="{{ route('admin.home') }}"><span class="tms-side-icon"><i class="fas fa-random"></i></span><span class="tms-side-label">ورک اسپیس تبدیل کریں</span></a>@endif
     </nav>
 </aside>
 @endif

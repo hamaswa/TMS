@@ -217,6 +217,29 @@
             pointer-events: none;
         }
 
+        .stock-cancel-details {
+            max-width: 720px;
+            margin: 0 auto 14px;
+            text-align: right;
+        }
+
+        .stock-cancel-details > summary {
+            display: inline-flex;
+            padding: 7px 11px;
+            border: 1px solid #efc8c8;
+            border-radius: 8px;
+            color: #9f2f38;
+            background: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .stock-cancel-details > summary::-webkit-details-marker {
+            display: none;
+        }
+
         @media print {
             .btn,
             .no-print,
@@ -269,7 +292,9 @@
                 @endif
             </div>
         @elseif($receipt && $latestSaleStock)
-            <section class="card border-danger mb-3 no-print" style="max-width:720px;margin:0 auto">
+            <details class="stock-cancel-details no-print" @if($errors->any()) open @endif>
+                <summary>فروخت منسوخی کے اختیارات</summary>
+            <section class="card border-danger mt-2 mb-3">
                 <div class="card-body" dir="rtl">
                     <h2 class="h5 text-danger">کاؤنٹر فروخت منسوخ کریں</h2>
                     <p class="text-muted">منسوخی سے تمام اشیاء اسٹاک میں واپس اور گاہک کا کھاتہ درست ہو جائے گا۔ یہ کارروائی آڈٹ ریکارڈ میں محفوظ رہے گی۔</p>
@@ -290,6 +315,7 @@
                     </form>
                 </div>
             </section>
+            </details>
         @endif
 
     <div id="invoice-POS" @class(['cancelled-receipt' => $receipt?->status === 'cancelled'])>

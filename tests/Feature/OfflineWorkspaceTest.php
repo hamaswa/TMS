@@ -7,6 +7,7 @@ use App\Models\Customers;
 use App\Models\OfflineOperation;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use App\Models\rack as Rack;
 use App\Models\Tailor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -164,6 +165,7 @@ class OfflineWorkspaceTest extends TestCase
         $this->assertStringContainsString('const submitter = event.submitter;', $script);
         $this->assertStringContainsString("['status', 'order_status'].includes(submitter.name)", $script);
         $this->assertStringContainsString('data.get(\'status\') || data.get(\'order_status\') || submittedButtonStatus', $script);
+        $this->assertStringContainsString("rack_no: data.get('rack_no') || null", $script);
     }
 
     public function test_simple_workflow_can_sync_directly_from_assigned_to_ready(): void
@@ -178,12 +180,29 @@ class OfflineWorkspaceTest extends TestCase
             ->assertJsonPath('results.0.current_status', 'ready');
 
         $this->assertSame('ready', $order->fresh()->status);
+        $this->assertSame('A-01', $order->fresh()->rack_no);
         $this->assertNotNull($order->fresh()->ready_at);
         $this->assertDatabaseHas('order_status_histories', [
             'order_id' => $order->id,
             'from_status' => 'assigned',
             'to_status' => 'ready',
         ]);
+    }
+
+    public function test_offline_ready_command_without_a_rack_is_allowed(): void
+    {
+        [$owner, , $order] = $this->tailorOrder();
+        $command = $this->statusCommand((string) Str::uuid(), $order, 'assigned', 'ready');
+        $command['payload']['rack_no'] = null;
+
+        $this->actingAs($owner)
+            ->postJson(route('admin.offline.sync'), ['commands' => [$command]])
+            ->assertOk()
+            ->assertJsonPath('results.0.status', OfflineOperation::STATUS_APPLIED)
+            ->assertJsonPath('results.0.current_status', 'ready');
+
+        $this->assertSame('ready', $order->fresh()->status);
+        $this->assertNull($order->fresh()->rack_no);
     }
 
     public function test_detailed_workflow_still_rejects_skipping_from_assigned_to_ready(): void
@@ -205,7 +224,7 @@ class OfflineWorkspaceTest extends TestCase
     {
         $this->get(route('offline.fallback'))->assertOk()
             ->assertSeeText('انٹرنیٹ دستیاب نہیں ہے')
-            ->assertSee('service-worker.js?v=20260927c', false);
+            ->assertSee('service-worker.js?v=20261006a', false);
         $this->assertFileExists(public_path('service-worker.js'));
         $this->assertFileExists(public_path('manifest.webmanifest'));
         $worker = file_get_contents(public_path('service-worker.js'));
@@ -259,6 +278,9 @@ class OfflineWorkspaceTest extends TestCase
             ],
         );
         $owner->forceFill(['business_id' => $business->id])->save();
+        $rack = new Rack(['rack_no' => 'A-01']);
+        $rack->user_id = $owner->id;
+        $rack->save();
 
         $tailor = Tailor::create([
             'name' => 'رشید محمود',
@@ -302,7 +324,11 @@ class OfflineWorkspaceTest extends TestCase
             'type' => 'order.status.change',
             'aggregate_id' => $order->id,
             'base_version' => $base,
-            'payload' => ['status' => $target, 'note' => 'آف لائن تبدیلی'],
+            'payload' => [
+                'status' => $target,
+                'note' => 'آف لائن تبدیلی',
+                'rack_no' => $target === 'ready' ? 'A-01' : null,
+            ],
             'created_at' => now()->toIso8601String(),
         ];
     }

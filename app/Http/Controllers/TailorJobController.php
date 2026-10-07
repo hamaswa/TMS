@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\Order;
 use App\Models\OrderNotificationDelivery;
 use App\Models\OrderStatusHistory;
+use App\Models\rack as Rack;
 use App\Models\Tailor;
 use App\Models\TailorRecord;
 use App\Models\Tailorsalary;
@@ -73,6 +74,7 @@ class TailorJobController extends Controller
             'detailedWorkflow' => $detailedWorkflow,
             'filters' => $filters,
             'stats' => $this->statsFor($ownerId),
+            'racks' => Rack::where('user_id', $ownerId)->orderBy('rack_no')->get(),
             'tailorWorkloads' => Order::where('userId', $ownerId)
                 ->whereNotNull('tailorId')
                 ->whereNotIn('status', ['ready', 'delivered'])
@@ -143,7 +145,28 @@ class TailorJobController extends Controller
             'detailedWorkflow' => $detailedWorkflow,
             'filters' => [],
             'stats' => $this->statsFor($tailor->user_id, $tailor->id),
+            'racks' => Rack::where('user_id', $tailor->user_id)->orderBy('rack_no')->get(),
         ]);
+    }
+
+    public function storeRack(Request $request)
+    {
+        $ownerId = Auth::user()->businessOwnerId();
+        $validated = $request->validate([
+            'rack_no' => [
+                'required', 'string', 'max:100',
+                Rule::unique('racks', 'rack_no')->where('user_id', $ownerId),
+            ],
+        ], [
+            'rack_no.required' => 'ریک نمبر درج کریں۔',
+            'rack_no.unique' => 'یہ ریک نمبر پہلے سے موجود ہے۔',
+        ]);
+
+        $rack = new Rack(['rack_no' => trim($validated['rack_no'])]);
+        $rack->user_id = $ownerId;
+        $rack->save();
+
+        return back()->with('success', 'نیا ریک نمبر شامل کر دیا گیا ہے۔');
     }
 
     public function updateStatus(Request $request, int $order)
@@ -151,11 +174,13 @@ class TailorJobController extends Controller
         $validated = $request->validate([
             'status' => ['required', Rule::in(Order::STATUSES)],
             'note' => ['nullable', 'string', 'max:1000'],
+            'rack_no' => ['nullable', 'string', 'max:100'],
         ]);
 
         $actor = Auth::check() ? 'shop_owner' : 'tailor';
         $job = $this->ownedJob($order);
         $nextStatus = $validated['status'];
+        $rackNo = $this->validatedReadyRack($validated['rack_no'] ?? null, (int) $job->userId, $nextStatus);
 
         if (! in_array($nextStatus, $job->nextStatuses(), true)) {
             throw ValidationException::withMessages([
@@ -169,7 +194,7 @@ class TailorJobController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($job, $nextStatus, $validated, $actor) {
+        DB::transaction(function () use ($job, $nextStatus, $validated, $actor, $rackNo) {
             $job = Order::lockForUpdate()->findOrFail($job->id);
             $fromStatus = $job->status;
 
@@ -183,6 +208,7 @@ class TailorJobController extends Controller
             }
             if ($nextStatus === 'ready') {
                 $updates['ready_at'] = now();
+                $updates['rack_no'] = $rackNo;
             }
             if ($nextStatus === 'delivered') {
                 $updates['delivered_at'] = now();
@@ -219,6 +245,7 @@ class TailorJobController extends Controller
         $validated = $request->validate([
             'order_id' => ['required', 'integer'],
             'order_status' => ['required', Rule::in(['start', 'complete', 'deliver'])],
+            'rack_no' => ['nullable', 'string', 'max:100'],
         ]);
         $nextStatus = match ($validated['order_status']) {
             'start' => 'cutting',
@@ -228,6 +255,7 @@ class TailorJobController extends Controller
         $job = $this->ownedJob((int) $validated['order_id']);
         $actor = Auth::check() ? 'shop_owner' : 'tailor';
         $ownerId = (int) $job->userId;
+        $rackNo = $this->validatedReadyRack($validated['rack_no'] ?? null, $ownerId, $nextStatus);
 
         if ($job->status === 'unassigned' || ! $job->tailorId) {
             throw ValidationException::withMessages([
@@ -251,7 +279,7 @@ class TailorJobController extends Controller
             return back()->with('success', 'آرڈر کی حالت پہلے ہی منتخب شدہ حالت پر ہے۔');
         }
 
-        DB::transaction(function () use ($job, $nextStatus, $actor, $ownerId) {
+        DB::transaction(function () use ($job, $nextStatus, $actor, $ownerId, $rackNo) {
             $job = Order::where('userId', $ownerId)
                 ->lockForUpdate()
                 ->findOrFail($job->id);
@@ -270,6 +298,7 @@ class TailorJobController extends Controller
             }
             if ($nextStatus === 'ready') {
                 $updates['ready_at'] = now();
+                $updates['rack_no'] = $rackNo;
             }
             if ($nextStatus === 'delivered') {
                 $updates['delivered_at'] = now();
@@ -295,6 +324,23 @@ class TailorJobController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    private function validatedReadyRack(?string $rackNo, int $ownerId, string $nextStatus): ?string
+    {
+        if ($nextStatus !== 'ready') {
+            return null;
+        }
+
+        $rackNo = trim((string) $rackNo);
+        if ($rackNo === '') {
+            return null;
+        }
+
+        return Rack::where('user_id', $ownerId)->where('rack_no', $rackNo)->value('rack_no')
+            ?? throw ValidationException::withMessages([
+                'rack_no' => 'منتخب ریک نمبر دستیاب نہیں ہے۔',
+            ]);
     }
 
     public function updatePayment(Request $request, int $order)

@@ -94,9 +94,9 @@
                     </div>
 
                     <div class="stock-header-actions">
-                        <a href="{{ route('admin.sellCloth') }}" class="stock-sale-button">
+                        <a href="{{ route('admin.counter-orders.create') }}" class="stock-sale-button">
                             <i class="fas fa-cash-register" aria-hidden="true"></i>
-                            <span>نئی فروخت</span>
+                            <span>نیا آرڈر</span>
                         </a>
                         <div class="dropdown stock-page-actions">
                             <button class="btn stock-page-actions-toggle" type="button" id="stockPageActions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="مزید کارروائیاں">

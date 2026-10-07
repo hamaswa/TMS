@@ -635,7 +635,8 @@ class PublicStorefrontController extends Controller
 
     private function findBooking(Storefront $storefront, string $reference): StorefrontInquiry
     {
-        abort_unless(preg_match('/^TMSB-(\d{6})$/', strtoupper($reference), $matches), 404);
+        // Keep old TMSB references readable for customers who already received one.
+        abort_unless(preg_match('/^(?:BOOK|TMSB)-(\d{6})$/', strtoupper($reference), $matches), 404);
         $booking = $storefront->inquiries()
             ->with(['service', 'order', 'customer'])
             ->findOrFail((int) $matches[1]);

@@ -1,6 +1,6 @@
 <footer class="text-white py-2">
     <div class="container text-center" style="font-size: 24px;">
-        <p class="mb-0">Copyright &copy; tms.itlinked.tech </p>
+        <p class="mb-0">Copyright &copy; BuyNStitch</p>
         {{-- | Follow us on <a href="#"
                 class="text-white">Facebook</a>, <a href="#" class="text-white">Twitter</a>, <a href="#"
                 class="text-white">Instagram</a> --}}

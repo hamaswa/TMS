@@ -11,7 +11,7 @@
 <body>
     <div class="toolbar"><button type="button" onclick="window.print()">پرنٹ کریں</button><a href="{{ route('admin.cloth.index') }}">واپس</a></div>
     <main class="label">
-        <h1>{{ $cloth->brand?->name ?? 'برانڈ' }} / {{ $cloth->type?->name ?? 'قسم' }}</h1>
+        <h1>{{ $cloth->name }} / {{ $cloth->brand?->name ?? 'برانڈ' }} / {{ $cloth->type?->name ?? 'قسم' }}</h1>
         <p>{{ $cloth->hasSelectableColors() ? collect($cloth->selectableColorNames())->join('، ').($cloth->usesDisplayOnlyColors() ? ' — مجموعی اسٹاک' : '') : 'رنگ کے بغیر مجموعی سیٹ' }}</p>
         <div class="qr">{!! $qrSvg !!}</div>
         <p class="code">{{ $cloth->set_code }}</p>

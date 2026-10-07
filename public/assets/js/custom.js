@@ -130,20 +130,17 @@ jQuery(document).ready(function ($) {
 
                     row += '<td><div class="order-status-cell">' + statusControl + '</div></td>';
 
-                    // Adding the select dropdown for rack number
-                    row += '<td><select class="form-control px-1" id="rack-no" data-orderid="' + order.orderId + '" style="height:40px;width:100%;padding:6px 10px;margin:0;font-size:12px;">' +
-                        '<option value="">ریک نمبر منتخب کریں</option>';
+                    var rackControl = '<span class="text-muted small">تیار ہونے پر مقرر ہوگا</span>';
+                    if (order.button === 'تیار ہے' || order.isDelivered) {
+                        rackControl = '<select class="form-control px-1 rack-no-select" data-orderid="' + order.orderId + '" style="height:40px;width:100%;padding:6px 10px;margin:0;font-size:12px;">' +
+                            '<option value="">ریک نمبر منتخب کریں</option>';
+                        $.each(order.racks, function (i, rack) {
+                            rackControl += '<option value="' + rack.rack_no + '"' + (order.rack_no == rack.rack_no ? ' selected' : '') + '>' + rack.rack_no + '</option>';
+                        });
+                        rackControl += '</select>';
+                    }
 
-                    // Iterating over racks
-                    $.each(order.racks, function (i, rack) {
-                        row += '<option value="' + rack.rack_no + '"';
-                        if (order.rack_no == rack.rack_no) {
-                            row += ' selected';
-                        }
-                        row += '>' + rack.rack_no + '</option>';
-                    });
-
-                    row += '</select></td>' +
+                    row += '<td>' + rackControl + '</td>' +
                         '<td><a class="btn btn-outline-primary btn-sm admin-order-status" href="/admin/order/edit/' + order.orderId + returnContext + '#measurement-details" aria-label="پیمائش میں تبدیلی کریں">تبدیلی</a></td>' +
                         '<td><a class="btn btn-light btn-sm" href="/admin/order/prints/' + order.orderId + '" target="_blank" aria-label="آرڈر پرنٹ کریں"><i class="fa fa-print"></i></a></td>' +
                         '</tr>';
@@ -164,7 +161,7 @@ jQuery(document).ready(function ($) {
     });
 
     // update rack no
-    $(document).on('change', '#rack-no', function () {
+    $(document).on('change', '.rack-no-select', function () {
         // Fetch CSRF token from the meta tag in your Blade template
         var csrfToken = $('meta[name="csrf-token"]').attr('content');
         var orderId = $(this).data('orderid');

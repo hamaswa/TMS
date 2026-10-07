@@ -8,6 +8,7 @@ use App\Models\ClothBrand;
 use App\Models\ClothColor;
 use App\Models\ClothType;
 use App\Models\CounterSaleReceipt;
+use App\Models\CounterOrder;
 use App\Models\Customers;
 use App\Models\OnlineOrder;
 use App\Models\Purchase;
@@ -78,7 +79,7 @@ class InventoryLedgerTest extends TestCase
         $this->assertEquals(8, (float) $color->fresh()->length);
         $this->assertSame($receipt->id, $sale->counter_sale_receipt_id);
         $this->assertSame($sale->id, $receipt->first_sale_stock_id);
-        $this->assertStringStartsWith('TMSC-', $receipt->receipt_number);
+        $this->assertStringStartsWith('SALE-', $receipt->receipt_number);
         $this->assertEquals(100, (float) $sale->cost_per_meter);
         $this->assertEquals(200, (float) $sale->cost_total);
         $this->assertDatabaseHas('inventory_movements', [
@@ -216,11 +217,21 @@ class InventoryLedgerTest extends TestCase
         ]);
         $color->update(['color' => 'عام']);
 
-        $this->actingAs($owner)->get(route('admin.sellCloth'))
+        $customer = Customers::create([
+            'name' => 'Display Color Buyer',
+            'phone_number1' => '03001234567',
+            'user_id' => $owner->id,
+        ]);
+        $this->actingAs($owner)->post(route('admin.counter-orders.store'), [
+            'customer_id' => $customer->id,
+            'profile_id' => $customer->id,
+        ]);
+        $order = CounterOrder::firstOrFail();
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
             ->assertOk()
-            ->assertSeeText('Blue')
-            ->assertSeeText('Maroon')
-            ->assertSee('"requires_color":true', false);
+            ->assertSee('Blue', false)
+            ->assertSee('Maroon', false)
+            ->assertDontSee('name="rack"', false);
     }
 
     public function test_counter_sale_creates_random_customer_and_derives_rate_from_item_total(): void
@@ -457,41 +468,36 @@ class InventoryLedgerTest extends TestCase
         $this->assertSame('کاؤنٹر فروخت منسوخ کر کے اسٹاک اور کھاتہ واپس کیا', $activity->actionDescription());
     }
 
-    public function test_counter_sale_form_uses_responsive_fields_and_one_customer_section(): void
+    public function test_counter_order_uses_inline_cloth_fields_and_one_customer_section(): void
     {
-        [$owner] = $this->stock(10, 100);
+        [$owner, $cloth] = $this->stock(10, 100);
+        $customer = Customers::create([
+            'name' => 'Unified Counter Buyer',
+            'phone_number1' => '03007654321',
+            'user_id' => $owner->id,
+        ]);
+        $this->actingAs($owner)->post(route('admin.counter-orders.store'), [
+            'customer_id' => $customer->id,
+            'profile_id' => $customer->id,
+        ]);
+        $order = CounterOrder::firstOrFail();
 
-        $response = $this->actingAs($owner)->get(route('admin.sellCloth'));
+        $response = $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order));
 
         $response->assertOk()
-            ->assertSeeText('گاہک کی معلومات')
-            ->assertSeeText('ریگولر گاہک')
-            ->assertSeeText('نیا گاہک')
-            ->assertSeeText('واک اِن فروخت')
+            ->assertSeeText('کپڑا شامل کریں')
+            ->assertSeeText('میٹر / تعداد')
             ->assertSeeText('کل قیمت')
-            ->assertSeeText('ریٹ فی میٹر')
-            ->assertSeeText('مزید کپڑا شامل کریں')
-            ->assertSee('id="counter-stock-scan"', false)
-            ->assertSee('id="counter-scan-add"', false)
-            ->assertSee('class="counter-sale-form"', false)
-            ->assertSee('counter-items-panel', false)
-            ->assertSee('counter-items-table-head', false)
-            ->assertSee('counter-field-rate', false)
-            ->assertSee('counter-item-summary', false)
-            ->assertSee('counter-payment-column', false)
-            ->assertSee('counter-payment-panel', false)
-            ->assertSeeText($this->stockCodeForOwner($owner))
-            ->assertSee('assets/js/form-accessibility.js', false)
-            ->assertDontSee('width: 120%', false)
-            ->assertDontSee('width: 150%', false);
-
-        $this->assertSame(1, substr_count($response->getContent(), 'name="c_name"'));
-        $this->assertSame(1, substr_count($response->getContent(), 'name="phone"'));
+            ->assertSee('id="co-new-cloth-row"', false)
+            ->assertSee('class="co-grid-row co-cloth-form co-ajax-row-form is-new"', false)
+            ->assertSeeText($cloth->name)
+            ->assertDontSee('name="rack"', false)
+            ->assertDontSee('name="clothes_rack"', false);
     }
 
     private function stockCodeForOwner(User $owner): string
     {
-        return Cloth::where('user_id', $owner->id)->firstOrFail()->stock_code;
+        return Cloth::where('user_id', $owner->id)->firstOrFail()->set_code;
     }
 
     public function test_counter_sale_derives_balance_server_side_and_receipt_works_without_settings(): void
@@ -540,9 +546,8 @@ class InventoryLedgerTest extends TestCase
 
         $response->assertRedirect(route('admin.sellCloth'))
             ->assertSessionHasErrors(['length.0' => 'منتخب کپڑے کا مطلوبہ اسٹاک دستیاب نہیں ہے۔']);
-        $this->actingAs($owner)->get(route('admin.sellCloth'))
+        $this->actingAs($owner)->followingRedirects()->get(route('admin.sellCloth'))
             ->assertOk()
-            ->assertSeeText('فروخت محفوظ نہیں ہو سکی:')
             ->assertSeeText('منتخب کپڑے کا مطلوبہ اسٹاک دستیاب نہیں ہے۔');
         $this->assertEquals(10, (float) $color->fresh()->length);
         $this->assertDatabaseCount('sale_stocks', 0);

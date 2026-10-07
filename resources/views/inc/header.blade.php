@@ -2,7 +2,6 @@
 @php($isSuperAdmin = $isSuperAdminSurface || (Auth::check() && Auth::user()->hasRole('administrative')))
 @php($enabledWorkspaces = Auth::check() && Auth::user()->isBusinessMember() ? Auth::user()->enabledModules() : [])
 @php($hasMultipleWorkspaces = count($enabledWorkspaces) > 1)
-@php($activeWorkspace = session('active_workspace'))
 @php($canShopSales = Auth::check() && Auth::user()->hasBusinessPermission('clothing.sales'))
 @php($canShopInventory = Auth::check() && Auth::user()->hasBusinessPermission('clothing.inventory'))
 @php($canShopPurchases = Auth::check() && Auth::user()->hasBusinessPermission('clothing.purchases'))
@@ -86,8 +85,8 @@
         @if(Session::get('tailor'))
             <li class="nav-item"><a class="nav-link" href="{{ route('tailor.jobs.index') }}">میرے کام</a></li><li class="nav-item"><a class="nav-link" href="{{ url('tailor/logout') }}">لاگ آؤٹ</a></li>
         @elseif(Auth::check() && Auth::user()->isBusinessMember())
-            <li class="nav-item"><a class="nav-link" href="{{ $activeWorkspace ? route('admin.workspace.current') : route('admin.home') }}">ڈیش بورڈ</a></li>
-            @if(Auth::user()->hasModule('tailoring') && (! $hasMultipleWorkspaces || $activeWorkspace === 'tailoring'))
+            <li class="nav-item"><a class="nav-link" href="{{ route('admin.home') }}">ڈیش بورڈ</a></li>
+            @if(Auth::user()->hasModule('tailoring'))
                 <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="tailoringMenu" data-toggle="dropdown">ٹیلرنگ <span class="module-pill ml-1">فعال</span></a><div class="dropdown-menu" aria-labelledby="tailoringMenu">
                     @if($canTailorOrders)<a class="dropdown-item" href="{{ route('admin.order.total') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i>ٹیلرنگ آرڈرز</a>@endif
                     @if($canTailorWorkshop)<a class="dropdown-item" href="{{ route('admin.tailor-jobs.index') }}"><i class="fas fa-tasks fa-fw ml-2 text-primary"></i>ورکشاپ</a>@endif
@@ -95,10 +94,10 @@
                     @if($canTailorTailors)<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-user-tie fa-fw ml-2 text-primary"></i>درزیوں کی فہرست</a>@endif
                     @if($canTailorTailors)<a class="dropdown-item" href="{{ route('admin.production-workers.index') }}"><i class="fas fa-users fa-fw ml-2 text-primary"></i>پروڈکشن ورکرز اور اجرت</a>@endif
                     @if($canTailorConfiguration)<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.OptionType.index') }}"><i class="fas fa-sliders-h fa-fw ml-2 text-primary"></i>پیمائش اور سلائی کے اختیارات</a>@endif
-                    @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i>پیمائش ٹیمپلیٹس</a><a class="dropdown-item" href="{{ route('admin.measurement-fields.index') }}"><i class="fas fa-ruler fa-fw ml-2 text-primary"></i>اضافی پیمائش خانے</a><a class="dropdown-item" href="{{ route('admin.design.index') }}"><i class="fas fa-palette fa-fw ml-2 text-primary"></i>سلائی ڈیزائن</a>@endif
+                    @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i>لباس اور پیمائش ٹیمپلیٹس</a><a class="dropdown-item" href="{{ route('admin.design.index') }}"><i class="fas fa-palette fa-fw ml-2 text-primary"></i>سلائی ڈیزائن</a>@endif
                 </div></li>
             @endif
-            @if(Auth::user()->hasModule('clothing') && (! $hasMultipleWorkspaces || $activeWorkspace === 'clothing'))
+            @if(Auth::user()->hasModule('clothing'))
                 <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="clothingMenu" data-toggle="dropdown">کپڑے کی خرید و فروخت <span class="module-pill ml-1">فعال</span></a><div class="dropdown-menu" aria-labelledby="clothingMenu">
                     @if($canShopInventory)
                     <a class="dropdown-item" href="{{ route('admin.stock.index') }}"><i class="fas fa-layer-group fa-fw ml-2 text-info"></i>اسٹاک</a>
@@ -108,14 +107,11 @@
                     <a class="dropdown-item" href="{{ route('admin.inventory-ledger.index') }}"><i class="fas fa-exchange-alt fa-fw ml-2 text-info"></i>اسٹاک کھاتہ</a>
                     <a class="dropdown-item" href="{{ route('admin.inventory-valuation.index') }}"><i class="fas fa-balance-scale fa-fw ml-2 text-info"></i>اسٹاک کی مالیت</a>
                     @endif
-                    @if($canShopSales)<a class="dropdown-item" href="{{ route('admin.sellCloth') }}"><i class="fas fa-cash-register fa-fw ml-2 text-info"></i>نئی فروخت</a><a class="dropdown-item" href="{{ route('admin.sales-sessions.index') }}"><i class="fas fa-inbox fa-fw ml-2 text-warning"></i>سیلز اِن باکس @if($salesOpenCount)<span class="badge badge-danger">{{ min($salesOpenCount,99) }}</span>@endif</a>@endif
+                    @if($canShopSales)<a class="dropdown-item" href="{{ route('admin.counter-orders.create') }}"><i class="fas fa-cash-register fa-fw ml-2 text-info"></i>نیا آرڈر</a><a class="dropdown-item" href="{{ route('admin.sales-sessions.index') }}"><i class="fas fa-inbox fa-fw ml-2 text-warning"></i>سیلز اِن باکس @if($salesOpenCount)<span class="badge badge-danger">{{ min($salesOpenCount,99) }}</span>@endif</a>@endif
                     @if($canShopSales && Auth::user()->business?->storefront)<a class="dropdown-item" href="{{ route('admin.storefront.orders.index') }}"><i class="fas fa-shopping-bag fa-fw ml-2 text-info"></i>آن لائن آرڈرز</a>@endif
                     @if($canShopPurchases)<a class="dropdown-item" href="{{ route('admin.purchases.index') }}"><i class="fas fa-truck-loading fa-fw ml-2 text-info"></i>خریداری</a>@endif
                     @if($canShopSuppliers)<a class="dropdown-item" href="{{ route('admin.suppliers.index') }}"><i class="fas fa-building fa-fw ml-2 text-info"></i>سپلائرز</a>@endif
                 </div></li>
-            @endif
-            @if($hasMultipleWorkspaces)
-                <li class="nav-item"><a class="nav-link" href="{{ route('admin.home') }}"><i class="fas fa-random ml-1"></i>ورک اسپیس تبدیل کریں</a></li>
             @endif
             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="businessMenu" data-toggle="dropdown">کاروبار</a><div class="dropdown-menu" aria-labelledby="businessMenu">
                 @if(Auth::user()->hasBusinessPermission('finance.view'))<a class="dropdown-item" href="{{ route('admin.financial-reports.index') }}"><i class="fas fa-chart-line fa-fw ml-2 text-success"></i>مالیاتی ڈیش بورڈ</a>@endif

@@ -42,7 +42,7 @@ class SaleSessionController extends Controller
                 ->with('warning', 'یہ سیلز سیشن منسوخ ہو چکا ہے۔');
         }
 
-        return redirect()->route('admin.sellCloth', ['sale_session' => $saleSession->uuid]);
+        return redirect()->route('admin.counter-orders.sale-session', $saleSession);
     }
 
     public function feed(Request $request, SaleSessionService $service): JsonResponse

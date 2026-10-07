@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\OptionType;
+use App\Models\MeasurementTemplate;
 class OptionTypeController extends Controller
 {
     /**
@@ -13,17 +14,27 @@ class OptionTypeController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $ownerId = Auth::user()->businessOwnerId();
+        if (! $request->filled('template')) {
+            return redirect()->route('admin.measurement-templates.index')
+                ->with('success', 'سلائی کے انتخاب اب متعلقہ لباس ٹیمپلیٹ کے اندر ترتیب دیے جاتے ہیں۔');
+        }
+        $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
+            ->findOrFail($request->integer('template'));
+        $preferenceTypes = collect($template->system_fields ?? [])->map(
+            fn (string $key) => $key === 'Daaman' ? 'daaman' : $key
+        )->all();
         $OptionTypes = $this->availableOptionTypes()
-            ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->orderBy('Name')])
-            ->withCount(['options as choices_count' => fn ($query) => $query->where('user_id', $ownerId)])
+            ->whereIn('type', $preferenceTypes)
+            ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)->orderBy('Name')])
+            ->withCount(['options as choices_count' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)])
             ->orderByRaw('CASE WHEN user_id IS NULL THEN 0 ELSE 1 END')
             ->orderBy('id')
             ->get();
 
-        return view('OptionType.list', compact('OptionTypes'));
+        return view('OptionType.list', compact('OptionTypes', 'template'));
     }
 
     /**
@@ -33,7 +44,7 @@ class OptionTypeController extends Controller
      */
     public function create()
     {
-        return redirect()->route('admin.OptionType.index');
+        return redirect()->route('admin.measurement-templates.index');
     }
 
     /**

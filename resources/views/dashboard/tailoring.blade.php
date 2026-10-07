@@ -95,7 +95,6 @@
         <div class="dash-shell">
             <div class="workspace-hero">
                 <div><span class="workspace-badge">ٹیلرنگ ورک اسپیس</span><h1>ٹیلرنگ ڈیش بورڈ</h1><p>آرڈر سے حوالگی تک ورکشاپ کی تمام پیش رفت ایک جگہ۔</p></div>
-                @if(Auth::user()->enabledModules() === ['tailoring','clothing'])<a href="{{ route('admin.home') }}" class="workspace-switch"><i class="fas fa-random"></i> ورک اسپیس تبدیل کریں</a>@endif
             </div>
 
             @if($metricCards->isNotEmpty())

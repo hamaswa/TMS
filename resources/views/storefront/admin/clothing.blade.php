@@ -32,7 +32,7 @@
                             @csrf @method('PUT')
                             <input type="hidden" name="product_controls_present" value="1">
                             <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
-                                <div><h2 class="h5 mb-1">{{ $cloth->brand->name ?? 'بغیر برانڈ' }} — {{ $cloth->type->name ?? 'کپڑا' }}</h2><div class="text-muted">@if($cloth->tracksColors()){{ collect($cloth->selectableColorNames())->implode('، ') ?: 'رنگ درج نہیں' }} — ہر رنگ کا الگ اسٹاک @elseif($cloth->usesDisplayOnlyColors()){{ collect($cloth->selectableColorNames())->implode('، ') }} — مجموعی مشترکہ اسٹاک @else رنگ کے بغیر مجموعی سیٹ @endif</div></div>
+                                <div><h2 class="h5 mb-1">{{ $cloth->name }} — {{ $cloth->brand->name ?? 'بغیر برانڈ' }} — {{ $cloth->type->name ?? 'کپڑا' }}</h2><div class="text-muted">@if($cloth->tracksColors()){{ collect($cloth->selectableColorNames())->implode('، ') ?: 'رنگ درج نہیں' }} — ہر رنگ کا الگ اسٹاک @elseif($cloth->usesDisplayOnlyColors()){{ collect($cloth->selectableColorNames())->implode('، ') }} — مجموعی مشترکہ اسٹاک @else رنگ کے بغیر مجموعی سیٹ @endif</div></div>
                                 <div class="text-left"><span class="stock-pill {{ (float)$cloth->available_length>0?'stock-in':'stock-out' }}">{{ (float)$cloth->available_length>0 ? number_format($cloth->available_length,2).' میٹر دستیاب' : 'اسٹاک ختم' }}</span><div class="mt-2 font-weight-bold">Rs {{ number_format((float)($cloth->sale_price ?: $cloth->price),2) }} فی میٹر</div></div>
                             </div>
                             <input type="hidden" name="public_name" value="{{ old('public_name',$listing?->public_name) }}">

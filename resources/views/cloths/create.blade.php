@@ -17,7 +17,7 @@
 <section class="main-content cloth-create-page" dir="rtl">
 <div class="cloth-create-shell">
     <div class="cloth-create-breadcrumb"><a href="{{ route('admin.home') }}">ڈیش بورڈ</a><span class="mx-2">‹</span><a href="{{ route('admin.cloth.index') }}">کپڑوں کی فہرست</a><span class="mx-2">‹</span>نیا کپڑا</div>
-    <header class="cloth-create-header"><div class="cloth-create-heading"><span class="cloth-create-heading-icon"><i class="fas fa-layer-group"></i></span><div><h1>نیا کپڑا شامل کریں</h1><p>قسم، برانڈ اور قیمت درج کریں۔ رنگ اور افتتاحی اسٹاک اختیاری ہے۔</p></div></div><a href="{{ route('admin.cloth.index') }}" class="cloth-back-link"><i class="fas fa-arrow-right"></i> فہرست پر واپس جائیں</a></header>
+    <header class="cloth-create-header"><div class="cloth-create-heading"><span class="cloth-create-heading-icon"><i class="fas fa-layer-group"></i></span><div><h1>نیا کپڑا شامل کریں</h1><p>سیٹ کا نام، برانڈ، قسم اور قیمت درج کریں۔ رنگ اور موجودہ مقدار اختیاری ہے۔</p></div></div><a href="{{ route('admin.cloth.index') }}" class="cloth-back-link"><i class="fas fa-arrow-right"></i> فہرست پر واپس جائیں</a></header>
 
     <div class="cloth-setup-note {{ $cloth_types->isEmpty() || $cloth_brands->isEmpty() ? 'cloth-alert-warning' : '' }}"><i class="fas {{ $cloth_types->isEmpty() || $cloth_brands->isEmpty() ? 'fa-exclamation-triangle' : 'fa-info-circle' }}"></i><div><strong>قسم اور برانڈ پہلے سے موجود ہونا ضروری ہے</strong><p><a href="{{ route('admin.clothtype.index') }}">کپڑے کی قسم بنائیں</a> یا <a href="{{ route('admin.clothbrand.index') }}">برانڈ بنائیں</a>۔@if($cloth_types->isEmpty() || $cloth_brands->isEmpty()) مطلوبہ فہرست مکمل کرنے کے بعد یہاں واپس آئیں۔@endif</p></div></div>
     @include('inc.message')
@@ -25,8 +25,9 @@
     <form id="clothCreateForm" action="{{ route('admin.cloth.store') }}" method="post" enctype="multipart/form-data" class="cloth-form-card">
         @csrf
         <section class="cloth-form-section">
-            <div class="cloth-section-heading"><span class="cloth-section-number">1</span><div><h2>کپڑے کی بنیادی معلومات</h2><p>قسم، برانڈ، ڈیفالٹ سوٹ لمبائی اور فروخت کا ریٹ درج کریں</p></div></div>
+            <div class="cloth-section-heading"><span class="cloth-section-number">1</span><div><h2>کپڑے کی بنیادی معلومات</h2><p>سیٹ کا نام، برانڈ، قسم، لمبائی اور فروخت کا ریٹ درج کریں</p></div></div>
             <div class="cloth-field-grid">
+                <div class="cloth-field is-wide"><label for="name">سیٹ کا نام <span class="cloth-required">*</span></label><input id="name" type="text" name="name" class="form-control" value="{{ old('name') }}" maxlength="100" placeholder="مثلاً Dilbar، Waqar یا Premium Gold" required autocomplete="off"><small>ایک ہی برانڈ اور قسم کے مختلف معیار یا قیمت والے کپڑوں کو نام سے الگ پہچانا جائے گا۔</small>@error('name')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field"><label for="cloth_type_id">کپڑے کی قسم <span class="cloth-required">*</span></label><select id="cloth_type_id" name="cloth_type_id" class="form-control" required><option value="">قسم منتخب کریں</option>@foreach($cloth_types as $cloth_type)<option value="{{ $cloth_type->id }}" @selected(old('cloth_type_id') == $cloth_type->id)>{{ $cloth_type->name }}</option>@endforeach</select>@error('cloth_type_id')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field"><label for="cloth_brand_id">برانڈ / کمپنی <span class="cloth-required">*</span></label><select id="cloth_brand_id" name="cloth_brand_id" class="form-control" required><option value="">برانڈ منتخب کریں</option>@foreach($cloth_brands as $cloth_brand)<option value="{{ $cloth_brand->id }}" @selected(old('cloth_brand_id') == $cloth_brand->id)>{{ $cloth_brand->name }}</option>@endforeach</select>@error('cloth_brand_id')<div class="cloth-error">{{ $message }}</div>@enderror</div>
                 <div class="cloth-field is-wide"><label for="color_tracking_mode">رنگ اور اسٹاک کا طریقہ <span class="cloth-required">*</span></label><select id="color_tracking_mode" name="color_tracking_mode" class="form-control" required><option value="none" @selected(old('color_tracking_mode', 'none') === 'none')>کوئی رنگ نہیں — پورے سیٹ کی ایک مجموعی مقدار</option><option value="display_only" @selected(old('color_tracking_mode') === 'display_only')>رنگ دکھائیں — انتخاب لازم، مگر اسٹاک مجموعی</option><option value="per_color" @selected(old('color_tracking_mode') === 'per_color')>رنگ دکھائیں اور ہر رنگ کا اسٹاک الگ رکھیں</option></select><small>آن لائن دستیابی الگ ترتیب ہے۔ درمیانی انتخاب میں گاہک رنگ منتخب کرے گا، مگر ہر فروخت پورے سیٹ کے مشترکہ اسٹاک سے کم ہوگی۔</small>@error('color_tracking_mode')<div class="cloth-error">{{ $message }}</div>@enderror</div>
@@ -40,8 +41,8 @@
         </section>
 
         <section class="cloth-form-section">
-            <div class="cloth-section-heading"><span class="cloth-section-number">2</span><div><h2>افتتاحی اسٹاک <small>اختیاری</small></h2><p>نئے سپلائر مال کے لیے یہاں لمبائی نہ دیں؛ خریداری وصول کرنے پر اسٹاک بڑھے گا۔</p></div></div>
-            <div class="cloth-toolbar-row"><p id="lengthHelp">افتتاحی مقدار نہ ہو تو یہ حصہ خالی چھوڑ دیں۔</p><button type="button" id="syncLengths" class="cloth-add-btn"><i class="fas fa-magic"></i> افتتاحی لمبائی شامل کریں</button></div>
+            <div class="cloth-section-heading"><span class="cloth-section-number">2</span><div><h2>موجودہ مقدار <small>اختیاری</small></h2><p>اگر کپڑا ابھی دکان میں موجود ہے تو اس کی مقدار درج کریں، ورنہ یہ حصہ چھوڑ دیں۔</p></div></div>
+            <div class="cloth-toolbar-row"><p id="lengthHelp">مقدار بعد میں خریداری وصول کرتے وقت بھی شامل کی جا سکتی ہے۔</p><button type="button" id="syncLengths" class="cloth-add-btn"><i class="fas fa-magic"></i> مقدار درج کریں</button></div>
             @error('length')<div class="cloth-error mb-2">{{ $message }}</div>@enderror @error('length_colors')<div class="cloth-error mb-2">{{ $message }}</div>@enderror
             <div id="lengthUploads" class="cloth-entry-list" data-old-lengths='@json(old("length", []))' data-old-colors='@json(old("length_colors", []))'><div class="cloth-entry-empty"><i class="fas fa-ruler-combined"></i>ابھی کوئی رنگ شامل نہیں کیا گیا</div></div>
         </section>
@@ -112,10 +113,10 @@ document.addEventListener('DOMContentLoaded', function () {
         lengths.innerHTML = availableColors.length ? '' : emptyState('fa-ruler-combined', 'پہلے اوپر دستیاب رنگ درج کریں');
         availableColors.forEach((color, index) => {
             const row = document.createElement('div'); row.className = 'cloth-entry';
-            row.innerHTML = `<span class="cloth-entry-index">${index + 1}</span><div class="cloth-entry-field"><label>${trackingMode.value === 'per_color' ? 'رنگ' : 'اسٹاک'}</label><input type="text" class="form-control" value="${trackingMode.value === 'per_color' ? escapeHtml(color) : 'پورا سیٹ'}" readonly><input type="hidden" name="length_colors[]" value="${escapeHtml(color)}"></div><div class="cloth-entry-field"><label>افتتاحی لمبائی (میٹر)</label><input type="number" name="length[]" class="form-control" min="0" step="0.01" value="${escapeHtml(current[color] ?? '0')}" placeholder="0.00" inputmode="decimal"></div><span></span>`;
+            row.innerHTML = `<span class="cloth-entry-index">${index + 1}</span><div class="cloth-entry-field"><label>${trackingMode.value === 'per_color' ? 'رنگ' : 'اسٹاک'}</label><input type="text" class="form-control" value="${trackingMode.value === 'per_color' ? escapeHtml(color) : 'پورا سیٹ'}" readonly><input type="hidden" name="length_colors[]" value="${escapeHtml(color)}"></div><div class="cloth-entry-field"><label>موجودہ لمبائی (میٹر)</label><input type="number" name="length[]" class="form-control" min="0" step="0.01" value="${escapeHtml(current[color] ?? '0')}" placeholder="0.00" inputmode="decimal"></div><span></span>`;
             lengths.appendChild(row);
         });
-        lengthHelp.textContent = trackingMode.value === 'per_color' ? `${availableColors.length} رنگوں کے لیے الگ لمبائی درج کریں۔` : 'پورے سیٹ کی ایک مجموعی افتتاحی لمبائی درج کریں۔';
+        lengthHelp.textContent = trackingMode.value === 'per_color' ? `${availableColors.length} رنگوں کی موجودہ مقدار الگ درج کریں۔` : 'پورے سیٹ کی موجودہ مجموعی لمبائی درج کریں۔';
     }
 
     function addMediaRow(type) {

@@ -5,14 +5,14 @@ An Expo React Native Android app isolated inside the Laravel repository's `andro
 ## Implemented foundation
 
 - TypeScript and Expo SDK 57.
-- Employee username/email and password login preview routed into the sale form. The preview does not transmit or store credentials until the Laravel employee API exists.
+- Employee username/email and password login through the Laravel sales-agent API.
 - Existing/new/walk-in customer modes.
 - Whole-set QR, Code 128, EAN-13 and EAN-8 scanning with `expo-camera`.
 - Counter-sale item and payment fields.
 - Automatic local draft persistence with AsyncStorage.
 - Online/offline indication with NetInfo.
 - Existing permission identifier `clothing.sales`; no new role or login system.
-- Explicit integration boundary: the app never claims that a local draft has synced or completed a sale before the Laravel API exists.
+- Explicit integration boundary: the app can save and forward a draft, but never completes a sale or deducts stock.
 
 ## Run on a physical Android phone
 

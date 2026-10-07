@@ -86,17 +86,20 @@ class ShopCatalogOnboardingTest extends TestCase
 
         $this->actingAs($owner->fresh())->get(route('admin.cloth.create'))
             ->assertOk()
+            ->assertSee('name="name"', false)
+            ->assertSeeText('سیٹ کا نام')
             ->assertSee(route('admin.clothtype.index'), false)
             ->assertSee(route('admin.clothbrand.index'), false)
             ->assertSeeText('کپڑے کی قسم بنائیں')
             ->assertSeeText('برانڈ بنائیں')
-            ->assertSeeText('لمبائی شامل کریں')
+            ->assertSeeText('مقدار درج کریں')
             ->assertSee('id="colorPreset"', false)
             ->assertSeeText('نہیں — پورے سیٹ کی ایک مجموعی مقدار')
             ->assertSee('name="online_availability"', false)
             ->assertSee('<h1', false);
 
         $this->actingAs($owner->fresh())->post(route('admin.cloth.store'), [
+            'name' => 'Dilbar',
             'cloth_type_id' => $type->id,
             'cloth_brand_id' => $brand->id,
             'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR,
@@ -108,6 +111,7 @@ class ShopCatalogOnboardingTest extends TestCase
         ])->assertRedirect(route('admin.cloth.index'));
 
         $cloth = Cloth::where('user_id', $owner->id)->firstOrFail();
+        $this->assertSame('Dilbar', $cloth->name);
         $this->assertSame(['نیلا', 'سرمئی'], $cloth->colors()->orderBy('id')->pluck('color')->all());
         $this->assertDatabaseCount('cloth_images', 0);
         $this->assertDatabaseCount('storefront_clothing_listings', 0);

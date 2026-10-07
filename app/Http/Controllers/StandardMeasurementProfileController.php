@@ -13,6 +13,17 @@ use Illuminate\Validation\ValidationException;
 
 class StandardMeasurementProfileController extends Controller
 {
+    public function index(int $template)
+    {
+        $template = $this->ownedTemplate($template)->load('standardProfiles');
+        $customFields = MeasurementField::where('user_id', $template->user_id)
+            ->where('is_active', true)->where('field_type', 'number')
+            ->orderBy('sort_order')->orderBy('label')->get();
+        $systemFields = MeasurementService::SYSTEM_FIELDS;
+
+        return view('measurement-templates.standard-profiles', compact('template', 'customFields', 'systemFields'));
+    }
+
     public function store(Request $request, int $template)
     {
         $template = $this->ownedTemplate($template);
@@ -55,7 +66,7 @@ class StandardMeasurementProfileController extends Controller
         $rows = [];
         foreach ($template->system_fields ?? [] as $key) {
             $meta = MeasurementService::SYSTEM_FIELDS[$key] ?? null;
-            if (! $meta) {
+            if (! $meta || $meta['unit'] === '') {
                 continue;
             }
             $value = trim((string) data_get($input, 'system.'.$key, ''));
@@ -70,6 +81,7 @@ class StandardMeasurementProfileController extends Controller
         $fields = MeasurementField::query()
             ->where('user_id', $template->user_id)->where('is_active', true)
             ->whereIn('id', array_map('intval', $template->custom_field_ids ?? []))
+            ->where('field_type', 'number')
             ->orderBy('sort_order')->get();
         foreach ($fields as $field) {
             $value = trim((string) data_get($input, 'custom.'.$field->id, ''));

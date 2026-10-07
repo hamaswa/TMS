@@ -147,10 +147,7 @@ class UnifiedCustomerAccountTest extends TestCase
         ]);
 
         $this->actingAs($owner)->get(route('admin.sale.create'))
-            ->assertOk()
-            ->assertSee('aria-label="مصنوعات کی تعداد"', false)
-            ->assertSee('aria-label="فی عدد قیمت"', false)
-            ->assertSee('id="remaining_balance"', false);
+            ->assertRedirect(route('admin.counter-orders.create'));
 
         $this->actingAs($owner)->post(route('admin.sale.store'), [
             'customer_id' => $customer->id,

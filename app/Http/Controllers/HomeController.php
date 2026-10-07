@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BusinessRole;
 use App\Models\ClothColor;
 use App\Models\Customers;
-use App\Models\BusinessRole;
 use App\Models\Order;
 use App\Models\Purchase;
 use App\Models\SaleSession;
 use App\Models\SaleStock;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -36,8 +37,6 @@ class HomeController extends Controller
             return redirect()->route($landingRoute);
         }
 
-        session()->forget('active_workspace');
-
         return view('dashboard.select');
     }
 
@@ -45,7 +44,6 @@ class HomeController extends Controller
     {
         abort_unless(in_array($workspace, Auth::user()->enabledModules(), true), 403, 'یہ ورک اسپیس آپ کے اکاؤنٹ کے لیے فعال نہیں ہے۔');
 
-        session(['active_workspace' => $workspace]);
         Auth::user()->forceFill(['preferred_workspace' => $workspace])->save();
 
         return redirect()->route($workspace === User::MODULE_TAILORING
@@ -55,7 +53,8 @@ class HomeController extends Controller
 
     public function current()
     {
-        $workspace = session('active_workspace');
+        $workspace = Auth::user()->preferred_workspace;
+        $workspace = $workspace === 'shop' ? User::MODULE_CLOTHING : $workspace;
 
         if ($workspace && Auth::user()->hasModule($workspace)) {
             return $this->switch($workspace);
@@ -66,7 +65,6 @@ class HomeController extends Controller
 
     public function tailoring()
     {
-        session(['active_workspace' => User::MODULE_TAILORING]);
         $user = Auth::user();
         $ownerId = $user->businessOwnerId();
         $canWorkshop = $user->hasBusinessPermission('tailoring.workshop');
@@ -119,7 +117,6 @@ class HomeController extends Controller
 
     public function clothing()
     {
-        session(['active_workspace' => User::MODULE_CLOTHING]);
         $user = Auth::user();
         $ownerId = $user->businessOwnerId();
         $canInventory = $user->hasBusinessPermission('clothing.inventory');
@@ -151,10 +148,11 @@ class HomeController extends Controller
             $salesByDate = SaleStock::where('user_id', $ownerId)->financiallyActive()
                 ->whereBetween('sellDate', [$trendStart->copy()->startOfDay(), now()->endOfDay()])
                 ->get(['sellDate', 'selling_price', 'length'])
-                ->groupBy(fn (SaleStock $sale) => \Illuminate\Support\Carbon::parse($sale->sellDate)->toDateString())
+                ->groupBy(fn (SaleStock $sale) => Carbon::parse($sale->sellDate)->toDateString())
                 ->map(fn ($sales) => (float) $sales->sum(fn (SaleStock $sale) => (float) $sale->selling_price * (float) $sale->length));
             $salesTrend = collect(range(0, 6))->map(function (int $offset) use ($trendStart, $salesByDate) {
                 $date = $trendStart->copy()->addDays($offset);
+
                 return ['date' => $date, 'total' => (float) ($salesByDate[$date->toDateString()] ?? 0)];
             });
             $recentSales = SaleStock::where('user_id', $ownerId)->financiallyActive()

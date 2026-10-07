@@ -82,14 +82,21 @@ class Cloth extends Model
     protected static function booted(): void
     {
         static::created(function (Cloth $cloth) {
+            $generated = [];
+
+            if (! $cloth->name) {
+                $generated['name'] = 'سیٹ '.$cloth->id;
+            }
             if (! $cloth->set_code) {
-                $cloth->forceFill([
-                    'set_code' => 'BNS-'.str_pad((string) ($cloth->user_id ?? 0), 4, '0', STR_PAD_LEFT).'-'.str_pad((string) $cloth->id, 6, '0', STR_PAD_LEFT).'-'.Str::upper(Str::random(6)),
-                ])->saveQuietly();
+                $generated['set_code'] = 'BNS-'.str_pad((string) ($cloth->user_id ?? 0), 4, '0', STR_PAD_LEFT).'-'.str_pad((string) $cloth->id, 6, '0', STR_PAD_LEFT).'-'.Str::upper(Str::random(6));
             }
 
             if (! $cloth->stock_code) {
-                $cloth->forceFill(['stock_code' => self::makeStockCode($cloth)])->saveQuietly();
+                $generated['stock_code'] = self::makeStockCode($cloth);
+            }
+
+            if ($generated !== []) {
+                $cloth->forceFill($generated)->saveQuietly();
             }
         });
     }
