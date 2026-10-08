@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\rack;
 use App\Models\Business;
 use App\Models\BusinessRole;
+use App\Models\CounterOrderItem;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use PhpOption\Option;
@@ -659,8 +660,14 @@ class OrderController extends Controller
         $printConfig = $printDocumentService->make($setting, request(), 'tailor-order', $order->id);
         $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $order->id]);
         $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
+        $counterOrderItem = CounterOrderItem::query()
+            ->where('source_record_type', 'tailoring_order')
+            ->where('source_record_id', $order->id)
+            ->whereHas('counterOrder', fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
+            ->first();
+        $receiptSerial = $counterOrderItem?->item_serial;
 
-        return view('order.print', compact('order', 'orderDetail', 'printMeasurements', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
+        return view('order.print', compact('order', 'orderDetail', 'printMeasurements', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg', 'receiptSerial'));
     }
 
 
@@ -706,8 +713,14 @@ class OrderController extends Controller
         $printConfig = $printDocumentService->make($setting, request(), 'tailor-order-copy', $order->id);
         $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $order->id]);
         $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
+        $counterOrderItem = CounterOrderItem::query()
+            ->where('source_record_type', 'tailoring_order')
+            ->where('source_record_id', $order->id)
+            ->whereHas('counterOrder', fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
+            ->first();
+        $receiptSerial = $counterOrderItem?->item_serial;
 
-        return view('order.prints', compact('order', 'orderDetail', 'printMeasurements', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
+        return view('order.prints', compact('order', 'orderDetail', 'printMeasurements', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg', 'receiptSerial'));
     }
 
     private function printBalanceSummary(Order $order): array

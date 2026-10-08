@@ -174,6 +174,7 @@ class ClothController extends Controller
     public function store(Request $request)
     {
         try {
+            $this->normalizeInventoryGridInput($request);
             $request->mergeIfMissing([
                 'color_tracking_mode' => Cloth::COLOR_TRACKING_NONE,
                 'online_availability' => 'pos_only',
@@ -198,6 +199,17 @@ class ClothController extends Controller
                     Cloth::COLOR_TRACKING_PER_COLOR,
                 ])],
                 'colors' => ['nullable', 'string', 'max:1000'],
+                'inventory_grid' => ['nullable', 'boolean'],
+                'stock_mode' => ['nullable', Rule::in(['shared', 'per_color'])],
+                'shared_length' => ['nullable', 'numeric', 'min:0'],
+                'color_names' => ['nullable', 'array'],
+                'color_names.*' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
+                'color_hexes' => ['nullable', 'array'],
+                'color_hexes.*' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+                'color_lengths' => ['nullable', 'array'],
+                'color_lengths.*' => ['nullable', 'numeric', 'min:0'],
+                'color_images' => ['nullable', 'array'],
+                'color_images.*' => ['nullable', 'image', 'max:4096'],
                 'images' => ['nullable', 'array'],
                 'images.*' => ['image', 'max:4096'],
                 'image_colors' => ['nullable', 'array'],
@@ -236,6 +248,13 @@ class ClothController extends Controller
                             );
 
                             $displayColors = [];
+                            $submittedNames = array_values($validated['color_names'] ?? []);
+                            $submittedHexes = array_values($validated['color_hexes'] ?? []);
+                            $colorCodeByName = [];
+                            foreach ($submittedNames as $index => $submittedName) {
+                                $hex = $submittedHexes[$index] ?? null;
+                                $colorCodeByName[trim($submittedName)] = $hex ?: null;
+                            }
                             if ($trackingMode === Cloth::COLOR_TRACKING_NONE) {
                                 $stockColors = ['عام'];
                             } elseif ($trackingMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY) {
@@ -334,7 +353,7 @@ class ClothController extends Controller
             // ]);
 
             // Save the cloth
-            DB::transaction(function () use ($request, $validated, $stockColors, $displayColors, $lengths, $trackingMode, $storefront, $canConfigureOnline) {
+            DB::transaction(function () use ($request, $validated, $stockColors, $displayColors, $lengths, $trackingMode, $storefront, $canConfigureOnline, $colorCodeByName) {
                 $cloth = Cloth::create([
                     'name' => trim((string) ($validated['name'] ?? '')) ?: null,
                     'cloth_type_id' => $validated['cloth_type_id'],
@@ -346,6 +365,9 @@ class ClothController extends Controller
                     'sale_price_basis' => $validated['sale_price_basis'],
                     'color_tracking_mode' => $trackingMode,
                     'display_colors' => $displayColors,
+                    'display_color_codes' => $trackingMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY
+                        ? array_filter($colorCodeByName)
+                        : null,
                     'user_id' => Auth::user()->businessOwnerId(),
                 ]);
 
@@ -353,6 +375,7 @@ class ClothController extends Controller
                     ClothColor::create([
                         'cloth_id' => $cloth->id,
                         'color' => $color,
+                        'color_hex' => $colorCodeByName[$color] ?? null,
                         'length' => $lengths[$index],
                         'average_unit_cost' => $validated['price'],
                         'user_id' => Auth::user()->businessOwnerId(),
@@ -370,6 +393,19 @@ class ClothController extends Controller
                             'user_id' => Auth::user()->businessOwnerId(),
                         ]);
                     }
+                }
+
+                foreach ($request->file('color_images', []) as $index => $image) {
+                    $colorName = trim((string) (($validated['color_names'] ?? [])[$index] ?? ''));
+                    if ($colorName === '') {
+                        continue;
+                    }
+                    ClothImage::create([
+                        'cloth_id' => $cloth->id,
+                        'images' => $image->store('ClothImages', 'public'),
+                        'image_color' => $colorName,
+                        'user_id' => Auth::user()->businessOwnerId(),
+                    ]);
                 }
 
                 if ($request->hasFile('videos')) {
@@ -488,6 +524,9 @@ class ClothController extends Controller
     {
         try {
             abort_unless((int) $cloth->user_id === (int) Auth::user()->businessOwnerId(), 404);
+            if ($request->boolean('inventory_grid')) {
+                return $this->updateFromInventoryGrid($request, $cloth);
+            }
             [$storefront, $canConfigureOnline] = $this->storefrontContext();
             $currentOnlineAvailability = $this->onlineAvailability($cloth, $storefront);
             if ($canConfigureOnline) {
@@ -616,6 +655,231 @@ class ClothController extends Controller
                 'errors' => $e instanceof \Illuminate\Validation\ValidationException ? $e->errors() : $e->getMessage()
             ], 422);
         }
+    }
+
+    private function updateFromInventoryGrid(Request $request, Cloth $cloth)
+    {
+        $this->normalizeInventoryGridInput($request);
+        [$storefront, $canConfigureOnline] = $this->storefrontContext();
+        $currentOnlineAvailability = $this->onlineAvailability($cloth, $storefront);
+        if (! $canConfigureOnline) {
+            $request->merge(['online_availability' => $currentOnlineAvailability]);
+        }
+        $request->mergeIfMissing([
+            'online_availability' => $currentOnlineAvailability,
+            'sale_price_basis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
+        ]);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'cloth_type_id' => ['required', 'integer'],
+            'cloth_brand_id' => ['required', 'integer'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'sale_price' => ['required', 'numeric', 'min:0'],
+            'suit_sale_price' => ['nullable', 'numeric', 'min:0'],
+            'default_sale_length' => ['nullable', 'numeric', 'gt:0'],
+            'sale_price_basis' => ['required', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
+            'color_tracking_mode' => ['required', Rule::in([
+                Cloth::COLOR_TRACKING_NONE,
+                Cloth::COLOR_TRACKING_DISPLAY_ONLY,
+                Cloth::COLOR_TRACKING_PER_COLOR,
+            ])],
+            'stock_mode' => ['required', Rule::in(['shared', 'per_color'])],
+            'shared_length' => ['nullable', 'numeric', 'min:0'],
+            'color_names' => ['nullable', 'array'],
+            'color_names.*' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
+            'color_hexes' => ['nullable', 'array'],
+            'color_hexes.*' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'color_lengths' => ['nullable', 'array'],
+            'color_lengths.*' => ['nullable', 'numeric', 'min:0'],
+            'color_ids' => ['nullable', 'array'],
+            'color_ids.*' => ['nullable', 'integer'],
+            'original_color_names' => ['nullable', 'array'],
+            'original_color_names.*' => ['nullable', 'string', 'max:100'],
+            'color_images' => ['nullable', 'array'],
+            'color_images.*' => ['nullable', 'image', 'max:4096'],
+            'online_availability' => ['required', Rule::in(['pos_only', 'online_order'])],
+        ]);
+
+        if ($validated['sale_price_basis'] === Cloth::SALE_PRICE_PER_SUIT
+            && (empty($validated['default_sale_length']) || empty($validated['suit_sale_price']))) {
+            throw ValidationException::withMessages(array_filter([
+                'default_sale_length' => empty($validated['default_sale_length']) ? 'فی سوٹ قیمت کے لیے سوٹ کی ڈیفالٹ لمبائی درج کریں۔' : null,
+                'suit_sale_price' => empty($validated['suit_sale_price']) ? 'فی سوٹ قیمت درج کریں۔' : null,
+            ]));
+        }
+        if ($validated['color_tracking_mode'] === Cloth::COLOR_TRACKING_PER_COLOR
+            && count($validated['color_names'] ?? []) !== count($validated['color_lengths'] ?? [])) {
+            throw ValidationException::withMessages(['color_lengths' => 'ہر رنگ کی موجودہ لمبائی درج کریں۔']);
+        }
+
+        ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
+        ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
+        if ($canConfigureOnline) {
+            $this->validateOnlineAvailability($validated['online_availability'], $storefront, $canConfigureOnline);
+        }
+
+        $cloth->load('colors');
+        $newMode = $validated['color_tracking_mode'];
+        $changingStockModel = $cloth->color_tracking_mode !== $newMode
+            && ! ($cloth->color_tracking_mode === Cloth::COLOR_TRACKING_DISPLAY_ONLY && $newMode === Cloth::COLOR_TRACKING_NONE)
+            && ! ($cloth->color_tracking_mode === Cloth::COLOR_TRACKING_NONE && $newMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY);
+        if ($changingStockModel) {
+            $colorIds = $cloth->colors->pluck('id');
+            $hasHistory = $colorIds->isNotEmpty() && DB::table('inventory_movements')->whereIn('cloth_color_id', $colorIds)->exists();
+            if ($hasHistory || $cloth->colors->sum(fn ($color) => (float) $color->length) > 0) {
+                throw ValidationException::withMessages([
+                    'stock_mode' => 'اس سیٹ میں اسٹاک یا سابقہ لین دین موجود ہے، اس لیے مشترکہ اور الگ رنگ اسٹاک کے درمیان تبدیلی نہیں کی جا سکتی۔',
+                ]);
+            }
+        }
+
+        $names = array_values($validated['color_names'] ?? []);
+        $hexes = array_values($validated['color_hexes'] ?? []);
+        $lengths = array_values($validated['color_lengths'] ?? []);
+        $ids = array_values($validated['color_ids'] ?? []);
+        $originalNames = array_values($validated['original_color_names'] ?? []);
+        $codeByName = [];
+        foreach ($names as $index => $name) {
+            $codeByName[$name] = $hexes[$index] ?? null;
+        }
+        $previousSelectableNames = $cloth->selectableColorNames();
+
+        DB::transaction(function () use ($request, $validated, $cloth, $storefront, $canConfigureOnline, $newMode, $names, $hexes, $lengths, $ids, $originalNames, $codeByName, $previousSelectableNames) {
+            $inventory = app(InventoryService::class);
+            $cloth->update([
+                'name' => trim($validated['name']),
+                'cloth_type_id' => $validated['cloth_type_id'],
+                'cloth_brand_id' => $validated['cloth_brand_id'],
+                'price' => $validated['price'],
+                'sale_price' => $validated['sale_price'],
+                'suit_sale_price' => $validated['suit_sale_price'] ?? null,
+                'default_sale_length' => $validated['default_sale_length'] ?? null,
+                'sale_price_basis' => $validated['sale_price_basis'],
+                'color_tracking_mode' => $newMode,
+                'display_colors' => $newMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY ? $names : [],
+                'display_color_codes' => $newMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY ? array_filter($codeByName) : null,
+            ]);
+
+            if ($newMode === Cloth::COLOR_TRACKING_PER_COLOR) {
+                $keptIds = [];
+                foreach ($names as $index => $name) {
+                    $color = ! empty($ids[$index]) ? $cloth->colors->firstWhere('id', (int) $ids[$index]) : null;
+                    if ($color) {
+                        $oldName = $color->color;
+                        $difference = round((float) ($lengths[$index] ?? 0) - (float) $color->length, 2);
+                        $color->update(['color' => $name, 'color_hex' => $hexes[$index] ?? null]);
+                        if ($oldName !== $name) {
+                            $cloth->images()->where('image_color', $oldName)->update(['image_color' => $name]);
+                        }
+                        if ($difference > 0) {
+                            $inventory->receive($color, $difference, (float) $validated['price'], 'manual_adjustment_in', $cloth, 'Stock changed from cloth editor');
+                        } elseif ($difference < 0) {
+                            $inventory->issue($color, abs($difference), 'manual_adjustment_out', $cloth, 'Stock changed from cloth editor');
+                        }
+                    } else {
+                        $color = ClothColor::create([
+                            'cloth_id' => $cloth->id,
+                            'color' => $name,
+                            'color_hex' => $hexes[$index] ?? null,
+                            'length' => 0,
+                            'average_unit_cost' => $validated['price'],
+                            'user_id' => Auth::user()->businessOwnerId(),
+                        ]);
+                        if ((float) ($lengths[$index] ?? 0) > 0) {
+                            $inventory->receive($color, (float) $lengths[$index], (float) $validated['price'], 'manual_adjustment_in', $cloth, 'Color added from cloth editor');
+                        }
+                    }
+                    $keptIds[] = $color->id;
+                }
+                foreach ($cloth->colors->whereNotIn('id', $keptIds) as $removedColor) {
+                    $hasHistory = DB::table('inventory_movements')->where('cloth_color_id', $removedColor->id)->exists();
+                    if ($hasHistory || (float) $removedColor->length > 0) {
+                        throw ValidationException::withMessages(['color_names' => "{$removedColor->color} کو ہٹانے سے پہلے اس کا اسٹاک صفر کریں؛ سابقہ لین دین والا رنگ حذف نہیں کیا جا سکتا۔"]);
+                    }
+                    $removedColor->delete();
+                }
+            } else {
+                if ($changing = $cloth->colors->where('color', 'عام')->first()) {
+                    $aggregate = $changing;
+                } else {
+                    foreach ($cloth->colors as $oldColor) {
+                        if ((float) $oldColor->length === 0.0 && ! DB::table('inventory_movements')->where('cloth_color_id', $oldColor->id)->exists()) {
+                            $oldColor->delete();
+                        }
+                    }
+                    $aggregate = ClothColor::firstOrCreate(
+                        ['cloth_id' => $cloth->id, 'color' => 'عام'],
+                        ['length' => 0, 'average_unit_cost' => $validated['price'], 'user_id' => Auth::user()->businessOwnerId()]
+                    );
+                }
+                $difference = round((float) ($validated['shared_length'] ?? 0) - (float) $aggregate->length, 2);
+                if ($difference > 0) {
+                    $inventory->receive($aggregate, $difference, (float) $validated['price'], 'manual_adjustment_in', $cloth, 'Stock changed from cloth editor');
+                } elseif ($difference < 0) {
+                    $inventory->issue($aggregate, abs($difference), 'manual_adjustment_out', $cloth, 'Stock changed from cloth editor');
+                }
+            }
+
+            $removedImageColors = array_values(array_diff($previousSelectableNames, $names));
+            if ($removedImageColors !== []) {
+                $cloth->images()->whereIn('image_color', $removedImageColors)->delete();
+            }
+            foreach ($names as $index => $name) {
+                $oldName = $originalNames[$index] ?? $name;
+                if ($oldName !== $name) {
+                    $cloth->images()->where('image_color', $oldName)->update(['image_color' => $name]);
+                }
+                $image = $request->file("color_images.$index");
+                if ($image) {
+                    $cloth->images()->where('image_color', $name)->delete();
+                    ClothImage::create([
+                        'cloth_id' => $cloth->id,
+                        'images' => $image->store('ClothImages', 'public'),
+                        'image_color' => $name,
+                        'user_id' => Auth::user()->businessOwnerId(),
+                    ]);
+                }
+            }
+
+            if ($canConfigureOnline) {
+                $this->syncStorefrontListing($cloth, $storefront, $validated['online_availability']);
+            }
+        });
+
+        return redirect()->route('admin.cloth.index')->with('insert', 'کپڑا کامیابی کے ساتھ آپڈیٹ کیا گیا۔');
+    }
+
+    private function normalizeInventoryGridInput(Request $request): void
+    {
+        if (! $request->boolean('inventory_grid')) {
+            return;
+        }
+
+        $names = array_map(
+            fn ($name) => trim((string) $name),
+            array_values((array) $request->input('color_names', []))
+        );
+        $stockMode = $request->input('stock_mode', 'shared');
+        $trackingMode = $names === []
+            ? Cloth::COLOR_TRACKING_NONE
+            : ($stockMode === 'per_color' ? Cloth::COLOR_TRACKING_PER_COLOR : Cloth::COLOR_TRACKING_DISPLAY_ONLY);
+
+        if ($trackingMode === Cloth::COLOR_TRACKING_PER_COLOR) {
+            $lengths = array_values((array) $request->input('color_lengths', []));
+            $lengthColors = $names;
+        } else {
+            $lengths = [$request->input('shared_length', 0)];
+            $lengthColors = ['عام'];
+        }
+
+        $request->merge([
+            'color_names' => $names,
+            'color_tracking_mode' => $trackingMode,
+            'colors' => implode('، ', $names),
+            'length' => $lengths,
+            'length_colors' => $lengthColors,
+        ]);
     }
 
     private function storefrontContext(): array

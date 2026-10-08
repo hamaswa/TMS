@@ -74,7 +74,7 @@
                 <div class="brand-directory-header">
                     <div>
                         <h1 class="brand-directory-title">برانڈز کی فہرست</h1>
-                        <p class="brand-directory-subtitle">اپنے کپڑے کے برانڈز، تصاویر اور QR لیبل ایک جگہ منظم کریں۔</p>
+                        <p class="brand-directory-subtitle">اپنے کپڑے کے برانڈز اور تصاویر ایک جگہ منظم کریں۔</p>
                     </div>
                     <a href="{{ route('admin.clothbrand.create') }}" class="brand-add-button">
                         <i class="fas fa-plus" aria-hidden="true"></i>
@@ -121,10 +121,6 @@
                                                 <a href="{{ route('admin.clothbrand.edit', $cloth_brand->id) }}" class="dropdown-item">
                                                     <i class="fas fa-pen" aria-hidden="true"></i>
                                                     <span>برانڈ میں ترمیم کریں</span>
-                                                </a>
-                                                <a href="{{ route('admin.clothbrand.qr-label', $cloth_brand->id) }}" class="dropdown-item" target="_blank">
-                                                    <i class="fas fa-qrcode" aria-hidden="true"></i>
-                                                    <span>برانڈ QR پرنٹ کریں</span>
                                                 </a>
                                                 <div class="dropdown-divider"></div>
                                                 <form action="{{ route('admin.clothbrand.destroy', $cloth_brand->id) }}" method="POST" data-confirm="کیا آپ واقعی یہ برانڈ حذف کرنا چاہتے ہیں؟">

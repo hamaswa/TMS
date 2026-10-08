@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BusinessRole;
 use App\Models\CounterOrder;
+use App\Models\CounterOrderItem;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
@@ -22,6 +23,7 @@ use App\Support\PakistanPhoneNumber;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -63,10 +65,11 @@ class CustomerController extends Controller
             && $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
         $canViewTailoringOrders = $user->hasModule(User::MODULE_TAILORING)
             && $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
-        $customers = $this->customerDirectoryQuery($canViewBalances, (string) request('search', ''))
+        $customers = $this->customerDirectoryQuery((string) request('search', ''))
             ->orderBy('id', 'desc')
-            ->get();
-        $this->applyFamilyProfileBalances($customers, $canViewBalances);
+            ->paginate(25)
+            ->withQueryString();
+        $this->hydrateCustomerDirectory($customers, $canViewBalances);
         $stats = $this->customerDirectoryStats($canViewBalances);
         $createdCustomer = request()->filled('created')
             ? Customers::where('user_id', $user->businessOwnerId())->find(request()->integer('created'))
@@ -94,16 +97,20 @@ class CustomerController extends Controller
             && $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
         $canViewTailoringOrders = $user->hasModule(User::MODULE_TAILORING)
             && $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
-        $customers = $this->customerDirectoryQuery($canViewBalances, (string) ($validated['search'] ?? ''))
+        $customers = $this->customerDirectoryQuery((string) ($validated['search'] ?? ''))
             ->orderBy('id', 'desc')
-            ->get();
-        $this->applyFamilyProfileBalances($customers, $canViewBalances);
+            ->paginate(25)
+            ->withQueryString();
+        $this->hydrateCustomerDirectory($customers, $canViewBalances);
 
         return response()->json([
             'html' => view('customer.partials.directory-rows', compact(
                 'customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements', 'canViewTailoringOrders'
             ))->render(),
-            'count' => $customers->count(),
+            'count' => $customers->total(),
+            'from' => $customers->firstItem(),
+            'to' => $customers->lastItem(),
+            'pagination' => $customers->links()->render(),
         ]);
     }
 
@@ -199,6 +206,8 @@ class CustomerController extends Controller
                 ->map(fn ($sale) => (object) [
                     'id' => $sale->id,
                     'source' => 'legacy',
+                    'display_number' => '#'.$sale->id,
+                    'counter_order_id' => null,
                     'created_at' => $sale->created_at,
                     'items_count' => $sale->detail->sum('quantity'),
                     'summary' => $sale->detail->pluck('product_name')->filter()->take(3)->implode('، '),
@@ -221,14 +230,25 @@ class CustomerController extends Controller
                 ->where('Order_type', 'Sale')
                 ->whereIn('sale_id', $stockGroups->map(fn ($items) => $items->first()->id))
                 ->get()->keyBy('sale_id');
+            $counterOrderLinks = CounterOrderItem::query()
+                ->where('source_record_type', 'counter_sale_receipt')
+                ->whereIn('source_record_id', $stockGroups->map(fn ($items) => $items->first()->counter_sale_receipt_id)->filter())
+                ->whereHas('counterOrder', fn ($query) => $query->where('user_id', $ownerId))
+                ->with('counterOrder:id,reference,serial_number')
+                ->get()
+                ->keyBy('source_record_id');
             $stockSales = $stockGroups
-                ->map(function ($items) use ($stockTransactions) {
+                ->map(function ($items) use ($stockTransactions, $counterOrderLinks) {
                     $first = $items->first();
                     $transaction = $stockTransactions->get($first->id);
+                    $counterOrder = $counterOrderLinks->get($first->counter_sale_receipt_id)?->counterOrder;
 
                     return (object) [
                         'id' => $first->id,
                         'source' => 'stock',
+                        'display_number' => $counterOrder?->displayNumber()
+                            ?: ($first->receipt?->receipt_number ?: '#'.$first->id),
+                        'counter_order_id' => $counterOrder?->id,
                         'created_at' => $first->created_at,
                         'items_count' => $items->count(),
                         'summary' => $items->map(fn ($item) => collect([$item->brand?->name, $item->type?->name, $item->color])->filter()->implode(' '))->filter()->take(3)->implode('، '),
@@ -448,11 +468,19 @@ class CustomerController extends Controller
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = $customer->measurementValues()->pluck('value', 'measurement_field_id');
         $measurementTemplates = $this->measurementTemplates();
+        $selectedTemplateId = (int) request('measurement_template_id', $customer->measurement_template_id);
+        $selectedMeasurementTemplate = $measurementTemplates->firstWhere('id', $selectedTemplateId);
+        $savedMeasurementValues = $this->measurements
+            ->savedMeasurementRows($customer, Auth::user()->businessOwnerId(), $selectedMeasurementTemplate)
+            ->pluck('value', 'source_key');
         $parentCustomer = $customer->parent_id !== null
             ? $this->ownedCustomer($customer->parent_id)
             : null;
 
-        return view('customer.edit', compact('customer', 'optionTypes', 'measurementFields', 'measurementValues', 'measurementTemplates', 'parentCustomer'));
+        return view('customer.edit', compact(
+            'customer', 'optionTypes', 'measurementFields', 'measurementValues',
+            'measurementTemplates', 'parentCustomer', 'savedMeasurementValues'
+        ));
     }
 
     /**
@@ -836,31 +864,92 @@ class CustomerController extends Controller
         );
     }
 
-    private function customerDirectoryQuery(bool $canViewBalances, string $search = '')
+    private function customerDirectoryQuery(string $search = '')
     {
         $ownerId = Auth::user()->businessOwnerId();
         $search = trim($search);
+        $familyParentIds = collect();
+
+        if ($search !== '') {
+            $like = '%'.addcslashes($search, '%_\\').'%';
+            $familyParentIds = Customers::query()
+                ->where('user_id', $ownerId)
+                ->whereNotNull('parent_id')
+                ->where(function ($family) use ($like) {
+                    $family->where('name', 'like', $like)
+                        ->orWhere('phone_number1', 'like', $like);
+                })
+                ->pluck('parent_id')
+                ->filter()
+                ->map(fn ($parentId) => (int) $parentId)
+                ->unique()
+                ->values();
+        }
 
         return Customers::query()
             ->where('user_id', $ownerId)
-            ->with(['primaryCustomer' => function ($query) use ($canViewBalances, $ownerId) {
-                $query->when($canViewBalances, fn ($account) => $account->withSum([
-                    'transactions as current_balance' => fn ($transactions) => $transactions->where('userId', $ownerId),
-                ], 'remainingBalance'));
-            }])
-            ->when($search !== '', function ($query) use ($search) {
+            ->whereNull('parent_id')
+            ->with(['familyMeasurementProfiles' => fn ($query) => $query
+                ->with('measurementTemplate')])
+            ->when($search !== '', function ($query) use ($search, $familyParentIds) {
                 $like = '%'.addcslashes($search, '%_\\').'%';
-                $query->where(function ($searchQuery) use ($search, $like) {
+                $query->where(function ($searchQuery) use ($search, $like, $familyParentIds) {
                     $searchQuery->where('name', 'like', $like)
                         ->orWhere('phone_number1', 'like', $like);
+                    if ($familyParentIds->isNotEmpty()) {
+                        $searchQuery->orWhereIn('id', $familyParentIds->all());
+                    }
                     if (ctype_digit($search)) {
                         $searchQuery->orWhere('serial_number', (int) $search);
                     }
                 });
-            })
-            ->when($canViewBalances, fn ($query) => $query->withSum([
-                'transactions as current_balance' => fn ($transactions) => $transactions->where('userId', $ownerId),
-            ], 'remainingBalance'));
+            });
+    }
+
+    private function hydrateCustomerDirectory(LengthAwarePaginator $customers, bool $canViewBalances): void
+    {
+        $ownerId = Auth::user()->businessOwnerId();
+        $pageCustomers = $customers->getCollection();
+        $customerIds = $pageCustomers->pluck('id')->map(fn ($id) => (string) $id)->all();
+
+        if ($canViewBalances && $customerIds !== []) {
+            $balances = Transaction::query()
+                ->where('userId', (string) $ownerId)
+                ->whereIn('customerId', $customerIds)
+                ->selectRaw('customerId, SUM(remainingBalance) AS current_balance')
+                ->groupBy('customerId')
+                ->get()
+                ->keyBy(fn ($balance) => (string) $balance->customerId);
+
+            foreach ($pageCustomers as $customer) {
+                $customer->setAttribute(
+                    'current_balance',
+                    (float) ($balances->get((string) $customer->id)->current_balance ?? 0)
+                );
+            }
+        }
+
+        $profiles = $pageCustomers->flatMap(
+            fn (Customers $customer) => $customer->familyMeasurementProfiles
+        );
+        $profileIds = $profiles->pluck('id')->map(fn ($id) => (string) $id)->all();
+        if ($profileIds === []) {
+            return;
+        }
+
+        $orderTotals = Order::query()
+            ->where('userId', (string) $ownerId)
+            ->whereIn('sub_customer', $profileIds)
+            ->selectRaw('sub_customer, COUNT(*) AS profile_orders_count, SUM(totalPayment) AS orders_total')
+            ->groupBy('sub_customer')
+            ->get()
+            ->keyBy(fn ($orderTotal) => (string) $orderTotal->sub_customer);
+
+        foreach ($profiles as $profile) {
+            $summary = $orderTotals->get((string) $profile->id);
+            $profile->setAttribute('profile_orders_count', (int) ($summary->profile_orders_count ?? 0));
+            $profile->setAttribute('orders_total', (float) ($summary->orders_total ?? 0));
+        }
     }
 
     private function customerDirectoryStats(bool $canViewBalances): array
@@ -880,10 +969,8 @@ class CustomerController extends Controller
             ->selectRaw('customerId, SUM(remainingBalance) AS current_balance')
             ->where('userId', $ownerId)
             ->groupBy('customerId');
-        $stats = Customers::query()
-            ->where('customers.user_id', $ownerId)
-            ->whereNull('customers.parent_id')
-            ->leftJoinSub($balanceTotals, 'customer_balances', 'customer_balances.customerId', '=', 'customers.id')
+        $stats = DB::query()
+            ->fromSub($balanceTotals, 'customer_balances')
             ->selectRaw('COALESCE(SUM(customer_balances.current_balance), 0) AS total_balance')
             ->selectRaw('SUM(CASE WHEN COALESCE(customer_balances.current_balance, 0) > 0 THEN 1 ELSE 0 END) AS customers_with_balance')
             ->first();
@@ -893,36 +980,6 @@ class CustomerController extends Controller
             'totalBalance' => (float) ($stats->total_balance ?? 0),
             'settledCustomers' => max(0, $customerCount - $customersWithBalance),
         ];
-    }
-
-    private function applyFamilyProfileBalances($customers, bool $canViewBalances): void
-    {
-        if (! $canViewBalances) {
-            return;
-        }
-
-        $familyProfiles = $customers->whereNotNull('parent_id');
-        if ($familyProfiles->isEmpty()) {
-            return;
-        }
-
-        $ownerId = Auth::user()->businessOwnerId();
-        $accountIds = $familyProfiles->pluck('parent_id')->map(fn ($id) => (int) $id)->unique()->values();
-        $ordersByProfile = Order::where('userId', $ownerId)
-            ->whereIn('customerId', $accountIds)
-            ->get(['id', 'customerId', 'sub_customer'])
-            ->groupBy(fn (Order $order) => (int) ($order->sub_customer ?: $order->customerId));
-        $balancesByAccount = $accountIds->mapWithKeys(fn (int $accountId) => [
-            $accountId => $this->customerLedger->orderBalances($ownerId, $accountId),
-        ]);
-
-        $familyProfiles->each(function (Customers $profile) use ($ordersByProfile, $balancesByAccount) {
-            $accountBalances = $balancesByAccount->get((int) $profile->parent_id, collect());
-            $profileBalance = $ordersByProfile->get((int) $profile->id, collect())
-                ->sum(fn (Order $order) => (float) $accountBalances->get((int) $order->id, 0));
-
-            $profile->setAttribute('current_balance', round($profileBalance, 2));
-        });
     }
 
     private function measurementTemplates()

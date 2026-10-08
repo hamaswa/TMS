@@ -19,16 +19,15 @@
     .section-icon{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:#eaf4fb;color:#1769aa;flex:0 0 42px}
     .edit-field label{display:block;font-weight:700;color:#334e68;line-height:2;margin-bottom:.55rem}.edit-field .form-control{min-height:50px;height:auto;border-color:#d8e2ec;border-radius:10px;background:#fff}
     .edit-field textarea.form-control{height:auto;min-height:120px;resize:vertical}.edit-field .form-control:focus{border-color:#1769aa;box-shadow:0 0 0 .18rem rgba(23,105,170,.12)}
-    .measurement-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}
+    .measurement-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem}
     .template-layout-grid{display:grid;grid-template-columns:1fr 1fr;align-items:start}.template-layout-grid>.edit-section{height:100%}.template-layout-grid>.edit-section:first-child{border-left:1px solid #e8eef5}
     .template-layout-grid.template-one-column{grid-template-columns:1fr}.template-layout-grid.template-one-column>.edit-section:first-child{border-left:0;border-bottom:1px solid #e8eef5}
     .measurement-template-picker{background:#f7fbff;border:1px solid #cfe3f3;border-radius:14px;padding:1rem 1.1rem}.measurement-template-picker select{border-radius:10px;border-color:#b9d5e8}
     .preference-empty{border:1px dashed #cbd5e0;border-radius:12px;padding:1rem;color:#718096;background:#fafcff}
     .security-panel{height:100%;background:#fff8e8;border:1px solid #f5dfaa;border-radius:14px;padding:1.1rem}
     .edit-actions{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1.25rem 1.5rem;background:#fbfdff}
-    @media(max-width:991px){.measurement-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.template-layout-grid{grid-template-columns:1fr}.template-layout-grid>.edit-section:first-child{border-left:0}}
-    @media(max-width:767px){.measurement-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-edit-hero{border-radius:14px;padding:1.25rem}.edit-section{padding:1.1rem}.edit-actions{position:static;flex-direction:column-reverse}.edit-actions .btn{width:100%}}
-    @media(max-width:420px){.measurement-grid{grid-template-columns:1fr}}
+    @media(max-width:991px){.template-layout-grid{grid-template-columns:1fr}.template-layout-grid>.edit-section:first-child{border-left:0}}
+    @media(max-width:767px){.customer-edit-hero{border-radius:14px;padding:1.25rem}.edit-section{padding:1.1rem}.edit-actions{position:static;flex-direction:column-reverse}.edit-actions .btn{width:100%}}
 </style>
 
 <section class="main-content customer-edit-page" dir="rtl">
@@ -103,16 +102,16 @@
                     @include('customer.partials.measurement-template-selector', ['selectedTemplateId' => old('measurement_template_id', request('measurement_template_id', $customer->measurement_template_id))])
                     @php
                         $systemMeasurements = [
-                            'length' => ['لمبائی', $customer->length],
-                            'arms' => ['بازو', $customer->arms],
-                            'teraa' => ['تیرا', $customer->teraa],
-                            'senaChorai' => ['سینہ چوڑائی', $customer->senaChorai],
-                            'damanchorai' => ['دامن چوڑائی', $customer->damanchorai],
-                            'shalwar' => ['شلوار', $customer->shalwar],
-                            'pancha' => ['پائنچہ', $customer->pancha],
-                            'shalwarGheer' => ['شلوار گھیر', $customer->shalwarGheer],
-                            'monda' => ['مونڈھا', $customer->shoulder],
-                            'chuta' => ['چوٹا', $customer->chuta],
+                            'length' => ['لمبائی', $savedMeasurementValues->get('system.length')],
+                            'arms' => ['بازو', $savedMeasurementValues->get('system.arms')],
+                            'teraa' => ['تیرا', $savedMeasurementValues->get('system.teraa')],
+                            'senaChorai' => ['سینہ چوڑائی', $savedMeasurementValues->get('system.senaChorai')],
+                            'damanchorai' => ['دامن چوڑائی', $savedMeasurementValues->get('system.damanchorai')],
+                            'shalwar' => ['شلوار', $savedMeasurementValues->get('system.shalwar')],
+                            'pancha' => ['پائنچہ', $savedMeasurementValues->get('system.pancha')],
+                            'shalwarGheer' => ['شلوار گھیر', $savedMeasurementValues->get('system.shalwarGheer')],
+                            'monda' => ['مونڈھا', $savedMeasurementValues->get('system.shoulder')],
+                            'chuta' => ['چوٹا', $savedMeasurementValues->get('system.chuta')],
                         ];
                     @endphp
                     <div class="measurement-grid" data-template-column="right">
@@ -143,7 +142,7 @@
                                 @php
                                     $column = $type->type === 'daaman' ? 'Daaman' : $type->type;
                                     $templateSystemField = $column;
-                                    $customerValue = trim((string) data_get($customer, $column, ''));
+                                    $customerValue = trim((string) $savedMeasurementValues->get('system.'.$column, ''));
                                 @endphp
                                 <div class="form-group edit-field mb-0" data-template-field="system.{{ $templateSystemField }}" data-default-column="left">
                                     <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>

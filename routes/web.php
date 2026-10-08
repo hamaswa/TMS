@@ -218,6 +218,9 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::post('/counter-orders', [CounterOrderController::class, 'store'])->name('counter-orders.store');
         Route::get('/counter-orders/{counterOrder}/edit', [CounterOrderController::class, 'edit'])->name('counter-orders.edit');
         Route::get('/counter-orders/{counterOrder}/print', [CounterOrderController::class, 'print'])->name('counter-orders.print');
+        Route::get('/counter-orders/{counterOrder}/items/{item}/print', [CounterOrderController::class, 'printItem'])->name('counter-orders.items.print');
+        Route::get('/counter-orders/{counterOrder}/profiles/{profile}/measurements', [CounterOrderController::class, 'editMeasurements'])->name('counter-orders.measurements.edit');
+        Route::patch('/counter-orders/{counterOrder}/profiles/{profile}/measurements', [CounterOrderController::class, 'updateMeasurements'])->name('counter-orders.measurements.update');
         Route::post('/counter-orders/{counterOrder}/cloth-items', [CounterOrderController::class, 'addCloth'])->name('counter-orders.cloth-items.store');
         Route::post('/counter-orders/{counterOrder}/tailoring-items', [CounterOrderController::class, 'addTailoring'])->name('counter-orders.tailoring-items.store');
         Route::patch('/counter-orders/{counterOrder}/items/{item}', [CounterOrderController::class, 'updateItem'])->name('counter-orders.items.update');

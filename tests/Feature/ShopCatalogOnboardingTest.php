@@ -43,7 +43,7 @@ class ShopCatalogOnboardingTest extends TestCase
             ->assertSee('assets/images/logo.jpg')
             ->assertSee('id="brandDirectorySearch"', false)
             ->assertSee('class="dropdown brand-actions"', false)
-            ->assertSeeText('برانڈ QR پرنٹ کریں')
+            ->assertDontSeeText('برانڈ QR پرنٹ کریں')
             ->assertSeeText('برانڈ میں ترمیم کریں');
 
         $brand = ClothBrand::where('user_id', $owner->id)->firstOrFail();
@@ -92,9 +92,10 @@ class ShopCatalogOnboardingTest extends TestCase
             ->assertSee(route('admin.clothbrand.index'), false)
             ->assertSeeText('کپڑے کی قسم بنائیں')
             ->assertSeeText('برانڈ بنائیں')
-            ->assertSeeText('مقدار درج کریں')
-            ->assertSee('id="colorPreset"', false)
-            ->assertSeeText('نہیں — پورے سیٹ کی ایک مجموعی مقدار')
+            ->assertSeeText('رنگ شامل کریں')
+            ->assertSee('id="colorRows"', false)
+            ->assertSeeText('رنگوں کا مشترکہ اسٹاک')
+            ->assertSeeText('ہر رنگ کا الگ اسٹاک')
             ->assertSee('name="online_availability"', false)
             ->assertSee('<h1', false);
 
@@ -348,6 +349,86 @@ class ShopCatalogOnboardingTest extends TestCase
             'movement_type' => 'storefront_order',
             'quantity' => -4,
         ]);
+    }
+
+    public function test_excel_style_inventory_grid_creates_and_updates_color_rows(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => false, 'clothing_access' => true]);
+        $owner->assignRole($role);
+        $brand = ClothBrand::create(['name' => 'Grid Brand', 'user_id' => $owner->id]);
+        $type = ClothType::create(['name' => 'Grid Type', 'user_id' => $owner->id]);
+
+        $this->actingAs($owner)->post(route('admin.cloth.store'), [
+            'inventory_grid' => 1,
+            'name' => 'Grid Set',
+            'cloth_type_id' => $type->id,
+            'cloth_brand_id' => $brand->id,
+            'stock_mode' => 'per_color',
+            'color_names' => ['Navy', 'Maroon'],
+            'color_hexes' => ['#112244', '#771122'],
+            'color_lengths' => [12.5, 8],
+            'price' => 900,
+            'sale_price' => 1400,
+            'online_availability' => 'pos_only',
+        ])->assertRedirect(route('admin.cloth.index'));
+
+        $cloth = Cloth::where('user_id', $owner->id)->sole();
+        $this->assertSame(Cloth::COLOR_TRACKING_PER_COLOR, $cloth->color_tracking_mode);
+        $this->assertSame(['Navy', 'Maroon'], $cloth->colors()->orderBy('id')->pluck('color')->all());
+        $this->assertSame(['#112244', '#771122'], $cloth->colors()->orderBy('id')->pluck('color_hex')->all());
+
+        $colors = $cloth->colors()->orderBy('id')->get();
+        $this->actingAs($owner)->put(route('admin.cloth.update', $cloth), [
+            'inventory_grid' => 1,
+            'name' => 'Grid Set Updated',
+            'cloth_type_id' => $type->id,
+            'cloth_brand_id' => $brand->id,
+            'stock_mode' => 'per_color',
+            'color_ids' => $colors->pluck('id')->all(),
+            'original_color_names' => $colors->pluck('color')->all(),
+            'color_names' => ['Navy Blue', 'Maroon'],
+            'color_hexes' => ['#102030', '#771122'],
+            'color_lengths' => [14, 7],
+            'price' => 920,
+            'sale_price' => 1450,
+            'online_availability' => 'pos_only',
+        ])->assertRedirect(route('admin.cloth.index'));
+
+        $cloth->refresh();
+        $this->assertSame('Grid Set Updated', $cloth->name);
+        $this->assertSame(['Navy Blue', 'Maroon'], $cloth->colors()->orderBy('id')->pluck('color')->all());
+        $this->assertSame([14.0, 7.0], $cloth->colors()->orderBy('id')->get()->map(fn ($color) => (float) $color->length)->all());
+    }
+
+    public function test_excel_style_inventory_grid_keeps_available_colors_on_one_shared_balance(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create(['tailoring_access' => false, 'clothing_access' => true]);
+        $owner->assignRole($role);
+        $brand = ClothBrand::create(['name' => 'Shared Grid Brand', 'user_id' => $owner->id]);
+        $type = ClothType::create(['name' => 'Shared Grid Type', 'user_id' => $owner->id]);
+
+        $this->actingAs($owner)->post(route('admin.cloth.store'), [
+            'inventory_grid' => 1,
+            'name' => 'Shared Grid Set',
+            'cloth_type_id' => $type->id,
+            'cloth_brand_id' => $brand->id,
+            'stock_mode' => 'shared',
+            'shared_length' => 40,
+            'color_names' => ['Pink', 'Turquoise'],
+            'color_hexes' => ['#FF69B4', '#40E0D0'],
+            'price' => 800,
+            'sale_price' => 1250,
+            'online_availability' => 'pos_only',
+        ])->assertRedirect(route('admin.cloth.index'));
+
+        $cloth = Cloth::where('user_id', $owner->id)->sole();
+        $this->assertSame(Cloth::COLOR_TRACKING_DISPLAY_ONLY, $cloth->color_tracking_mode);
+        $this->assertSame(['Pink', 'Turquoise'], $cloth->display_colors);
+        $this->assertSame(['Pink' => '#FF69B4', 'Turquoise' => '#40E0D0'], $cloth->display_color_codes);
+        $this->assertSame('عام', $cloth->colors()->sole()->color);
+        $this->assertSame(40.0, (float) $cloth->colors()->sole()->length);
     }
 
     public function test_client_can_create_cloth_without_color_and_print_its_qr_label(): void

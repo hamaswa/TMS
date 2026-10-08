@@ -357,6 +357,41 @@
             page: tms-receipt;
         }
 
+        html.tms-paper-receipt_80 body,
+        html.tms-paper-receipt_80 body p,
+        html.tms-paper-receipt_80 body small,
+        html.tms-paper-receipt_80 body label,
+        html.tms-paper-receipt_80 body .text-muted,
+        html.tms-paper-receipt_80 body .order-detail-label,
+        html.tms-paper-receipt_80 body .order-detail-value,
+        html.tms-paper-receipt_80 body .measurement-label,
+        html.tms-paper-receipt_80 body .measurement-value,
+        html.tms-paper-receipt_80 body .measurement-meta-cell,
+        html.tms-paper-receipt_80 body .order-tracking-qr__text,
+        html.tms-paper-receipt_80 body .tms-print-qr-reference {
+            color: #000 !important;
+            text-shadow: none !important;
+        }
+
+        html.tms-paper-receipt_80 body p,
+        html.tms-paper-receipt_80 body small,
+        html.tms-paper-receipt_80 body .text-muted,
+        html.tms-paper-receipt_80 body .order-detail-label,
+        html.tms-paper-receipt_80 body .order-detail-value,
+        html.tms-paper-receipt_80 body .measurement-label,
+        html.tms-paper-receipt_80 body .measurement-value,
+        html.tms-paper-receipt_80 body .measurement-meta-cell {
+            font-weight: 800 !important;
+        }
+
+        html.tms-paper-receipt_80 body .order-detail-row,
+        html.tms-paper-receipt_80 body .measurement-row > .col-6 > .d-flex,
+        html.tms-paper-receipt_80 body .stock-customer-info,
+        html.tms-paper-receipt_80 body .stock-item-card,
+        html.tms-paper-receipt_80 body .stock-order-summary {
+            border-color: #000 !important;
+        }
+
         @page tms-a4 {
             size: A4 portrait;
             margin: 12mm;

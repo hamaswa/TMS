@@ -202,6 +202,11 @@ class Customers extends Authenticatable
         return $this->hasMany(self::class, 'parent_id')->orderBy('name');
     }
 
+    public function profileOrders()
+    {
+        return $this->hasMany(Order::class, 'sub_customer', 'id');
+    }
+
     public function servernotifi()
     {
         return $this->hasMany(ServerNotifications::class, 'customer_id');

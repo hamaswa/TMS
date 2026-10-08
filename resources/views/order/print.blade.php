@@ -275,7 +275,7 @@
         }
 
         .measurement-header {
-            padding: 5mm 8px 0;
+            padding: 7mm 8px 0;
             break-inside: avoid;
             page-break-inside: avoid;
         }
@@ -307,10 +307,12 @@
 
         .measurement-meta-row {
             display: grid !important;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            align-items: start;
-            gap: 12px;
-            margin-bottom: 7px !important;
+            grid-template-columns: minmax(0, 42%) minmax(0, 58%);
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 5px !important;
+            padding-bottom: 4px;
+            border-bottom: 1px dotted #aaa;
         }
 
         .measurement-meta-cell {
@@ -329,6 +331,9 @@
             text-align: left;
             white-space: nowrap;
         }
+
+        .measurement-meta-label {text-align:right;white-space:nowrap}
+        .measurement-meta-value {text-align:left;overflow-wrap:anywhere}
 
         .measurement-footer {
             margin-top: 8px;
@@ -516,7 +521,7 @@
 
             #sizeSection {
                 margin-top: 0 !important;
-                padding-top: 0 !important;
+                padding-top: 4mm !important;
             }
 
             #orderSection>p:first-child {
@@ -550,7 +555,7 @@
 
 <body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
     @php
-        $displaySerial = $orderDetail->customers?->serial_number
+        $displaySerial = $receiptSerial ?? $orderDetail->customers?->serial_number
             ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
     @endphp
 
@@ -577,7 +582,7 @@
                 <div class="pl-3 pr-3" style="margin-top: 0px">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h2 class="receipt-reference">رسید نمبر # {{ $orderDetail->id }}
+                            <h2 class="receipt-reference">رسید نمبر {{ $receiptSerial ?? $orderDetail->id }}
                             </h2>
                         </div>
                         <div style="font-weight:900;">
@@ -629,7 +634,7 @@
                         <p class="order-footer-contact">{{ $setting->contact_no }}</p>
                         <p>{{ $setting->note }}</p>
                         <p class="receipt-builder-credit">Built by IT Linked</p>
-                        @if($printConfig['show_qr'])<p class="receipt-reference">ORDER REF: {{ $orderDetail->id }}</p>@endif
+                        @if($printConfig['show_qr'])<p class="receipt-reference">{{ $receiptSerial ? 'TECHNICAL REF' : 'ORDER REF' }}: {{ $orderDetail->id }}</p>@endif
                     </div>
                 </div>
 
@@ -643,33 +648,19 @@
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
                     <hr style="margin-top:4px;">
-                    <div class="desing-flex measurement-meta-row">
-                        <div class="measurement-meta-cell measurement-serial">
-                            Serial num: {{ $displaySerial }}
-                        </div>
-                        <div class="measurement-meta-cell" style="text-align:right;">
-                            {{ $orderDetail->customers->name }}
-                        </div>
-                    </div>
-                    <div class="desing-flex measurement-meta-row">
-                        <div class="measurement-meta-cell" style="text-align:left;">
-                            {{ $tailor?->name ?? 'بعد میں مقرر ہوگا' }}
-                        </div>
-                        <div class="measurement-meta-cell" style="text-align:right;">
-                            درزی کا نام
-                        </div>
-                    </div>
-                    <div class="desing-flex measurement-meta-row">
-                        <div class="measurement-meta-cell" style="direction:ltr;text-align:left;font-family:Arial,sans-serif;font-size:13px;white-space:nowrap;">
-                            {{ date('d-m-Y h:i A', strtotime($orderDetail->created_at)) }}
-                        </div>
-                        <div class="measurement-meta-cell" style="direction:ltr;text-align:right;font-family:Arial,sans-serif;font-size:14px;white-space:nowrap;">
-                            {{ $orderDetail->customers->phone_number1 }}
-                        </div>
-                    </div>
+                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آئٹم سیریل</span><strong class="measurement-meta-cell measurement-meta-value measurement-serial">{{ $displaySerial }}</strong></div>
+                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">گاہک</span><strong class="measurement-meta-cell measurement-meta-value">{{ $orderDetail->customers->name }}</strong></div>
+                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">درزی</span><strong class="measurement-meta-cell measurement-meta-value">{{ $tailor?->name ?? 'بعد میں مقرر ہوگا' }}</strong></div>
+                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">موبائل</span><strong class="measurement-meta-cell measurement-meta-value" dir="ltr">{{ $orderDetail->customers->phone_number1 }}</strong></div>
+                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آرڈر تاریخ</span><strong class="measurement-meta-cell measurement-meta-value" dir="ltr">{{ date('d-m-Y h:i A', strtotime($orderDetail->created_at)) }}</strong></div>
                     @if ($orderDetail->measurementTemplate)
                         <div class="measurement-meta-cell" style="margin-bottom:7px;text-align:center;">
                             {{ $orderDetail->measurementTemplate->name }}
+                        </div>
+                    @endif
+                    @if(filled($orderDetail->remarks))
+                        <div class="measurement-meta-cell" dir="auto" style="margin:8px 0;padding:7px 9px;border:1px solid #777;text-align:right;">
+                            <strong>خصوصی سلائی ہدایت:</strong> {{ $orderDetail->remarks }}
                         </div>
                     @endif
                     @if ($printMeasurements->count())

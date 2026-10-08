@@ -143,7 +143,8 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)->get(route('admin.order-print', $order))
             ->assertOk()
             ->assertViewIs('order.print')
-            ->assertSeeText('Serial num: 1404')
+            ->assertSeeText('آئٹم سیریل')
+            ->assertSeeText('1404')
             ->assertSeeText('موجودہ ادائیگی واجب')
             ->assertSeeText('گزشتہ ادائیگی کے')
             ->assertSeeText('کل ادائیگی واجب')
@@ -154,7 +155,8 @@ class LegacyRouteCleanupTest extends TestCase
         $this->actingAs($owner)->get(route('admin.order-prints', $order))
             ->assertOk()
             ->assertViewIs('order.prints')
-            ->assertSeeText('Serial num: 1404');
+            ->assertSeeText('آئٹم سیریل')
+            ->assertSeeText('1404');
     }
 
     public function test_receipts_are_locked_to_80mm_and_include_qr_references(): void

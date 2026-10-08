@@ -13,7 +13,7 @@ class CounterOrder extends Model
     public const STATUS_CLOSED = 'closed';
 
     protected $fillable = [
-        'reference', 'user_id', 'customer_id', 'sale_session_id', 'created_by_user_id',
+        'reference', 'serial_number', 'next_item_sequence', 'user_id', 'customer_id', 'sale_session_id', 'created_by_user_id',
         'claimed_by_user_id', 'status', 'subtotal', 'paid_amount', 'balance_amount',
         'note', 'confirmed_at', 'closed_at',
     ];
@@ -44,5 +44,17 @@ class CounterOrder extends Model
     public function isClosed(): bool
     {
         return $this->status === self::STATUS_CLOSED;
+    }
+
+    public function displayNumber(): string
+    {
+        return $this->serial_number ?: $this->reference;
+    }
+
+    public function scopeWhereIdentifier($query, string $identifier)
+    {
+        return $query->where(function ($query) use ($identifier) {
+            $query->where('serial_number', $identifier)->orWhere('reference', $identifier);
+        });
     }
 }

@@ -10,6 +10,13 @@ class Business extends Model
 {
     use HasFactory;
 
+    /**
+     * Permission checks run many times while the shared admin navigation is
+     * rendered. Cache subscription lookups on this model instance so one page
+     * request does not issue the same EXISTS/query dozens of times.
+     */
+    protected ?bool $subscriptionManagedCache = null;
+
     public const STATUS_PENDING = 'pending';
     public const STATUS_ACTIVE = 'active';
     public const STATUS_SUSPENDED = 'suspended';
@@ -115,7 +122,7 @@ class Business extends Model
 
     public function subscriptionIsManaged(): bool
     {
-        return $this->subscriptions()->exists();
+        return $this->subscriptionManagedCache ??= $this->subscriptions()->exists();
     }
 
     public function currentSubscription(): ?BusinessSubscription

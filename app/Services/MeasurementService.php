@@ -9,6 +9,7 @@ use App\Models\MeasurementTemplate;
 use App\Models\Order;
 use App\Models\OrderMeasurementValue;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class MeasurementService
@@ -218,10 +219,49 @@ class MeasurementService
     public function snapshotOrder(Order $order, Customers $customer, ?MeasurementTemplate $template = null): void
     {
         $template ??= $order->measurementTemplate;
-        $rows = $this->measurementRows($customer, (int) $order->userId, $template);
+        $rows = $this->savedMeasurementRows($customer, (int) $order->userId, $template);
+
+        if ($rows->isEmpty()) {
+            $rows = $this->measurementRows($customer, (int) $order->userId, $template);
+        }
 
         $order->measurementValues()->delete();
         $order->measurementValues()->createMany($rows->all());
+    }
+
+    public function savedMeasurementRows(
+        Customers $customer,
+        int $ownerId,
+        ?MeasurementTemplate $template,
+    ): Collection {
+        if (! $template) {
+            return $this->measurementRows($customer, $ownerId);
+        }
+
+        $history = CustomerMeasurementHistory::query()
+            ->where('user_id', $ownerId)
+            ->where('customer_id', $customer->id)
+            ->where('measurement_template_id', $template->id)
+            ->with('values')
+            ->latest('id')
+            ->first();
+
+        if ($history) {
+            return $history->values->map(fn ($value) => [
+                'measurement_field_id' => $value->measurement_field_id,
+                'source_key' => $value->source_key,
+                'label' => $value->label,
+                'value' => $value->value,
+                'unit' => $value->unit,
+                'sort_order' => $value->sort_order,
+            ])->sortBy('sort_order')->values();
+        }
+
+        if ((int) $customer->measurement_template_id === (int) $template->id) {
+            return $this->measurementRows($customer, $ownerId, $template);
+        }
+
+        return collect();
     }
 
     public function measurementRows(Customers $customer, int $ownerId, ?MeasurementTemplate $template = null): Collection
@@ -274,9 +314,23 @@ class MeasurementService
             return collect();
         }
 
+        return $this->missingRequiredMeasurementsFromRows(
+            $this->savedMeasurementRows($customer, $ownerId, $template),
+            $ownerId,
+            $template,
+        );
+    }
+
+    public function missingRequiredMeasurementsFromRows(
+        Collection $rows,
+        int $ownerId,
+        MeasurementTemplate $template,
+    ): Collection {
+        $savedValues = $rows->pluck('value', 'source_key');
+
         $missing = collect($template->system_fields ?? [])
             ->filter(fn (string $key) => array_key_exists($key, self::SYSTEM_FIELDS))
-            ->filter(fn (string $key) => $customer->{$key} === null || $customer->{$key} === '')
+            ->filter(fn (string $key) => blank($savedValues->get('system.'.$key)))
             ->map(fn (string $key) => self::SYSTEM_FIELDS[$key]['label']);
 
         $requiredCustomFields = MeasurementField::query()
@@ -286,12 +340,9 @@ class MeasurementService
             ->whereIn('id', array_map('intval', $template->custom_field_ids ?? []))
             ->orderBy('sort_order')
             ->get(['id', 'label']);
-        $availableCustomIds = $customer->measurementValues()
-            ->whereIn('measurement_field_id', $requiredCustomFields->pluck('id'))
-            ->whereNotNull('value')
-            ->where('value', '!=', '')
-            ->pluck('measurement_field_id')
-            ->map(fn ($id) => (int) $id);
+        $availableCustomIds = $savedValues->keys()
+            ->filter(fn ($key) => str_starts_with((string) $key, 'custom.'))
+            ->map(fn ($key) => (int) Str::after((string) $key, 'custom.'));
 
         return $missing->concat(
             $requiredCustomFields

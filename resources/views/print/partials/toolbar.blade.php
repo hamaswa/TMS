@@ -9,5 +9,8 @@
             >{{ $paperLabel }}</a>
         @endforeach
     @endif
-    <button type="button" onclick="window.history.back()">واپس جائیں</button>
+    <button type="button"
+        onclick="window.close(); window.setTimeout(function () { window.history.back(); }, 100);">
+        رسید بند کریں
+    </button>
 </nav>

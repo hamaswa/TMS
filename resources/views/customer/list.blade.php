@@ -244,6 +244,8 @@
         .customer-directory tbody tr:last-child td { border-bottom: 0 !important; }
         .customer-directory tbody tr:hover { background: #fbfdff; }
         .customer-directory tbody tr.is-selected { background: #eef5ff; box-shadow: inset -4px 0 #1769e0; }
+        .customer-account-row.has-family { cursor: pointer; }
+        .customer-account-row.has-family.is-family-open { background: #f7faff; box-shadow: inset -3px 0 #1769e0; }
 
         .customer-identity {
             display: flex;
@@ -287,6 +289,30 @@
         .customer-balance { direction: ltr; display: inline-block; font-size: 1.05rem; font-weight: 800; }
         .customer-balance.is-due { color: #cf3f4d; }
         .customer-balance.is-clear { color: #11945b; }
+        .customer-shared-balance-label { display: block; margin-top: 4px; color: #8794a7; font-size: .72rem; }
+        .customer-family-toggle { display: inline-grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; padding: 0; border: 1px solid #d4e1f2; border-radius: 8px; color: #1769e0; background: #fff; font-size: .72rem; }
+        .customer-family-toggle:hover, .customer-family-toggle:focus { border-color: #8eb9f3; background: #eef5ff; outline: 0; }
+        .customer-family-toggle i { transition: transform .18s ease; }
+        .customer-family-toggle[aria-expanded="true"] i { transform: rotate(-90deg); }
+        .customer-family-detail-row > td { min-height: 0 !important; padding: 0 !important; border: 0 !important; background: #f8fafc; }
+        .customer-family-rows { border-bottom: 1px solid #dce6f2; box-shadow: inset -3px 0 #90baf0; }
+        .customer-family-row { display: grid; grid-template-columns: 6% 32% 22% 20% 20%; align-items: center; min-height: 66px; background: #f8fafc; border-top: 1px solid #e5ebf3; }
+        .customer-family-row:hover { background: #f2f7fd; }
+        .customer-family-cell { min-width: 0; padding: 9px 18px; }
+        .customer-family-sequence { position: relative; height: 100%; color: #91a2b8; text-align: center; }
+        .customer-family-sequence::before { position: absolute; top: 0; bottom: 50%; right: 50%; width: 1px; background: #c8d6e7; content: ''; }
+        .customer-family-sequence span { position: relative; z-index: 1; display: inline-grid; place-items: center; width: 24px; height: 24px; margin-top: 20px; border-radius: 50%; background: #edf3fa; font-size: .65rem; }
+        .customer-family-identity { display: flex; align-items: center; gap: 10px; }
+        .customer-family-avatar { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 9px; color: #6b4cc4; background: #eee9ff; font-size: .84rem; font-weight: 800; }
+        .customer-family-identity strong, .customer-family-identity small, .customer-family-relation span, .customer-family-relation small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .customer-family-identity strong { color: #233a59; font-size: .9rem; }
+        .customer-family-identity small, .customer-family-relation small { margin-top: 2px; color: #8794a7; font-size: .71rem; }
+        .customer-family-relation span { color: #53647b; font-size: .82rem; font-weight: 700; }
+        .customer-family-orders small, .customer-family-orders strong { display: block; }
+        .customer-family-orders small { color: #8794a7; font-size: .7rem; }
+        .customer-family-orders strong { margin-bottom: 2px; color: #233a59; font-size: .88rem; direction: ltr; text-align: right; }
+        .customer-family-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+        .customer-family-actions .customer-row-action { min-height: 34px; padding: 5px 8px; font-size: .73rem; }
 
         .customer-row-actions { display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; }
         .customer-row-action {
@@ -342,6 +368,12 @@
         .customer-workspace .form-control { min-height: 43px; border-color: #d7e0ec; border-radius: 9px; }
         .customer-search-status { padding: 9px 17px; color: #718096; font-size: .82rem; border-top: 1px solid var(--customer-line); background: #fbfdff; }
         .customer-search-status.is-loading { color: #1769e0; }
+        .customer-server-pagination { display: flex; justify-content: center; padding: 14px 18px 2px; border-top: 1px solid var(--customer-line); background: #fff; }
+        .customer-server-pagination:empty { display: none; }
+        .customer-server-pagination nav { width: 100%; }
+        .customer-server-pagination .pagination { justify-content: center; margin: 0; direction: ltr; }
+        .customer-server-pagination .page-link { min-width: 38px; min-height: 38px; border-color: #dce5f0; color: #31506f; text-align: center; }
+        .customer-server-pagination .page-item.active .page-link { border-color: #1769e0; background: #1769e0; }
 
         @media (max-width: 1100px) {
             .customer-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -372,6 +404,15 @@
             .customer-row-actions { flex-wrap: nowrap; width: 100%; }
             .customer-primary-action { flex: 1 1 auto; }
             .customer-overflow-button { flex: 0 0 42px; }
+            .customer-family-detail-row { padding: 0 !important; }
+            .customer-family-detail-row > td { display: block !important; padding: 0 !important; }
+            .customer-family-detail-row > td::before { display: none; }
+            .customer-family-row { grid-template-columns: 34px minmax(0, 1fr); gap: 0; padding: 10px 12px; }
+            .customer-family-cell { padding: 6px 9px; }
+            .customer-family-sequence { grid-row: 1 / span 4; }
+            .customer-family-sequence span { margin-top: 10px; }
+            .customer-family-relation, .customer-family-orders, .customer-family-actions { grid-column: 2; }
+            .customer-family-actions .customer-row-action { flex: 1 1 auto; }
         }
 
         @media (max-width: 480px) {
@@ -463,7 +504,7 @@
                 <article class="customer-stat">
                     <span class="customer-stat__icon"><i class="fas fa-exclamation-circle"></i></span>
                     <div>
-                        <div class="customer-stat__label">بقایا والے گاہک</div>
+                        <div class="customer-stat__label">بقایا والے کھاتے</div>
                         <div id="customerStatDue" class="customer-stat__value">{{ $canViewBalances ? number_format($customersWithBalance) : '—' }}</div>
                     </div>
                 </article>
@@ -496,14 +537,21 @@
                                 <th scope="col">#</th>
                                 <th scope="col">گاہک</th>
                                 <th scope="col" class="no-sort">فون نمبر</th>
-                                <th scope="col" class="no-sort">موجودہ بقایا</th>
+                                <th scope="col" class="no-sort">مشترکہ بقایا</th>
                                 <th scope="col" class="no-sort">فوری کارروائیاں</th>
                             </tr>
                         </thead>
                         <tbody>@include('customer.partials.directory-rows')</tbody>
                     </table>
                 </div>
-                <div id="customerSearchStatus" class="customer-search-status">کل {{ number_format($customers->count()) }} گاہک موجود ہیں۔ صفحات کے ذریعے تمام ریکارڈ دیکھیں۔</div>
+                <div id="customerPagination" class="customer-server-pagination">{{ $customers->onEachSide(1)->links() }}</div>
+                <div id="customerSearchStatus" class="customer-search-status">
+                    @if($customers->total())
+                        کل {{ number_format($customers->total()) }} گاہکوں میں سے {{ number_format($customers->firstItem()) }} تا {{ number_format($customers->lastItem()) }} دکھائے جا رہے ہیں۔
+                    @else
+                        کوئی گاہک موجود نہیں۔
+                    @endif
+                </div>
             </section>
 
         </div>
@@ -572,15 +620,23 @@
     <script>
         $(document).ready(function () {
             var customerSearchTimer = null;
+            var customerSearchRequest = null;
             var customerTable = $('#cc-table-data-customer-list');
             var customerSearchStatus = $('#customerSearchStatus');
-            var customerDataTable = customerTable.DataTable({
-                dom: 'lrtip',
-                pageLength: 10,
-                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'تمام']],
-                order: [[0, 'desc']],
-                columnDefs: [{ targets: [2, 3, 4], orderable: false }]
-            });
+            var customerPagination = $('#customerPagination');
+            var customerDataTable;
+
+            function initializeCustomerTable() {
+                customerDataTable = customerTable.DataTable({
+                    dom: 't',
+                    paging: false,
+                    searching: false,
+                    info: false,
+                    ordering: false
+                });
+            }
+
+            initializeCustomerTable();
 
             function setCustomerMenuOverflow(menu, isOpen) {
                 var dropdown = $(menu);
@@ -600,26 +656,82 @@
                 return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
 
-            function updateCustomerStatus() {
-                var search = $('#customerDirectorySearch').val().trim();
-                var filtered = customerDataTable.rows({ search: 'applied' }).count();
-                var total = customerDataTable.rows().count();
-                customerSearchStatus.removeClass('is-loading').text(
-                    search
-                        ? filtered + ' ملتے جلتے گاہک دکھائے جا رہے ہیں۔'
-                        : 'کل ' + total + ' گاہک موجود ہیں۔ صفحات کے ذریعے تمام ریکارڈ دیکھیں۔'
-                );
+            function customerStatusText(total, from, to) {
+                if (!total) return 'کوئی گاہک موجود نہیں۔';
+                return 'کل ' + Number(total).toLocaleString('en-US') + ' گاہکوں میں سے '
+                    + Number(from).toLocaleString('en-US') + ' تا ' + Number(to).toLocaleString('en-US')
+                    + ' دکھائے جا رہے ہیں۔';
             }
 
-            customerDataTable.on('draw', updateCustomerStatus);
-            updateCustomerStatus();
+            function loadCustomerDirectory(url) {
+                if (customerSearchRequest) customerSearchRequest.abort();
+                customerSearchStatus.addClass('is-loading').text('گاہک تلاش کیے جا رہے ہیں…');
+                customerSearchRequest = $.ajax({
+                    url: url,
+                    type: 'GET',
+                    dataType: 'json',
+                    headers: { Accept: 'application/json' },
+                    success: function (response) {
+                        customerDataTable.destroy();
+                        customerTable.find('tbody').html(response.html);
+                        initializeCustomerTable();
+                        customerPagination.html(response.pagination || '');
+                        customerSearchStatus.removeClass('is-loading').text(
+                            customerStatusText(response.count, response.from, response.to)
+                        );
+                    },
+                    error: function (xhr, status) {
+                        if (status === 'abort') return;
+                        customerSearchStatus.removeClass('is-loading').text('گاہکوں کی فہرست لوڈ نہیں ہو سکی۔ دوبارہ کوشش کریں۔');
+                    },
+                    complete: function () {
+                        customerSearchRequest = null;
+                    }
+                });
+            }
+
+            function toggleCustomerFamily(parentRow) {
+                var dataRow = customerDataTable.row(parentRow);
+                var button = parentRow.find('.customer-family-toggle');
+
+                if (dataRow.child.isShown()) {
+                    dataRow.child.hide();
+                    button.attr('aria-expanded', 'false');
+                    parentRow.removeClass('is-family-open');
+                    return;
+                }
+
+                var template = parentRow.find('template.customer-family-template').get(0);
+                if (!template) return;
+
+                dataRow.child(template.innerHTML, 'customer-family-detail-row').show();
+                button.attr('aria-expanded', 'true');
+                parentRow.addClass('is-family-open');
+            }
+
+            $(document).on('click', '.customer-family-toggle', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                toggleCustomerFamily($(this).closest('tr'));
+            });
+
+            $(document).on('click', '.customer-account-row.has-family', function (event) {
+                if ($(event.target).closest('a, button, form, input, select, textarea, .dropdown-menu').length) return;
+                toggleCustomerFamily($(this));
+            });
 
             $('#customerDirectorySearch').on('input', function () {
                 var search = this.value.trim();
                 clearTimeout(customerSearchTimer);
                 customerSearchTimer = setTimeout(function () {
-                    customerDataTable.search(search).draw();
-                }, 200);
+                    loadCustomerDirectory(customerTable.data('search-url') + '?' + $.param({ search: search }));
+                }, 300);
+            });
+
+            $(document).on('click', '#customerPagination a', function (event) {
+                event.preventDefault();
+                var url = $(this).attr('href');
+                if (url) loadCustomerDirectory(url);
             });
 
             $('#myModalpayment form').on('submit', function (event) {

@@ -55,7 +55,7 @@
                 <div class="tms-side-submenu {{ request()->routeIs('admin.stock.*','admin.cloth.*','admin.clothtype.*','admin.clothbrand.*','admin.inventory-ledger.*','admin.inventory-valuation.*') ? 'is-open' : '' }}">
                     <a class="{{ request()->routeIs('admin.cloth.index','admin.cloth.show') ? 'is-active' : '' }}" href="{{ route('admin.cloth.index') }}"><i class="fas fa-th-list"></i>کپڑوں کی فہرست</a>
                     <a class="{{ request()->routeIs('admin.cloth.create') ? 'is-active' : '' }}" href="{{ route('admin.cloth.create') }}"><i class="fas fa-plus-circle"></i>نیا کپڑا شامل کریں</a>
-                    <a class="{{ request()->routeIs('admin.cloth.qr-labels') ? 'is-active' : '' }}" href="{{ route('admin.cloth.qr-labels') }}"><i class="fas fa-qrcode"></i>سیٹ QR لیبل</a>
+                    <a class="{{ request()->routeIs('admin.cloth.qr-labels') ? 'is-active' : '' }}" href="{{ route('admin.cloth.qr-labels') }}" target="_blank" rel="noopener"><i class="fas fa-qrcode"></i>تمام سیٹ QR پرنٹ</a>
                     <a class="{{ request()->routeIs('admin.clothtype.*') ? 'is-active' : '' }}" href="{{ route('admin.clothtype.index') }}"><i class="fas fa-tags"></i>کپڑے کی اقسام</a>
                     <a class="{{ request()->routeIs('admin.clothbrand.*') ? 'is-active' : '' }}" href="{{ route('admin.clothbrand.index') }}"><i class="fas fa-copyright"></i>کپڑے کے برانڈز</a>
                     <a class="{{ request()->routeIs('admin.inventory-ledger.*') ? 'is-active' : '' }}" href="{{ route('admin.inventory-ledger.index') }}"><i class="fas fa-exchange-alt"></i>اسٹاک کھاتہ</a>

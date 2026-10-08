@@ -7,12 +7,14 @@ use App\Models\Cloth;
 use App\Models\CounterOrder;
 use App\Models\CounterOrderItem;
 use App\Models\CounterSaleReceipt;
+use App\Models\CustomerMeasurementHistory;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\SaleSession;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\CounterOrderService;
+use App\Services\CounterOrderNumberService;
 use App\Services\MeasurementService;
 use App\Services\PrintDocumentService;
 use App\Support\PaymentMethods;
@@ -97,6 +99,19 @@ class CounterOrderController extends Controller
             : $profiles->first()?->id;
         $templates = $canAddTailoring ? MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
             ->orderByDesc('is_default')->orderBy('name')->get() : collect();
+        $historyTemplateIds = CustomerMeasurementHistory::query()
+            ->where('user_id', $ownerId)
+            ->whereIn('customer_id', $profiles->pluck('id'))
+            ->whereNotNull('measurement_template_id')
+            ->get(['customer_id', 'measurement_template_id'])
+            ->groupBy('customer_id');
+        $profileTemplateIds = $profiles->mapWithKeys(function (Customers $profile) use ($historyTemplateIds, $templates) {
+            $ids = collect([$profile->measurement_template_id])
+                ->merge($historyTemplateIds->get($profile->id, collect())->pluck('measurement_template_id'))
+                ->filter()->map(fn ($id) => (int) $id)->unique();
+
+            return [$profile->id => $templates->whereIn('id', $ids)->pluck('id')->values()->all()];
+        });
         $paymentMethods = PaymentMethods::LABELS;
         $receiptLinks = CounterSaleReceipt::where('user_id', $ownerId)
             ->whereIn('id', $counterOrder->items->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id'))
@@ -105,7 +120,7 @@ class CounterOrderController extends Controller
         return view('counter-orders.edit', compact(
             'counterOrder', 'canAddCloth', 'canAddTailoring', 'cloths', 'profiles',
             'templates', 'paymentMethods', 'receiptLinks', 'selectedProfileId',
-            'canManageAllDrafts', 'canManageAllItems'
+            'canManageAllDrafts', 'canManageAllItems', 'profileTemplateIds'
         ));
     }
 
@@ -133,6 +148,143 @@ class CounterOrderController extends Controller
         );
 
         return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig'));
+    }
+
+    public function printItem(
+        Request $request,
+        CounterOrder $counterOrder,
+        CounterOrderItem $item,
+        PrintDocumentService $documents,
+    ): View {
+        $this->authorizeOrder($request, $counterOrder);
+        abort_unless((int) $item->counter_order_id === (int) $counterOrder->id, 404);
+        abort_unless($item->status === CounterOrderItem::STATUS_CONFIRMED, 404);
+
+        $counterOrder->load(['customer']);
+        $item->load(['cloth.brand', 'cloth.type', 'measurementProfile', 'measurementTemplate']);
+        $setting = Setting::ensureDefaultFor($request->user());
+        $printConfig = $documents->make(
+            $setting,
+            $request,
+            'counter-order-item',
+            $item->item_serial ?: $counterOrder->reference.'-'.$item->id,
+        );
+        $singleItem = $item;
+
+        return view('counter-orders.print', compact(
+            'counterOrder', 'setting', 'printConfig', 'singleItem'
+        ));
+    }
+
+    public function editMeasurements(
+        Request $request,
+        CounterOrder $counterOrder,
+        Customers $profile,
+        MeasurementService $measurements,
+    ): View {
+        $this->authorizeOrder($request, $counterOrder);
+        abort_unless($this->canManageTailoring($request), 403);
+        abort_if($counterOrder->isClosed(), 409, 'This order is closed.');
+
+        $ownerId = $request->user()->businessOwnerId();
+        $this->authorizeMeasurementProfile($profile, $counterOrder, $ownerId);
+        $template = MeasurementTemplate::where('user_id', $ownerId)
+            ->where('is_active', true)
+            ->with('templateOptions.optionType')
+            ->findOrFail($request->integer('measurement_template_id'));
+        abort_unless($this->profileHasSavedTemplate($profile, $template, $ownerId), 404);
+        $fields = $measurements->fieldsForTemplate($measurements->activeFields($ownerId), $template);
+        $savedRows = $measurements->savedMeasurementRows($profile, $ownerId, $template);
+        $savedValues = $savedRows->pluck('value', 'source_key');
+        $systemValues = collect($template->system_fields ?? [])
+            ->mapWithKeys(fn ($key) => [$key => $savedValues->get('system.'.$key)]);
+        $customValues = $fields->mapWithKeys(fn ($field) => [
+            $field->id => $savedValues->get('custom.'.$field->id),
+        ]);
+        $preferenceChoices = $template->templateOptions
+            ->groupBy(fn ($option) => $option->optionType?->type === 'daaman' ? 'Daaman' : $option->optionType?->type)
+            ->map(fn ($options) => $options->pluck('Name')->values())
+            ->filter(fn ($options, $key) => filled($key));
+        $layout = collect($template->field_layout ?? [])->keyBy('source');
+
+        return view('counter-orders.partials.measurement-form', compact(
+            'counterOrder', 'profile', 'template', 'fields', 'customValues',
+            'preferenceChoices', 'layout', 'systemValues'
+        ));
+    }
+
+    public function updateMeasurements(
+        Request $request,
+        CounterOrder $counterOrder,
+        Customers $profile,
+        MeasurementService $measurements,
+    ): JsonResponse {
+        $this->authorizeOrder($request, $counterOrder);
+        abort_unless($this->canManageTailoring($request), 403);
+        abort_if($counterOrder->isClosed(), 409, 'This order is closed.');
+
+        $ownerId = $request->user()->businessOwnerId();
+        $this->authorizeMeasurementProfile($profile, $counterOrder, $ownerId);
+        $template = MeasurementTemplate::where('user_id', $ownerId)
+            ->where('is_active', true)
+            ->with('templateOptions.optionType')
+            ->findOrFail($request->integer('measurement_template_id'));
+        abort_unless($this->profileHasSavedTemplate($profile, $template, $ownerId), 404);
+        $fields = $measurements->fieldsForTemplate($measurements->activeFields($ownerId), $template);
+        $preferenceChoices = $template->templateOptions
+            ->groupBy(fn ($option) => $option->optionType?->type === 'daaman' ? 'Daaman' : $option->optionType?->type)
+            ->map(fn ($options) => $options->pluck('Name')->values())
+            ->filter(fn ($options, $key) => filled($key));
+
+        $rules = [
+            'measurement_template_id' => ['required', 'integer', Rule::in([$template->id])],
+            'system_measurements' => ['nullable', 'array'],
+        ];
+        foreach ($template->system_fields ?? [] as $key) {
+            if (! isset(MeasurementService::SYSTEM_FIELDS[$key])) {
+                continue;
+            }
+            $meta = MeasurementService::SYSTEM_FIELDS[$key];
+            $rules['system_measurements.'.$key] = $meta['unit'] === 'inch'
+                ? ['required', 'numeric', 'min:0']
+                : array_values(array_filter([
+                    'required', 'string', 'max:255',
+                    $preferenceChoices->has($key) ? Rule::in($preferenceChoices->get($key)->all()) : null,
+                ]));
+        }
+        $validated = $request->validate(
+            array_merge($rules, $measurements->rules($fields)),
+            [],
+            $measurements->attributes($fields),
+        );
+
+        $changed = $measurements->syncCustomerFromOrder(
+            $profile,
+            $ownerId,
+            $fields,
+            $validated['system_measurements'] ?? [],
+            $validated['custom_measurements'] ?? [],
+            $template,
+            $request->user()->id,
+        );
+        $snapshot = $measurements->measurementRows($profile->fresh(), $ownerId, $template)->values()->all();
+        $counterOrder->items()
+            ->where('type', CounterOrderItem::TYPE_TAILORING)
+            ->where('status', CounterOrderItem::STATUS_DRAFT)
+            ->where('measurement_profile_id', $profile->id)
+            ->where('measurement_template_id', $template->id)
+            ->get()
+            ->each(function (CounterOrderItem $item) use ($snapshot): void {
+                $details = $item->details ?? [];
+                $details['measurement_snapshot'] = $snapshot;
+                $item->update(['details' => $details]);
+            });
+
+        return response()->json([
+            'message' => $changed ? 'پیمائش محفوظ ہو گئی ہے۔' : 'پیمائش میں کوئی تبدیلی نہیں تھی۔',
+            'profile_name' => $profile->name,
+            'template_name' => $template->name,
+        ]);
     }
 
     public function legacyTailoringCreate(Request $request, int $id): RedirectResponse
@@ -173,7 +325,11 @@ class CounterOrderController extends Controller
         return redirect()->route('admin.counter-orders.edit', $order);
     }
 
-    public function addCloth(Request $request, CounterOrder $counterOrder): RedirectResponse|JsonResponse
+    public function addCloth(
+        Request $request,
+        CounterOrder $counterOrder,
+        CounterOrderNumberService $numbers,
+    ): RedirectResponse|JsonResponse
     {
         $this->authorizeOrder($request, $counterOrder);
         abort_unless($this->canManageCloth($request), 403);
@@ -195,7 +351,7 @@ class CounterOrderController extends Controller
         $unitPrice = $cloth->sellsPerSuit()
             ? round($lineTotal / $quantity, 2)
             : round($lineTotal / (float) $validated['length'], 2);
-        $item = $counterOrder->items()->create([
+        $item = $numbers->createItem($counterOrder, [
             'type' => CounterOrderItem::TYPE_CLOTH,
             'status' => CounterOrderItem::STATUS_DRAFT,
             'cloth_id' => $cloth->id,
@@ -222,6 +378,7 @@ class CounterOrderController extends Controller
         Request $request,
         CounterOrder $counterOrder,
         MeasurementService $measurements,
+        CounterOrderNumberService $numbers,
     ): RedirectResponse
     {
         $this->authorizeOrder($request, $counterOrder);
@@ -240,6 +397,7 @@ class CounterOrderController extends Controller
         abort_unless((int) ($profile->parent_id ?: $profile->id) === (int) $counterOrder->customer_id, 404);
         $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
             ->findOrFail($validated['measurement_template_id']);
+        abort_unless($this->profileHasSavedTemplate($profile, $template, $ownerId), 422, 'Selected measurements do not belong to this person.');
         $missing = $measurements->missingRequiredMeasurements($profile, $ownerId, $template);
         if ($missing->isNotEmpty()) {
             return back()->withErrors([
@@ -247,7 +405,7 @@ class CounterOrderController extends Controller
             ])->withInput();
         }
         $lineTotal = round((int) $validated['quantity'] * (float) $validated['unit_price'], 2);
-        $counterOrder->items()->create([
+        $numbers->createItem($counterOrder, [
             'type' => CounterOrderItem::TYPE_TAILORING,
             'status' => CounterOrderItem::STATUS_DRAFT,
             'measurement_profile_id' => $profile->id,
@@ -257,7 +415,7 @@ class CounterOrderController extends Controller
             'line_total' => $lineTotal,
             'due_date' => $validated['due_date'],
             'details' => [
-                'measurement_snapshot' => $measurements->measurementRows($profile, $ownerId, $template)->values()->all(),
+                'measurement_snapshot' => $measurements->savedMeasurementRows($profile, $ownerId, $template)->values()->all(),
             ],
             'note' => $validated['note'] ?? null,
         ]);
@@ -324,7 +482,17 @@ class CounterOrderController extends Controller
             abort_unless((int) ($profile->parent_id ?: $profile->id) === (int) $counterOrder->customer_id, 404);
             $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
                 ->findOrFail($validated['measurement_template_id']);
-            $missing = $measurements->missingRequiredMeasurements($profile, $ownerId, $template);
+            $hasExistingPair = (int) $item->measurement_profile_id === (int) $profile->id
+                && (int) $item->measurement_template_id === (int) $template->id;
+            abort_unless($hasExistingPair || $this->profileHasSavedTemplate($profile, $template, $ownerId), 422, 'Selected measurements do not belong to this person.');
+            $measurementSnapshot = $measurements->savedMeasurementRows($profile, $ownerId, $template);
+            if ($hasExistingPair && $measurementSnapshot->isEmpty()) {
+                $measurementSnapshot = collect(data_get($item->details, 'measurement_snapshot', []));
+                if ($measurementSnapshot->isEmpty()) {
+                    $measurementSnapshot = $measurements->measurementRows($profile, $ownerId, $template);
+                }
+            }
+            $missing = $measurements->missingRequiredMeasurementsFromRows($measurementSnapshot, $ownerId, $template);
             if ($missing->isNotEmpty()) {
                 return back()->withErrors([
                     'measurement_profile_id' => 'پہلے یہ ضروری ناپ مکمل کریں: '.$missing->join('، '),
@@ -338,7 +506,7 @@ class CounterOrderController extends Controller
                 'line_total' => round((int) $validated['quantity'] * (float) $validated['unit_price'], 2),
                 'due_date' => $validated['due_date'],
                 'details' => array_merge($item->details ?? [], [
-                    'measurement_snapshot' => $measurements->measurementRows($profile, $ownerId, $template)->values()->all(),
+                    'measurement_snapshot' => $measurementSnapshot->values()->all(),
                 ]),
                 'note' => $validated['note'] ?? null,
             ]);
@@ -439,6 +607,34 @@ class CounterOrderController extends Controller
     {
         return $request->user()->hasModule(User::MODULE_TAILORING)
             && $request->user()->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
+    }
+
+    private function authorizeMeasurementProfile(
+        Customers $profile,
+        CounterOrder $counterOrder,
+        int $ownerId,
+    ): void {
+        abort_unless($profile->user_id === $ownerId, 404);
+        abort_unless(
+            (int) ($profile->parent_id ?: $profile->id) === (int) $counterOrder->customer_id,
+            404,
+        );
+    }
+
+    private function profileHasSavedTemplate(
+        Customers $profile,
+        MeasurementTemplate $template,
+        int $ownerId,
+    ): bool {
+        if ((int) $profile->measurement_template_id === (int) $template->id) {
+            return true;
+        }
+
+        return CustomerMeasurementHistory::query()
+            ->where('user_id', $ownerId)
+            ->where('customer_id', $profile->id)
+            ->where('measurement_template_id', $template->id)
+            ->exists();
     }
 
     private function rowResponse(

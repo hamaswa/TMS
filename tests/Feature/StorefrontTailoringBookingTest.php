@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Business;
+use App\Models\CustomerMeasurementHistory;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\Storefront;
@@ -191,6 +192,18 @@ class StorefrontTailoringBookingTest extends TestCase
             'teraa' => 18,
             'senaChorai' => 21,
             'shalwar' => 40,
+        ]);
+        $waistcoatHistory = CustomerMeasurementHistory::create([
+            'user_id' => $owner->id,
+            'customer_id' => $customer->id,
+            'measurement_template_id' => $waistcoatTemplate->id,
+            'recorded_by_user_id' => $owner->id,
+            'source' => 'customer_update',
+        ]);
+        $waistcoatHistory->values()->createMany([
+            ['source_key' => 'system.length', 'label' => 'لمبائی', 'value' => '29', 'unit' => 'inch', 'sort_order' => 0],
+            ['source_key' => 'system.teraa', 'label' => 'تیرا', 'value' => '18', 'unit' => 'inch', 'sort_order' => 1],
+            ['source_key' => 'system.senaChorai', 'label' => 'سینہ چوڑائی', 'value' => '21', 'unit' => 'inch', 'sort_order' => 2],
         ]);
 
         $this->post(route('storefront.tailoring.bookings.store', $storefront), [

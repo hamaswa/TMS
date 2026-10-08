@@ -50,7 +50,7 @@ class CustomerCreationTest extends TestCase
             ->assertSee('id="loadCustomerOrders"', false);
     }
 
-    public function test_customer_directory_shows_all_customers_and_supports_ajax_server_search(): void
+    public function test_customer_directory_uses_server_pagination_and_supports_ajax_server_search(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true, 'is_business_owner' => true]);
@@ -63,19 +63,43 @@ class CustomerCreationTest extends TestCase
                 'phone_number1' => '0300'.str_pad((string) $number, 7, '0', STR_PAD_LEFT),
             ]);
         }
+        $familyParent = Customers::where('user_id', $owner->id)
+            ->where('name', 'Directory Customer 10')
+            ->firstOrFail();
+        Customers::create([
+            'user_id' => $owner->id,
+            'parent_id' => $familyParent->id,
+            'name' => 'Directory Family Member',
+            'phone_number1' => $familyParent->phone_number1,
+        ]);
 
         $this->actingAs($owner)->get(route('admin.Customers.index'))
             ->assertOk()
             ->assertSeeText('Directory Customer 26')
+            ->assertDontSeeText('Directory Customer 01')
+            ->assertSeeText('کل 26 گاہکوں میں سے 1 تا 25 دکھائے جا رہے ہیں۔');
+
+        $this->actingAs($owner)->get(route('admin.Customers.index', ['page' => 2]))
+            ->assertOk()
             ->assertSeeText('Directory Customer 01')
-            ->assertSeeText('کل 26 گاہک موجود ہیں۔ صفحات کے ذریعے تمام ریکارڈ دیکھیں۔');
+            ->assertDontSeeText('Directory Customer 26');
 
         $response = $this->actingAs($owner)->getJson(route('admin.customers.search', [
             'search' => 'Directory Customer 01',
-        ]))->assertOk()->assertJsonPath('count', 1);
+        ]))->assertOk()
+            ->assertJsonPath('count', 1)
+            ->assertJsonPath('from', 1)
+            ->assertJsonPath('to', 1);
 
         $this->assertStringContainsString('Directory Customer 01', $response->json('html'));
         $this->assertStringNotContainsString('Directory Customer 02', $response->json('html'));
+
+        $familyResponse = $this->actingAs($owner)->getJson(route('admin.customers.search', [
+            'search' => 'Directory Family Member',
+        ]))->assertOk()->assertJsonPath('count', 1);
+
+        $this->assertStringContainsString('Directory Customer 10', $familyResponse->json('html'));
+        $this->assertStringContainsString('Directory Family Member', $familyResponse->json('html'));
     }
 
     public function test_customer_serial_numbers_are_sequential_within_each_shop(): void
@@ -310,12 +334,17 @@ class CustomerCreationTest extends TestCase
         $directory = $this->actingAs($owner)->get(route('admin.Customers.index'));
         $directory->assertOk();
         $directoryHtml = $directory->getContent();
-        $familyRowStart = strpos($directoryHtml, 'data-customer-row="'.$family->id.'"');
-        $familyRowEnd = strpos($directoryHtml, '</tr>', $familyRowStart);
-        $familyRow = substr($directoryHtml, $familyRowStart, $familyRowEnd - $familyRowStart);
-        $this->assertStringContainsString('Rs. 0.00', $familyRow);
-        $this->assertStringContainsString('data-customer-balance="'.$family->id.'"', $familyRow);
-        $this->assertStringNotContainsString('customer_payment_paid', $familyRow);
+        $this->assertStringContainsString('data-customer-row="'.$customer->id.'"', $directoryHtml);
+        $this->assertStringNotContainsString('data-customer-row="'.$family->id.'"', $directoryHtml);
+        $this->assertStringContainsString('data-customer-balance="'.$customer->id.'"', $directoryHtml);
+        $this->assertStringContainsString('Rs. 1,200.00', $directoryHtml);
+        $this->assertStringContainsString('بقایا والے کھاتے', $directoryHtml);
+        $this->assertStringContainsString('data-family-profile="'.$family->id.'"', $directoryHtml);
+        $this->assertStringContainsString('Rs. 2,400.00', $directoryHtml);
+        $this->assertStringContainsString('1 آرڈر کی کل رقم · بقایا نہیں', $directoryHtml);
+        $this->assertStringContainsString('customer-account-row has-family', $directoryHtml);
+        $this->assertStringContainsString('class="customer-family-toggle"', $directoryHtml);
+        $this->assertStringNotContainsString('data-customer-balance="'.$family->id.'"', $directoryHtml);
 
         $this->actingAs($owner)
             ->get(route('admin.customer.orders', $family))
@@ -383,7 +412,6 @@ class CustomerCreationTest extends TestCase
             ->assertOk()
             ->assertSeeInOrder([
                 'data-customer-row="'.$newerCustomer->id.'"',
-                'data-customer-row="'.$profile->id.'"',
                 'data-customer-row="'.$customer->id.'"',
             ], false);
 
@@ -392,7 +420,8 @@ class CustomerCreationTest extends TestCase
             ->assertJsonPath('count', 1);
         $directoryHtml = $directoryResponse->json('html');
         $this->assertStringContainsString('Ali Aslam', $directoryHtml);
-        $this->assertStringContainsString('خاندانی ناپ', $directoryHtml);
+        $this->assertStringContainsString('خاندانی افراد', $directoryHtml);
+        $this->assertStringContainsString('data-family-profile="'.$profile->id.'"', $directoryHtml);
         $this->assertStringContainsString(e(route('admin.customers.statement', [
             'id' => $customer->id,
             'tab' => 'measurements',

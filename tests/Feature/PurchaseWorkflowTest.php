@@ -10,6 +10,8 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -30,18 +32,94 @@ class PurchaseWorkflowTest extends TestCase
                 'data-brand-code="'.$this->brandBundleCodeForOwner($owner).'"',
                 false
             )
-            ->assertSee("row.querySelector('.purchase-quantity').value = '4'", false)
-            ->assertSee("row.querySelector('.purchase-cost').value = '0'", false)
-            ->assertSee('aria-label="کپڑے کا آئٹم منتخب کریں"', false)
-            ->assertSee('aria-label="خریداری کی مقدار میٹر میں"', false)
-            ->assertSee('aria-label="فی میٹر لاگت"', false)
-            ->assertSee('aria-label="یہ آئٹم ہٹائیں"', false);
+            ->assertSee('value="receive"', false)
+            ->assertSee('value="draft"', false)
+            ->assertSeeText('محفوظ اور انوینٹری میں شامل کریں')
+            ->assertSee('id="purchase-item-count">0', false)
+            ->assertSee('data-default-cost="', false)
+            ->assertSeeText('نئی قطار شامل کریں')
+            ->assertSeeText('نیا سیٹ')
+            ->assertSeeText('موجودہ سیٹ')
+            ->assertSee('class="purchase-sheet-head"', false)
+            ->assertSee('id="add-purchase-row"', false)
+            ->assertSee('class="form-control purchase-row-kind"', false)
+            ->assertDontSeeText('اندرونی کوڈ')
+            ->assertSee('id="purchase-new-set-template"', false)
+            ->assertSee('id="purchase-set-template"', false)
+            ->assertSee('id="purchase-flat-fields"', false)
+            ->assertSee('aria-label="کپڑے کا سیٹ منتخب کریں"', false)
+            ->assertSee('aria-label="اصل کل خرید قیمت"', false)
+            ->assertSee('aria-label="یہ سیٹ ہٹائیں"', false);
         $this->actingAs($owner)->get(route('admin.purchases.index'))
             ->assertOk()
             ->assertSee('<h1 class="h3 mb-1">', false)
             ->assertSee('purchase-list-table', false)
             ->assertSee('data-label="بقایا"', false)
             ->assertSee('purchase-list-action', false);
+    }
+
+    public function test_purchase_can_be_saved_and_received_into_inventory_in_one_flow(): void
+    {
+        [$owner, $supplier, $color] = $this->draftPurchase();
+        Purchase::query()->delete();
+
+        $this->actingAs($owner)->post(route('admin.purchases.store'), [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => now()->toDateString(),
+            'cloth_color_id' => [$color->id],
+            'quantity' => [5],
+            'line_total' => [600],
+            'submit_action' => 'receive',
+        ])->assertRedirect()->assertSessionHas('success', 'خریداری محفوظ ہو گئی، مال انوینٹری میں شامل کر دیا گیا ہے۔');
+
+        $purchase = Purchase::where('user_id', $owner->id)->firstOrFail();
+        $this->assertSame('received', $purchase->status);
+        $this->assertEquals(15, (float) $color->fresh()->length);
+        $this->assertDatabaseHas('inventory_movements', [
+            'user_id' => $owner->id,
+            'cloth_color_id' => $color->id,
+            'movement_type' => 'purchase_receipt',
+            'quantity' => 5,
+        ]);
+    }
+
+    public function test_purchase_can_create_a_new_color_tracked_set_and_receive_it_in_one_flow(): void
+    {
+        Storage::fake('public');
+        [$owner, $supplier] = $this->draftPurchase();
+        Purchase::query()->delete();
+        $brand = ClothBrand::where('user_id', $owner->id)->firstOrFail();
+        $type = ClothType::where('user_id', $owner->id)->firstOrFail();
+
+        $this->actingAs($owner)->post(route('admin.purchases.store'), [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => now()->toDateString(),
+            'submit_action' => 'receive',
+            'new_sets' => [[
+                'name' => 'Fresh Arrival',
+                'cloth_brand_id' => $brand->id,
+                'cloth_type_id' => $type->id,
+                'sale_price' => 650,
+                'default_sale_length' => 4.5,
+                'tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR,
+                'total' => 10000,
+                'colors' => [
+                    ['name' => 'Navy', 'hex' => '#14213D', 'quantity' => 12, 'image' => UploadedFile::fake()->image('navy.jpg', 120, 120)],
+                    ['name' => 'Cream', 'hex' => '#FFFDD0', 'quantity' => 8],
+                ],
+            ]],
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $cloth = Cloth::where('user_id', $owner->id)->where('name', 'Fresh Arrival')->firstOrFail();
+        $purchase = Purchase::where('user_id', $owner->id)->firstOrFail();
+        $this->assertSame('received', $purchase->status);
+        $this->assertEquals(10000, (float) $purchase->total_amount);
+        $this->assertCount(2, $purchase->items);
+        $this->assertEquals(20, (float) $cloth->colors()->sum('length'));
+        $this->assertDatabaseHas('cloth_colors', ['cloth_id' => $cloth->id, 'color' => 'Navy', 'color_hex' => '#14213D', 'length' => 12]);
+        $this->assertDatabaseHas('cloth_colors', ['cloth_id' => $cloth->id, 'color' => 'Cream', 'color_hex' => '#FFFDD0', 'length' => 8]);
+        $image = $cloth->images()->where('image_color', 'Navy')->firstOrFail();
+        Storage::disk('public')->assertExists($image->images);
     }
 
     public function test_receiving_purchase_increases_stock_and_creates_ledger_entry_once(): void
@@ -69,7 +147,7 @@ class PurchaseWorkflowTest extends TestCase
         $this->assertDatabaseCount('inventory_movements', 1);
     }
 
-    public function test_purchase_cannot_be_saved_with_zero_unit_cost(): void
+    public function test_purchase_cannot_be_saved_with_zero_line_total(): void
     {
         [$owner, $supplier, $color] = $this->draftPurchase();
         Purchase::query()->delete();
@@ -79,9 +157,9 @@ class PurchaseWorkflowTest extends TestCase
             'purchase_date' => now()->toDateString(),
             'cloth_color_id' => [$color->id],
             'quantity' => [4],
-            'unit_cost' => [0],
+            'line_total' => [0],
         ])->assertRedirect(route('admin.purchases.create'))
-            ->assertSessionHasErrors(['unit_cost.0' => 'ہر شامل شدہ کپڑے کی اصل فی میٹر لاگت درج کریں۔']);
+            ->assertSessionHasErrors(['line_total.0' => 'ہر شامل شدہ کپڑے کی اصل کل خرید قیمت درج کریں۔']);
 
         $this->assertDatabaseCount('purchases', 0);
     }

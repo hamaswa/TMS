@@ -24,12 +24,14 @@ class CounterOrderService
         private readonly CounterSaleService $counterSales,
         private readonly MeasurementService $measurements,
         private readonly ProductionWorkforceService $workforce,
+        private readonly CounterOrderNumberService $numbers,
     ) {}
 
     public function create(User $actor, Customers $customer, ?string $note = null): CounterOrder
     {
         return CounterOrder::create([
             'reference' => $this->reference(),
+            'serial_number' => $this->numbers->nextOrderSerial($actor->businessOwnerId()),
             'user_id' => $actor->businessOwnerId(),
             'customer_id' => $customer->id,
             'created_by_user_id' => $actor->id,
@@ -50,6 +52,7 @@ class CounterOrderService
             $customer = $this->customerForSession($session);
             $order = CounterOrder::create([
                 'reference' => $this->reference(),
+                'serial_number' => $this->numbers->nextOrderSerial($session->user_id),
                 'user_id' => $session->user_id,
                 'customer_id' => $customer->id,
                 'sale_session_id' => $session->id,
@@ -76,7 +79,7 @@ class CounterOrderService
                 $lineTotal = ($line['salePriceBasis'] ?? null) === Cloth::SALE_PRICE_PER_SUIT
                     ? round($unitPrice * $quantity, 2)
                     : round($unitPrice * $length, 2);
-                $order->items()->create([
+                $this->numbers->createItem($order, [
                     'type' => CounterOrderItem::TYPE_CLOTH,
                     'status' => CounterOrderItem::STATUS_DRAFT,
                     'cloth_id' => $cloth->id,

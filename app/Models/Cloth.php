@@ -24,6 +24,7 @@ class Cloth extends Model
         'sale_price_basis',
         'color_tracking_mode',
         'display_colors',
+        'display_color_codes',
         'user_id',
         'stock_code',
     ];
@@ -38,6 +39,7 @@ class Cloth extends Model
         'suit_sale_price' => 'decimal:2',
         'default_sale_length' => 'decimal:2',
         'display_colors' => 'array',
+        'display_color_codes' => 'array',
     ];
 
     public function sellsPerSuit(): bool

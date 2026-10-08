@@ -13,7 +13,7 @@ class CounterOrderItem extends Model
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [
-        'counter_order_id', 'linked_item_id', 'type', 'status', 'cloth_id',
+        'counter_order_id', 'item_sequence', 'item_serial', 'linked_item_id', 'type', 'status', 'cloth_id',
         'measurement_profile_id', 'measurement_template_id', 'tailor_id', 'rate_id',
         'quantity', 'length', 'unit_price', 'line_total', 'due_date', 'details', 'note',
         'source_record_type', 'source_record_id',

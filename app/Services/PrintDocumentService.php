@@ -19,6 +19,7 @@ class PrintDocumentService
     ): array {
         $receiptTypes = [
             'counter-order',
+            'counter-order-item',
             'cloth-sale',
             'cloth-sale-copy',
             'tailor-order',

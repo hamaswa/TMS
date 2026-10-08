@@ -8,8 +8,8 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <link rel="icon" href="{{ asset('assets/images/favicon.ico') }}" type="image/x-icon">
 
-    <!-- Latest compiled JavaScript -->
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <!-- Bootstrap JavaScript must match the Bootstrap 4 stylesheet used by this receipt. -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 
     <title>کپڑے کی فروخت کی رسید</title>
@@ -217,14 +217,15 @@
             pointer-events: none;
         }
 
-        .stock-cancel-details {
+        .stock-cancel-trigger {
             max-width: 720px;
             margin: 0 auto 14px;
-            text-align: right;
+            text-align: center;
         }
 
-        .stock-cancel-details > summary {
+        .stock-cancel-trigger .btn {
             display: inline-flex;
+            align-items: center;
             padding: 7px 11px;
             border: 1px solid #efc8c8;
             border-radius: 8px;
@@ -233,11 +234,33 @@
             font-size: 12px;
             font-weight: 800;
             cursor: pointer;
-            list-style: none;
         }
 
-        .stock-cancel-details > summary::-webkit-details-marker {
-            display: none;
+        .stock-cancel-modal .modal-content {
+            border: 1px solid #efc8c8;
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .stock-cancel-modal .modal-header,
+        .stock-cancel-modal .modal-footer {
+            align-items: center;
+        }
+
+        .stock-cancel-modal .modal-header .close {
+            margin: -1rem auto -1rem -1rem;
+        }
+
+        .stock-cancel-modal .modal-title,
+        .stock-cancel-modal label {
+            line-height: 1.8;
+        }
+
+        .stock-cancel-modal .modal-body p {
+            margin-bottom: 1rem;
+            color: #6c757d;
+            font-size: 13px;
+            line-height: 2;
         }
 
         @media print {
@@ -263,17 +286,6 @@
         @if (session('success'))
             <div class="alert alert-success" role="status">{{ session('success') }}</div>
         @endif
-        @if ($errors->any())
-            <div class="alert alert-danger" role="alert">
-                <strong>فروخت منسوخ نہیں ہو سکی:</strong>
-                <ul class="mb-0 mt-2">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
         @if ($receipt?->status === 'cancelled')
             <div class="alert alert-danger receipt-cancelled-notice no-print" role="status">
                 <h2 class="h5">یہ کاؤنٹر فروخت منسوخ ہو چکی ہے</h2>
@@ -292,30 +304,61 @@
                 @endif
             </div>
         @elseif($receipt && $latestSaleStock)
-            <details class="stock-cancel-details no-print" @if($errors->any()) open @endif>
-                <summary>فروخت منسوخی کے اختیارات</summary>
-            <section class="card border-danger mt-2 mb-3">
-                <div class="card-body" dir="rtl">
-                    <h2 class="h5 text-danger">کاؤنٹر فروخت منسوخ کریں</h2>
-                    <p class="text-muted">منسوخی سے تمام اشیاء اسٹاک میں واپس اور گاہک کا کھاتہ درست ہو جائے گا۔ یہ کارروائی آڈٹ ریکارڈ میں محفوظ رہے گی۔</p>
-                    <form method="POST" action="{{ route('admin.counter-sales.cancel', $latestSaleStock) }}"
-                        data-confirm="کیا آپ یہ کاؤنٹر فروخت منسوخ کر کے تمام کپڑا اسٹاک اور گاہک کا کھاتہ واپس کرنا چاہتے ہیں؟">
-                        @csrf
-                        @method('PATCH')
-                        <div class="form-group"><label for="cancellation_reason">منسوخی کی وجہ</label><textarea
-                                id="cancellation_reason" name="cancellation_reason" class="form-control" minlength="5" maxlength="1000" required>{{ old('cancellation_reason') }}</textarea></div>
-                        <div class="form-group"><label for="refund_method">رقم واپسی کا طریقہ</label><select
-                                id="refund_method" name="refund_method" class="form-control">
-                                <option value="">کوئی رقم واپس نہیں کرنی</option>
-                                @foreach (\App\Support\PaymentMethods::LABELS as $method => $label)
-                                    <option value="{{ $method }}" @selected(old('refund_method') === $method)>{{ $label }}</option>
-                                @endforeach
-                            </select></div>
-                        <button type="submit" class="btn btn-danger"><i class="fas fa-ban ml-1"></i> فروخت منسوخ کریں</button>
-                    </form>
+            <div class="stock-cancel-trigger no-print">
+                <button type="button" class="btn" data-toggle="modal" data-target="#stockCancelModal">
+                    فروخت منسوخی کے اختیارات
+                </button>
+            </div>
+
+            <div class="modal fade stock-cancel-modal no-print" id="stockCancelModal" tabindex="-1" role="dialog"
+                aria-labelledby="stockCancelModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content" dir="rtl">
+                        <div class="modal-header">
+                            <h2 class="modal-title h5 text-danger mb-0" id="stockCancelModalLabel">کاؤنٹر فروخت منسوخ کریں</h2>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <form method="POST" action="{{ route('admin.counter-sales.cancel', $latestSaleStock) }}"
+                            data-confirm="کیا آپ یہ کاؤنٹر فروخت منسوخ کر کے تمام کپڑا اسٹاک اور گاہک کا کھاتہ واپس کرنا چاہتے ہیں؟">
+                            @csrf
+                            @method('PATCH')
+                            <div class="modal-body text-right">
+                                <p class="text-muted">منسوخی سے تمام اشیاء اسٹاک میں واپس اور گاہک کا کھاتہ درست ہو جائے گا۔ یہ کارروائی آڈٹ ریکارڈ میں محفوظ رہے گی۔</p>
+                                @if ($errors->any())
+                                    <div class="alert alert-danger" role="alert">
+                                        <strong>فروخت منسوخ نہیں ہو سکی:</strong>
+                                        <ul class="mb-0 mt-2">
+                                            @foreach ($errors->all() as $error)
+                                                <li>{{ $error }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
+                                <div class="form-group">
+                                    <label for="cancellation_reason">منسوخی کی وجہ</label>
+                                    <textarea id="cancellation_reason" name="cancellation_reason" class="form-control" minlength="5"
+                                        maxlength="1000" required>{{ old('cancellation_reason') }}</textarea>
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label for="refund_method">رقم واپسی کا طریقہ</label>
+                                    <select id="refund_method" name="refund_method" class="form-control">
+                                        <option value="">کوئی رقم واپس نہیں کرنی</option>
+                                        @foreach (\App\Support\PaymentMethods::LABELS as $method => $label)
+                                            <option value="{{ $method }}" @selected(old('refund_method') === $method)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">واپس جائیں</button>
+                                <button type="submit" class="btn btn-danger"><i class="fas fa-ban ml-1"></i> فروخت منسوخ کریں</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </section>
-            </details>
+            </div>
         @endif
 
     <div id="invoice-POS" @class(['cancelled-receipt' => $receipt?->status === 'cancelled'])>
@@ -344,7 +387,7 @@
                                 $totalAmount += $itemTotal;
                             @endphp
                             <div class="stock-item-card">
-                                <div class="stock-item-heading"><span class="stock-item-number">#{{ $loop->iteration }}</span><strong>{{ $sellstock->brand->name }} — {{ $sellstock->type->name }}</strong></div>
+                                <div class="stock-item-heading"><strong>{{ $sellstock->brand->name }} — {{ $sellstock->type->name }}</strong></div>
                                 @if(filled($sellstock->color))
                                     <div class="stock-item-meta"><span>رنگ: <strong>{{ $sellstock->color }}</strong></span></div>
                                 @endif
@@ -397,6 +440,10 @@
         document.querySelector('.go')?.addEventListener('click', function () {
             window.history.back();
         });
+
+        @if ($errors->any() && $receipt && $latestSaleStock && $receipt->status !== 'cancelled')
+            window.jQuery?.('#stockCancelModal').modal('show');
+        @endif
     </script>
 
 

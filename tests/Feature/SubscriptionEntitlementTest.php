@@ -10,6 +10,7 @@ use App\Models\Storefront;
 use App\Models\Tailor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -172,6 +173,24 @@ class SubscriptionEntitlementTest extends TestCase
         $this->actingAs($owner)->get(route('admin.home'))->assertOk();
         $this->assertTrue($owner->fresh()->hasModule(User::MODULE_TAILORING));
         $this->assertTrue($owner->fresh()->hasModule(User::MODULE_CLOTHING));
+    }
+
+    public function test_repeated_permission_checks_reuse_subscription_queries_within_a_request(): void
+    {
+        [, , $business] = $this->accounts();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->assertFalse($business->subscriptionIsManaged());
+        $this->assertTrue($business->subscriptionAllowsPermission(BusinessRole::TEAM_MANAGE));
+        $this->assertTrue($business->subscriptionAllowsPermission(BusinessRole::FINANCE_VIEW));
+        $this->assertTrue($business->subscriptionAllowsFeature('allow_tailoring'));
+
+        $subscriptionQueries = collect(DB::getQueryLog())
+            ->filter(fn (array $query) => str_contains($query['query'], 'business_subscriptions'));
+        DB::disableQueryLog();
+
+        $this->assertCount(1, $subscriptionQueries);
     }
 
     public function test_super_admin_manages_plans_and_disabled_feature_permissions_are_removed(): void

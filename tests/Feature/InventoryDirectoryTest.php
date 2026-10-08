@@ -35,8 +35,15 @@ class InventoryDirectoryTest extends TestCase
 
         $response->assertOk()
             ->assertSeeText('کپڑوں کے سیٹ')
-            ->assertSeeText('27 کپڑے ملے')
-            ->assertSeeText($withoutStock->set_code)
+            ->assertSeeText('کل 27 سیٹ')
+            ->assertSee('id="clothFilterDrawer"', false)
+            ->assertDontSee('class="dropdown-item cloth-qr-modal-trigger"', false)
+            ->assertSee('target="_blank" rel="noopener"', false)
+            ->assertDontSeeText('سیلز اسکین QR')
+            ->assertDontSeeText('تمام سیٹ QR — نیا ٹیب')
+            ->assertDontSeeText('انوینٹری کی تفصیل')
+            ->assertSeeText($withoutStock->name)
+            ->assertDontSeeText($withoutStock->set_code)
             ->assertSeeText('اس سیٹ کا اسٹاک ریکارڈ موجود نہیں۔')
             ->assertViewHas('cloths', fn ($cloths) => $cloths->total() === 27 && $cloths->count() === 25)
             ->assertViewHas('summary', fn ($summary) => $summary['sets'] === 27 && $summary['colors'] === 26);
@@ -64,10 +71,40 @@ class InventoryDirectoryTest extends TestCase
         ]));
 
         $response->assertOk()
-            ->assertSeeText($wanted->set_code)
-            ->assertDontSeeText($other->set_code)
+            ->assertSeeText($wanted->name)
+            ->assertDontSeeText($wanted->set_code)
+            ->assertDontSeeText($other->name)
             ->assertViewHas('cloths', fn ($cloths) => $cloths->total() === 1 && $cloths->first()->is($wanted))
             ->assertViewHas('summary', fn ($summary) => $summary['sets'] === 1 && $summary['meters'] === 7.0);
+    }
+
+    public function test_inventory_edit_uses_the_same_sectioned_form_language_as_create(): void
+    {
+        [$owner, $brand, $type] = $this->catalogOwner();
+        $cloth = $this->cloth($owner, $brand, $type);
+        $cloth->update(['name' => 'Dilbar', 'default_sale_length' => 4.5]);
+        ClothColor::create([
+            'cloth_id' => $cloth->id,
+            'color' => 'Navy',
+            'length' => 24,
+            'average_unit_cost' => 100,
+            'user_id' => $owner->id,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('admin.edit-cloths', [
+            'id' => $cloth->id,
+            'color' => 'Navy',
+        ]));
+
+        $response->assertOk()
+            ->assertSee('id="clothInventoryForm"', false)
+            ->assertSee('class="cloth-form-card"', false)
+            ->assertSeeText('سیٹ کی بنیادی معلومات')
+            ->assertSeeText('رنگ اور موجودہ اسٹاک')
+            ->assertSeeText('ہر رنگ کا الگ اسٹاک')
+            ->assertSeeText('فروخت کی دستیابی')
+            ->assertSee('"length":"24.00"', false)
+            ->assertDontSee('add-more-length', false);
     }
 
     private function catalogOwner(): array
