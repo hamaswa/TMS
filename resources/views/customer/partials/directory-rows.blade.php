@@ -42,6 +42,11 @@
                                     <small>{{ number_format((int) ($profile->profile_orders_count ?? 0)) }} آرڈر کی کل رقم · بقایا نہیں</small>
                                 </div>
                                 <div class="customer-family-cell customer-family-actions">
+                                    @if($canViewTailoringOrders)
+                                        <a class="customer-row-action" href="{{ route('admin.customer.orders', $profile) }}" aria-label="{{ $profile->name }} کے حالیہ آرڈر دیکھیں">
+                                            <i class="fas fa-history"></i> حالیہ آرڈرز
+                                        </a>
+                                    @endif
                                     @if($canCreateTailoringOrder)
                                         <form method="POST" action="{{ route('admin.counter-orders.store') }}" class="m-0">
                                             @csrf

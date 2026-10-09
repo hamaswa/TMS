@@ -486,6 +486,9 @@ class CustomerController extends Controller
         $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
         $measurementValues = $customer->measurementValues()->pluck('value', 'measurement_field_id');
         $measurementTemplates = $this->measurementTemplates();
+        if ($customer->measurement_template_id === null) {
+            $customer->measurement_template_id = $measurementTemplates->firstWhere('is_default', true)?->id;
+        }
         $selectedTemplateId = (int) request('measurement_template_id', $customer->measurement_template_id);
         $selectedMeasurementTemplate = $measurementTemplates->firstWhere('id', $selectedTemplateId);
         $savedMeasurementValues = $this->measurements

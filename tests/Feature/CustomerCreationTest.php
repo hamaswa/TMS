@@ -340,6 +340,7 @@ class CustomerCreationTest extends TestCase
         $this->assertStringContainsString('Rs. 1,200.00', $directoryHtml);
         $this->assertStringContainsString('بقایا والے کھاتے', $directoryHtml);
         $this->assertStringContainsString('data-family-profile="'.$family->id.'"', $directoryHtml);
+        $this->assertStringContainsString('href="'.route('admin.customer.orders', $family).'"', $directoryHtml);
         $this->assertStringContainsString('Rs. 2,400.00', $directoryHtml);
         $this->assertStringContainsString('1 آرڈر کی کل رقم · بقایا نہیں', $directoryHtml);
         $this->assertStringContainsString('customer-account-row has-family', $directoryHtml);
@@ -422,6 +423,7 @@ class CustomerCreationTest extends TestCase
         $this->assertStringContainsString('Ali Aslam', $directoryHtml);
         $this->assertStringContainsString('خاندانی افراد', $directoryHtml);
         $this->assertStringContainsString('data-family-profile="'.$profile->id.'"', $directoryHtml);
+        $this->assertStringContainsString('href="'.route('admin.customer.orders', $profile).'"', $directoryHtml);
         $this->assertStringContainsString(e(route('admin.customers.statement', [
             'id' => $customer->id,
             'tab' => 'measurements',

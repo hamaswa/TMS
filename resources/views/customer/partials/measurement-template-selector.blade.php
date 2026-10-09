@@ -46,13 +46,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         document.querySelectorAll('[data-template-system-field]').forEach(function (input) {
             toggleControl(input, selectedSystem.indexOf(input.dataset.templateSystemField) !== -1);
-            var current = input.value;
-            var choices = selectedPreferences[input.dataset.templateSystemField] || [];
+            var current = input.value.trim();
+            var choices = (selectedPreferences[input.dataset.templateSystemField] || []).map(function (choice) { return String(choice).trim(); });
+            // Keep saved legacy preferences even when the template does not list them.
+            if (current && choices.indexOf(current) === -1) choices.push(current);
             var placeholder = input.options.length ? input.options[0].text : 'منتخب کریں';
             input.innerHTML = '';
             input.add(new Option(placeholder, ''));
             choices.forEach(function (choice) { input.add(new Option(choice, choice)); });
-            input.value = choices.indexOf(current) !== -1 ? current : '';
+            input.value = current;
         });
         var layout = {};
         selectedLayout.forEach(function (item) { layout[item.source] = item; });
