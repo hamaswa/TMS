@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\BusinessRole;
 use App\Models\Business;
 use App\Models\User;
+use App\Models\Tailor;
+use App\Models\ProductionWorker;
 use App\Rules\StrongPassword;
 use App\Services\SubscriptionEntitlementService;
+use App\Services\ProductionWorkTypeDefaultsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +21,33 @@ class BusinessTeamController extends Controller
 {
     public function index(Request $request)
     {
-        return view('team.index', ['business' => $this->businessFor($request)]);
+        $business = $this->businessFor($request);
+        $ownerId = $request->user()->businessOwnerId();
+        $tailors = collect();
+        $productionWorkers = collect();
+        $workTypes = collect();
+
+        if ($business->tailoring_enabled) {
+            $workTypes = app(ProductionWorkTypeDefaultsService::class)->forOwner($ownerId);
+            $tailors = Tailor::where('user_id', $ownerId)
+                ->with(['productionWorker.skills', 'tailorsalary'])
+                ->withCount('orders')
+                ->orderBy('name')
+                ->get();
+            $productionWorkers = ProductionWorker::where('user_id', $ownerId)
+                ->whereNull('legacy_tailor_id')
+                ->with('skills')
+                ->withCount(['assignments as active_assignments_count' => fn ($query) => $query
+                    ->whereIn('status', ['assigned', 'in_progress'])])
+                ->withSum('ledgerEntries as ledger_balance', 'amount')
+                ->orderByDesc('active')
+                ->orderBy('name')
+                ->get();
+        }
+
+        return view('team.index', compact(
+            'business', 'tailors', 'productionWorkers', 'workTypes'
+        ));
     }
 
     public function employees(Request $request)
@@ -101,12 +130,29 @@ class BusinessTeamController extends Controller
     {
         $business = $request->user()->business;
         $validated = $this->validateEmployee($request, $business->id);
-        $role = $business->roles()->findOrFail($validated['business_role_id']);
         $actorId = $request->user()->id;
 
-        DB::transaction(function () use ($validated, $business, $role, $actorId, $entitlements) {
+        DB::transaction(function () use ($validated, $business, $actorId, $entitlements) {
             $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
             $entitlements->assertCanAddEmployee($lockedBusiness);
+            if ($validated['business_role_id'] === 'preset:salesperson') {
+                $role = $lockedBusiness->roles()
+                    ->where('name', BusinessRole::ROLE_PRESETS['salesperson']['label'])
+                    ->first();
+                if (! $role) {
+                    $entitlements->assertCanAddRole($lockedBusiness);
+                    $permissions = array_values(array_filter(
+                        BusinessRole::ROLE_PRESETS['salesperson']['permissions'],
+                        fn (string $permission) => $lockedBusiness->subscriptionAllowsPermission($permission),
+                    ));
+                    $role = $lockedBusiness->roles()->create([
+                        'name' => BusinessRole::ROLE_PRESETS['salesperson']['label'],
+                        'permissions' => $permissions,
+                    ]);
+                }
+            } else {
+                $role = $lockedBusiness->roles()->findOrFail((int) $validated['business_role_id']);
+            }
             $employee = User::create([
                 'name' => $validated['name'],
                 'username' => $validated['username'],
@@ -251,7 +297,17 @@ class BusinessTeamController extends Controller
             'address' => ['nullable', 'string', 'max:1000'],
             'password' => [$employee ? 'prohibited' : 'required', 'string', new StrongPassword],
             'job_title' => ['nullable', 'string', 'max:100'],
-            'business_role_id' => ['required', Rule::exists('business_roles', 'id')->where('business_id', $businessId)],
+            'business_role_id' => [
+                'required',
+                function (string $attribute, mixed $value, \Closure $fail) use ($businessId, $employee) {
+                    if (! $employee && $value === 'preset:salesperson') {
+                        return;
+                    }
+                    if (! BusinessRole::where('business_id', $businessId)->whereKey((int) $value)->exists()) {
+                        $fail('منتخب رول اس کاروبار کے لیے دستیاب نہیں ہے۔');
+                    }
+                },
+            ],
             'employee_active' => ['nullable', 'boolean'],
         ]);
     }

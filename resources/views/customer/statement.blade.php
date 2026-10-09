@@ -3,12 +3,16 @@
 @php
     $statusLabels = \App\Models\Order::STATUS_LABELS;
     $historySourceLabels = ['customer_created' => 'ابتدائی پیمائش', 'baseline' => 'پچھلی محفوظ پیمائش', 'customer_update' => 'تبدیل شدہ پیمائش', 'order_update' => 'آرڈر سے تبدیل شدہ پیمائش'];
-    $customerScopeLabel = $canViewTailoring && $canViewShop
+    $customerScopeLabel = $isClothOnlyCustomer
+        ? 'کپڑے کی خریداری اور مشترکہ کھاتہ'
+        : ($canViewTailoring && $canViewShop
         ? 'ٹیلرنگ اور کپڑے کی دکان کا ایک ریکارڈ'
-        : ($canViewTailoring ? 'ٹیلرنگ کا مشترکہ گاہک ریکارڈ' : ($canViewShop ? 'کپڑے کی دکان کا گاہک ریکارڈ' : 'گاہک کا ریکارڈ'));
-    $balanceScopeLabel = $canViewTailoring && $canViewShop
+        : ($canViewTailoring ? 'ٹیلرنگ کا مشترکہ گاہک ریکارڈ' : ($canViewShop ? 'کپڑے کی دکان کا گاہک ریکارڈ' : 'گاہک کا ریکارڈ')));
+    $balanceScopeLabel = $isClothOnlyCustomer
+        ? 'دکان کا مجموعہ'
+        : ($canViewTailoring && $canViewShop
         ? 'دکان اور ٹیلرنگ کا مجموعہ'
-        : ($canViewTailoring ? 'ٹیلرنگ کا مجموعہ' : ($canViewShop ? 'دکان کا مجموعہ' : 'تمام مجاز اندراجات کا مجموعہ'));
+        : ($canViewTailoring ? 'ٹیلرنگ کا مجموعہ' : ($canViewShop ? 'دکان کا مجموعہ' : 'تمام مجاز اندراجات کا مجموعہ')));
 @endphp
 <section class="main-content customer-workspace" dir="rtl">
     <div class="container-fluid px-3 px-lg-5 py-4">
@@ -16,11 +20,11 @@
             <div class="row align-items-center">
                 <div class="col-lg-8 d-flex align-items-center">
                     <div class="customer-avatar">{{ \Illuminate\Support\Str::substr($customer->name, 0, 1) }}</div>
-                    <div><span class="badge badge-light text-primary mb-2">مشترکہ گاہک پروفائل</span><h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1><p class="mb-0">{{ $customer->phone_number1 }} · {{ $customerScopeLabel }}</p></div>
+                    <div><span class="badge badge-light text-primary mb-2">{{ $isClothOnlyCustomer ? 'کپڑے کا گاہک' : 'مشترکہ گاہک پروفائل' }}</span><h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1><p class="mb-0">{{ $customer->phone_number1 }} · {{ $customerScopeLabel }}</p></div>
                 </div>
                 <div class="col-lg-4 text-lg-left mt-3 mt-lg-0">
                     @if($canManageMeasurements)<a href="{{ route('admin.Customers.edit', $customer) }}" class="btn btn-light ml-2"><i class="fas fa-edit ml-1"></i> معلومات تبدیل کریں</a>@endif
-                    @if($canManageMeasurements)<a href="{{ route('admin.Customers.create', ['parent' => $customer->id]) }}" class="btn btn-success ml-2"><i class="fas fa-user-plus ml-1"></i> خاندان کا نیا ناپ</a>@endif
+                    @if($canManageMeasurements && $hasTailoringActivity)<a href="{{ route('admin.Customers.create', ['parent' => $customer->id]) }}" class="btn btn-success ml-2"><i class="fas fa-user-plus ml-1"></i> خاندان کا نیا ناپ</a>@endif
                     <a href="{{ route('admin.workspace.current') }}" class="btn btn-outline-light">ڈیش بورڈ</a>
                 </div>
             </div>
@@ -42,21 +46,21 @@
                     <div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat balance"><span class="stat-icon"><i class="fas fa-wallet"></i></span><small>کل مشترکہ بقایا</small><strong>Rs {{ number_format($totalBalance, 2) }}</strong><span>{{ $balanceScopeLabel }}</span></div></div>
                     <div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat paid"><span class="stat-icon"><i class="fas fa-hand-holding-usd"></i></span><small>کل وصول شدہ رقم</small><strong>Rs {{ number_format($totalReceived, 2) }}</strong><span>ابتدائی اور بعد کی ادائیگیاں</span></div></div>
                 @endif
-                @if($canViewTailoring)<div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat"><span class="stat-icon"><i class="fas fa-cut"></i></span><small>ٹیلرنگ آرڈرز</small><strong>{{ $orders->count() }}</strong><a href="{{ route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'tailoring']) }}">تمام آرڈرز دیکھیں</a></div></div>@endif
+                @if($canViewTailoring && $hasTailoringActivity)<div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat"><span class="stat-icon"><i class="fas fa-cut"></i></span><small>ٹیلرنگ آرڈرز</small><strong>{{ $orders->count() }}</strong><a href="{{ route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'tailoring']) }}">تمام آرڈرز دیکھیں</a></div></div>@endif
                 @if($canViewShop)<div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat"><span class="stat-icon"><i class="fas fa-shopping-bag"></i></span><small>حالیہ دکان خریداری</small><strong>{{ $sales->count() }}</strong><a href="{{ route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'shop']) }}">خریداری دیکھیں</a></div></div>@endif
             </div>
 
             @unless($canViewBalances)<div class="alert alert-secondary"><i class="fas fa-lock ml-1"></i> آپ کے رول کو گاہک کا بقایا اور ادائیگیاں دیکھنے کی اجازت نہیں ہے۔ دیگر اجازت یافتہ ریکارڈ نیچے دستیاب ہیں۔</div>@endunless
 
             <div class="row">
-                @if($canViewTailoring)
+                @if($canViewTailoring && $hasTailoringActivity)
                     <div class="col-lg-6 mb-4"><div class="card workspace-card h-100"><div class="card-body p-4"><div class="section-heading"><div><h2 class="h5 font-weight-bold">حالیہ ٹیلرنگ آرڈرز</h2><p>سلائی کے تازہ ترین کام اور موجودہ حالت</p></div><a href="{{ route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'tailoring']) }}">تمام دیکھیں</a></div>
                         @forelse($orders->take(5) as $order)<div class="activity-row"><span class="activity-icon tailoring"><i class="fas fa-cut"></i></span><div class="flex-grow-1"><strong>آرڈر #{{ $order->id }} · {{ $order->suitQuantity ?: 1 }} سوٹ</strong><small>{{ $order->created_at?->format('d-m-Y') }} · {{ $statusLabels[$order->status] ?? $order->status }}</small></div><strong>Rs {{ number_format((float) $order->totalPayment, 0) }}</strong></div>@empty<div class="empty-state">ابھی کوئی ٹیلرنگ آرڈر موجود نہیں۔</div>@endforelse
                     </div></div></div>
                 @endif
                 @if($canViewShop)
                     <div class="col-lg-6 mb-4"><div class="card workspace-card h-100"><div class="card-body p-4"><div class="section-heading"><div><h2 class="h5 font-weight-bold">حالیہ کپڑے کی خریداری</h2><p>فروخت، اشیاء اور واجب الادا رقم</p></div><a href="{{ route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'shop']) }}">تمام دیکھیں</a></div>
-                        @forelse($sales->take(5) as $sale)<div class="activity-row"><span class="activity-icon shop"><i class="fas fa-shopping-bag"></i></span><div class="flex-grow-1"><strong>رسید #{{ $sale->id }} · {{ $sale->items_count }} اشیاء @if($sale->status === 'cancelled')<span class="badge badge-danger">منسوخ</span>@endif</strong><small>{{ $sale->created_at?->format('d-m-Y') }} · {{ $sale->summary ?: 'کپڑے کی فروخت' }}</small></div><strong class="{{ $sale->status === 'cancelled' ? 'text-muted' : '' }}">Rs {{ number_format($sale->amount, 0) }}</strong></div>@empty<div class="empty-state">ابھی کوئی دکان خریداری موجود نہیں۔</div>@endforelse
+                        @forelse($sales->take(5) as $sale)<div class="activity-row"><span class="activity-icon shop"><i class="fas fa-shopping-bag"></i></span><div class="flex-grow-1"><strong>رسید <span dir="ltr">{{ $sale->display_number }}</span> · {{ $sale->items_count }} اشیاء @if($sale->status === 'cancelled')<span class="badge badge-danger">منسوخ</span>@endif</strong><small>{{ $sale->created_at?->format('d-m-Y') }} · {{ $sale->summary ?: 'کپڑے کی فروخت' }}</small></div><strong class="{{ $sale->status === 'cancelled' ? 'text-muted' : '' }}">Rs {{ number_format($sale->amount, 0) }}</strong></div>@empty<div class="empty-state">ابھی کوئی دکان خریداری موجود نہیں۔</div>@endforelse
                     </div></div></div>
                 @endif
             </div>
@@ -65,7 +69,7 @@
         @if($activeTab === 'transactions' && $canViewBalances)
             <div class="row">
                 <div class="col-xl-8 mb-4"><div class="card workspace-card"><div class="card-body p-0"><div class="section-heading p-4 mb-0"><div><h2 class="h5 font-weight-bold">مشترکہ کھاتہ</h2><p>ہر اندراج پر شعبہ درج ہے، لیکن بقایا ایک مجموعی رقم ہے۔</p></div><span class="balance-pill">بقایا: Rs {{ number_format($totalBalance, 2) }}</span></div><div class="table-responsive"><table class="table table-hover mb-0 text-right"><thead><tr><th>تاریخ</th><th>شعبہ</th><th>حوالہ</th><th>وصول شدہ</th><th>بقایا تبدیلی</th><th>تفصیل</th></tr></thead><tbody>
-                    @forelse($transactions as $transaction)<tr><td>{{ ($transaction->paid_on ?: $transaction->created_at)?->format('d-m-Y') }}</td><td><span class="type-badge type-{{ strtolower(str_replace(' ', '-', $transaction->Order_type)) }}">{{ $transaction->Order_type === 'Tailor' ? 'ٹیلرنگ' : ($transaction->Order_type === 'Sale' ? 'دکان' : ($transaction->Order_type === 'Sale Cancellation' ? 'فروخت منسوخی' : ($transaction->Order_type === 'Payment' ? 'مشترکہ ادائیگی' : 'دیگر'))) }}</span></td><td>{{ $transaction->orderId ? 'آرڈر #'.$transaction->orderId : ($transaction->sale_id ? 'فروخت #'.$transaction->sale_id : 'ادائیگی') }}</td><td>Rs {{ number_format((float) $transaction->recivedPayment, 2) }}</td><td class="{{ (float) $transaction->remainingBalance < 0 ? 'text-success' : 'text-danger' }}">Rs {{ number_format((float) $transaction->remainingBalance, 2) }}</td><td>@if($transaction->payment_method)<strong>{{ \App\Support\PaymentMethods::LABELS[$transaction->payment_method] ?? $transaction->payment_method }}</strong>@if($transaction->payment_reference)<br><small>{{ $transaction->payment_reference }}</small>@endif @if($transaction->comment)<br>@endif @endif{{ $transaction->comment ?: ($transaction->payment_method ? '' : '—') }}</td></tr>
+                    @forelse($transactions as $transaction)<tr><td>{{ ($transaction->paid_on ?: $transaction->created_at)?->format('d-m-Y') }}</td><td><span class="type-badge type-{{ strtolower(str_replace(' ', '-', $transaction->Order_type)) }}">{{ $transaction->Order_type === 'Tailor' ? 'ٹیلرنگ' : ($transaction->Order_type === 'Sale' ? 'دکان' : ($transaction->Order_type === 'Sale Cancellation' ? 'فروخت منسوخی' : ($transaction->Order_type === 'Payment' ? 'مشترکہ ادائیگی' : 'دیگر'))) }}</span></td><td>{{ $transaction->orderId ? 'آرڈر #'.$transaction->orderId : ($transaction->sale_id ? 'فروخت '.($transaction->sale_display_number ?: '#'.$transaction->sale_id) : 'ادائیگی') }}</td><td>Rs {{ number_format((float) $transaction->recivedPayment, 2) }}</td><td class="{{ (float) $transaction->remainingBalance < 0 ? 'text-success' : 'text-danger' }}">Rs {{ number_format((float) $transaction->remainingBalance, 2) }}</td><td>@if($transaction->payment_method)<strong>{{ \App\Support\PaymentMethods::LABELS[$transaction->payment_method] ?? $transaction->payment_method }}</strong>@if($transaction->payment_reference)<br><small>{{ $transaction->payment_reference }}</small>@endif @if($transaction->comment)<br>@endif @endif{{ $transaction->comment ?: ($transaction->payment_method ? '' : '—') }}</td></tr>
                     @empty<tr><td colspan="6" class="empty-state">ابھی کوئی لین دین موجود نہیں۔</td></tr>@endforelse
                     </tbody></table></div>@if($transactions->hasPages())<div class="card-footer">{{ $transactions->links() }}</div>@endif</div></div></div>
                 <div class="col-xl-4 mb-4">

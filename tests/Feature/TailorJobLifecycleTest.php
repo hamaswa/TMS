@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\Customers;
 use App\Models\Order;
 use App\Models\OrderNotificationDelivery;
+use App\Models\OrderStatusHistory;
 use App\Models\rack as Rack;
 use App\Models\Tailor;
 use App\Models\TailorRecord;
@@ -20,6 +21,42 @@ use Tests\TestCase;
 class TailorJobLifecycleTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_shop_owner_workflow_is_consolidated_in_the_calendar_without_financial_controls(): void
+    {
+        [$owner, $tailor, $activeOrder] = $this->job([
+            'returnDate' => now()->addDays(3)->toDateString(),
+            'status' => 'assigned',
+        ]);
+        $deliveredOrder = Order::create([
+            'customerId' => $activeOrder->customerId,
+            'sub_customer' => $activeOrder->sub_customer,
+            'suitQuantity' => 1,
+            'totalPayment' => 1800,
+            'tailorId' => $tailor->id,
+            'tailor_price' => 500,
+            'userId' => $owner->id,
+            'returnDate' => now()->subWeek()->toDateString(),
+            'status' => 'delivered',
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.tailor-jobs.index'))
+            ->assertRedirect(route('admin.order.total'));
+
+        $orders = $this->actingAs($owner)->get(route('admin.order.total', ['week' => $activeOrder->returnDate]));
+        $orders
+            ->assertOk()
+            ->assertSeeText('ٹیلرنگ ورک فلو')
+            ->assertSee('js-tailor-picker', false)
+            ->assertSee('id="wo-worker-filter"', false)
+            ->assertSee(route('admin.tailor-jobs.assign', $activeOrder), false)
+            ->assertSee('href="'.route('admin.order-print', $activeOrder).'" target="_blank" rel="noopener"', false)
+            ->assertDontSee('title="مرحلہ محفوظ کریں"', false)
+            ->assertDontSeeText('فہرست')
+            ->assertDontSeeText('رقم / بقایا')
+            ->assertDontSeeText('گاہک سے رقم وصول کریں')
+            ->assertDontSeeText('درزی کی ادائیگی');
+    }
 
     public function test_order_can_wait_for_tailor_and_be_assigned_later_using_the_saved_rate(): void
     {
@@ -38,19 +75,21 @@ class TailorJobLifecycleTest extends TestCase
             'updated_at' => now(),
         ]);
 
+        $calendarUrl = route('admin.order.total', ['week' => $order->returnDate]);
         $this->actingAs($owner)
-            ->get(route('admin.tailor-jobs.index', ['status' => 'unassigned']))
+            ->get($calendarUrl)
             ->assertOk()
-            ->assertSeeText('دستیابی دیکھ کر درزی مقرر کریں')
+            ->assertSee('js-tailor-picker', false)
+            ->assertSee(route('admin.tailor-jobs.assign', $order), false)
             ->assertSeeText('0 جاری کام');
 
         $this->actingAs($owner)
-            ->from(route('admin.tailor-jobs.index'))
+            ->from($calendarUrl)
             ->post(route('admin.order.status'), [
                 'order_id' => $order->id,
                 'order_status' => 'start',
             ])
-            ->assertRedirect(route('admin.tailor-jobs.index'))
+            ->assertRedirect($calendarUrl)
             ->assertSessionHasErrors('order_status');
         $this->assertSame('unassigned', $order->fresh()->status);
 
@@ -135,6 +174,56 @@ class TailorJobLifecycleTest extends TestCase
             ->assertSeeText('سلائی کی شرح / رقم');
     }
 
+    public function test_confirmed_inline_reassignment_changes_tailor_and_keeps_an_audit_history(): void
+    {
+        [$owner, $firstTailor, $order] = $this->job(['status' => 'cutting']);
+        $secondTailor = Tailor::create([
+            'name' => 'Second QA Tailor',
+            'phone_number1' => '03009992009',
+            'password' => bcrypt('password'),
+            'user_id' => $owner->id,
+        ]);
+        $rateId = DB::table('tailorsalaries')->insertGetId([
+            'tailor_id' => $secondTailor->id,
+            'options_id' => null,
+            'type' => 'Replacement rate',
+            'price' => 725,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($owner)->patchJson(route('admin.tailor-jobs.assign', $order), [
+            'tailor_id' => $secondTailor->id,
+            'tailor_price' => $rateId.'-1',
+            'confirm_reassign' => 1,
+        ])->assertOk()
+            ->assertJsonPath('tailor.id', $secondTailor->id)
+            ->assertJsonPath('tailor.name', $secondTailor->name);
+
+        $order->refresh();
+        $this->assertSame('cutting', $order->status);
+        $this->assertSame($secondTailor->id, (int) $order->tailorId);
+        $this->assertEquals(725, (float) $order->tailor_price);
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'tailor_id' => $secondTailor->id,
+            'from_status' => 'cutting',
+            'to_status' => 'cutting',
+        ]);
+        $this->assertStringContainsString(
+            $firstTailor->name,
+            (string) OrderStatusHistory::where('order_id', $order->id)->latest('id')->value('note'),
+        );
+
+        $order->update(['tailor_paid_amount' => 100]);
+        $this->actingAs($owner)->patch(route('admin.tailor-jobs.assign', $order), [
+            'tailor_id' => $secondTailor->id,
+            'tailor_price' => $rateId.'-1',
+            'confirm_reassign' => 1,
+        ])->assertSessionHasErrors('tailor_id');
+        $this->assertSame($secondTailor->id, (int) $order->fresh()->tailorId);
+    }
+
     public function test_shop_owner_can_progress_a_job_and_an_audit_event_is_created(): void
     {
         [$owner, $tailor, $order] = $this->job();
@@ -172,25 +261,44 @@ class TailorJobLifecycleTest extends TestCase
         [$owner, , $order] = $this->job(['status' => 'cutting']);
         $rack = Rack::where('user_id', $owner->id)->firstOrFail();
 
-        $this->actingAs($owner)->post(route('admin.order.status'), [
+        $this->actingAs($owner)->postJson(route('admin.order.status'), [
             'order_id' => $order->id,
             'order_status' => 'complete',
             'rack_no' => $rack->rack_no,
-        ])->assertRedirect()->assertSessionHas('success');
+        ])->assertOk()
+            ->assertJsonPath('status', 'ready')
+            ->assertJsonPath('next_actions.0.value', 'start')
+            ->assertJsonPath('next_actions.1.value', 'deliver')
+            ->assertJsonPath('tailor_change_allowed', false);
 
         $this->assertSame('ready', $order->fresh()->status);
 
-        $this->actingAs($owner)->post(route('admin.order.status'), [
+        $this->actingAs($owner)->postJson(route('admin.order.status'), [
             'order_id' => $order->id,
             'order_status' => 'start',
-        ])->assertRedirect()->assertSessionHas('success');
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('note');
+
+        $this->assertSame('ready', $order->fresh()->status);
+
+        $this->actingAs($owner)->postJson(route('admin.order.status'), [
+            'order_id' => $order->id,
+            'order_status' => 'start',
+            'note' => 'گاہک نے درستگی کے لیے واپس کیا',
+        ])->assertOk()
+            ->assertJsonPath('status', 'cutting')
+            ->assertJsonPath('next_actions.0.value', 'complete')
+            ->assertJsonPath('tailor_change_allowed', true);
 
         $this->assertSame('cutting', $order->fresh()->status);
+        $this->assertNull($order->fresh()->ready_at);
+        $this->assertNull($order->fresh()->rack_no);
         $this->assertDatabaseHas('order_status_histories', [
             'order_id' => $order->id,
             'from_status' => 'ready',
             'to_status' => 'cutting',
             'changed_by_type' => 'shop_owner',
+            'note' => 'گاہک نے درستگی کے لیے واپس کیا',
         ]);
     }
 
@@ -231,10 +339,9 @@ class TailorJobLifecycleTest extends TestCase
         $rack = Rack::where('user_id', $owner->id)->firstOrFail();
 
         $this->actingAs($owner)
-            ->get(route('admin.tailor-jobs.index', ['status' => 'workshop']))
+            ->get(route('admin.order.total', ['week' => $order->returnDate]))
             ->assertOk()
             ->assertSee('name="order_status"', false)
-            ->assertSee('value="start"', false)
             ->assertSee('value="complete"', false);
 
         $this->app['auth']->guard()->logout();
@@ -358,17 +465,13 @@ class TailorJobLifecycleTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get(route('admin.tailor-jobs.index', ['status' => 'stitching']))
-            ->assertOk()
-            ->assertSeeText('سلائی')
-            ->assertSee('name="status"', false)
-            ->assertDontSee('name="order_status"', false);
-
-        $this->actingAs($owner)
             ->get(route('admin.order.total', ['week' => $order->returnDate]))
             ->assertOk()
             ->assertSeeText('سلائی')
-            ->assertSee(route('admin.tailor-jobs.status', $order), false);
+            ->assertSee(route('admin.tailor-jobs.status', $order), false)
+            ->assertSee('name="status"', false)
+            ->assertDontSeeText('فہرست')
+            ->assertDontSeeText('رقم / بقایا');
 
         $this->actingAs($owner)
             ->get(route('admin.Customers.index'))
@@ -458,6 +561,32 @@ class TailorJobLifecycleTest extends TestCase
         $this->assertSame(count($options), count(array_unique(array_column($options, 'value'))));
         $this->assertSame('سلائی پر واپس (ترمیم / دوبارہ کام)', $options[0]['label']);
         $this->assertSame('تیار', $options[1]['label']);
+
+        $readyOptions = Order::nextStatusOptionsFor('ready');
+        $this->assertSame(['stitching', 'delivered'], array_column($readyOptions, 'value'));
+    }
+
+    public function test_detailed_ready_order_requires_a_reason_before_returning_to_production(): void
+    {
+        [$owner, , $order] = $this->job(['status' => 'ready']);
+
+        $this->actingAs($owner)->patchJson(route('admin.tailor-jobs.status', $order), [
+            'status' => 'stitching',
+        ])->assertUnprocessable()->assertJsonValidationErrors('note');
+
+        $this->assertSame('ready', $order->fresh()->status);
+
+        $this->actingAs($owner)->patchJson(route('admin.tailor-jobs.status', $order), [
+            'status' => 'stitching',
+            'note' => 'بازو کی لمبائی درست کرنی ہے',
+        ])->assertOk()->assertJsonPath('status', 'stitching');
+
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'from_status' => 'ready',
+            'to_status' => 'stitching',
+            'note' => 'بازو کی لمبائی درست کرنی ہے',
+        ]);
     }
 
     public function test_tailor_can_only_update_their_own_jobs_and_cannot_mark_delivery(): void
@@ -551,10 +680,10 @@ class TailorJobLifecycleTest extends TestCase
         ]);
 
         $response = $this->actingAs($owner)
-            ->from(route('admin.tailor-jobs.index'))
+            ->from(route('admin.Tailor.index'))
             ->patch(route('admin.tailor-jobs.payment', $order), ['paid_amount' => 1100]);
 
-        $response->assertRedirect(route('admin.tailor-jobs.index'))
+        $response->assertRedirect(route('admin.Tailor.index'))
             ->assertSessionHasErrors(
                 'paid_amount',
                 'ادا شدہ رقم درزی کی کل کمائی سے زیادہ نہیں ہو سکتی۔',
@@ -562,12 +691,6 @@ class TailorJobLifecycleTest extends TestCase
             );
         $this->assertEquals(400, (float) $order->fresh()->tailor_paid_amount);
 
-        $this->actingAs($owner)
-            ->get(route('admin.tailor-jobs.index'))
-            ->assertOk()
-            ->assertSeeText('ادا شدہ رقم درزی کی کل کمائی سے زیادہ نہیں ہو سکتی۔')
-            ->assertSeeText('SMS یا واٹس ایپ فراہم کنندہ منسلک نہیں ہے۔')
-            ->assertSeeText('اندرونی اطلاع');
     }
 
     public function test_shop_owner_cannot_access_another_shops_job(): void
@@ -645,7 +768,8 @@ class TailorJobLifecycleTest extends TestCase
             ->assertSee('id="wo-status-filter"', false)
             ->assertSee('id="wo-tailor-filter"', false)
             ->assertSee('class="wo-table-head"', false)
-            ->assertSeeText('رقم / بقایا');
+            ->assertSeeText('کام کا مرحلہ')
+            ->assertDontSeeText('رقم / بقایا');
         $overdueResults->assertViewHas('weekDays', fn ($days) => $days
             ->flatMap(fn ($day) => $day['orders'])->pluck('id')->all() === [$overdueOrder->id]);
         $this->assertNotContains($crossShopOrder->id, $overdueResults->viewData('weekDays')

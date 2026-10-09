@@ -29,7 +29,7 @@ class ClientModuleAccessTest extends TestCase
 
         $this->actingAs($client)->get(route('admin.home'))->assertRedirect(route('admin.dashboard.tailoring'));
         $this->actingAs($client)->get(route('admin.dashboard.tailoring'))->assertOk()->assertSeeText('ٹیلرنگ ڈیش بورڈ')->assertDontSeeText('دکان ڈیش بورڈ', false);
-        $this->actingAs($client)->get(route('admin.tailor-jobs.index'))->assertOk();
+        $this->actingAs($client)->get(route('admin.tailor-jobs.index'))->assertRedirect(route('admin.order.total'));
         $this->actingAs($client)->get(route('admin.purchases.index'))->assertForbidden();
         $this->actingAs($client)->get(route('admin.financial-reports.index'))->assertOk()->assertDontSeeText('کاؤنٹر کپڑا فروخت');
     }
@@ -62,7 +62,7 @@ class ClientModuleAccessTest extends TestCase
             ->assertOk()
             ->assertSeeText('ٹیلرنگ')
             ->assertSeeText('کپڑے کی خرید و فروخت');
-        $this->actingAs($client)->get(route('admin.tailor-jobs.index'))->assertOk();
+        $this->actingAs($client)->get(route('admin.tailor-jobs.index'))->assertRedirect(route('admin.order.total'));
         $this->actingAs($client)->get(route('admin.inventory-ledger.index'))->assertOk();
     }
 

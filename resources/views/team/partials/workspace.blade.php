@@ -13,14 +13,14 @@
 
 <div class="team-hero mb-4">
     <div class="row align-items-center">
-        <div class="col-lg-8"><span class="badge badge-light text-primary mb-2">کاروباری ٹیم</span><h1 class="h3 font-weight-bold mb-2">ملازمین اور اجازتوں کا انتظام</h1><p class="mb-0">ملازمین، رولز اور سیکیورٹی کو الگ اور آسان حصوں میں سنبھالیں۔</p></div>
+        <div class="col-lg-8"><span class="badge badge-light text-primary mb-2">کاروباری ٹیم</span><h1 class="h3 font-weight-bold mb-2">ٹیم، کاریگر اور اجازتیں</h1><p class="mb-0">افراد کا مرکزی انتظام، رولز، لاگ اِن اور سیکیورٹی ایک مربوط جگہ پر سنبھالیں۔</p></div>
         <div class="col-lg-4 text-lg-left mt-3 mt-lg-0"><strong>{{ $business->name }}</strong><br><small>{{ $business->members->count() }} ملازمین · {{ $business->roles->count() }} رولز</small></div>
     </div>
 </div>
 
 <nav class="team-tabs mb-4" aria-label="ٹیم مینجمنٹ">
-    <a class="btn {{ request()->routeIs('admin.team.index') ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ route('admin.team.index') }}"><i class="fas fa-th-large ml-1"></i> خلاصہ</a>
-    <a class="btn {{ request()->routeIs('admin.team.employees.*') ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ route('admin.team.employees.index') }}"><i class="fas fa-users ml-1"></i> ملازمین</a>
+    <a class="btn {{ request()->routeIs('admin.team.index') ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ route('admin.team.index') }}"><i class="fas fa-users ml-1"></i> تمام افراد</a>
+    <a class="btn {{ request()->routeIs('admin.team.employees.*') ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ route('admin.team.employees.index') }}"><i class="fas fa-user-lock ml-1"></i> لاگ اِن ملازمین</a>
     <a class="btn {{ request()->routeIs('admin.team.roles.*') ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ route('admin.team.roles.index') }}"><i class="fas fa-user-shield ml-1"></i> رولز اور اجازتیں</a>
     <a class="btn {{ request()->routeIs('admin.team.security') ? 'btn-primary' : 'btn-outline-primary' }}" href="{{ route('admin.team.security') }}"><i class="fas fa-lock ml-1"></i> پاس ورڈ پالیسی</a>
 </nav>

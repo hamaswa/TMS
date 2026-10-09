@@ -30,7 +30,7 @@
                 <div><small>درزی</small><h1>{{ $tailor->name }} کے سلائی نرخ</h1></div>
             </div>
             <div class="tailor-rates-actions">
-                <a class="tailor-rate-btn" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-arrow-right"></i> درزیوں کی فہرست</a>
+                <a class="tailor-rate-btn" href="{{ route('admin.team.index', ['tab' => 'tailors']) }}"><i class="fas fa-arrow-right"></i> ٹیم اور کاریگر</a>
                 <button class="tailor-rate-btn is-primary" type="button" data-toggle="modal" data-target="#addTailorRateModal"><i class="fas fa-plus-circle"></i> نیا سلائی نرخ</button>
             </div>
         </header>

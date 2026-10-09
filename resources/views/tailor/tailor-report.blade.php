@@ -608,7 +608,7 @@
                         <p>سلائی کی اجرت، ادائیگی، ایڈوانس اور کام کی مکمل تفصیل۔</p>
                     </div>
                 </div>
-                <div class="tailor-head-actions"><a class="tailor-btn" href="{{ route('admin.Tailor.index') }}"><i
+                <div class="tailor-head-actions"><a class="tailor-btn" href="{{ route('admin.team.index', ['tab' => 'tailors']) }}"><i
                             class="fas fa-arrow-right"></i> درزیوں کی فہرست</a><a class="tailor-btn is-primary"
                         href="{{ route('admin.report-print', ['id' => $tailor->id, 'filterType' => $filterType]) }}" target="_blank"><i
                             class="fas fa-print"></i> رپورٹ پرنٹ کریں</a><button type="button"

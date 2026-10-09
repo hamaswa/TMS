@@ -99,14 +99,14 @@ class Order extends Model
             'cutting' => ['stitching'],
             'stitching' => ['trial'],
             'trial' => ['stitching', 'ready'],
-            'ready' => ['delivered'],
+            'ready' => ['stitching', 'delivered'],
             default => [],
         };
 
         return collect($nextStatuses)
             ->map(fn (string $status) => [
                 'value' => $status,
-                'label' => $status === 'stitching' && in_array('ready', $nextStatuses, true)
+                'label' => $status === 'stitching' && (in_array('ready', $nextStatuses, true) || in_array('delivered', $nextStatuses, true))
                     ? 'سلائی پر واپس (ترمیم / دوبارہ کام)'
                     : (self::STATUS_LABELS[$status] ?? ucfirst($status)),
             ])

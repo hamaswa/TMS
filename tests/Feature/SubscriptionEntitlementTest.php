@@ -154,7 +154,7 @@ class SubscriptionEntitlementTest extends TestCase
 
         $this->actingAs($owner)
             ->get(route('admin.Tailor.create'))
-            ->assertRedirect(route('admin.Tailor.index'))
+            ->assertRedirect(route('admin.team.index', ['open' => 'create', 'type' => 'tailor']))
             ->assertSessionHasErrors('tailor_limit');
 
         $this->assertDatabaseCount('business_roles', 1);

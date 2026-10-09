@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Business;
+use App\Models\MeasurementTemplate;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,7 @@ class PerformanceQaSeeder extends Seeder
     public const SHOP_COUNT = 10;
     public const ROOT_CUSTOMERS_PER_SHOP = 1000;
     public const FAMILY_PROFILE_INTERVAL = 4;
+    public const MEASUREMENT_SOURCE = 'performance_qa';
 
     public function run(): void
     {
@@ -85,7 +87,11 @@ class PerformanceQaSeeder extends Seeder
                 ->orderBy('serial_number')
                 ->get(['id', 'serial_number', 'parent_id']);
 
-            $this->seedOrders($owner, $roots, $profiles);
+            $templates = $this->seedMeasurementTemplates($owner);
+            $this->assignCustomerTemplates($owner, $profiles, $templates);
+            $this->seedMeasurementHistories($owner, $roots, $profiles, $templates);
+            $this->seedOrders($owner, $roots, $profiles, $templates);
+            $this->normalizeOrderTimelineAndTemplates($owner, $templates);
             $this->seedTransactions($owner);
 
             DB::table('customer_serial_sequences')->updateOrInsert(
@@ -195,7 +201,166 @@ class PerformanceQaSeeder extends Seeder
         }
     }
 
-    private function seedOrders(User $owner, $roots, $profiles): void
+    private function seedMeasurementTemplates(User $owner): array
+    {
+        $definitions = [
+            'shalwar_kameez' => [
+                'name' => 'QA Shalwar Kameez',
+                'description' => 'Performance QA adult shalwar kameez measurements.',
+                'system_fields' => ['length', 'arms', 'shalwar', 'pancha'],
+                'is_default' => true,
+            ],
+            'waistcoat' => [
+                'name' => 'QA Waistcoat',
+                'description' => 'Performance QA waistcoat measurements.',
+                'system_fields' => ['length', 'teraa', 'senaChorai'],
+                'is_default' => false,
+            ],
+            'school_uniform' => [
+                'name' => 'QA School Uniform',
+                'description' => 'Performance QA child school uniform measurements.',
+                'system_fields' => ['length', 'arms', 'teraa'],
+                'is_default' => false,
+            ],
+        ];
+
+        $templates = [];
+        foreach ($definitions as $key => $definition) {
+            $templates[$key] = MeasurementTemplate::updateOrCreate(
+                ['user_id' => $owner->id, 'name' => $definition['name']],
+                $definition + ['custom_field_ids' => [], 'is_active' => true]
+            );
+        }
+
+        return $templates;
+    }
+
+    private function assignCustomerTemplates(User $owner, $profiles, array $templates): void
+    {
+        DB::table('customers')
+            ->where('user_id', $owner->id)
+            ->where('acquisition_source', 'performance_qa')
+            ->update(['measurement_template_id' => $templates['shalwar_kameez']->id]);
+
+        $schoolProfileIds = $profiles->filter(fn ($profile) => $profile->serial_number % 2 === 0)->pluck('id');
+        $shalwarProfileIds = $profiles->filter(fn ($profile) => $profile->serial_number % 2 !== 0)->pluck('id');
+        if ($schoolProfileIds->isNotEmpty()) {
+            DB::table('customers')->whereIn('id', $schoolProfileIds)
+                ->update(['measurement_template_id' => $templates['school_uniform']->id]);
+        }
+        if ($shalwarProfileIds->isNotEmpty()) {
+            DB::table('customers')->whereIn('id', $shalwarProfileIds)
+                ->update(['measurement_template_id' => $templates['shalwar_kameez']->id]);
+        }
+    }
+
+    private function seedMeasurementHistories(User $owner, $roots, $profiles, array $templates): void
+    {
+        $expectedHistories = ($roots->count() + $profiles->count()) * 2;
+        $expectedValues = ($roots->count() * 7) + ($profiles->count() * 7);
+        $existingHistories = DB::table('customer_measurement_histories')
+            ->where('user_id', $owner->id)
+            ->where('source', self::MEASUREMENT_SOURCE)
+            ->count();
+        $existingValues = DB::table('customer_measurement_history_values as values')
+            ->join('customer_measurement_histories as histories', 'histories.id', '=', 'values.customer_measurement_history_id')
+            ->where('histories.user_id', $owner->id)
+            ->where('histories.source', self::MEASUREMENT_SOURCE)
+            ->count();
+
+        if ($existingHistories === $expectedHistories && $existingValues === $expectedValues) {
+            return;
+        }
+        if ($existingHistories !== 0 || $existingValues !== 0) {
+            throw new RuntimeException("Partial performance measurement set found for owner {$owner->id}; no records were added.");
+        }
+
+        $now = now()->format('Y-m-d H:i:s');
+        $historyRows = [];
+        foreach ($roots as $customer) {
+            foreach (['shalwar_kameez', 'waistcoat'] as $templateKey) {
+                $historyRows[] = $this->measurementHistoryRow($owner, $customer->id, $templates[$templateKey]->id, $now);
+            }
+        }
+        foreach ($profiles as $customer) {
+            foreach (['shalwar_kameez', 'school_uniform'] as $templateKey) {
+                $historyRows[] = $this->measurementHistoryRow($owner, $customer->id, $templates[$templateKey]->id, $now);
+            }
+        }
+        foreach (array_chunk($historyRows, 1000) as $chunk) {
+            DB::table('customer_measurement_histories')->insert($chunk);
+        }
+
+        $customers = $roots->concat($profiles)->keyBy(fn ($customer) => (int) $customer->id);
+        $templateFields = [
+            $templates['shalwar_kameez']->id => ['length', 'arms', 'shalwar', 'pancha'],
+            $templates['waistcoat']->id => ['length', 'teraa', 'senaChorai'],
+            $templates['school_uniform']->id => ['length', 'arms', 'teraa'],
+        ];
+        $valueRows = [];
+        $histories = DB::table('customer_measurement_histories')
+            ->where('user_id', $owner->id)
+            ->where('source', self::MEASUREMENT_SOURCE)
+            ->get(['id', 'customer_id', 'measurement_template_id']);
+        foreach ($histories as $history) {
+            $customer = $customers->get((int) $history->customer_id);
+            foreach ($templateFields[(int) $history->measurement_template_id] as $sortOrder => $field) {
+                $valueRows[] = [
+                    'customer_measurement_history_id' => $history->id,
+                    'measurement_field_id' => null,
+                    'source_key' => 'system.'.$field,
+                    'label' => $this->measurementLabel($field),
+                    'value' => $this->measurementValue($field, (int) $customer->serial_number),
+                    'unit' => 'inch',
+                    'sort_order' => $sortOrder,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+        foreach (array_chunk($valueRows, 1000) as $chunk) {
+            DB::table('customer_measurement_history_values')->insert($chunk);
+        }
+    }
+
+    private function measurementHistoryRow(User $owner, int $customerId, int $templateId, string $now): array
+    {
+        return [
+            'user_id' => $owner->id,
+            'customer_id' => $customerId,
+            'measurement_template_id' => $templateId,
+            'recorded_by_user_id' => $owner->id,
+            'source' => self::MEASUREMENT_SOURCE,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+    }
+
+    private function measurementLabel(string $field): string
+    {
+        return [
+            'length' => 'لمبائی',
+            'arms' => 'بازو',
+            'teraa' => 'تیرا',
+            'senaChorai' => 'سینہ چوڑائی',
+            'shalwar' => 'شلوار',
+            'pancha' => 'پائنچہ',
+        ][$field];
+    }
+
+    private function measurementValue(string $field, int $serial): string
+    {
+        return (string) ([
+            'length' => 32 + ($serial % 13),
+            'arms' => 18 + ($serial % 8),
+            'teraa' => 14 + ($serial % 7),
+            'senaChorai' => 18 + ($serial % 8),
+            'shalwar' => 30 + ($serial % 13),
+            'pancha' => 6 + ($serial % 5),
+        ][$field]);
+    }
+
+    private function seedOrders(User $owner, $roots, $profiles, array $templates): void
     {
         $target = ($roots->count() * 2) + $profiles->count();
         $existing = DB::table('orders')
@@ -222,7 +387,9 @@ class PerformanceQaSeeder extends Seeder
                     $total,
                     "PERF-QA|R{$root->serial_number}|{$sequence}",
                     $now,
-                    ($root->serial_number + $sequence) % 4
+                    $sequence === 1 ? 'delivered' : 'assigned',
+                    $sequence === 1 ? now()->subDays(30)->toDateString() : now()->addDays(10)->toDateString(),
+                    $sequence === 1 ? $templates['shalwar_kameez']->id : $templates['waistcoat']->id,
                 );
             }
         }
@@ -235,7 +402,9 @@ class PerformanceQaSeeder extends Seeder
                 $total,
                 "PERF-QA|F{$profile->serial_number}|1",
                 $now,
-                $profile->serial_number % 4
+                'stitching',
+                now()->addDays(14)->toDateString(),
+                $templates['school_uniform']->id,
             );
         }
         foreach (array_chunk($rows, 500) as $chunk) {
@@ -250,26 +419,59 @@ class PerformanceQaSeeder extends Seeder
         int $total,
         string $reference,
         string $now,
-        int $statusIndex,
+        string $status,
+        string $returnDate,
+        int $measurementTemplateId,
     ): array {
-        $statuses = ['assigned', 'stitching', 'ready', 'delivered'];
-
         return [
             'sub_customer' => (string) $profileId,
+            'measurement_template_id' => $measurementTemplateId,
             'customerId' => (string) $customerId,
             'suitQuantity' => '1',
             'totalPayment' => (string) $total,
             'designPrice' => (string) $total,
             'suitNum' => json_encode([$reference]),
             'design' => 'Performance QA standard suit',
-            'returnDate' => now()->addDays(7 + ($profileId % 14))->toDateString(),
+            'returnDate' => $returnDate,
             'userId' => (string) $ownerId,
             'remarks' => $reference,
-            'status' => $statuses[$statusIndex],
+            'status' => $status,
             'status_changed_at' => $now,
             'created_at' => $now,
             'updated_at' => $now,
         ];
+    }
+
+    private function normalizeOrderTimelineAndTemplates(User $owner, array $templates): void
+    {
+        $base = DB::table('orders')
+            ->where('userId', (string) $owner->id)
+            ->where('remarks', 'like', 'PERF-QA|%');
+
+        (clone $base)->where('remarks', 'like', 'PERF-QA|R%|1')->update([
+            'measurement_template_id' => $templates['shalwar_kameez']->id,
+            'status' => 'delivered',
+            'returnDate' => now()->subDays(30)->toDateString(),
+            'status_changed_at' => now()->subDays(25),
+            'created_at' => now()->subDays(60),
+            'updated_at' => now()->subDays(25),
+        ]);
+        (clone $base)->where('remarks', 'like', 'PERF-QA|R%|2')->update([
+            'measurement_template_id' => $templates['waistcoat']->id,
+            'status' => 'assigned',
+            'returnDate' => now()->addDays(10)->toDateString(),
+            'status_changed_at' => now()->subDays(2),
+            'created_at' => now()->subDays(3),
+            'updated_at' => now()->subDays(2),
+        ]);
+        (clone $base)->where('remarks', 'like', 'PERF-QA|F%|1')->update([
+            'measurement_template_id' => $templates['school_uniform']->id,
+            'status' => 'stitching',
+            'returnDate' => now()->addDays(14)->toDateString(),
+            'status_changed_at' => now()->subDay(),
+            'created_at' => now()->subDays(2),
+            'updated_at' => now()->subDay(),
+        ]);
     }
 
     private function seedTransactions(User $owner): void

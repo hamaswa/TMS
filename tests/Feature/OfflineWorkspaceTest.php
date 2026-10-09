@@ -53,7 +53,8 @@ class OfflineWorkspaceTest extends TestCase
         $urls = collect($response->json('pages'))->pluck('url');
         $this->assertTrue($urls->contains(route('admin.dashboard.tailoring')));
         $this->assertTrue($urls->contains(route('admin.Customers.create')));
-        $this->assertTrue($urls->contains(route('admin.tailor-jobs.index')));
+        $this->assertTrue($urls->contains(route('admin.order.total')));
+        $this->assertFalse($urls->contains(route('admin.tailor-jobs.index')));
         $this->assertTrue($urls->contains(route('admin.design.create')));
         $this->assertFalse($urls->contains(route('admin.notifications.index')));
         $this->assertFalse($urls->contains(route('admin.OptionType.create')));

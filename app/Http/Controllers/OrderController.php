@@ -18,6 +18,7 @@ use App\Models\OptionType;
 use App\Models\Transaction;
 use App\Models\Tailorsalary;
 use App\Models\MeasurementTemplate;
+use App\Models\ProductionWorker;
 use Illuminate\Http\Request;
 use App\Events\NotificationEvent;
 use App\Events\CompleteOrderEvent;
@@ -807,10 +808,12 @@ class OrderController extends Controller
                     ->select('id', 'name', 'phone_number1', 'serial_number'),
                 'tailor' => fn ($query) => $query->where('user_id', $ownerId)
                     ->select('id', 'name'),
+                'rate.options',
+                'measurementTemplate:id,name',
+                'statusHistory' => fn ($query) => $query->latest()->limit(20),
+                'workAssignments.worker:id,name',
+                'workAssignments.workType:id,name',
             ])
-            ->withSum([
-                'transactions as outstanding_amount' => fn ($query) => $query->where('userId', $ownerId),
-            ], 'remainingBalance')
             ->orderBy('returnDate')
             ->orderBy('id');
 
@@ -851,8 +854,27 @@ class OrderController extends Controller
             'ready' => $orders->whereIn('status', ['ready', 'delivered'])->count(),
         ];
 
+        $tailors = Tailor::with(['tailorsalary.options'])
+            ->where('user_id', $ownerId)
+            ->orderBy('name')
+            ->get();
+        $tailorWorkloads = Order::where('userId', $ownerId)
+            ->whereNotNull('tailorId')
+            ->whereNotIn('status', ['ready', 'delivered'])
+            ->selectRaw('tailorId, count(*) as active_jobs')
+            ->groupBy('tailorId')
+            ->pluck('active_jobs', 'tailorId');
+        $workers = ProductionWorker::where('user_id', $ownerId)
+            ->where('active', true)
+            ->with([
+                'skills:id,name',
+                'compensationPlans' => fn ($query) => $query->where('active', true)->with('workType:id,name'),
+            ])
+            ->orderBy('name')
+            ->get();
         return view('All_Total.order', compact(
-            'weekStart', 'weekEnd', 'weekDays', 'summary', 'detailedWorkflow', 'filter'
+            'weekStart', 'weekEnd', 'weekDays', 'summary', 'detailedWorkflow', 'filter',
+            'tailors', 'tailorWorkloads', 'workers'
         ));
     }
 

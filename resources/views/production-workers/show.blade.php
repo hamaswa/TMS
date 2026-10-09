@@ -620,7 +620,7 @@
     <section class="main-content worker-page" dir="rtl">
         <div class="worker-shell">
             <div class="worker-breadcrumb"><a href="{{ route('admin.home') }}">ڈیش بورڈ</a><span class="mx-2">‹</span><a
-                    href="{{ route('admin.production-workers.index') }}">پروڈکشن ورکرز</a><span
+                    href="{{ route('admin.team.index', ['tab' => 'production']) }}">ٹیم اور کاریگر</a><span
                     class="mx-2">‹</span>{{ $worker->name }}</div>
             <header class="worker-header">
                 <div class="worker-identity"><span class="worker-avatar">{{ mb_substr($worker->name, 0, 1) }}</span>
@@ -635,7 +635,7 @@
                     </div>
                 </div>
                 <div class="worker-header-actions"><a class="worker-btn"
-                        href="{{ route('admin.production-workers.index') }}"><i class="fas fa-arrow-right"></i> ورکرز کی
+                        href="{{ route('admin.team.index', ['tab' => 'production']) }}"><i class="fas fa-arrow-right"></i> افراد کی
                         فہرست</a><a class="worker-btn is-primary"
                         href="{{ route('admin.production-workers.edit', $worker) }}"><i class="fas fa-user-edit"></i>
                         معلومات تبدیل کریں</a></div>

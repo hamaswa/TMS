@@ -88,11 +88,9 @@
             <li class="nav-item"><a class="nav-link" href="{{ route('admin.home') }}">ڈیش بورڈ</a></li>
             @if(Auth::user()->hasModule('tailoring'))
                 <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" id="tailoringMenu" data-toggle="dropdown">ٹیلرنگ <span class="module-pill ml-1">فعال</span></a><div class="dropdown-menu" aria-labelledby="tailoringMenu">
-                    @if($canTailorOrders)<a class="dropdown-item" href="{{ route('admin.order.total') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i>ٹیلرنگ آرڈرز</a>@endif
-                    @if($canTailorWorkshop)<a class="dropdown-item" href="{{ route('admin.tailor-jobs.index') }}"><i class="fas fa-tasks fa-fw ml-2 text-primary"></i>ورکشاپ</a>@endif
+                    @if($canTailorOrders || $canTailorWorkshop)<a class="dropdown-item" href="{{ route('admin.order.total') }}"><i class="fas fa-route fa-fw ml-2 text-primary"></i>ٹیلرنگ ورک فلو</a>@endif
                     @if($canTailorCustomers)<a class="dropdown-item" href="{{ route('admin.Customers.index') }}"><i class="fas fa-user-friends fa-fw ml-2 text-primary"></i>گاہک اور پیمائش</a>@endif
-                    @if($canTailorTailors)<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-user-tie fa-fw ml-2 text-primary"></i>درزیوں کی فہرست</a>@endif
-                    @if($canTailorTailors)<a class="dropdown-item" href="{{ route('admin.production-workers.index') }}"><i class="fas fa-users fa-fw ml-2 text-primary"></i>پروڈکشن ورکرز اور اجرت</a>@endif
+                    @if($canTailorTailors && Auth::user()->hasBusinessPermission('team.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.team.index') }}"><i class="fas fa-users-cog fa-fw ml-2 text-primary"></i>ٹیم اور کاریگر</a>@endif
                     @if($canTailorConfiguration)<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.OptionType.index') }}"><i class="fas fa-sliders-h fa-fw ml-2 text-primary"></i>پیمائش اور سلائی کے اختیارات</a>@endif
                     @if($canTailorConfiguration)<a class="dropdown-item" href="{{ route('admin.measurement-templates.index') }}"><i class="fas fa-clipboard-list fa-fw ml-2 text-primary"></i>لباس اور پیمائش ٹیمپلیٹس</a><a class="dropdown-item" href="{{ route('admin.design.index') }}"><i class="fas fa-palette fa-fw ml-2 text-primary"></i>سلائی ڈیزائن</a>@endif
                 </div></li>
@@ -118,7 +116,7 @@
                 @if($canCustomerBalances)<a class="dropdown-item" href="{{ route('admin.customer-accounts.index') }}"><i class="fas fa-address-book fa-fw ml-2 text-success"></i>گاہکوں کے کھاتے</a>@endif
                 @if(Auth::user()->hasBusinessPermission('expenses.manage'))<a class="dropdown-item" href="{{ route('admin.dailyexpense.index') }}"><i class="fas fa-receipt fa-fw ml-2 text-warning"></i>روزانہ اخراجات</a>
                 <a class="dropdown-item" href="{{ route('admin.expense.index') }}"><i class="fas fa-calendar-alt fa-fw ml-2 text-warning"></i>ماہانہ اخراجات</a>@endif
-                @if(Auth::user()->hasBusinessPermission('team.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.team.index') }}"><i class="fas fa-users-cog fa-fw ml-2 text-primary"></i>ملازمین اور اجازتیں</a>@endif
+                @if(Auth::user()->hasBusinessPermission('team.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.team.index') }}"><i class="fas fa-users-cog fa-fw ml-2 text-primary"></i>ٹیم اور کاریگر</a>@endif
                 @if(Auth::user()->hasBusinessPermission('activity.view'))<a class="dropdown-item" href="{{ route('admin.activity.index') }}"><i class="fas fa-history fa-fw ml-2 text-primary"></i>ملازمین کی سرگرمی</a>@endif
                 @if(Auth::user()->hasBusinessPermission('storefront.manage'))<div class="dropdown-divider"></div><a class="dropdown-item" href="{{ route('admin.storefront.edit') }}"><i class="fas fa-globe-asia fa-fw ml-2 text-info"></i>آن لائن دکان</a>@endif
             </div></li>

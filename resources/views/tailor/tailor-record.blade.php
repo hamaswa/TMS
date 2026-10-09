@@ -109,7 +109,7 @@
                     <div><h1>{{ $data['tailor-name'] }} کے آرڈرز</h1><p>سلائی، مقدار، اجرت اور حوالگی کی مکمل آرڈر ہسٹری۔</p></div>
                 </div>
                 <div class="to-actions">
-                    <a class="to-btn" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-arrow-right"></i> درزیوں کی فہرست</a>
+                    <a class="to-btn" href="{{ route('admin.team.index', ['tab' => 'tailors']) }}"><i class="fas fa-arrow-right"></i> ٹیم اور کاریگر</a>
                     <a class="to-btn" href="{{ route('admin.tailor-rates', $data['tailor-id']) }}"><i class="fas fa-tags"></i> سلائی نرخ</a>
                     <a class="to-btn is-primary" href="{{ route('admin.tailor-report', $data['tailor-id']) }}"><i class="fas fa-file-invoice-dollar"></i> حساب اور لین دین</a>
                 </div>

@@ -7,8 +7,12 @@
                     <h1 class="h3 mb-1">پروڈکشن ورکرز</h1>
                     <p class="text-muted mb-0">درزی، کٹنگ ماسٹر اور دوسرے کاریگروں کا کام اور اجرت—ملازم اجازتوں سے الگ۔</p>
                 </div>
-                <a class="btn btn-primary" href="{{ route('admin.production-workers.create') }}"><i
-                        class="fas fa-plus ml-1"></i>نیا ورکر</a>
+                <div class="d-flex flex-wrap align-items-center" style="gap:.5rem">
+                    <a class="btn btn-outline-primary" href="{{ route('admin.order.total') }}"><i
+                            class="fas fa-tools ml-1"></i>ورکشاپ اور پروڈکشن</a>
+                    <button class="btn btn-primary" type="button" data-toggle="modal" data-target="#createWorkerModal"><i
+                            class="fas fa-plus ml-1"></i>نیا ورکر</button>
+                </div>
             </div>
             @if (session('success'))
                 <div class="alert alert-success">{{ session('success') }}</div>
@@ -87,4 +91,32 @@
             </div>
         </div>
     </section>
+
+    <div class="modal fade" id="createWorkerModal" tabindex="-1" role="dialog"
+        aria-labelledby="createWorkerModalLabel" aria-hidden="true" dir="rtl">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header align-items-center">
+                    <h5 class="modal-title font-weight-bold" id="createWorkerModalLabel"><i
+                            class="fas fa-user-plus text-primary ml-2"></i>نیا پروڈکشن ورکر</h5>
+                    <button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں">&times;</button>
+                </div>
+                <form method="POST" action="{{ route('admin.production-workers.store') }}">
+                    @csrf
+                    <input type="hidden" name="_form_context" value="worker_create">
+                    <div class="modal-body text-right">
+                        <div class="alert alert-info py-2">ورکر کا ریکارڈ صارف اکاؤنٹ اور لاگ اِن اجازتوں سے الگ ہے۔ کم از کم ایک مہارت منتخب کریں۔</div>
+                        @include('production-workers._form', ['worker' => null, 'showSubmit' => false])
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">منسوخ</button><button class="btn btn-primary" type="submit"><i class="fas fa-save ml-1"></i> معلومات محفوظ کریں</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
+
+@push('scripts')
+    @if(($errors->any() && old('_form_context') === 'worker_create') || request('open') === 'create')
+        <script>document.addEventListener('DOMContentLoaded', function () { $('#createWorkerModal').modal('show'); });</script>
+    @endif
+@endpush

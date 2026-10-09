@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @php($receiptNumber = isset($singleItem) ? ($singleItem->item_serial ?: $counterOrder->displayNumber()) : $counterOrder->displayNumber())
-    <title>{{ isset($singleItem) ? 'آئٹم رسید' : 'مشترکہ آرڈر رسید' }} — {{ $receiptNumber }}</title>
+    @php
+        $receiptItems = isset($singleItem) ? collect([$singleItem]) : $counterOrder->items->where('status','confirmed');
+        $hasClothItems = $receiptItems->contains('type', 'cloth');
+        $hasTailoringItems = $receiptItems->contains('type', 'tailoring');
+        $receiptNumber = isset($singleItem) ? ($singleItem->item_serial ?: $counterOrder->displayNumber()) : $counterOrder->displayNumber();
+        $receiptLabel = $hasClothItems && $hasTailoringItems ? 'مشترکہ آرڈر رسید' : ($hasTailoringItems ? 'سلائی آرڈر رسید' : 'کپڑے کی رسید');
+    @endphp
+    <title>{{ isset($singleItem) ? 'آئٹم رسید' : $receiptLabel }} — {{ $receiptNumber }}</title>
     <style>
         @font-face{font-family:'Noto Nastaliq Urdu';src:url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');font-display:swap}
         *{box-sizing:border-box}body{margin:0;color:#16283d;background:#eef2f6;font-family:'Noto Nastaliq Urdu',serif}.print-toolbar{display:flex;justify-content:center;gap:8px;padding:12px}.print-toolbar a,.print-toolbar button{border:1px solid #bdd0e4;border-radius:8px;padding:7px 12px;color:#173b62;background:#fff;font:700 13px inherit;text-decoration:none;cursor:pointer}.print-toolbar .primary{border-color:#1769e0;color:#fff;background:#1769e0}.receipt{width:80mm;min-height:120mm;margin:0 auto 24px;padding:7mm;background:#fff;box-shadow:0 10px 30px rgba(22,40,61,.12)}.tms-paper-a4 .receipt{width:210mm;min-height:297mm;padding:16mm}.brand{text-align:center}.brand img{display:block;max-width:86px;max-height:68px;margin:0 auto 7px;object-fit:contain}.brand h1{margin:0;font-size:20px}.brand p{margin:3px 0;color:#68798b;font-size:11px}.receipt-head{display:flex;justify-content:space-between;gap:15px;margin:17px 0 11px;padding:10px 0;border-top:2px solid #173b62;border-bottom:1px solid #ccd7e3}.receipt-head div{min-width:0}.receipt-head small{display:block;color:#718096;font-size:10px}.receipt-head strong{display:block;direction:ltr;font:800 13px Arial,sans-serif;overflow-wrap:anywhere}.customer{margin-bottom:13px;padding:10px 12px;border-radius:9px;background:#f6f9fc}.customer small{display:block;color:#718096;font-size:10px}.customer strong{font-size:15px}.items{display:grid;gap:8px}.item{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding:10px 0;border-bottom:1px solid #dce4ec;break-inside:avoid}.item-kind{margin:0 0 2px;color:#42566c;font-size:9px;font-weight:900}.item h2{min-width:0;margin:0 0 3px;font-size:13px;line-height:1.75}.item p{margin:0;color:#65768a;font-size:10px;line-height:1.9}.item-price{direction:ltr;justify-self:start;white-space:nowrap;font:800 12px Arial,sans-serif;text-align:left}.stitching-note{margin-top:6px!important;padding:6px 8px;border-right:2px solid #173b62;color:#243649!important;background:#f7f9fb}.summary{margin-top:14px;border-top:2px solid #173b62}.summary-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #e1e7ee}.summary-row strong{direction:ltr;font:800 13px Arial,sans-serif}.summary-row.total{font-size:15px}.summary-row.balance{color:#a63b32}.footer{margin-top:16px;text-align:center;color:#526477;font-size:10px}.footer p{margin:2px 0}.qr{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px}.qr svg{width:68px;height:68px}.qr span{max-width:120px;font-size:9px}.reference{direction:ltr;font:700 9px Arial,sans-serif}.tms-paper-a4 .items{grid-template-columns:1fr 1fr;gap:0 20px}.tms-paper-a4 .item{grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:13px 0}.tms-paper-a4 .item h2{font-size:15px}.tms-paper-a4 .item p{font-size:12px}.tms-paper-a4 .summary{max-width:390px;margin-right:auto}.tms-paper-a4 .receipt-head strong{font-size:15px}
@@ -30,7 +36,7 @@
         <header class="brand">
             @if($setting?->logo_url)<img src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو">@endif
             <h1>{{ $setting?->name ?: 'BuyNStitch' }}</h1>
-            <p>{{ isset($singleItem) ? ($singleItem->type==='tailoring' ? 'سلائی رسید' : 'کپڑے کی رسید') : 'کپڑا اور سلائی — مشترکہ آرڈر رسید' }}</p>
+            <p>{{ isset($singleItem) ? ($singleItem->type==='tailoring' ? 'سلائی رسید' : 'کپڑے کی رسید') : $receiptLabel }}</p>
         </header>
         <section class="receipt-head">
             <div><small>{{ isset($singleItem) ? 'آئٹم سیریل' : 'آرڈر نمبر' }}</small><strong class="receipt-number">{{ $receiptNumber }}</strong></div>
@@ -38,7 +44,7 @@
         </section>
         <section class="customer"><small>گاہک</small><strong>{{ $counterOrder->customer?->name }}</strong></section>
         <section class="items" aria-label="آرڈر آئٹمز">
-            @foreach(isset($singleItem) ? collect([$singleItem]) : $counterOrder->items->where('status','confirmed') as $item)
+            @foreach($receiptItems as $item)
                 <article class="item">
                     <div>
                         @if($item->item_serial && !isset($singleItem))<span class="item-serial">{{ $item->item_serial }}</span>@endif

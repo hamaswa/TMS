@@ -71,7 +71,7 @@
                 <span class="customer-balance {{ $currentBalance > 0 ? 'is-due' : 'is-clear' }}" data-customer-balance="{{ $customer->id }}">
                     Rs. {{ number_format($currentBalance, 2) }}
                 </span>
-                <small class="customer-shared-balance-label">تمام خاندانی آرڈرز سمیت</small>
+                @if($familyProfiles->isNotEmpty())<small class="customer-shared-balance-label">تمام خاندانی آرڈرز سمیت</small>@endif
             @else
                 <span class="text-muted">اجازت درکار ہے</span>
             @endif

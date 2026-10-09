@@ -23,7 +23,7 @@ class PaginatedBackOfficeListsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_tailor_job_board_searches_and_paginates_inside_the_shop(): void
+    public function test_tailoring_calendar_contains_the_shop_work_queue_and_legacy_list_redirects(): void
     {
         [$owner, $customer, $tailor] = $this->shop();
         for ($i = 1; $i <= 20; $i++) {
@@ -35,13 +35,14 @@ class PaginatedBackOfficeListsTest extends TestCase
             ]);
         }
 
-        $this->actingAs($owner)->get(route('admin.tailor-jobs.index', ['per_page' => 15]))
-            ->assertOk()->assertViewHas('orders', fn ($orders) => $orders instanceof LengthAwarePaginator
-                && $orders->perPage() === 15 && $orders->total() === 20);
+        $this->actingAs($owner)->get(route('admin.order.total', ['filter' => 'upcoming']))
+            ->assertOk()
+            ->assertSee('id="wo-search"', false)
+            ->assertSeeText('SUIT-20')
+            ->assertViewHas('weekDays', fn ($days) => $days->flatMap(fn ($day) => $day['orders'])->count() === 20);
 
-        $this->actingAs($owner)->get(route('admin.tailor-jobs.index', ['q' => 'SUIT-20']))
-            ->assertOk()->assertViewHas('orders', fn ($orders) => $orders->total() === 1
-                && $orders->first()->suitNum === 'SUIT-20');
+        $this->actingAs($owner)->get(route('admin.tailor-jobs.index'))
+            ->assertRedirect(route('admin.order.total'));
     }
 
     public function test_purchase_list_filters_by_search_date_and_page_size(): void

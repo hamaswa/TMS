@@ -29,8 +29,8 @@ class OrderWorkAssignmentController extends Controller
     public function store(Request $request, int $order)
     {
         $order = $this->ownedOrder($order);
-        if ($order->status === 'delivered') {
-            throw ValidationException::withMessages(['order' => 'حوالہ شدہ آرڈر پر نیا کام تفویض نہیں کیا جا سکتا۔']);
+        if (in_array($order->status, ['ready', 'delivered'], true)) {
+            throw ValidationException::withMessages(['order' => 'تیار یا حوالہ شدہ آرڈر پر نیا کام تفویض نہیں کیا جا سکتا۔']);
         }
         $ownerId = Auth::user()->businessOwnerId();
         $validated = $request->validate([

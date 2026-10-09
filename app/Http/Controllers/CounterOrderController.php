@@ -18,6 +18,8 @@ use App\Services\CounterOrderNumberService;
 use App\Services\MeasurementService;
 use App\Services\PrintDocumentService;
 use App\Support\PaymentMethods;
+use App\Rules\PakistanMobileNumber;
+use App\Rules\UniqueCustomerPhone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,10 +33,14 @@ class CounterOrderController extends Controller
         $this->authorizeAnyOrderAccess($request);
         $canAddCloth = $this->canManageCloth($request);
         $canAddTailoring = $this->canManageTailoring($request);
-        $customers = $this->customers($request);
         $selectedCustomer = $request->integer('customer')
-            ? $customers->firstWhere('id', $request->integer('customer'))
+            ? Customers::where('user_id', $request->user()->businessOwnerId())
+                ->whereNull('parent_id')->selectableForSales()->find($request->integer('customer'))
             : null;
+        $customers = $this->customers($request);
+        if ($selectedCustomer && ! $customers->contains('id', $selectedCustomer->id)) {
+            $customers->prepend($selectedCustomer);
+        }
         $selectedProfileId = $selectedCustomer
             ? Customers::where('user_id', $request->user()->businessOwnerId())
                 ->whereKey($request->integer('profile', $selectedCustomer->id))
@@ -55,6 +61,57 @@ class CounterOrderController extends Controller
             'customers', 'selectedCustomer', 'selectedProfileId', 'openOrders',
             'canAddCloth', 'canAddTailoring'
         ));
+    }
+
+    public function searchCustomers(Request $request): JsonResponse
+    {
+        $this->authorizeAnyOrderAccess($request);
+        $validated = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+        $search = trim((string) ($validated['q'] ?? ''));
+
+        $customers = Customers::query()
+            ->where('user_id', $request->user()->businessOwnerId())
+            ->whereNull('parent_id')
+            ->selectableForSales()
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(function ($match) use ($search, $like) {
+                    $match->where('name', 'like', $like)
+                        ->orWhere('phone_number1', 'like', $like);
+                    if (ctype_digit($search)) {
+                        $match->orWhere('serial_number', (int) $search);
+                    }
+                });
+            })
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get(['id', 'name', 'phone_number1', 'serial_number']);
+
+        return response()->json(['customers' => $customers]);
+    }
+
+    public function storeCustomer(Request $request): JsonResponse
+    {
+        $this->authorizeAnyOrderAccess($request);
+        $ownerId = $request->user()->businessOwnerId();
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:50', new PakistanMobileNumber, new UniqueCustomerPhone($ownerId)],
+        ]);
+        $customer = Customers::create([
+            'name' => trim($validated['name']),
+            'phone_number1' => trim($validated['phone']),
+            'user_id' => $ownerId,
+            'acquisition_source' => 'counter_order',
+        ]);
+
+        return response()->json(['customer' => [
+            'id' => $customer->id,
+            'name' => $customer->name,
+            'phone_number1' => $customer->phone_number1,
+            'serial_number' => $customer->serial_number,
+        ]], 201);
     }
 
     public function store(Request $request, CounterOrderService $service): RedirectResponse
@@ -573,7 +630,7 @@ class CounterOrderController extends Controller
     private function customers(Request $request)
     {
         return Customers::where('user_id', $request->user()->businessOwnerId())
-            ->whereNull('parent_id')->selectableForSales()->orderBy('name')->get();
+            ->whereNull('parent_id')->selectableForSales()->orderByDesc('updated_at')->orderByDesc('id')->limit(20)->get();
     }
 
     private function authorizeAnyOrderAccess(Request $request): void

@@ -10,4 +10,4 @@
 <fieldset class="border rounded p-3 mb-3"><legend class="w-auto px-2 h6">یہ شخص کون سے کام کر سکتا ہے؟</legend><div class="row">@foreach($workTypes as $type)<div class="col-md-4 col-6 mb-2"><label class="d-flex align-items-center"><input type="checkbox" name="work_type_ids[]" value="{{ $type->id }}" class="ml-2" @checked(in_array($type->id, old('work_type_ids', isset($worker) ? $worker->skills->pluck('id')->all() : [])))>{{ $type->name }}</label></div>@endforeach</div></fieldset>
 <div class="form-group"><label for="notes">نوٹ</label><textarea id="notes" name="notes" class="form-control" rows="3" maxlength="1000">{{ old('notes', $worker->notes ?? '') }}</textarea></div>
 @isset($worker)<div class="form-group form-check"><input type="hidden" name="active" value="0"><input id="active" type="checkbox" name="active" value="1" class="form-check-input" @checked(old('active', $worker->active))><label for="active" class="form-check-label">ورکر فعال ہے</label></div>@endisset
-<button class="btn btn-primary" type="submit">معلومات محفوظ کریں</button>
+@if($showSubmit ?? true)<button class="btn btn-primary" type="submit">معلومات محفوظ کریں</button>@endif

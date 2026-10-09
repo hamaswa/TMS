@@ -21,29 +21,34 @@ class TailorManagementWorkflowTest extends TestCase
         $owner = $this->owner();
 
         $this->actingAs($owner)->get(route('admin.Tailor.create'))
+            ->assertRedirect(route('admin.team.index', ['open' => 'create', 'type' => 'tailor']));
+        $this->actingAs($owner)->get(route('admin.team.index', ['open' => 'create', 'type' => 'tailor']))
             ->assertOk()
+            ->assertSee('id="addPersonModal"', false)
+            ->assertSee('data-form-kind="tailor"', false)
+            ->assertSeeText('درزی خود بخود پروڈکشن فہرست سے بھی منسلک ہوگا۔')
             ->assertSeeText('پورٹل پاس ورڈ')
             ->assertSeeText('فون نمبر')
-            ->assertSeeText('ابتدائی سیکیورٹی ڈپازٹ')
-            ->assertSeeText('یہ درزی کو دیا گیا ایڈوانس نہیں');
+            ->assertSeeText('سیکیورٹی ڈپازٹ');
 
         $payload = [
             'name' => 'محمد وقاص',
             'contact' => '03005550123',
             'password' => 'Waqas@2026',
+            'return_to' => 'people',
         ];
         $this->actingAs($owner)->post(route('admin.Tailor.store'), $payload)
-            ->assertRedirect('admin/Tailor')
+            ->assertRedirect(route('admin.team.index', ['tab' => 'tailors']))
             ->assertSessionHas('insert', 'نیا درزی کامیابی سے شامل کر دیا گیا ہے۔');
 
         $this->actingAs($owner)->post(route('admin.Tailor.store'), $payload)
             ->assertSessionHasErrors('contact');
         $this->assertDatabaseCount('tailors', 1);
 
-        $this->actingAs($owner)->get(route('admin.Tailor.index'))
+        $this->actingAs($owner)->get(route('admin.team.index', ['tab' => 'tailors']))
             ->assertOk()
-            ->assertSeeText('حساب دیکھیں')
-            ->assertSeeText('ایڈوانس دیں')
+            ->assertSeeText('محمد وقاص')
+            ->assertSeeText('کھاتہ اور اجرت')
             ->assertDontSeeText('Tailor Record');
     }
 

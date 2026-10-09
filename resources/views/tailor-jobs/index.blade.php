@@ -172,7 +172,7 @@
             min-height: 42px;
             border-color: #d2deeb;
             border-radius: 9px;
-            background: #fbfdff
+            background: #fbfdff;
             padding-top: 0px
         }
 
@@ -533,13 +533,13 @@
         <div class="tj-shell">
             <header class="tj-head">
                 <div class="tj-title">
-                    <h1><i class="fas fa-tasks ml-2 text-primary"></i>سلائی کے کام</h1>
-                    <p>ہر آرڈر کا درزی، تاریخ اور موجودہ مرحلہ ایک جگہ دیکھیں۔</p>
+                    <h1><i class="fas fa-tasks ml-2 text-primary"></i>ٹیلرنگ ورک فلو</h1>
+                    <p>فہرست میں درزی، کاریگر، مراحل، گاہک کی ادائیگی، رسید اور اجرت ایک ہی جگہ سنبھالیں۔</p>
                 </div>
                 @if (!$isTailor)
                     <div class="tj-head-actions">
                         <button type="button" class="tj-button" data-toggle="modal" data-target="#rackSetupModal"><i class="fas fa-layer-group"></i> ریک نمبرز <span class="badge badge-light">{{ $racks->count() }}</span></button>
-                        <a href="{{ route('admin.Tailor.index') }}" class="tj-button"><i class="fas fa-user-cog"></i> درزیوں کی فہرست</a>
+                        <a href="{{ route('admin.team.index', ['tab' => 'tailors']) }}" class="tj-button"><i class="fas fa-users-cog"></i> ٹیم اور کاریگر</a>
                     </div>
                 @endif
             </header>
@@ -547,6 +547,7 @@
             @if (session('success'))
                 <div class="alert alert-success"><i class="fas fa-check-circle ml-1"></i>{{ session('success') }}</div>
             @endif
+
             @if ($errors->any())
                 <div class="alert alert-danger"><strong>تبدیلی محفوظ نہیں ہو سکی۔</strong>
                     <ul class="mb-0 mt-1">
@@ -567,7 +568,8 @@
             </div>
 
             @if (!$isTailor)
-                <form method="GET" action="{{ route('admin.tailor-jobs.index') }}" class="tj-panel tj-search-form">
+                <form method="GET" action="{{ route('admin.order.total') }}" class="tj-panel tj-search-form">
+                    <input type="hidden" name="view" value="list">
                     <div class="tj-search-row">
                         <div class="tj-field"><label for="q">کام تلاش کریں</label><input id="q"
                                 name="q" class="form-control" maxlength="100" value="{{ $filters['q'] ?? '' }}"
@@ -582,14 +584,16 @@
                                     name="status" class="form-control" style="padding-top: 0px">
                                     @if($detailedWorkflow)
                                         <option value="">تمام مراحل</option>
-                                        @foreach (\App\Models\Order::STATUSES as $status)
+                                        @foreach (array_diff(\App\Models\Order::STATUSES, ['delivered']) as $status)
                                             <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $statusLabels[$status] }}</option>
                                         @endforeach
+                                        <option value="completed" @selected(($filters['status'] ?? '') === 'completed')>مکمل شدہ تاریخ</option>
                                     @else
                                         <option value="">تمام حالتیں</option>
                                         <option value="unassigned" @selected(($filters['status'] ?? '') === 'unassigned')>درزی مقرر ہونا باقی</option>
                                         <option value="workshop" @selected(($filters['status'] ?? '') === 'workshop')>کارخانے میں ہے</option>
                                         <option value="ready" @selected(($filters['status'] ?? '') === 'ready')>تیار ہے</option>
+                                        <option value="completed" @selected(($filters['status'] ?? '') === 'completed')>مکمل شدہ تاریخ</option>
                                     @endif
                                 </select>
                             </div>
@@ -623,7 +627,7 @@
                                 </select>
                             </div>
                         </div>
-                        <a class="tj-filter-reset" href="{{ route('admin.tailor-jobs.index') }}"><i
+                        <a class="tj-filter-reset" href="{{ route('admin.order.total', ['view' => 'list']) }}"><i
                                 class="fas fa-times ml-1"></i>تمام فلٹر ختم کریں</a>
                     </details>
                 </form>
@@ -634,7 +638,7 @@
 
             <section class="tj-panel">
                 <div class="tj-panel-head">
-                    <h2>کام کی فہرست</h2><span>کل {{ $orders->total() }} کام</span>
+                    <h2>{{ ($filters['status'] ?? '') === 'completed' ? 'مکمل شدہ کام' : 'فعال کام' }}</h2><span>کل {{ $orders->total() }} کام</span>
                 </div>
                 <div class="tj-list">
                     @forelse ($orders as $order)
@@ -650,15 +654,21 @@
                             $deliveries = $order->notificationDeliveries->keyBy('stage');
                             $paymentErrors = $errors->getBag('tailorPayment' . $order->id);
                         @endphp
-                        <article class="tj-job-card {{ $overdue ? 'is-overdue' : '' }}">
+                        <article class="tj-job-card {{ $overdue ? 'is-overdue' : '' }}" data-workflow-order="{{ $order->id }}">
                             <div class="tj-card-head">
                                 <div class="tj-order-main"><span class="tj-order-number">#{{ $order->id }}</span>
                                     <div>
                                         <h3>{{ $order->customers->name ?? 'گاہک نمبر ' . $order->customerId }}</h3>
                                         <small>آرڈر کی تاریخ: {{ optional($order->created_at)->format('d M Y') }}</small>
                                     </div>
-                                </div><span class="tj-status {{ $overdue ? 'is-overdue' : '' }}"><i
-                                        class="fas {{ $overdue ? 'fa-exclamation-circle' : 'fa-circle' }}"></i>{{ $overdue ? 'دیر ہو گئی' : $statusLabels[$order->status] ?? $order->status }}</span>
+                                </div><div class="d-flex align-items-center flex-wrap" style="gap:7px">
+                                    <span class="tj-status {{ $overdue ? 'is-overdue' : '' }}"><i
+                                            class="fas {{ $overdue ? 'fa-exclamation-circle' : 'fa-circle' }}"></i>{{ $overdue ? 'دیر ہو گئی' : $statusLabels[$order->status] ?? $order->status }}</span>
+                                    @if(!$isTailor && Auth::user()->hasBusinessPermission('tailoring.orders'))
+                                        <a class="tj-button" href="{{ route('admin.order-print', $order) }}" title="گاہک کی رسید"><i class="fas fa-print"></i> رسید</a>
+                                        <a class="tj-button" href="{{ route('admin.order.edit', $order) }}" title="آرڈر میں ترمیم"><i class="fas fa-pen"></i> ترمیم</a>
+                                    @endif
+                                </div>
                             </div>
                             <div class="tj-info-grid">
                                 <div class="tj-info"><small><i
@@ -704,6 +714,30 @@
                             @else
                             <div class="tj-card-body">
                                 <div class="tj-action-box">
+                                    @if(!$isTailor && !$isDelivered && (float)$order->tailor_paid_amount <= 0)
+                                        <details class="mb-3">
+                                            <summary class="tj-button"><i class="fas fa-user-edit"></i> درزی / شرح تبدیل کریں</summary>
+                                            <form method="POST" action="{{ route('admin.tailor-jobs.assign', $order) }}" class="tj-assignment-form mt-2" onsubmit="return confirm('کیا آپ واقعی اس آرڈر کا درزی یا شرح تبدیل کرنا چاہتے ہیں؟ یہ تبدیلی تاریخ میں محفوظ ہوگی۔')">
+                                                @csrf @method('PATCH')
+                                                <input type="hidden" name="confirm_reassign" value="1">
+                                                <div class="tj-progress-form">
+                                                    <select name="tailor_id" class="form-control js-assignment-tailor" required aria-label="درزی منتخب کریں">
+                                                        @foreach($tailors as $tailor)
+                                                            <option value="{{ $tailor->id }}" @selected((int)$order->tailorId === $tailor->id) @disabled($tailor->tailorsalary->isEmpty())>{{ $tailor->name }} — {{ (int)($tailorWorkloads[$tailor->id] ?? 0) }} جاری کام</option>
+                                                        @endforeach
+                                                    </select>
+                                                    <select name="tailor_price" class="form-control js-assignment-rate" required aria-label="سلائی شرح منتخب کریں">
+                                                        @foreach($tailors as $tailor)
+                                                            @foreach($tailor->tailorsalary as $rate)
+                                                                <option value="{{ $rate->id }}-{{ $rate->price }}" data-tailor="{{ $tailor->id }}" @selected((int)$order->rateId === $rate->id) @if((int)$order->tailorId !== $tailor->id) hidden @endif>{{ number_format((float)$rate->price,2) }} — {{ $rate->options?->Name ?: ($rate->type ?: 'عام سلائی') }}</option>
+                                                            @endforeach
+                                                        @endforeach
+                                                    </select>
+                                                    <button class="tj-button tj-primary" type="submit"><i class="fas fa-save"></i> تبدیلی محفوظ کریں</button>
+                                                </div>
+                                            </form>
+                                        </details>
+                                    @endif
                                     <h4><i class="fas fa-exchange-alt ml-1 text-primary"></i>کام کی حالت</h4>
                                     @if($detailedWorkflow && $nextStatusOptions->isNotEmpty())
                                         <form class="tj-progress-form js-job-status-form" method="POST" action="{{ $isTailor ? route('tailor.jobs.status', $order) : route('admin.tailor-jobs.status', $order) }}"
@@ -742,9 +776,35 @@
                                             ہے۔</span>
                                     @endif
                                     @if (!$isTailor)
-                                        <a class="tj-button mt-2"
-                                            href="{{ route('admin.orders.workforce.index', $order) }}"><i
-                                                class="fas fa-users-cog"></i> کاریگر اور کام</a>
+                                        <details class="mt-2 tj-workers-inline">
+                                            <summary class="tj-button"><i class="fas fa-users-cog"></i> دیگر کاریگر اور کام <span class="badge badge-light">{{ $order->workAssignments->whereNull('legacy_key')->count() }}</span></summary>
+                                            <div class="mt-2">
+                                                @foreach($order->workAssignments->whereNull('legacy_key') as $assignment)
+                                                    <div class="d-flex align-items-center justify-content-between flex-wrap border rounded p-2 mb-2" style="gap:8px">
+                                                        <span><strong>{{ $assignment->worker?->name ?: 'ورکر' }}</strong> — {{ $assignment->workType?->name ?: 'کام' }}<small class="text-muted mr-2">{{ number_format((float)$assignment->quantity, 2) }} × Rs. {{ number_format((float)$assignment->rate, 2) }}</small></span>
+                                                        @if(in_array($assignment->status, ['assigned', 'in_progress'], true))
+                                                            <form method="POST" action="{{ route('admin.orders.workforce.status', [$order, $assignment]) }}" class="d-flex" style="gap:6px">@csrf @method('PATCH')
+                                                                <select name="status" class="form-control form-control-sm">@if($assignment->status === 'assigned')<option value="in_progress">کام شروع</option>@endif<option value="completed">مکمل</option><option value="cancelled">منسوخ</option></select>
+                                                                <button class="btn btn-sm btn-outline-primary">محفوظ</button>
+                                                            </form>
+                                                        @else<span class="badge badge-{{ $assignment->status === 'completed' ? 'success' : 'secondary' }}">{{ $assignment->status === 'completed' ? 'مکمل' : 'منسوخ' }}</span>@endif
+                                                    </div>
+                                                @endforeach
+                                                @if(!$isDelivered && $workers->isNotEmpty())
+                                                    <form method="POST" action="{{ route('admin.orders.workforce.store', $order) }}" class="tj-inline-worker-form border-top pt-2">@csrf
+                                                        <div class="tj-progress-form">
+                                                            <select name="production_worker_id" class="form-control js-production-worker" required><option value="">کاریگر منتخب کریں</option>@foreach($workers as $worker)<option value="{{ $worker->id }}">{{ $worker->name }}</option>@endforeach</select>
+                                                            <select name="work_type_id" class="form-control js-production-work" required disabled><option value="">پہلے کاریگر منتخب کریں</option>@foreach($workers as $worker)@foreach($worker->skills as $skill)@php($plan=$worker->compensationPlans->firstWhere('work_type_id',$skill->id))@if($plan && in_array($plan->method,['per_piece','hybrid']) && (float)$plan->rate>0)<option value="{{ $skill->id }}" data-worker="{{ $worker->id }}" hidden disabled>{{ $skill->name }} — Rs. {{ number_format((float)$plan->rate,2) }}</option>@endif @endforeach @endforeach</select>
+                                                            <input type="number" name="quantity" min="0.001" step="0.001" value="{{ $order->suitQuantity ?: 1 }}" class="form-control" aria-label="مقدار" required>
+                                                            <button class="tj-button tj-primary" type="submit"><i class="fas fa-plus"></i> کام دیں</button>
+                                                        </div>
+                                                        <input name="notes" class="form-control mt-2" maxlength="1000" placeholder="کام کی ہدایت (اختیاری)">
+                                                    </form>
+                                                @elseif($workers->isEmpty())
+                                                    <a class="tj-button" href="{{ route('admin.team.index', ['open' => 'create', 'type' => 'production']) }}"><i class="fas fa-user-plus"></i> پہلے کاریگر شامل کریں</a>
+                                                @endif
+                                            </div>
+                                        </details>
                                     @endif
                                 </div>
                                 @if (!$isTailor)
@@ -767,6 +827,15 @@
                                             <div id="tailor-payment-error-{{ $order->id }}"
                                                 class="text-danger small mt-1" role="alert">
                                                 {{ $paymentErrors->first('paid_amount') }}</div>
+                                        @endif
+                                        @php($customerBalance = max(0, (float)($order->outstanding_amount ?? 0)))
+                                        @if(Auth::user()->hasBusinessPermission('customers.balances'))
+                                            <hr>
+                                            <div class="tj-payment-summary"><span>گاہک کا بقایا <strong>روپے <span class="js-customer-balance">{{ number_format($customerBalance, 2) }}</span></strong></span></div>
+                                            <button type="button" class="tj-button tj-customer-payment" data-toggle="modal" data-target="#workflowCustomerPaymentModal"
+                                                data-order-id="{{ $order->id }}" data-customer-id="{{ $order->customerId }}"
+                                                data-customer-name="{{ $order->customers?->name }}" data-balance="{{ $customerBalance }}"
+                                                @disabled($customerBalance <= 0)><i class="fas fa-hand-holding-usd"></i> گاہک سے رقم وصول کریں</button>
                                         @endif
                                     </div>
                                 @endif
@@ -821,6 +890,27 @@
                 </form>
             </div></div>
         </div>
+        @if(Auth::user()->hasBusinessPermission('customers.balances'))
+            <div class="modal fade" id="workflowCustomerPaymentModal" tabindex="-1" role="dialog" aria-labelledby="workflowCustomerPaymentTitle" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document"><div class="modal-content" style="max-height:calc(100vh - 30px)">
+                    <form method="POST" action="{{ route('admin.customer-payments.store') }}" id="workflowCustomerPaymentForm" style="display:flex;min-height:0;flex:1;flex-direction:column">
+                        @csrf
+                        <input type="hidden" name="customer_id" id="workflow_payment_customer_id">
+                        <input type="hidden" name="order_id" id="workflow_payment_order_id">
+                        <div class="modal-header"><h2 class="h5 modal-title" id="workflowCustomerPaymentTitle">گاہک کی ادائیگی درج کریں</h2><button type="button" class="close mr-auto ml-0" data-dismiss="modal" aria-label="بند کریں"><span>&times;</span></button></div>
+                        <div class="modal-body text-right" style="max-height:calc(100vh - 190px);overflow-y:auto">
+                            <div id="workflowPaymentFeedback" class="alert alert-danger" hidden></div>
+                            <p class="alert alert-info"><strong id="workflow_payment_customer_name"></strong><br><span>اس آرڈر کا بقایا: روپے <b id="workflow_payment_balance"></b></span></p>
+                            <div class="form-group"><label for="workflow_payment_amount" class="font-weight-bold">وصول شدہ رقم</label><input id="workflow_payment_amount" type="number" name="DirectPayment" min="0.01" step="0.01" class="form-control" required></div>
+                            @include('components.payment-method-fields', ['prefix' => 'workflow_payment'])
+                            <div class="form-group"><label for="workflow_payment_date" class="font-weight-bold">ادائیگی کی تاریخ</label><input id="workflow_payment_date" type="date" name="paid_on" value="{{ now()->toDateString() }}" class="form-control" required></div>
+                            <div class="form-group mb-0"><label for="workflow_payment_comment" class="font-weight-bold">نوٹ <small class="text-muted">(اختیاری)</small></label><textarea id="workflow_payment_comment" name="comment" rows="2" maxlength="1000" class="form-control"></textarea></div>
+                        </div>
+                        <div class="modal-footer"><button class="btn btn-success" type="submit"><i class="fas fa-save ml-1"></i>ادائیگی محفوظ کریں</button><button class="btn btn-light" type="button" data-dismiss="modal">منسوخ کریں</button></div>
+                    </form>
+                </div></div>
+            </div>
+        @endif
     @endif
     <script>
         document.addEventListener('change', function (event) {
@@ -847,6 +937,58 @@
         document.querySelectorAll('.js-job-status').forEach(function (select) {
             syncRackField(select);
             select.addEventListener('change', function () { syncRackField(select); });
+        });
+        document.addEventListener('change', function (event) {
+            if (!event.target.matches('.js-production-worker')) return;
+            const form = event.target.closest('.tj-inline-worker-form');
+            const work = form.querySelector('.js-production-work');
+            const workerId = event.target.value;
+            work.disabled = !workerId;
+            work.value = '';
+            work.querySelectorAll('option[data-worker]').forEach(function (option) {
+                const visible = option.dataset.worker === workerId;
+                option.hidden = !visible;
+                option.disabled = !visible;
+            });
+        });
+
+        let workflowPaymentTrigger = null;
+        $('#workflowCustomerPaymentModal').on('show.bs.modal', function (event) {
+            const button = $(event.relatedTarget);
+            workflowPaymentTrigger = button;
+            const balance = Number(button.data('balance') || 0);
+            $('#workflow_payment_customer_id').val(button.data('customer-id'));
+            $('#workflow_payment_order_id').val(button.data('order-id'));
+            $('#workflow_payment_customer_name').text(button.data('customer-name') || 'گاہک');
+            $('#workflow_payment_balance').text(balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#workflow_payment_amount').attr('max', balance).val('');
+            $('#workflow_payment_comment').val('');
+            $('#workflowPaymentFeedback').prop('hidden', true).text('');
+        });
+        $('#workflowCustomerPaymentForm').on('submit', function (event) {
+            event.preventDefault();
+            const form = $(this), submit = form.find('button[type="submit"]'), feedback = $('#workflowPaymentFeedback');
+            submit.prop('disabled', true); feedback.prop('hidden', true).text('');
+            $.ajax({
+                url: form.attr('action'), type: 'POST', data: form.serialize(), dataType: 'json', headers: {Accept: 'application/json'},
+                success: function (response) {
+                    const paid = Number($('#workflow_payment_amount').val() || 0);
+                    const previous = Number(workflowPaymentTrigger?.data('balance') || 0);
+                    const remaining = Math.max(0, previous - paid);
+                    const card = workflowPaymentTrigger?.closest('[data-workflow-order]');
+                    card?.find('.js-customer-balance').text(remaining.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                    workflowPaymentTrigger?.data('balance', remaining).attr('data-balance', remaining).prop('disabled', remaining <= 0);
+                    $('#workflowCustomerPaymentModal').modal('hide');
+                    const notice = $('<div class="alert alert-success"><i class="fas fa-check-circle ml-1"></i></div>').text(response.message || 'ادائیگی محفوظ ہو گئی ہے۔');
+                    $('.tj-shell').prepend(notice);
+                    setTimeout(function () { notice.fadeOut(250, function () { notice.remove(); }); }, 4500);
+                },
+                error: function (xhr) {
+                    const response = xhr.responseJSON || {};
+                    feedback.text(response.message || 'ادائیگی محفوظ نہیں ہو سکی۔').prop('hidden', false);
+                },
+                complete: function () { submit.prop('disabled', false); }
+            });
         });
     </script>
 @endsection

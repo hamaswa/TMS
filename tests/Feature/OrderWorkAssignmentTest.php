@@ -62,17 +62,19 @@ class OrderWorkAssignmentTest extends TestCase
         $this->assertDatabaseCount('order_work_assignments', 0);
     }
 
-    public function test_delivered_order_cannot_receive_new_work(): void
+    public function test_ready_or_delivered_order_cannot_receive_new_work(): void
     {
         [$owner, $order, $worker, $cutting] = $this->scenario();
-        $order->update(['status' => 'delivered']);
+        foreach (['ready', 'delivered'] as $status) {
+            $order->update(['status' => $status]);
 
-        $this->actingAs($owner)->post(route('admin.orders.workforce.store', $order), [
-            'production_worker_id' => $worker->id,
-            'work_type_id' => $cutting->id,
-            'quantity' => 2,
-        ])->assertSessionHasErrors('order');
-        $this->assertDatabaseCount('order_work_assignments', 0);
+            $this->actingAs($owner)->post(route('admin.orders.workforce.store', $order), [
+                'production_worker_id' => $worker->id,
+                'work_type_id' => $cutting->id,
+                'quantity' => 2,
+            ])->assertSessionHasErrors('order');
+            $this->assertDatabaseCount('order_work_assignments', 0);
+        }
     }
 
     public function test_another_business_cannot_assign_its_worker_to_the_order(): void

@@ -662,6 +662,68 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertDontSeeText('ORD-000051');
     }
 
+    public function test_counter_customer_picker_is_bounded_searchable_and_can_create_a_customer_inline(): void
+    {
+        [$owner, $customer] = $this->fixture();
+        foreach (range(1, 25) as $number) {
+            Customers::create([
+                'name' => 'Picker Customer '.$number,
+                'phone_number1' => '0311'.str_pad((string) $number, 7, '0', STR_PAD_LEFT),
+                'user_id' => $owner->id,
+            ]);
+        }
+
+        $this->actingAs($owner)->get(route('admin.counter-orders.create'))
+            ->assertOk()
+            ->assertSee('id="customer_search"', false)
+            ->assertSeeText('نیا / واک اِن گاہک')
+            ->assertDontSeeText('Picker Customer 5');
+
+        $this->actingAs($owner)->getJson(route('admin.counter-orders.customers.search', ['q' => 'Picker Customer 1']))
+            ->assertOk()
+            ->assertJsonPath('customers.0.name', 'Picker Customer 19')
+            ->assertJsonCount(11, 'customers');
+
+        $this->actingAs($owner)->postJson(route('admin.counter-orders.customers.store'), [
+            'name' => 'Inline Counter Customer',
+            'phone' => '03001234567',
+        ])->assertCreated()->assertJsonPath('customer.name', 'Inline Counter Customer');
+        $this->assertDatabaseHas('customers', [
+            'user_id' => $owner->id,
+            'name' => 'Inline Counter Customer',
+            'phone_number1' => '03001234567',
+            'acquisition_source' => 'counter_order',
+        ]);
+    }
+
+    public function test_cloth_only_complete_receipt_uses_cloth_specific_heading(): void
+    {
+        [$owner, $customer, $cloth] = $this->fixture();
+        $order = CounterOrder::create([
+            'reference' => 'ORD-CLOTH-PRINT',
+            'serial_number' => 'ORD-000077',
+            'user_id' => $owner->id,
+            'customer_id' => $customer->id,
+            'created_by_user_id' => $owner->id,
+            'status' => CounterOrder::STATUS_CONFIRMED,
+        ]);
+        $order->items()->create([
+            'type' => CounterOrderItem::TYPE_CLOTH,
+            'status' => CounterOrderItem::STATUS_CONFIRMED,
+            'cloth_id' => $cloth->id,
+            'quantity' => 1,
+            'length' => 2,
+            'unit_price' => 300,
+            'line_total' => 600,
+        ]);
+        $order->recalculate();
+
+        $this->actingAs($owner)->get(route('admin.counter-orders.print', $order))
+            ->assertOk()
+            ->assertSeeText('کپڑے کی رسید')
+            ->assertDontSeeText('مشترکہ آرڈر رسید');
+    }
+
     private function fixture(): array
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

@@ -35,7 +35,7 @@ class BusinessEmployeeAccessTest extends TestCase
             ->assertSeeText('ٹیلرنگ ڈیش بورڈ')
             ->assertSee(route('admin.order.total', ['filter' => 'overdue']), false)
             ->assertSee(route('admin.order.total', ['filter' => 'ready']), false);
-        $this->actingAs($employee)->get(route('admin.tailor-jobs.index'))->assertOk();
+        $this->actingAs($employee)->get(route('admin.tailor-jobs.index'))->assertRedirect(route('admin.order.total'));
         $this->actingAs($employee)->get(route('admin.order.total', ['filter' => 'overdue']))
             ->assertOk()
             ->assertDontSee(route('admin.order.edit', 1), false);
@@ -114,11 +114,21 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($employee)->get(route('admin.storefront.edit'))->assertForbidden();
     }
 
-    public function test_client_team_management_is_split_into_focused_pages(): void
+    public function test_client_people_directory_consolidates_staff_tailors_and_production_workers(): void
     {
         [$owner] = $this->business(true, true);
 
-        $this->actingAs($owner)->get(route('admin.team.index'))->assertOk()->assertViewIs('team.index');
+        $this->actingAs($owner)->get(route('admin.team.index'))
+            ->assertOk()
+            ->assertViewIs('team.index')
+            ->assertSeeText('ٹیم اور کاریگر')
+            ->assertSeeText('سیلز اور دفتری عملہ')
+            ->assertSeeText('درزی')
+            ->assertSeeText('دیگر کاریگر')
+            ->assertSee('id="addPersonModal"', false)
+            ->assertSee('data-form-kind="staff"', false)
+            ->assertSee('data-form-kind="tailor"', false)
+            ->assertSee('data-form-kind="production"', false);
         $this->actingAs($owner)->get(route('admin.team.employees.index'))->assertOk()->assertViewIs('team.employees');
         $this->actingAs($owner)->get(route('admin.team.roles.index'))
             ->assertOk()
@@ -277,6 +287,32 @@ class BusinessEmployeeAccessTest extends TestCase
 
         [$otherOwner] = $this->business(true, true);
         $this->actingAs($otherOwner)->get(route('admin.team.employees.edit', $employee))->assertNotFound();
+    }
+
+    public function test_owner_can_add_salesperson_from_people_modal_without_precreating_a_role(): void
+    {
+        [$owner, $business] = $this->business(true, true);
+
+        $this->actingAs($owner)->post(route('admin.team.employees.store'), [
+            'name' => 'Counter Agent',
+            'username' => 'counter.agent',
+            'email' => 'counter.agent@example.test',
+            'password' => 'Agent@2026',
+            'job_title' => 'Counter Sales',
+            'business_role_id' => 'preset:salesperson',
+            'people_type' => 'staff',
+        ])->assertRedirect();
+
+        $role = BusinessRole::where('business_id', $business->id)
+            ->where('name', BusinessRole::ROLE_PRESETS['salesperson']['label'])
+            ->firstOrFail();
+        $employee = User::where('business_id', $business->id)
+            ->where('username', 'counter.agent')
+            ->firstOrFail();
+
+        $this->assertSame($role->id, $employee->business_role_id);
+        $this->assertTrue($role->hasPermission(BusinessRole::CLOTHING_SALES));
+        $this->assertTrue($role->hasPermission(BusinessRole::CUSTOMER_BALANCES));
     }
 
     public function test_employee_can_login_with_client_assigned_username(): void

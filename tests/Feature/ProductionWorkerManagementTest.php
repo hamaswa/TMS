@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ProductionWorker;
+use App\Models\Business;
 use App\Models\User;
 use App\Models\WorkType;
 use App\Models\WorkerLedgerEntry;
@@ -17,7 +18,13 @@ class ProductionWorkerManagementTest extends TestCase
     public function test_client_can_create_a_cutter_without_creating_an_employee_login(): void
     {
         $owner = $this->owner();
-        $this->actingAs($owner)->get(route('admin.production-workers.create'))->assertOk()->assertSeeText('نیا پروڈکشن ورکر');
+        $this->actingAs($owner)->get(route('admin.production-workers.create'))
+            ->assertRedirect(route('admin.team.index', ['open' => 'create', 'type' => 'production']));
+        $this->actingAs($owner)->get(route('admin.team.index', ['open' => 'create', 'type' => 'production']))
+            ->assertOk()
+            ->assertSeeText('نیا فرد شامل کریں')
+            ->assertSeeText('پروڈکشن کاریگر')
+            ->assertSee('data-form-kind="production"', false);
         $cutting = WorkType::where('user_id', $owner->id)->where('code', 'cutting')->firstOrFail();
 
         $this->actingAs($owner)->post(route('admin.production-workers.store'), [
@@ -26,7 +33,8 @@ class ProductionWorkerManagementTest extends TestCase
             'relationship_type' => 'contractor',
             'work_type_ids' => [$cutting->id],
             'notes' => 'فی سوٹ کٹنگ',
-        ])->assertRedirect();
+            'return_to' => 'people',
+        ])->assertRedirect(route('admin.team.index', ['tab' => 'production']));
 
         $worker = ProductionWorker::where('name', 'اکرم کٹنگ ماسٹر')->firstOrFail();
         $this->assertNull($worker->legacy_tailor_id);
@@ -38,7 +46,7 @@ class ProductionWorkerManagementTest extends TestCase
     public function test_client_can_set_piece_rate_and_payment_is_limited_to_worker_balance(): void
     {
         $owner = $this->owner();
-        $this->actingAs($owner)->get(route('admin.production-workers.create'))->assertOk();
+        $this->actingAs($owner)->get(route('admin.production-workers.index'))->assertOk();
         $cutting = WorkType::where('user_id', $owner->id)->where('code', 'cutting')->firstOrFail();
         $worker = ProductionWorker::create([
             'user_id' => $owner->id, 'name' => 'اکرم', 'relationship_type' => 'contractor',
@@ -133,8 +141,16 @@ class ProductionWorkerManagementTest extends TestCase
     private function owner(): User
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
-        $owner = User::factory()->create(['tailoring_access' => true]);
+        $owner = User::factory()->create(['tailoring_access' => true, 'is_business_owner' => true]);
         $owner->assignRole($role);
+        $business = Business::create([
+            'name' => $owner->name,
+            'owner_user_id' => $owner->id,
+            'tailoring_enabled' => true,
+            'clothing_enabled' => true,
+            'status' => Business::STATUS_ACTIVE,
+        ]);
+        $owner->forceFill(['business_id' => $business->id])->save();
 
         return $owner;
     }

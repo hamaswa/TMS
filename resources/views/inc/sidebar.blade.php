@@ -67,20 +67,7 @@
         @endif
 
         @if(Auth::user()->hasModule('tailoring'))
-            @if($canTailorOrders)<a class="tms-side-link {{ request()->routeIs('admin.order.*') ? 'is-active' : '' }}" href="{{ route('admin.order.total') }}"><span class="tms-side-icon"><i class="fas fa-clipboard-list"></i></span><span class="tms-side-label">ٹیلرنگ آرڈرز</span></a>@endif
-            {{-- @if($canTailorWorkshop)<a class="tms-side-link {{ request()->routeIs('admin.tailor-jobs.*') ? 'is-active' : '' }}" href="{{ route('admin.tailor-jobs.index') }}"><span class="tms-side-icon"><i class="fas fa-tasks"></i></span><span class="tms-side-label">ورکشاپ</span></a>@endif --}}
-            @if($canTailorTailors)
-                <a class="tms-side-link {{ request()->routeIs('admin.Tailor.*','admin.production-workers.*','admin.production-work-types.*','admin.tailor-orders','admin.tailor-report','admin.report-print','admin.tailor-rates*','admin.tailor.*') ? 'is-active' : '' }}" href="{{ route('admin.Tailor.index') }}">
-                    <span class="tms-side-icon"><i class="fas fa-user-cog"></i></span>
-                    <span class="tms-side-label">درزی اور کاریگر</span>
-                    <i class="fas fa-chevron-down tms-side-caret"></i>
-                </a>
-                <div class="tms-side-submenu {{ request()->routeIs('admin.Tailor.*','admin.production-workers.*','admin.production-work-types.*','admin.tailor-orders','admin.tailor-report','admin.report-print','admin.tailor-rates*','admin.tailor.*') ? 'is-open' : '' }}">
-                    <a class="{{ request()->routeIs('admin.Tailor.*','admin.tailor-orders','admin.tailor-report','admin.report-print','admin.tailor-rates*','admin.tailor.*') ? 'is-active' : '' }}" href="{{ route('admin.Tailor.index') }}"><i class="fas fa-user-tie"></i>درزیوں کی فہرست</a>
-                    <a class="{{ request()->routeIs('admin.production-workers.*','admin.production-work-types.*') ? 'is-active' : '' }}" href="{{ route('admin.production-workers.index') }}"><i class="fas fa-users"></i>پروڈکشن ورکرز اور اجرت</a>
-                </div>
-            @endif
-
+            @if($canTailorOrders || $canTailorWorkshop)<a class="tms-side-link {{ request()->routeIs('admin.order.*','admin.tailor-jobs.*','admin.orders.workforce.*') ? 'is-active' : '' }}" href="{{ route('admin.order.total') }}"><span class="tms-side-icon"><i class="fas fa-route"></i></span><span class="tms-side-label">ٹیلرنگ ورک فلو</span></a>@endif
             @if($canTailorConfiguration)
                 <a class="tms-side-link {{ request()->routeIs('admin.tailoring-workflow.*','admin.OptionType.*','admin.Options.*','admin.options.*','admin.measurement-templates.*','admin.measurement-fields.*','admin.design.*') ? 'is-active' : '' }}" href="{{ route('admin.measurement-templates.index') }}">
                     <span class="tms-side-icon"><i class="fas fa-sliders-h"></i></span>
@@ -96,7 +83,7 @@
 
         <div class="tms-side-section"></div>
         @if(Auth::user()->hasBusinessPermission('finance.view'))<a class="tms-side-link {{ request()->routeIs('admin.financial-reports.*') ? 'is-active' : '' }}" href="{{ route('admin.financial-reports.index') }}"><span class="tms-side-icon"><i class="fas fa-chart-bar"></i></span><span class="tms-side-label">رپورٹس</span></a>@endif
-        @if(Auth::user()->hasBusinessPermission('team.manage'))<a class="tms-side-link {{ request()->routeIs('admin.team.*') ? 'is-active' : '' }}" href="{{ route('admin.team.index') }}"><span class="tms-side-icon"><i class="fas fa-users-cog"></i></span><span class="tms-side-label">صارفین</span></a>@endif
+        @if(Auth::user()->hasBusinessPermission('team.manage'))<a class="tms-side-link {{ request()->routeIs('admin.team.*','admin.Tailor.*','admin.production-workers.*','admin.production-work-types.*','admin.tailor-orders','admin.tailor-report','admin.report-print','admin.tailor-rates*','admin.tailor.*') ? 'is-active' : '' }}" href="{{ route('admin.team.index') }}"><span class="tms-side-icon"><i class="fas fa-users-cog"></i></span><span class="tms-side-label">ٹیم اور کاریگر</span></a>@endif
         @if(Auth::user()->isBusinessOwner())<a class="tms-side-link {{ request()->routeIs('admin.setting.*') ? 'is-active' : '' }}" href="{{ route('admin.setting.index') }}"><span class="tms-side-icon"><i class="fas fa-cog"></i></span><span class="tms-side-label">سیٹنگز</span></a>@endif
     </nav>
 </aside>

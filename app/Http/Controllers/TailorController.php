@@ -172,11 +172,12 @@ class TailorController extends Controller
             try {
                 $entitlements->assertCanAddTailor($business);
             } catch (ValidationException $exception) {
-                return redirect()->route('admin.Tailor.index')->withErrors($exception->errors());
+                return redirect()->route('admin.team.index', ['open' => 'create', 'type' => 'tailor'])
+                    ->withErrors($exception->errors());
             }
         }
 
-        return view('tailor.add');
+        return redirect()->route('admin.team.index', ['open' => 'create', 'type' => 'tailor']);
     }
 
     /**
@@ -237,7 +238,11 @@ class TailorController extends Controller
             app(ProductionWorkforceService::class)->syncTailor($tailor->fresh());
         });
 
-        return redirect('admin/Tailor')->with('insert', 'نیا درزی کامیابی سے شامل کر دیا گیا ہے۔');
+        $destination = $request->input('return_to') === 'people'
+            ? route('admin.team.index', ['tab' => 'tailors'])
+            : url('admin/Tailor');
+
+        return redirect($destination)->with('insert', 'نیا درزی کامیابی سے شامل کر دیا گیا ہے۔');
     }
 
     /**

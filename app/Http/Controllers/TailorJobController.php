@@ -20,68 +20,9 @@ use Illuminate\Validation\ValidationException;
 
 class TailorJobController extends Controller
 {
-    public function adminIndex(Request $request)
+    public function adminIndex()
     {
-        $ownerId = Auth::user()->businessOwnerId();
-        $detailedWorkflow = $this->usesDetailedWorkflow($ownerId);
-        $filters = $request->validate([
-            'status' => ['nullable', Rule::in($detailedWorkflow ? Order::STATUSES : ['unassigned', 'workshop', 'ready'])],
-            'tailor_id' => ['nullable', 'integer'],
-            'due' => ['nullable', Rule::in(['today', 'overdue'])],
-            'q' => ['nullable', 'string', 'max:100'],
-            'from_date' => ['nullable', 'date'],
-            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
-            'per_page' => ['nullable', Rule::in(['15', '25', '50', '100'])],
-        ]);
-
-        $tailors = Tailor::with(['tailorsalary.options'])->where('user_id', $ownerId)->orderBy('name')->get();
-        if (! empty($filters['tailor_id'])) {
-            $tailors->firstWhere('id', (int) $filters['tailor_id']) ?: abort(404);
-        }
-
-        $orders = $this->jobQuery($ownerId)
-            ->when($detailedWorkflow && filled($filters['status'] ?? null), fn ($query) => $query->where('status', $filters['status']))
-            ->when(! $detailedWorkflow && ($filters['status'] ?? null) === 'workshop', fn ($query) => $query
-                ->whereIn('status', ['assigned', 'cutting', 'stitching', 'trial']))
-            ->when(! $detailedWorkflow && ($filters['status'] ?? null) === 'unassigned', fn ($query) => $query
-                ->where('status', 'unassigned'))
-            ->when(! $detailedWorkflow && ($filters['status'] ?? null) === 'ready', fn ($query) => $query->where('status', 'ready'))
-            ->when($filters['tailor_id'] ?? null, fn ($query, $tailorId) => $query->where('tailorId', $tailorId))
-            ->when($filters['q'] ?? null, function ($query, $search) {
-                $query->where(function ($nested) use ($search) {
-                    $nested->where('id', $search)
-                        ->orWhere('suitNum', 'like', "%{$search}%")
-                        ->orWhereHas('customers', fn ($customer) => $customer
-                            ->where('name', 'like', "%{$search}%")
-                            ->orWhere('phone_number1', 'like', "%{$search}%"));
-                });
-            })
-            ->when($filters['from_date'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
-            ->when($filters['to_date'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '<=', $date))
-            ->when(($filters['due'] ?? null) === 'today', fn ($query) => $query->whereDate('returnDate', today()))
-            ->when(($filters['due'] ?? null) === 'overdue', fn ($query) => $query
-                ->whereDate('returnDate', '<', today())
-                ->where('status', '!=', 'delivered'))
-            ->orderByRaw("CASE WHEN status = 'delivered' THEN 1 ELSE 0 END")
-            ->orderBy('returnDate')
-            ->paginate((int) ($filters['per_page'] ?? 25))
-            ->withQueryString();
-
-        return view('tailor-jobs.index', [
-            'orders' => $orders,
-            'tailors' => $tailors,
-            'isTailor' => false,
-            'detailedWorkflow' => $detailedWorkflow,
-            'filters' => $filters,
-            'stats' => $this->statsFor($ownerId),
-            'racks' => Rack::where('user_id', $ownerId)->orderBy('rack_no')->get(),
-            'tailorWorkloads' => Order::where('userId', $ownerId)
-                ->whereNotNull('tailorId')
-                ->whereNotIn('status', ['ready', 'delivered'])
-                ->selectRaw('tailorId, count(*) as active_jobs')
-                ->groupBy('tailorId')
-                ->pluck('active_jobs', 'tailorId'),
-        ]);
+        return redirect()->route('admin.order.total');
     }
 
     public function assignTailor(Request $request, int $order)
@@ -89,6 +30,7 @@ class TailorJobController extends Controller
         $validated = $request->validateWithBag('tailorAssignment'.$order, [
             'tailor_id' => ['required', 'integer'],
             'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
+            'confirm_reassign' => ['nullable', 'boolean'],
         ], [
             'tailor_id.required' => 'درزی منتخب کریں۔',
             'tailor_price.required' => 'سلائی کی شرح منتخب کریں۔',
@@ -99,33 +41,56 @@ class TailorJobController extends Controller
         $tailorRate = Tailorsalary::where('tailor_id', $tailor->id)->findOrFail($rateId);
         $tailorPrice = $tailorRate->price;
 
-        DB::transaction(function () use ($order, $ownerId, $tailor, $rateId, $tailorPrice) {
+        DB::transaction(function () use ($order, $ownerId, $tailor, $rateId, $tailorPrice, $validated) {
             $job = Order::where('userId', $ownerId)->lockForUpdate()->findOrFail($order);
-            if ($job->status !== 'unassigned' || $job->tailorId) {
+            $isReassignment = $job->status !== 'unassigned' || $job->tailorId;
+            if ($isReassignment && ! ($validated['confirm_reassign'] ?? false)) {
                 throw ValidationException::withMessages([
-                    'tailor_id' => 'اس آرڈر کے لیے درزی پہلے ہی مقرر ہو چکا ہے۔ صفحہ تازہ کریں۔',
+                    'tailor_id' => 'درزی پہلے سے مقرر ہے۔ تبدیلی کی تصدیق کرکے دوبارہ کوشش کریں۔',
                 ]);
             }
+            if ($isReassignment && (in_array($job->status, ['ready', 'delivered'], true) || (float) $job->tailor_paid_amount > 0)) {
+                throw ValidationException::withMessages([
+                    'tailor_id' => 'تیار، حوالہ شدہ یا درزی کو ادا شدہ کام کا درزی یہاں تبدیل نہیں کیا جا سکتا۔',
+                ]);
+            }
+            $previousTailor = $job->tailor?->name ?: 'مقرر نہیں';
+            $fromStatus = $job->status;
             $job->update([
                 'tailorId' => $tailor->id,
                 'rateId' => $rateId,
                 'tailor_price' => $tailorPrice,
-                'status' => 'assigned',
+                'status' => $isReassignment ? $job->status : 'assigned',
                 'status_changed_at' => now(),
             ]);
             OrderStatusHistory::create([
                 'order_id' => $job->id,
                 'user_id' => Auth::id(),
                 'tailor_id' => $tailor->id,
-                'from_status' => 'unassigned',
-                'to_status' => 'assigned',
+                'from_status' => $fromStatus,
+                'to_status' => $isReassignment ? $fromStatus : 'assigned',
                 'changed_by_type' => 'shop_owner',
-                'note' => 'درزی اور سلائی شرح مقرر کی گئی۔',
+                'note' => $isReassignment
+                    ? "درزی/شرح تبدیل: {$previousTailor} سے {$tailor->name}، رقم Rs. ".number_format((float) $tailorPrice, 2)
+                    : 'درزی اور سلائی شرح مقرر کی گئی۔',
             ]);
             app(ProductionWorkforceService::class)->syncOrder($job->fresh());
         });
 
-        return back()->with('success', 'درزی کامیابی سے مقرر کر دیا گیا ہے۔');
+        $message = 'درزی اور سلائی شرح محفوظ ہو گئی ہے۔';
+        if ($request->expectsJson()) {
+            $job = Order::with('tailor')->where('userId', $ownerId)->findOrFail($order);
+
+            return response()->json([
+                'message' => $message,
+                'tailor' => [
+                    'id' => $job->tailor?->id,
+                    'name' => $job->tailor?->name,
+                ],
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 
     public function tailorIndex()
@@ -180,6 +145,11 @@ class TailorJobController extends Controller
         $actor = Auth::check() ? 'shop_owner' : 'tailor';
         $job = $this->ownedJob($order);
         $nextStatus = $validated['status'];
+        if ($job->status === 'ready' && $nextStatus !== 'delivered' && blank($validated['note'] ?? null)) {
+            throw ValidationException::withMessages([
+                'note' => 'تیار آرڈر واپس کارخانے میں بھیجنے کی وجہ درج کریں۔',
+            ]);
+        }
         $rackNo = $this->validatedReadyRack($validated['rack_no'] ?? null, (int) $job->userId, $nextStatus);
 
         if (! in_array($nextStatus, $job->nextStatuses(), true)) {
@@ -210,6 +180,10 @@ class TailorJobController extends Controller
                 $updates['ready_at'] = now();
                 $updates['rack_no'] = $rackNo;
             }
+            if ($fromStatus === 'ready' && $nextStatus !== 'delivered') {
+                $updates['ready_at'] = null;
+                $updates['rack_no'] = null;
+            }
             if ($nextStatus === 'delivered') {
                 $updates['delivered_at'] = now();
             }
@@ -237,7 +211,7 @@ class TailorJobController extends Controller
             $message .= ' گاہک کی اطلاع پر توجہ درکار ہے۔';
         }
 
-        return back()->with('success', $message);
+        return $this->statusUpdateResponse($request, $job->fresh(), $message, true);
     }
 
     public function updateLegacyStatus(Request $request)
@@ -245,6 +219,7 @@ class TailorJobController extends Controller
         $validated = $request->validate([
             'order_id' => ['required', 'integer'],
             'order_status' => ['required', Rule::in(['start', 'complete', 'deliver'])],
+            'note' => ['nullable', 'string', 'max:1000'],
             'rack_no' => ['nullable', 'string', 'max:100'],
         ]);
         $nextStatus = match ($validated['order_status']) {
@@ -253,6 +228,11 @@ class TailorJobController extends Controller
             'deliver' => 'delivered',
         };
         $job = $this->ownedJob((int) $validated['order_id']);
+        if ($job->status === 'ready' && $nextStatus === 'cutting' && blank($validated['note'] ?? null)) {
+            throw ValidationException::withMessages([
+                'note' => 'تیار آرڈر واپس کارخانے میں بھیجنے کی وجہ درج کریں۔',
+            ]);
+        }
         $actor = Auth::check() ? 'shop_owner' : 'tailor';
         $ownerId = (int) $job->userId;
         $rackNo = $this->validatedReadyRack($validated['rack_no'] ?? null, $ownerId, $nextStatus);
@@ -276,10 +256,15 @@ class TailorJobController extends Controller
         }
 
         if ($job->status === $nextStatus) {
-            return back()->with('success', 'آرڈر کی حالت پہلے ہی منتخب شدہ حالت پر ہے۔');
+            return $this->statusUpdateResponse(
+                $request,
+                $job,
+                'آرڈر کی حالت پہلے ہی منتخب شدہ حالت پر ہے۔',
+                false,
+            );
         }
 
-        DB::transaction(function () use ($job, $nextStatus, $actor, $ownerId, $rackNo) {
+        DB::transaction(function () use ($job, $nextStatus, $actor, $ownerId, $rackNo, $validated) {
             $job = Order::where('userId', $ownerId)
                 ->lockForUpdate()
                 ->findOrFail($job->id);
@@ -300,6 +285,10 @@ class TailorJobController extends Controller
                 $updates['ready_at'] = now();
                 $updates['rack_no'] = $rackNo;
             }
+            if ($fromStatus === 'ready' && $nextStatus === 'cutting') {
+                $updates['ready_at'] = null;
+                $updates['rack_no'] = null;
+            }
             if ($nextStatus === 'delivered') {
                 $updates['delivered_at'] = now();
             }
@@ -314,16 +303,70 @@ class TailorJobController extends Controller
                 'from_status' => $fromStatus,
                 'to_status' => $nextStatus,
                 'changed_by_type' => $actor,
+                'note' => $validated['note'] ?? null,
             ]);
         });
 
-        $delivery = app(OrderLifecycleNotificationService::class)->send($job->fresh(), $nextStatus);
+        $delivery = app(OrderLifecycleNotificationService::class)->send(
+            $job->fresh(),
+            $nextStatus,
+            $validated['note'] ?? null,
+        );
         $message = 'آرڈر کی حالت اپ ڈیٹ کر دی گئی ہے۔';
         if ($delivery && $delivery->status !== 'sent') {
             $message .= ' گاہک کی اطلاع پر توجہ درکار ہے۔';
         }
 
-        return back()->with('success', $message);
+        return $this->statusUpdateResponse($request, $job->fresh(), $message, false);
+    }
+
+    private function statusUpdateResponse(Request $request, Order $job, string $message, bool $detailed)
+    {
+        if (! $request->expectsJson()) {
+            return back()->with('success', $message);
+        }
+
+        $job->loadMissing('tailor');
+        $isDelivered = $job->status === 'delivered';
+        $isReady = $job->status === 'ready';
+        $isOverdue = ! $isReady && ! $isDelivered && $job->returnDate && now()->startOfDay()->gt($job->returnDate);
+        $labels = $detailed ? Order::STATUS_LABELS : [
+            'unassigned' => 'درزی مقرر ہونا باقی',
+            'assigned' => 'کارخانے میں ہے',
+            'cutting' => 'کارخانے میں ہے',
+            'stitching' => 'کارخانے میں ہے',
+            'trial' => 'کارخانے میں ہے',
+            'ready' => 'تیار ہے',
+            'delivered' => 'حوالہ شدہ',
+        ];
+        $nextActions = $detailed
+            ? $job->nextStatusOptions()
+            : match ($job->status) {
+                'ready' => [
+                    ['value' => 'start', 'label' => 'کارخانے میں ہے'],
+                    ['value' => 'deliver', 'label' => 'حوالہ کریں'],
+                ],
+                'delivered', 'unassigned' => [],
+                default => [['value' => 'complete', 'label' => 'تیار ہے']],
+            };
+        $history = $job->statusHistory()->latest('id')->first();
+
+        return response()->json([
+            'message' => $message,
+            'order_id' => $job->id,
+            'status' => $job->status,
+            'label' => $labels[$job->status] ?? $job->status,
+            'state' => $isOverdue ? 'overdue' : ($isDelivered ? 'delivered' : ($isReady ? 'ready' : 'workshop')),
+            'next_actions' => $nextActions,
+            'tailor_change_allowed' => ! $isReady && ! $isDelivered && (float) $job->tailor_paid_amount <= 0,
+            'work_locked' => $isReady || $isDelivered,
+            'history' => $history ? [
+                'from' => $labels[$history->from_status] ?? $history->from_status,
+                'to' => $labels[$history->to_status] ?? $history->to_status,
+                'note' => $history->note,
+                'time' => optional($history->created_at)->format('d-m-Y h:i A'),
+            ] : null,
+        ]);
     }
 
     private function validatedReadyRack(?string $rackNo, int $ownerId, string $nextStatus): ?string
@@ -410,7 +453,14 @@ class TailorJobController extends Controller
 
     private function jobQuery(int $userId)
     {
-        return Order::with(['tailor', 'customers', 'notificationDeliveries'])->where('userId', $userId);
+        return Order::with([
+            'tailor', 'customers', 'notificationDeliveries',
+            'workAssignments.worker', 'workAssignments.workType',
+        ])
+            ->withSum([
+                'transactions as outstanding_amount' => fn ($query) => $query->where('userId', $userId),
+            ], 'remainingBalance')
+            ->where('userId', $userId);
     }
 
     private function ownedJob(int $id): Order

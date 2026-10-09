@@ -4,10 +4,9 @@
     @php
         $quickActions = collect([
             Auth::user()->hasBusinessPermission('tailoring.customers') ? ['نیا گاہک', route('admin.Customers.create'), 'fa-user-plus'] : null,
-            Auth::user()->hasBusinessPermission('tailoring.workshop') ? ['کام کی فہرست', route('admin.tailor-jobs.index'), 'fa-tasks'] : null,
-            Auth::user()->hasBusinessPermission('tailoring.orders') ? ['ٹیلرنگ آرڈرز', route('admin.order.total'), 'fa-clipboard-list'] : null,
+            Auth::user()->hasBusinessPermission('tailoring.orders') ? ['آرڈر اور حوالگی', route('admin.order.total'), 'fa-calendar-check'] : null,
             Auth::user()->hasBusinessPermission('tailoring.customers') ? ['گاہک اور پیمائش', route('admin.Customers.index'), 'fa-user-friends'] : null,
-            Auth::user()->hasBusinessPermission('tailoring.tailors') ? ['درزی', route('admin.Tailor.index'), 'fa-user-cog'] : null,
+            Auth::user()->hasBusinessPermission('team.manage') ? ['ٹیم اور کاریگر', route('admin.team.index'), 'fa-users-cog'] : null,
             Auth::user()->hasBusinessPermission('tailoring.configuration') ? ['پیمائش کے اختیارات', route('admin.OptionType.index'), 'fa-ruler-combined'] : null,
         ])->filter()->values();
         $metricCards = collect();

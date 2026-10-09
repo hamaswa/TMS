@@ -715,11 +715,13 @@
                     </div>
                 </div>
                 <div class="td-head-actions">
+                    <a class="td-btn" href="{{ route('admin.order.total') }}"><i class="fas fa-calendar-week"></i>
+                        ورکشاپ اور پروڈکشن</a>
                     <a class="td-btn" href="{{ route('admin.production-workers.index') }}"><i class="fas fa-users-cog"></i>
                         پروڈکشن کاریگر</a>
                     @unless ($tailorLimitReached)
-                        <a class="td-btn is-primary" href="{{ route('admin.Tailor.create') }}"><i class="fas fa-user-plus"></i>
-                            نیا درزی شامل کریں</a>
+                        <button class="td-btn is-primary" type="button" data-toggle="modal" data-target="#createTailorModal"><i class="fas fa-user-plus"></i>
+                            نیا درزی شامل کریں</button>
                     @endunless
                 </div>
             </div>
@@ -874,6 +876,58 @@
         </div>
     </section>
 
+    @unless ($tailorLimitReached)
+        <div class="modal fade td-modal" id="createTailorModal" tabindex="-1" role="dialog"
+            aria-labelledby="createTailorModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createTailorModalLabel"><i
+                                class="fas fa-user-plus text-primary ml-2"></i>نیا درزی شامل کریں</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں">&times;</button>
+                    </div>
+                    <form action="{{ route('admin.Tailor.store') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="_form_context" value="tailor_create">
+                        <div class="modal-body text-right">
+                            <div class="td-help mb-3">نام، فون اور پورٹل پاس ورڈ ضروری ہیں۔ ابتدائی اجرت اور سیکیورٹی رقم ابھی یا بعد میں درج کی جا سکتی ہے۔</div>
+                            <div class="form-row">
+                                <div class="form-group col-md-6"><label for="newTailorName">درزی کا نام</label><input
+                                        id="newTailorName" type="text" name="name" class="form-control"
+                                        maxlength="255" value="{{ old('name') }}" placeholder="مثلاً محمد وقاص" required></div>
+                                <div class="form-group col-md-6"><label for="newTailorContact">فون نمبر</label><input
+                                        id="newTailorContact" type="tel" name="contact" class="form-control"
+                                        maxlength="50" value="{{ old('contact') }}" placeholder="03001234567" dir="ltr" required></div>
+                            </div>
+                            <div class="form-group"><label for="newTailorPassword">پورٹل پاس ورڈ</label><input
+                                    id="newTailorPassword" type="password" name="password" class="form-control"
+                                    minlength="6" autocomplete="new-password" required><small class="form-text text-muted">درزی فون نمبر، اس پاس ورڈ اور دکان کوڈ سے اپنے پورٹل میں داخل ہوگا۔</small></div>
+                            <hr>
+                            <div class="form-row">
+                                <div class="form-group col-md-6"><label for="newTailorRateLabel">ابتدائی سلائی کی قسم <span class="text-muted">(اختیاری)</span></label><input
+                                        id="newTailorRateLabel" type="text" name="initial_rate_label" class="form-control"
+                                        maxlength="100" value="{{ old('initial_rate_label') }}" placeholder="مثلاً معیاری سلائی"></div>
+                                <div class="form-group col-md-6"><label for="newTailorRatePrice">فی سوٹ اجرت <span class="text-muted">(اختیاری)</span></label><input
+                                        id="newTailorRatePrice" type="number" name="initial_rate_price" class="form-control"
+                                        min="0.01" step="0.01" value="{{ old('initial_rate_price') }}" placeholder="0.00"></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-6"><label for="newTailorSecurity">سیکیورٹی ڈپازٹ <span class="text-muted">(اختیاری)</span></label><input
+                                        id="newTailorSecurity" type="number" name="security_deposit" class="form-control"
+                                        min="0" step="0.01" value="{{ old('security_deposit') }}" placeholder="0.00"></div>
+                                <div class="form-group col-md-6"><label for="newTailorSecurityNote">سیکیورٹی نوٹ</label><input
+                                        id="newTailorSecurityNote" type="text" name="security_deposit_note" class="form-control"
+                                        maxlength="500" value="{{ old('security_deposit_note') }}" placeholder="مثلاً نقد، رسید نمبر 12"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer"><button type="button" class="td-btn" data-dismiss="modal">منسوخ کریں</button><button
+                                type="submit" class="td-btn is-primary"><i class="fas fa-save"></i> درزی محفوظ کریں</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endunless
+
     @foreach ($Tailors as $tailor)
         <div class="modal fade td-modal" id="addRecordModal_{{ $tailor->id }}" tabindex="-1" role="dialog"
             aria-labelledby="addRecordModalLabel_{{ $tailor->id }}" aria-hidden="true">
@@ -962,6 +1016,10 @@
                 .on('hidden.bs.dropdown', function() {
                     $(this).closest('.td-panel').removeClass('has-open-actions');
                 });
+
+            @if(($errors->any() && old('_form_context') === 'tailor_create') || request('open') === 'create')
+                $('#createTailorModal').modal('show');
+            @endif
         });
     </script>
 @endpush

@@ -367,6 +367,7 @@ class OfflineWorkspaceController extends Controller
             'admin.customers.search',
             'admin.search',
             'admin.getCustomer',
+            'admin.tailor-jobs.index',
             'admin.cloth-type.lookup',
             'admin.getSale',
             'admin.nmbr',

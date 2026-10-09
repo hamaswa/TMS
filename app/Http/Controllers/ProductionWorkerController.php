@@ -13,27 +13,19 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Support\PaymentMethods;
+use App\Services\ProductionWorkTypeDefaultsService;
 
 class ProductionWorkerController extends Controller
 {
-    private const DEFAULT_WORK_TYPES = [
-        'stitching' => 'سلائی',
-        'cutting' => 'کٹائی',
-        'embroidery' => 'کڑھائی',
-        'finishing' => 'فنشنگ اور بٹن',
-        'ironing' => 'استری',
-        'quality_check' => 'معیار کی جانچ',
-    ];
-
     public function index(Request $request)
     {
-        $this->ensureDefaultWorkTypes();
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'relationship' => ['nullable', Rule::in(['employee', 'contractor'])],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
         ]);
         $ownerId = Auth::user()->businessOwnerId();
+        $workTypes = app(ProductionWorkTypeDefaultsService::class)->forOwner($ownerId);
         $workers = ProductionWorker::where('user_id', $ownerId)
             ->with('skills')
             ->withSum('ledgerEntries as ledger_balance', 'amount')
@@ -43,16 +35,12 @@ class ProductionWorkerController extends Controller
             ->when($filters['relationship'] ?? null, fn ($query, $type) => $query->where('relationship_type', $type))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('active', $status === 'active'))
             ->orderByDesc('active')->orderBy('name')->paginate(25)->withQueryString();
-
-        return view('production-workers.index', compact('workers', 'filters'));
+        return view('production-workers.index', compact('workers', 'filters', 'workTypes'));
     }
 
     public function create()
     {
-        $this->ensureDefaultWorkTypes();
-        $workTypes = WorkType::where('user_id', Auth::user()->businessOwnerId())->where('active', true)->orderBy('name')->get();
-
-        return view('production-workers.create', compact('workTypes'));
+        return redirect()->route('admin.team.index', ['open' => 'create', 'type' => 'production']);
     }
 
     public function store(Request $request)
@@ -69,8 +57,12 @@ class ProductionWorkerController extends Controller
         ]);
         $worker->skills()->sync($validated['work_type_ids']);
 
-        return redirect()->route('admin.production-workers.show', $worker)
-            ->with('success', 'پروڈکشن ورکر شامل کر دیا گیا ہے۔ اب اس کی اجرت طے کریں۔');
+        $destination = $request->input('return_to') === 'people'
+            ? route('admin.team.index', ['tab' => 'production'])
+            : route('admin.production-workers.index');
+
+        return redirect($destination)
+            ->with('success', 'پروڈکشن ورکر شامل کر دیا گیا ہے۔ اجرت مقرر کرنے کے لیے اس کا کھاتہ کھولیں۔');
     }
 
     public function show(int $worker)
@@ -232,14 +224,4 @@ class ProductionWorkerController extends Controller
         return ProductionWorker::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
     }
 
-    private function ensureDefaultWorkTypes(): void
-    {
-        $ownerId = Auth::user()->businessOwnerId();
-        foreach (self::DEFAULT_WORK_TYPES as $code => $name) {
-            WorkType::firstOrCreate(
-                ['user_id' => $ownerId, 'code' => $code],
-                ['name' => $name, 'category' => 'production', 'is_system' => true, 'active' => true],
-            );
-        }
-    }
 }

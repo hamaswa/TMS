@@ -262,6 +262,17 @@ class CustomerController extends Controller
                 ->values();
             $sales = $legacySales->concat($stockSales)->sortByDesc('created_at')->take(50)->values();
         }
+        if ($transactions) {
+            $saleDisplayNumbers = $sales->keyBy(fn ($sale) => (string) $sale->id);
+            $transactions->getCollection()->each(function ($transaction) use ($saleDisplayNumbers) {
+                if ($transaction->sale_id) {
+                    $transaction->setAttribute(
+                        'sale_display_number',
+                        $saleDisplayNumbers->get((string) $transaction->sale_id)?->display_number
+                    );
+                }
+            });
+        }
 
         $systemMeasurements = collect();
         $customMeasurements = collect();
@@ -304,13 +315,19 @@ class CustomerController extends Controller
                     ->values());
             });
         }
+        $hasTailoringActivity = $orders->isNotEmpty()
+            || $measurementProfiles->count() > 1
+            || $systemMeasurements->isNotEmpty()
+            || $customMeasurements->isNotEmpty()
+            || $measurementHistories->isNotEmpty();
+        $isClothOnlyCustomer = $canViewShop && ! $hasTailoringActivity;
 
         $tabs = collect([
             'overview' => ['label' => 'خلاصہ', 'icon' => 'fa-th-large'],
             'transactions' => $canViewBalances ? ['label' => 'کھاتہ اور ادائیگیاں', 'icon' => 'fa-receipt'] : null,
-            'tailoring' => $canViewTailoring ? ['label' => 'ٹیلرنگ آرڈرز', 'icon' => 'fa-cut'] : null,
+            'tailoring' => $canViewTailoring && $hasTailoringActivity ? ['label' => 'ٹیلرنگ آرڈرز', 'icon' => 'fa-cut'] : null,
             'shop' => $canViewShop ? ['label' => 'کپڑے کی خریداری', 'icon' => 'fa-shopping-bag'] : null,
-            'measurements' => $canManageMeasurements ? ['label' => 'پیمائش', 'icon' => 'fa-ruler-combined'] : null,
+            'measurements' => $canManageMeasurements && $hasTailoringActivity ? ['label' => 'پیمائش', 'icon' => 'fa-ruler-combined'] : null,
             'profile' => ['label' => 'ذاتی معلومات', 'icon' => 'fa-user'],
         ])->filter();
         $activeTab = request()->string('tab')->toString();
@@ -321,7 +338,8 @@ class CustomerController extends Controller
             'customer', 'totalBalance', 'transactions', 'orders', 'sales',
             'canViewBalances', 'canViewTailoring', 'canViewShop', 'canManageMeasurements',
             'totalReceived', 'systemMeasurements', 'customMeasurements', 'measurementHistories',
-            'measurementProfiles', 'measurementProfile', 'tabs', 'activeTab', 'paymentRoute'
+            'measurementProfiles', 'measurementProfile', 'tabs', 'activeTab', 'paymentRoute',
+            'hasTailoringActivity', 'isClothOnlyCustomer'
         ));
     }
 
