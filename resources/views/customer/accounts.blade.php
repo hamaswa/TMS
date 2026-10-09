@@ -59,7 +59,7 @@
     <div class="container py-4">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
             <div>
-                <h1 class="h3 mb-1">گاہکوں کے مشترکہ کھاتے</h1>
+                <h1 class="h3 mb-1">گاہکوں کے کھاتے</h1>
                 <p class="text-muted mb-0">ٹیلرنگ اور کپڑے کی دکان کا مجموعی بقایا اور ادائیگی ایک جگہ دیکھیں۔</p>
             </div>
             @if(Auth::user()->hasBusinessPermission('finance.view'))

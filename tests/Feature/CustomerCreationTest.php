@@ -199,7 +199,7 @@ class CustomerCreationTest extends TestCase
             ->assertSee('class="combined-panel preference-panel"', false)
             ->assertSee('id="measurement-length" type="number"', false)
             ->assertDontSee('data-step="3"', false)
-            ->assertSeeText('مشترکہ گاہک اکاؤنٹ');
+            ->assertSeeText('گاہک اکاؤنٹ');
 
         $response = $this->actingAs($owner)->post(route('admin.Customers.store'), [
             'name' => 'QA Urdu Customer',

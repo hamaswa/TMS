@@ -336,11 +336,11 @@ class AdminStorefrontController extends Controller
             'raast_enabled' => $raastEnabled,
             'pickup_enabled' => $request->boolean('pickup_enabled'),
             'delivery_enabled' => $request->boolean('delivery_enabled'),
-            'show_nav_categories' => $designSettingsPresent
+            'show_nav_categories' => ($business->clothing_enabled && $designSettingsPresent)
                 ? $request->boolean('show_nav_categories') : ($storefront->show_nav_categories ?? true),
-            'show_nav_brands' => $designSettingsPresent
+            'show_nav_brands' => ($business->clothing_enabled && $designSettingsPresent)
                 ? $request->boolean('show_nav_brands') : ($storefront->show_nav_brands ?? true),
-            'show_featured_products' => $designSettingsPresent
+            'show_featured_products' => ($business->clothing_enabled && $designSettingsPresent)
                 ? $request->boolean('show_featured_products') : ($storefront->show_featured_products ?? true),
             'show_benefits' => $designSettingsPresent
                 ? $request->boolean('show_benefits') : ($storefront->show_benefits ?? true),
@@ -350,11 +350,11 @@ class AdminStorefrontController extends Controller
                 ? $request->boolean('show_about') : ($storefront->show_about ?? true),
             'sticky_header' => $designSettingsPresent
                 ? $request->boolean('sticky_header') : ($storefront->sticky_header ?? true),
-            'show_product_brand' => $designSettingsPresent
+            'show_product_brand' => ($business->clothing_enabled && $designSettingsPresent)
                 ? $request->boolean('show_product_brand') : ($storefront->show_product_brand ?? true),
-            'show_product_category' => $designSettingsPresent
+            'show_product_category' => ($business->clothing_enabled && $designSettingsPresent)
                 ? $request->boolean('show_product_category') : ($storefront->show_product_category ?? true),
-            'show_product_stock' => $designSettingsPresent
+            'show_product_stock' => ($business->clothing_enabled && $designSettingsPresent)
                 ? $request->boolean('show_product_stock') : ($storefront->show_product_stock ?? true),
             'navigation_links' => $designSettingsPresent
                 ? $navigationLinks : ($storefront->navigation_links ?? []),

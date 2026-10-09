@@ -56,7 +56,7 @@ class UnifiedCustomerAccountTest extends TestCase
             ->assertOk()
             ->assertSeeText('Unified Customer')
             ->assertSeeText('Rs 700.00')
-            ->assertSeeText('کل مشترکہ بقایا')
+            ->assertSeeText('کل بقایا')
             ->assertDontSeeText('ٹیلرنگ بقایا')
             ->assertDontSeeText('دکان بقایا')
             ->assertSeeText('کھاتہ اور ادائیگیاں')
@@ -104,7 +104,7 @@ class UnifiedCustomerAccountTest extends TestCase
         $response = $this->actingAs($owner)->get(route('admin.customers.statement', $customer));
         $response->assertOk()
             ->assertSeeText('کپڑے کا گاہک')
-            ->assertSeeText('کپڑے کی خریداری اور مشترکہ کھاتہ')
+            ->assertSeeText('کپڑے کی خریداری اور کھاتہ')
             ->assertSeeText('دکان کا مجموعہ')
             ->assertDontSeeText('دکان اور ٹیلرنگ کا مجموعہ')
             ->assertDontSeeText('خاندان کا نیا ناپ')

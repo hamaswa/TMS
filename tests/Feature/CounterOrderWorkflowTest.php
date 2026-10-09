@@ -151,6 +151,21 @@ class CounterOrderWorkflowTest extends TestCase
         $this->assertEquals(8, (float) $stock->fresh()->length);
         $this->assertSame(2, $counterOrder->items()->where('status', CounterOrderItem::STATUS_CONFIRMED)->count());
         $legacyOrder = Order::firstOrFail();
+        $serialUrl = route('admin.order-prints', ['id' => $legacyOrder->id, 'serial_only' => 1]);
+        $this->actingAs($owner)->get($serialUrl)->assertOk()->assertViewIs('order.serial-label')
+            ->assertViewHas('displaySerial', $tailoringItem->item_serial);
+        $savedSerial = $tailoringItem->item_serial;
+        $tailoringItem->update(['item_serial' => null]);
+        $this->actingAs($owner)->get($serialUrl)->assertOk()
+            ->assertViewHas('displaySerial', $legacyOrder->customers->serial_number
+                ?? ($legacyOrder->suitNum ?: $legacyOrder->sub_customer));
+        $tailoringItem->update(['item_serial' => $savedSerial]);
+
+        $this->actingAs($owner)->get(route('admin.counter-orders.items.print', [$counterOrder, $tailoringItem]))
+            ->assertRedirect(route('admin.order-prints', ['id' => $legacyOrder->id]));
+        $this->actingAs($owner)->get(route('admin.order-prints', $legacyOrder))
+            ->assertOk()->assertViewIs('order.prints')->assertSeeText('Band collar');
+
         $this->assertSame($customer->id, (int) $legacyOrder->customerId);
         $this->assertSame($template->id, $legacyOrder->measurement_template_id);
         $this->assertDatabaseHas('order_measurement_values', [

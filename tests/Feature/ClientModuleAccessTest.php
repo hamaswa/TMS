@@ -251,6 +251,27 @@ class ClientModuleAccessTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'employee@example.com']);
     }
 
+    public function test_tailoring_only_pages_hide_clothing_controls(): void
+    {
+        $owner = $this->client(true, false);
+        $owner->update(['is_business_owner' => true]);
+        $business = \App\Models\Business::create([
+            'name' => 'Tailoring shop', 'owner_user_id' => $owner->id,
+            'tailoring_enabled' => true, 'clothing_enabled' => false, 'status' => 'active',
+        ]);
+        $owner->update(['business_id' => $business->id]);
+        $this->actingAs($owner)->get(route('admin.team.index'))->assertOk()
+            ->assertSeeText('دفتری / کارخانے کا عملہ')
+            ->assertDontSee('data-filter="sales"', false);
+        $response = $this->actingAs($owner)->get(route('admin.storefront.edit'))->assertOk();
+        foreach (['product_columns', 'product_columns_tablet', 'product_columns_mobile', 'product_image_ratio', 'show_nav_categories', 'show_nav_brands', 'show_featured_products', 'show_product_brand', 'show_product_category', 'show_product_stock'] as $field) {
+            $response->assertDontSee('name="'.$field.'"', false);
+        }
+        $business->update(['clothing_enabled' => true]);
+        $owner->update(['clothing_access' => true]);
+        $this->actingAs($owner->fresh())->get(route('admin.storefront.edit'))->assertOk()
+            ->assertSee('name="product_columns"', false);
+    }
     private function client(bool $tailoring, bool $clothing): User
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

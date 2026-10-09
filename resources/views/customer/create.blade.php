@@ -310,11 +310,11 @@
                                             dir="ltr"><small class="form-text text-muted">خالی چھوڑنے پر محفوظ پن خود
                                             بنے گا اور صرف ایک بار دکھایا جائے گا۔</small></div>@endunless
                                     <div class="col-md-6">
-                                        <div class="alert alert-info mb-0"><strong>{{ $parentCustomer ? 'خاندانی پیمائش پروفائل' : 'مشترکہ گاہک اکاؤنٹ' }}</strong><br><small>
+                                        <div class="alert alert-info mb-0"><strong>{{ $parentCustomer ? 'خاندانی پیمائش پروفائل' : 'گاہک اکاؤنٹ' }}</strong><br><small>
                                                 @if($parentCustomer)
                                                     رابطہ، موبائل لاگ اِن، بقایا اور ادائیگیاں {{ $parentCustomer->name }} کے مشترکہ اکاؤنٹ میں رہیں گی؛ صرف نام، پیمائش اور سلائی کی پسند الگ محفوظ ہوگی۔
                                                 @else
-                                                    یہی گاہک ٹیلرنگ اور دکان دونوں میں استعمال ہوگا؛ بقایا اور ادائیگیاں ایک مشترکہ کھاتے میں رہیں گی۔
+                                                    اس گاہک کی پیمائش، آرڈرز، بقایا اور ادائیگیاں اسی کھاتے میں رہیں گی۔
                                                 @endif
                                             </small></div>
                                     </div>

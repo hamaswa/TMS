@@ -537,7 +537,7 @@
                                 <th scope="col">#</th>
                                 <th scope="col">گاہک</th>
                                 <th scope="col" class="no-sort">فون نمبر</th>
-                                <th scope="col" class="no-sort">مشترکہ بقایا</th>
+                                <th scope="col" class="no-sort">بقایا</th>
                                 <th scope="col" class="no-sort">فوری کارروائیاں</th>
                             </tr>
                         </thead>

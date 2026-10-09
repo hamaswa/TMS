@@ -212,10 +212,17 @@ class CounterOrderController extends Controller
         CounterOrder $counterOrder,
         CounterOrderItem $item,
         PrintDocumentService $documents,
-    ): View {
+    ): View|RedirectResponse {
         $this->authorizeOrder($request, $counterOrder);
         abort_unless((int) $item->counter_order_id === (int) $counterOrder->id, 404);
         abort_unless($item->status === CounterOrderItem::STATUS_CONFIRMED, 404);
+
+        if ($item->type === CounterOrderItem::TYPE_TAILORING) {
+            abort_unless($this->canManageTailoring($request), 403);
+            abort_unless($item->source_record_type === 'tailoring_order' && $item->source_record_id, 404);
+
+            return redirect()->route('admin.order-prints', ['id' => $item->source_record_id]);
+        }
 
         $counterOrder->load(['customer']);
         $item->load(['cloth.brand', 'cloth.type', 'measurementProfile', 'measurementTemplate']);

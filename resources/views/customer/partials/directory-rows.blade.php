@@ -19,7 +19,7 @@
                     class="customer-link"
                     aria-label="{{ $customer->name }} کا پروفائل اور کھاتہ کھولیں">
                     {{ $customer->name }}
-                    <small>مشترکہ پروفائل اور کھاتہ دیکھیں @if($familyProfiles->isNotEmpty()) · {{ $familyProfiles->count() }} خاندانی فرد @endif</small>
+                    <small>پروفائل اور کھاتہ دیکھیں @if($familyProfiles->isNotEmpty()) · {{ $familyProfiles->count() }} خاندانی فرد @endif</small>
                 </a>
             </div>
             @if($familyProfiles->isNotEmpty())
@@ -71,7 +71,7 @@
             @endif
         </td>
         <td data-label="فون نمبر"><span class="customer-phone">{{ $customer->phone_number1 ?: '—' }}</span></td>
-        <td data-label="مشترکہ بقایا">
+        <td data-label="بقایا">
             @if ($canViewBalances)
                 <span class="customer-balance {{ $currentBalance > 0 ? 'is-due' : 'is-clear' }}" data-customer-balance="{{ $customer->id }}">
                     Rs. {{ number_format($currentBalance, 2) }}

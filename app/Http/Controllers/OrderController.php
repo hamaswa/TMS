@@ -720,6 +720,13 @@ class OrderController extends Controller
             ->whereHas('counterOrder', fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
             ->first();
         $receiptSerial = $counterOrderItem?->item_serial;
+        if (request()->boolean('serial_only')) {
+            $displaySerial = $receiptSerial ?? $orderDetail->customers?->serial_number
+                ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
+
+            return view('order.serial-label', compact('displaySerial'));
+        }
+
 
         return view('order.prints', compact('order', 'orderDetail', 'printMeasurements', 'setting', 'status', 'latestBalance', 'previousBalance', 'orderBalance', 'tailor', 'printConfig', 'trackingUrl', 'trackingQrSvg', 'receiptSerial'));
     }

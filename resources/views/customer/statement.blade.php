@@ -4,7 +4,7 @@
     $statusLabels = \App\Models\Order::STATUS_LABELS;
     $historySourceLabels = ['customer_created' => 'ابتدائی پیمائش', 'baseline' => 'پچھلی محفوظ پیمائش', 'customer_update' => 'تبدیل شدہ پیمائش', 'order_update' => 'آرڈر سے تبدیل شدہ پیمائش'];
     $customerScopeLabel = $isClothOnlyCustomer
-        ? 'کپڑے کی خریداری اور مشترکہ کھاتہ'
+        ? 'کپڑے کی خریداری اور کھاتہ'
         : ($canViewTailoring && $canViewShop
         ? 'ٹیلرنگ اور کپڑے کی دکان کا ایک ریکارڈ'
         : ($canViewTailoring ? 'ٹیلرنگ کا مشترکہ گاہک ریکارڈ' : ($canViewShop ? 'کپڑے کی دکان کا گاہک ریکارڈ' : 'گاہک کا ریکارڈ')));
@@ -43,7 +43,7 @@
         @if($activeTab === 'overview')
             <div class="row mb-2">
                 @if($canViewBalances)
-                    <div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat balance"><span class="stat-icon"><i class="fas fa-wallet"></i></span><small>کل مشترکہ بقایا</small><strong>Rs {{ number_format($totalBalance, 2) }}</strong><span>{{ $balanceScopeLabel }}</span></div></div>
+                    <div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat balance"><span class="stat-icon"><i class="fas fa-wallet"></i></span><small>کل بقایا</small><strong>Rs {{ number_format($totalBalance, 2) }}</strong><span>{{ $balanceScopeLabel }}</span></div></div>
                     <div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat paid"><span class="stat-icon"><i class="fas fa-hand-holding-usd"></i></span><small>کل وصول شدہ رقم</small><strong>Rs {{ number_format($totalReceived, 2) }}</strong><span>ابتدائی اور بعد کی ادائیگیاں</span></div></div>
                 @endif
                 @if($canViewTailoring && $hasTailoringActivity)<div class="col-md-6 col-xl-3 mb-3"><div class="profile-stat"><span class="stat-icon"><i class="fas fa-cut"></i></span><small>ٹیلرنگ آرڈرز</small><strong>{{ $orders->count() }}</strong><a href="{{ route('admin.customers.statement', ['id' => $customer->id, 'tab' => 'tailoring']) }}">تمام آرڈرز دیکھیں</a></div></div>@endif
@@ -68,17 +68,17 @@
 
         @if($activeTab === 'transactions' && $canViewBalances)
             <div class="row">
-                <div class="col-xl-8 mb-4"><div class="card workspace-card"><div class="card-body p-0"><div class="section-heading p-4 mb-0"><div><h2 class="h5 font-weight-bold">مشترکہ کھاتہ</h2><p>ہر اندراج پر شعبہ درج ہے، لیکن بقایا ایک مجموعی رقم ہے۔</p></div><span class="balance-pill">بقایا: Rs {{ number_format($totalBalance, 2) }}</span></div><div class="table-responsive"><table class="table table-hover mb-0 text-right"><thead><tr><th>تاریخ</th><th>شعبہ</th><th>حوالہ</th><th>وصول شدہ</th><th>بقایا تبدیلی</th><th>تفصیل</th></tr></thead><tbody>
-                    @forelse($transactions as $transaction)<tr><td>{{ ($transaction->paid_on ?: $transaction->created_at)?->format('d-m-Y') }}</td><td><span class="type-badge type-{{ strtolower(str_replace(' ', '-', $transaction->Order_type)) }}">{{ $transaction->Order_type === 'Tailor' ? 'ٹیلرنگ' : ($transaction->Order_type === 'Sale' ? 'دکان' : ($transaction->Order_type === 'Sale Cancellation' ? 'فروخت منسوخی' : ($transaction->Order_type === 'Payment' ? 'مشترکہ ادائیگی' : 'دیگر'))) }}</span></td><td>{{ $transaction->orderId ? 'آرڈر #'.$transaction->orderId : ($transaction->sale_id ? 'فروخت '.($transaction->sale_display_number ?: '#'.$transaction->sale_id) : 'ادائیگی') }}</td><td>Rs {{ number_format((float) $transaction->recivedPayment, 2) }}</td><td class="{{ (float) $transaction->remainingBalance < 0 ? 'text-success' : 'text-danger' }}">Rs {{ number_format((float) $transaction->remainingBalance, 2) }}</td><td>@if($transaction->payment_method)<strong>{{ \App\Support\PaymentMethods::LABELS[$transaction->payment_method] ?? $transaction->payment_method }}</strong>@if($transaction->payment_reference)<br><small>{{ $transaction->payment_reference }}</small>@endif @if($transaction->comment)<br>@endif @endif{{ $transaction->comment ?: ($transaction->payment_method ? '' : '—') }}</td></tr>
+                <div class="col-xl-8 mb-4"><div class="card workspace-card"><div class="card-body p-0"><div class="section-heading p-4 mb-0"><div><h2 class="h5 font-weight-bold">کھاتہ</h2><p>آرڈرز اور ادائیگیوں کی تفصیل اور مجموعی بقایا۔</p></div><span class="balance-pill">بقایا: Rs {{ number_format($totalBalance, 2) }}</span></div><div class="table-responsive"><table class="table table-hover mb-0 text-right"><thead><tr><th>تاریخ</th><th>شعبہ</th><th>حوالہ</th><th>وصول شدہ</th><th>بقایا تبدیلی</th><th>تفصیل</th></tr></thead><tbody>
+                    @forelse($transactions as $transaction)<tr><td>{{ ($transaction->paid_on ?: $transaction->created_at)?->format('d-m-Y') }}</td><td><span class="type-badge type-{{ strtolower(str_replace(' ', '-', $transaction->Order_type)) }}">{{ $transaction->Order_type === 'Tailor' ? 'ٹیلرنگ' : ($transaction->Order_type === 'Sale' ? 'دکان' : ($transaction->Order_type === 'Sale Cancellation' ? 'فروخت منسوخی' : ($transaction->Order_type === 'Payment' ? 'ادائیگی' : 'دیگر'))) }}</span></td><td>{{ $transaction->orderId ? 'آرڈر #'.$transaction->orderId : ($transaction->sale_id ? 'فروخت '.($transaction->sale_display_number ?: '#'.$transaction->sale_id) : 'ادائیگی') }}</td><td>Rs {{ number_format((float) $transaction->recivedPayment, 2) }}</td><td class="{{ (float) $transaction->remainingBalance < 0 ? 'text-success' : 'text-danger' }}">Rs {{ number_format((float) $transaction->remainingBalance, 2) }}</td><td>@if($transaction->payment_method)<strong>{{ \App\Support\PaymentMethods::LABELS[$transaction->payment_method] ?? $transaction->payment_method }}</strong>@if($transaction->payment_reference)<br><small>{{ $transaction->payment_reference }}</small>@endif @if($transaction->comment)<br>@endif @endif{{ $transaction->comment ?: ($transaction->payment_method ? '' : '—') }}</td></tr>
                     @empty<tr><td colspan="6" class="empty-state">ابھی کوئی لین دین موجود نہیں۔</td></tr>@endforelse
                     </tbody></table></div>@if($transactions->hasPages())<div class="card-footer">{{ $transactions->links() }}</div>@endif</div></div></div>
                 <div class="col-xl-4 mb-4">
-                    <div class="card workspace-card mb-3"><div class="card-body p-4"><small class="text-muted">موجودہ مشترکہ بقایا</small><div class="display-4 font-weight-bold text-primary">Rs {{ number_format($totalBalance, 2) }}</div><p class="text-muted mb-0">یہ {{ $balanceScopeLabel }} واجب الادا رقم ہے۔</p></div></div>
+                    <div class="card workspace-card mb-3"><div class="card-body p-4"><small class="text-muted">موجودہ بقایا</small><div class="display-4 font-weight-bold text-primary">Rs {{ number_format($totalBalance, 2) }}</div><p class="text-muted mb-0">یہ {{ $balanceScopeLabel }} واجب الادا رقم ہے۔</p></div></div>
                     @if($paymentRoute && $totalBalance > 0)
                         <div class="card workspace-card">
                             <div class="card-body p-4">
                                 <h2 class="h5 font-weight-bold">نئی ادائیگی درج کریں</h2>
-                                <p class="text-muted small">ادائیگی مشترکہ بقایا میں جمع ہوگی اور اس کا طریقہ و حوالہ محفوظ رہے گا۔</p>
+                                <p class="text-muted small">ادائیگی بقایا میں جمع ہوگی اور اس کا طریقہ و حوالہ محفوظ رہے گا۔</p>
                                 <form method="POST" action="{{ $paymentRoute }}">
                                     @csrf
                                     <input type="hidden" name="customer_id" value="{{ $customer->id }}">
@@ -159,7 +159,7 @@
         @endif
 
         @if($activeTab === 'profile')
-            <div class="row"><div class="col-xl-8"><div class="card workspace-card"><div class="card-body p-4 p-lg-5"><div class="section-heading"><div><h2 class="h4 font-weight-bold">ذاتی معلومات</h2><p>تمام نظاموں میں استعمال ہونے والی مشترکہ شناخت</p></div>@if($canManageMeasurements)<a class="btn btn-outline-primary" href="{{ route('admin.Customers.edit', $customer) }}">تبدیل کریں</a>@endif</div><div class="profile-details"><div><small>نام</small><strong>{{ $customer->name }}</strong></div><div><small>فون نمبر</small><strong dir="ltr">{{ $customer->phone_number1 }}</strong></div><div><small>گاہک نمبر</small><strong>#{{ $customer->serial_number ?? $customer->id }}</strong></div><div><small>شامل ہونے کی تاریخ</small><strong>{{ $customer->created_at?->format('d-m-Y') }}</strong></div><div class="wide"><small>نوٹ</small><strong>{{ $customer->note ?: 'کوئی نوٹ درج نہیں۔' }}</strong></div></div></div></div></div></div>
+            <div class="row"><div class="col-xl-8"><div class="card workspace-card"><div class="card-body p-4 p-lg-5"><div class="section-heading"><div><h2 class="h4 font-weight-bold">ذاتی معلومات</h2><p>گاہک کی ذاتی معلومات</p></div>@if($canManageMeasurements)<a class="btn btn-outline-primary" href="{{ route('admin.Customers.edit', $customer) }}">تبدیل کریں</a>@endif</div><div class="profile-details"><div><small>نام</small><strong>{{ $customer->name }}</strong></div><div><small>فون نمبر</small><strong dir="ltr">{{ $customer->phone_number1 }}</strong></div><div><small>گاہک نمبر</small><strong>#{{ $customer->serial_number ?? $customer->id }}</strong></div><div><small>شامل ہونے کی تاریخ</small><strong>{{ $customer->created_at?->format('d-m-Y') }}</strong></div><div class="wide"><small>نوٹ</small><strong>{{ $customer->note ?: 'کوئی نوٹ درج نہیں۔' }}</strong></div></div></div></div></div></div>
         @endif
     </div>
 </section>

@@ -2,7 +2,7 @@
 @php($isSuperAdmin = $isSuperAdminSurface || (Auth::check() && Auth::user()->hasRole('administrative')))
 @php($enabledWorkspaces = Auth::check() && Auth::user()->isBusinessMember() ? Auth::user()->enabledModules() : [])
 @php($hasMultipleWorkspaces = count($enabledWorkspaces) > 1)
-@php($canShopSales = Auth::check() && Auth::user()->hasBusinessPermission('clothing.sales'))
+@php($canShopSales = Auth::check() && Auth::user()->hasModule('clothing') && Auth::user()->hasBusinessPermission('clothing.sales'))
 @php($canShopInventory = Auth::check() && Auth::user()->hasBusinessPermission('clothing.inventory'))
 @php($canShopPurchases = Auth::check() && Auth::user()->hasBusinessPermission('clothing.purchases'))
 @php($canShopSuppliers = Auth::check() && Auth::user()->hasBusinessPermission('clothing.suppliers'))

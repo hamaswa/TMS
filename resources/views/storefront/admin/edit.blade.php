@@ -100,17 +100,25 @@
                             </div>
                             <div class="advanced-branding mb-3">
                                 <strong class="d-block mb-1">اعلیٰ برانڈ لے آؤٹ</strong>
-                                <p class="small text-muted">فونٹ، ہیرو کی ساخت، کارڈز اور مصنوعات کی کثافت اپنی برانڈ شناخت کے مطابق منتخب کریں۔</p>
+                                <p class="small text-muted">فونٹ اور صفحے کی ساخت اپنی برانڈ شناخت کے مطابق منتخب کریں۔</p>
                                 <div class="form-row">
                                     <div class="form-group col-md-4"><label for="font_style">فونٹ انداز</label><select id="font_style" name="font_style" class="form-control"><option value="modern" @selected(old('font_style',$storefront->font_style ?: 'modern') === 'modern')>جدید</option><option value="classic" @selected(old('font_style',$storefront->font_style) === 'classic')>روایتی / اداریاتی</option><option value="minimal" @selected(old('font_style',$storefront->font_style) === 'minimal')>سادہ</option></select></div>
                                     <div class="form-group col-md-4"><label for="hero_layout">ہیرو لے آؤٹ</label><select id="hero_layout" name="hero_layout" class="form-control"><option value="overlay" @selected(old('hero_layout',$storefront->hero_layout ?: 'overlay') === 'overlay')>تصویر پر متن</option><option value="split" @selected(old('hero_layout',$storefront->hero_layout) === 'split')>متن اور تصویر الگ</option><option value="minimal" @selected(old('hero_layout',$storefront->hero_layout) === 'minimal')>سادہ رنگین ہیرو</option></select></div>
                                     <div class="form-group col-md-4"><label for="hero_alignment">ہیرو متن</label><select id="hero_alignment" name="hero_alignment" class="form-control"><option value="start" @selected(old('hero_alignment',$storefront->hero_alignment ?: 'start') === 'start')>زبان کے آغاز کی سمت</option><option value="center" @selected(old('hero_alignment',$storefront->hero_alignment) === 'center')>درمیان</option></select></div>
                                     <div class="form-group col-md-4"><label for="hero_overlay_strength">تصویر پر رنگ کی شدت</label><input id="hero_overlay_strength" name="hero_overlay_strength" type="range" min="20" max="90" step="5" class="custom-range" value="{{ old('hero_overlay_strength',$storefront->hero_overlay_strength ?? 70) }}"><small class="text-muted">کم: تصویر نمایاں، زیادہ: متن زیادہ واضح</small></div>
                                     <div class="form-group col-md-4"><label for="corner_style">کناروں کا انداز</label><select id="corner_style" name="corner_style" class="form-control"><option value="square" @selected(old('corner_style',$storefront->corner_style) === 'square')>سیدھے</option><option value="soft" @selected(old('corner_style',$storefront->corner_style ?: 'soft') === 'soft')>نرم</option><option value="rounded" @selected(old('corner_style',$storefront->corner_style) === 'rounded')>زیادہ گول</option></select></div>
+@if($business->clothing_enabled)
                                     <div class="form-group col-md-4"><label for="product_columns">ڈیسک ٹاپ مصنوعات فی قطار</label><select id="product_columns" name="product_columns" class="form-control">@foreach([2,3,4] as $columns)<option value="{{ $columns }}" @selected((int)old('product_columns',$storefront->product_columns ?? 3) === $columns)>{{ $columns }}</option>@endforeach</select></div>
+@endif
+@if($business->clothing_enabled)
                                     <div class="form-group col-md-4"><label for="product_columns_tablet">ٹیبلٹ مصنوعات فی قطار</label><select id="product_columns_tablet" name="product_columns_tablet" class="form-control">@foreach([1,2,3] as $columns)<option value="{{ $columns }}" @selected((int)old('product_columns_tablet',$storefront->product_columns_tablet ?? 2) === $columns)>{{ $columns }}</option>@endforeach</select></div>
+@endif
+@if($business->clothing_enabled)
                                     <div class="form-group col-md-4"><label for="product_columns_mobile">موبائل مصنوعات فی قطار</label><select id="product_columns_mobile" name="product_columns_mobile" class="form-control">@foreach([1,2] as $columns)<option value="{{ $columns }}" @selected((int)old('product_columns_mobile',$storefront->product_columns_mobile ?? 1) === $columns)>{{ $columns }}</option>@endforeach</select></div>
+@endif
+@if($business->clothing_enabled)
                                     <div class="form-group col-md-4"><label for="product_image_ratio">پروڈکٹ تصویر کی شکل</label><select id="product_image_ratio" name="product_image_ratio" class="form-control"><option value="portrait" @selected(old('product_image_ratio',$storefront->product_image_ratio ?: 'portrait') === 'portrait')>عمودی</option><option value="square" @selected(old('product_image_ratio',$storefront->product_image_ratio) === 'square')>مربع</option><option value="landscape" @selected(old('product_image_ratio',$storefront->product_image_ratio) === 'landscape')>چوڑی</option><option value="natural" @selected(old('product_image_ratio',$storefront->product_image_ratio) === 'natural')>اصل تناسب</option></select></div>
+@endif
                                     <div class="form-group col-md-4"><label for="header_layout">ہیڈر میں مینو / تلاش کی ترتیب</label><select id="header_layout" name="header_layout" class="form-control"><option value="menu_first" @selected(old('header_layout',$storefront->header_layout ?: 'menu_first') === 'menu_first')>پہلے مینو، پھر تلاش</option><option value="search_first" @selected(old('header_layout',$storefront->header_layout) === 'search_first')>پہلے تلاش، پھر مینو</option></select></div>
                                     <div class="form-group col-md-4"><label for="hero_height">ہیرو کی اونچائی</label><select id="hero_height" name="hero_height" class="form-control"><option value="compact" @selected(old('hero_height',$storefront->hero_height) === 'compact')>مختصر</option><option value="standard" @selected(old('hero_height',$storefront->hero_height ?: 'standard') === 'standard')>معیاری</option><option value="tall" @selected(old('hero_height',$storefront->hero_height) === 'tall')>بڑی / سنیما انداز</option></select></div>
                                     <div class="form-group col-md-4"><label for="hero_text_animation">متن کی حرکت</label><select id="hero_text_animation" name="hero_text_animation" class="form-control"><option value="none" @selected(old('hero_text_animation',$storefront->hero_text_animation) === 'none')>کوئی نہیں</option><option value="fade" @selected(old('hero_text_animation',$storefront->hero_text_animation) === 'fade')>آہستہ ظاہر</option><option value="fade_up" @selected(old('hero_text_animation',$storefront->hero_text_animation ?: 'fade_up') === 'fade_up')>نیچے سے ظاہر</option><option value="slide" @selected(old('hero_text_animation',$storefront->hero_text_animation) === 'slide')>سائیڈ سے ظاہر</option></select></div>
@@ -126,18 +134,30 @@
                             <div class="border rounded p-3 mb-3">
                                 <strong class="d-block mb-2">مرکزی مینو اور صفحہ حصے</strong>
                                 <div class="form-row">
+@if($business->clothing_enabled)
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_nav_categories" value="1" @checked(old('show_nav_categories',$storefront->show_nav_categories ?? true))> اقسام کا مینو</label></div>
+@endif
+@if($business->clothing_enabled)
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_nav_brands" value="1" @checked(old('show_nav_brands',$storefront->show_nav_brands ?? true))> برانڈز کا مینو</label></div>
+@endif
+@if($business->clothing_enabled)
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_featured_products" value="1" @checked(old('show_featured_products',$storefront->show_featured_products ?? true))> نمایاں مصنوعات</label></div>
+@endif
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_benefits" value="1" @checked(old('show_benefits',$storefront->show_benefits ?? true))> سہولتوں کی پٹی</label></div>
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_services" value="1" @checked(old('show_services',$storefront->show_services ?? true))> خدمات کا حصہ</label></div>
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_about" value="1" @checked(old('show_about',$storefront->show_about ?? true))> تعارف اور رابطہ</label></div>
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="sticky_header" value="1" @checked(old('sticky_header',$storefront->sticky_header ?? true))> سکرول پر ہیڈر سامنے رہے</label></div>
+@if($business->clothing_enabled)
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_product_brand" value="1" @checked(old('show_product_brand',$storefront->show_product_brand ?? true))> کارڈ پر برانڈ</label></div>
+@endif
+@if($business->clothing_enabled)
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_product_category" value="1" @checked(old('show_product_category',$storefront->show_product_category ?? true))> کارڈ پر قسم</label></div>
+@endif
+@if($business->clothing_enabled)
                                     <div class="col-md-4 mb-2"><label><input type="checkbox" name="show_product_stock" value="1" @checked(old('show_product_stock',$storefront->show_product_stock ?? true))> کارڈ پر دستیاب اسٹاک</label></div>
+@endif
                                 </div>
-                                @if($storefront->exists)<a class="btn btn-outline-primary btn-sm mt-2" href="{{ route('admin.storefront.merchandising.index') }}">ہیرو سلائیڈز، کلیکشن اور کسٹم مینو ترتیب دیں</a>@endif
+                                @if($storefront->exists && $business->clothing_enabled)<a class="btn btn-outline-primary btn-sm mt-2" href="{{ route('admin.storefront.merchandising.index') }}">ہیرو سلائیڈز، کلیکشن اور کسٹم مینو ترتیب دیں</a>@endif
                             </div>
                             <div class="border rounded p-3">
                                 <strong class="d-block mb-1">اپنا مینو اور فوٹر روابط <small class="text-muted">(زیادہ سے زیادہ 6)</small></strong>

@@ -453,6 +453,10 @@ body {
             ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
     @endphp
 
+    <div class="serial-label-toolbar" style="text-align:center;padding:10px">
+        <a target="_blank" rel="noopener" href="{{ route('admin.order-prints', ['id' => $order->id, 'serial_only' => 1]) }}">صرف سیریل پرنٹ</a>
+    </div>
+    <style>@media print{.serial-label-toolbar{display:none!important}}</style>
     <div id="invoice-POS">
 
         <center id="top">

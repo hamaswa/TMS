@@ -75,7 +75,7 @@
 
                 <section class="edit-section">
                     <div class="edit-section-heading">
-                        <div><h2>بنیادی معلومات</h2><p>{{ $parentCustomer ? 'نام الگ ہے، جبکہ رابطہ اور کھاتہ مرکزی گاہک کے ساتھ مشترک ہیں۔' : 'گاہک کی مشترکہ شناخت جو دکان اور ٹیلرنگ دونوں میں استعمال ہوتی ہے۔' }}</p></div>
+                        <div><h2>بنیادی معلومات</h2><p>{{ $parentCustomer ? 'نام الگ ہے، جبکہ رابطہ اور کھاتہ مرکزی گاہک کے ساتھ مشترک ہیں۔' : 'گاہک کی رابطہ معلومات اور شناخت۔' }}</p></div>
                         <span class="section-icon"><i class="fas fa-user"></i></span>
                     </div>
                     <div class="row">
@@ -164,7 +164,7 @@
                         <div class="col-lg-7 form-group edit-field mb-lg-0">
                             <label for="customer-note">خصوصی نوٹ</label>
                             <textarea id="customer-note" class="form-control" name="note" rows="4" maxlength="2000" placeholder="مثلاً فٹنگ، کپڑے یا ڈیلیوری سے متعلق ہدایات">{{ old('note', $customer->note) }}</textarea>
-                            <small class="form-text text-muted">یہ نوٹ گاہک کے مشترکہ پروفائل میں دکھائی دے گا۔</small>
+                            <small class="form-text text-muted">یہ نوٹ گاہک کے پروفائل میں دکھائی دے گا۔</small>
                         </div>
                         @unless($parentCustomer)<div class="col-lg-5">
                             <div class="security-panel edit-field">
