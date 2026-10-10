@@ -817,8 +817,12 @@ class OrderController extends Controller
         $validated = $request->validate([
             'week' => ['nullable', 'date'],
             'filter' => ['nullable', Rule::in(['upcoming', 'overdue', 'ready'])],
+            'search' => ['nullable', 'string', 'max:100'],
         ]);
+
         $filter = $validated['filter'] ?? null;
+        $search = trim($validated['search'] ?? '');
+
         $weekStart = Carbon::parse($validated['week'] ?? now())
             ->startOfWeek(Carbon::MONDAY)
             ->startOfDay();
@@ -842,14 +846,51 @@ class OrderController extends Controller
             $base->whereBetween('returnDate', [$weekStart->toDateString(), $weekEnd->toDateString()]);
         }
 
+        // 2) Apply server-side search BEFORE summary totals and pagination.
+        if ($search !== '') {
+            $base->where(function ($query) use ($search, $ownerId) {
+                // Search by order ID when the input is numeric.
+                if (ctype_digit($search)) {
+                    $query->orWhere('id', (int) $search);
+                }
+
+                // Search by order number / suit number.
+                $query->orWhere('suitNum', 'like', "%{$search}%");
+
+                // Search by customer name, phone number, or serial number.
+                $query->orWhereHas('customers', function ($customerQuery) use ($search, $ownerId) {
+                    $customerQuery
+                        ->where('user_id', $ownerId)
+                        ->where(function ($customerFields) use ($search) {
+                            $customerFields
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhere('phone_number1', 'like', "%{$search}%")
+                                ->orWhere('serial_number', 'like', "%{$search}%");
+                        });
+                });
+
+                // Search by tailor name.
+                $query->orWhereHas('tailor', function ($tailorQuery) use ($search, $ownerId) {
+                    $tailorQuery
+                        ->where('user_id', $ownerId)
+                        ->where('name', 'like', "%{$search}%");
+                });
+
+                // Search by measurement template / garment name.
+                $query->orWhereHas('measurementTemplate', function ($templateQuery) use ($search) {
+                    $templateQuery->where('name', 'like', "%{$search}%");
+                });
+            });
+        }
+
         // 2) Summary cards: ONE aggregate query, no models loaded.
         $totals = (clone $base)->toBase()->selectRaw("
-        count(*) as orders,
-        coalesce(sum(suitQuantity), 0) as suits,
-        coalesce(sum(case when status not in ('ready','delivered') then 1 else 0 end), 0) as in_workshop,
-        coalesce(sum(case when status in ('ready','delivered') then 1 else 0 end), 0) as ready,
-        coalesce(sum(case when status not in ('ready','delivered') and returnDate < ? then 1 else 0 end), 0) as overdue
-    ", [$today])->first();
+            count(*) as orders,
+            coalesce(sum(suitQuantity), 0) as suits,
+            coalesce(sum(case when status not in ('ready','delivered') then 1 else 0 end), 0) as in_workshop,
+            coalesce(sum(case when status in ('ready','delivered') then 1 else 0 end), 0) as ready,
+            coalesce(sum(case when status not in ('ready','delivered') and returnDate < ? then 1 else 0 end), 0) as overdue
+        ", [$today])->first();
 
         $summary = [
             'orders'      => (int) $totals->orders,

@@ -1,76 +1,6 @@
 @extends('main')
 
 @section('content')
-    @php
-        $dayNames = ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار'];
-        $statusLabels = $detailedWorkflow
-            ? \App\Models\Order::STATUS_LABELS
-            : [
-                'unassigned' => 'درزی مقرر ہونا باقی',
-                'assigned' => 'کارخانے میں ہے',
-                'cutting' => 'کارخانے میں ہے',
-                'stitching' => 'کارخانے میں ہے',
-                'trial' => 'کارخانے میں ہے',
-                'ready' => 'تیار ہے',
-                'delivered' => 'حوالہ شدہ',
-            ];
-        $workerStatusLabels = [
-            'assigned' => 'تفویض',
-            'in_progress' => 'جاری',
-            'completed' => 'مکمل',
-            'cancelled' => 'منسوخ',
-        ];
-        $canManageOrders = Auth::user()->hasBusinessPermission('tailoring.orders');
-        $canManageWorkshop = Auth::user()->hasBusinessPermission('tailoring.workshop');
-        $canStartOrder = $canManageOrders && Auth::user()->hasBusinessPermission('tailoring.customers');
-        $pageMeta = [
-            'week' => [
-                'title' => 'ٹیلرنگ ورک فلو',
-                'description' => 'واپسی کی تاریخ، درزی اور کام کے مرحلے کے مطابق تمام پروڈکشن سنبھالیں۔',
-                'summary' => 'اس ہفتے کے آرڈرز',
-                'range' => $weekStart->format('d-m-Y') . ' سے ' . $weekEnd->format('d-m-Y'),
-                'range_note' => 'آرڈر اس دن دکھایا جاتا ہے جس دن گاہک کو واپس دینا ہے۔',
-                'empty' => 'اس دن واپسی کے لیے کوئی آرڈر مقرر نہیں۔',
-            ],
-            'upcoming' => [
-                'title' => 'قریب آنے والی حوالگیاں',
-                'description' => 'آج اور آنے والے دنوں کے تمام زیرِ تکمیل آرڈرز۔',
-                'summary' => 'آنے والے آرڈرز',
-                'range' => 'آج سے آنے والی تمام تاریخیں',
-                'range_note' => 'تیار اور حوالہ شدہ آرڈرز شامل نہیں ہیں۔',
-                'empty' => 'اس تاریخ کے لیے کوئی آنے والا آرڈر موجود نہیں۔',
-            ],
-            'overdue' => [
-                'title' => 'تاخیر کا شکار آرڈرز',
-                'description' => 'وہ آرڈرز جن کی واپسی کی تاریخ گزر چکی ہے اور کام ابھی مکمل نہیں ہوا۔',
-                'summary' => 'تاخیر والے آرڈرز',
-                'range' => 'آج سے پہلے کی نامکمل حوالگیاں',
-                'range_note' => 'تیار اور حوالہ شدہ آرڈرز شامل نہیں ہیں۔',
-                'empty' => 'اس تاریخ کا کوئی نامکمل تاخیر والا آرڈر موجود نہیں۔',
-            ],
-            'ready' => [
-                'title' => 'تیار، حوالگی کے منتظر',
-                'description' => 'تیار آرڈرز جو ابھی گاہکوں کے حوالے نہیں کیے گئے۔',
-                'summary' => 'حوالگی کے منتظر',
-                'range' => 'تیار مگر غیر حوالہ شدہ آرڈرز',
-                'range_note' => 'گاہک کے حوالے ہوتے ہی آرڈر اس منظر سے نکل جائے گا۔',
-                'empty' => 'اس تاریخ کا کوئی تیار آرڈر حوالگی کا منتظر نہیں۔',
-            ],
-        ][$filter ?: 'week'];
-        $visibleOrders = $weekDays->flatMap(fn($day) => $day['orders'])->unique('id')->values();
-        $tailorFilters = $visibleOrders->pluck('tailor')->filter()->unique('id')->sortBy('name')->values();
-        $visibleWorkerIds = $visibleOrders
-            ->flatMap(fn($order) => $order->workAssignments->whereNull('legacy_key')->pluck('production_worker_id'))
-            ->unique();
-        $workerFilters = $workers->whereIn('id', $visibleWorkerIds)->values();
-        $overdueCount = $visibleOrders
-            ->filter(
-                fn($order) => $order->returnDate &&
-                    \Illuminate\Support\Carbon::parse($order->returnDate)->isBefore(today()) &&
-                    !in_array($order->status, ['ready', 'delivered'], true),
-            )
-            ->count();
-    @endphp
 
     <style>
         .weekly-orders-page {
@@ -996,9 +926,12 @@
             </header>
 
             <div class="wo-toolbar" aria-label="آرڈر تلاش اور فلٹر کریں">
-                <label class="wo-control"><i class="fas fa-search"></i><input id="wo-search" type="search"
-                        placeholder="گاہک، آرڈر، لباس یا درزی تلاش کریں…" autocomplete="off"></label>
-                <label class="wo-control"><i class="fas fa-tag"></i><select id="wo-status-filter">
+
+                <label class="wo-control">
+                    <i class="fas fa-search"></i>
+                    <input id="wo-search" name="search" type="search" value="{{ request('search', '') }}"
+                        placeholder="گاہک، آرڈر، لباس یا درزی تلاش کریں…" autocomplete="off">
+                </label> <label class="wo-control"><i class="fas fa-tag"></i><select id="wo-status-filter">
                         <option value="all">تمام حالتیں</option>
                         <option value="workshop">جاری کام</option>
                         <option value="ready">تیار</option>
@@ -1433,10 +1366,28 @@
                 control.addEventListener('change', applyOrderFilters);
             });
 
+
             let searchTimer = null;
+
             search.addEventListener('input', function() {
                 clearTimeout(searchTimer);
-                searchTimer = setTimeout(applyOrderFilters, 200);
+
+                searchTimer = setTimeout(function() {
+                    const url = new URL(window.location.href);
+                    const term = search.value.trim();
+
+                    if (term) {
+                        url.searchParams.set('search', term);
+                    } else {
+                        url.searchParams.delete('search');
+                    }
+
+                    // Start from page 1 for the new search.
+                    url.searchParams.delete('page');
+
+                    // Preserve existing filters and load matching results from Laravel.
+                    window.location.href = url.toString();
+                }, 500);
             });
 
             /* ---------- Shared tailor modal ---------- */
