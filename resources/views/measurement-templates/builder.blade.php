@@ -243,6 +243,105 @@ document.addEventListener('DOMContentLoaded', function () {
         syncOptions();
         toggleOptions();
     });
+    
+    // Urdu keyboard for custom measurement-field names.
+    var urduKeys = [
+        'ا', 'آ', 'ب', 'پ', 'ت', 'ٹ', 'ث', 'ج', 'چ', 'ح', 'خ',
+        'د', 'ڈ', 'ذ', 'ر', 'ڑ', 'ز', 'ژ', 'س', 'ش', 'ص', 'ض',
+        'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ک', 'گ', 'ل', 'م', 'ن',
+        'ں', 'و', 'ہ', 'ھ', 'ء', 'ی', 'ے', 'ئ'
+    ];
+
+    document.querySelectorAll('.template-field-modal').forEach(function (modal) {
+        var keyboard = modal.querySelector('.mf-urdu-keyboard');
+        var input = modal.querySelector('.mf-urdu-input');
+
+        if (!keyboard || !input) return;
+
+        var keysContainer = keyboard.querySelector('.mf-urdu-keys');
+
+        urduKeys.forEach(function (letter) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'mf-urdu-key';
+            button.textContent = letter;
+            button.dataset.letter = letter;
+            keysContainer.appendChild(button);
+        });
+
+        function setKeyboard(open) {
+            keyboard.classList.toggle('is-open', open);
+            input.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        function insertText(text) {
+            var start = input.selectionStart ?? input.value.length;
+            var end = input.selectionEnd ?? input.value.length;
+
+            input.value = input.value.slice(0, start) + text + input.value.slice(end);
+
+            var cursor = start + text.length;
+            input.setSelectionRange(cursor, cursor);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.focus();
+        }
+
+        input.addEventListener('focus', function () {
+            setKeyboard(true);
+        });
+
+        input.addEventListener('click', function () {
+            setKeyboard(true);
+        });
+
+        keyboard.addEventListener('mousedown', function (event) {
+            event.preventDefault();
+        });
+
+        keyboard.addEventListener('click', function (event) {
+            var key = event.target.closest('.mf-urdu-key');
+            if (key) {
+                insertText(key.dataset.letter);
+                return;
+            }
+
+            var action = event.target.closest('[data-action]');
+            if (!action) return;
+
+            if (action.dataset.action === 'space') {
+                insertText(' ');
+            } else if (action.dataset.action === 'clear') {
+                input.value = '';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.focus();
+            } else if (action.dataset.action === 'backspace') {
+                var start = input.selectionStart ?? input.value.length;
+                var end = input.selectionEnd ?? input.value.length;
+
+                if (start === end && start > 0) {
+                    start--;
+                }
+
+                input.value = input.value.slice(0, start) + input.value.slice(end);
+                input.setSelectionRange(start, start);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.focus();
+            }
+
+            if (event.target.closest('.mf-urdu-close')) {
+                setKeyboard(false);
+                input.blur();
+            }
+        });
+
+        document.addEventListener('mousedown', function (event) {
+            if (!modal.contains(event.target)) {
+                setKeyboard(false);
+            } else if (!event.target.closest('.mf-urdu-wrap')) {
+                setKeyboard(false);
+            }
+        });
+    });
 });
 </script>
 @endsection

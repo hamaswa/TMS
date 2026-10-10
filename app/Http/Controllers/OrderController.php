@@ -35,6 +35,7 @@ use App\Services\ProductionWorkforceService;
 use App\Services\CustomerLedgerService;
 use App\Support\PaymentMethods;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 
 class OrderController extends Controller
@@ -42,9 +43,7 @@ class OrderController extends Controller
     public function __construct(
         private MeasurementService $measurements,
         private CustomerLedgerService $customerLedger
-    )
-    {
-    }
+    ) {}
 
     public function edit($id)
     {
@@ -73,8 +72,8 @@ class OrderController extends Controller
         );
         $measurementSystemKeys = $data->measurementTemplate
             ? collect($data->measurementTemplate->system_fields ?? [])
-                ->filter(fn ($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
-                ->values()
+            ->filter(fn($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
+            ->values()
             : collect(array_keys(MeasurementService::SYSTEM_FIELDS));
         $useLatestMeasurements = request()->boolean('latest_measurements');
         $savedMeasurementValues = $useLatestMeasurements
@@ -85,21 +84,33 @@ class OrderController extends Controller
             ->pluck('value', 'measurement_field_id');
         $preferenceOptions = OptionType::query()
             ->whereIn('type', ['necktype', 'sleeve', 'daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
-            ->with(['options' => fn ($query) => $query
+            ->with(['options' => fn($query) => $query
                 ->where('user_id', Auth::user()->businessOwnerId())
                 ->where('measurement_template_id', $data->measurement_template_id)
                 ->orderBy('Name')])
             ->get()
-            ->mapWithKeys(fn (OptionType $type) => [
+            ->mapWithKeys(fn(OptionType $type) => [
                 $type->type === 'daaman' ? 'Daaman' : $type->type => $type->options,
             ]);
         $data['design'] = Options::where('option_id', 1)->get();
         // $currentTailorRate = 1220;
         return view('order.edit', compact(
-            'data', 'tailors', 'tailorRates', 'customerBalance', 'orderBalance',
-            'recivedPayment', 'sub_customer', 'customer', 'measurementCustomer',
-            'measurementFields', 'savedMeasurementValues', 'customerCustomValues',
-            'preferenceOptions', 'useLatestMeasurements', 'measurementSystemKeys', 'canChangeMeasurementProfile',
+            'data',
+            'tailors',
+            'tailorRates',
+            'customerBalance',
+            'orderBalance',
+            'recivedPayment',
+            'sub_customer',
+            'customer',
+            'measurementCustomer',
+            'measurementFields',
+            'savedMeasurementValues',
+            'customerCustomValues',
+            'preferenceOptions',
+            'useLatestMeasurements',
+            'measurementSystemKeys',
+            'canChangeMeasurementProfile',
             'missingTailor'
         ));
     }
@@ -114,8 +125,8 @@ class OrderController extends Controller
         );
         $measurementSystemKeys = $order->measurementTemplate
             ? collect($order->measurementTemplate->system_fields ?? [])
-                ->filter(fn ($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
-                ->values()
+            ->filter(fn($key) => array_key_exists($key, MeasurementService::SYSTEM_FIELDS))
+            ->values()
             : collect(array_keys(MeasurementService::SYSTEM_FIELDS));
         $measurementRules = [
             'system_measurements' => ['nullable', 'array'],
@@ -123,7 +134,7 @@ class OrderController extends Controller
         ];
         foreach ($measurementSystemKeys as $key) {
             $meta = MeasurementService::SYSTEM_FIELDS[$key];
-            $measurementRules['system_measurements.'.$key] = $meta['unit'] === 'inch'
+            $measurementRules['system_measurements.' . $key] = $meta['unit'] === 'inch'
                 ? ['nullable', 'numeric', 'min:0']
                 : ['nullable', 'string', 'max:500'];
         }
@@ -136,7 +147,7 @@ class OrderController extends Controller
             } else {
                 array_push($fieldRules, 'string', 'max:500');
             }
-            $measurementRules['custom_measurements.'.$field->id] = $fieldRules;
+            $measurementRules['custom_measurements.' . $field->id] = $fieldRules;
         }
 
         $validated = $request->validate(array_merge([
@@ -147,14 +158,14 @@ class OrderController extends Controller
             'recivedPayment' => ['required', 'numeric', 'min:0', 'lte:totalPayment'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'payment_reference' => [
-                Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
+                Rule::requiredIf(fn() => PaymentMethods::requiresReference($request->input('payment_method'))),
                 'nullable',
                 'string',
                 'max:255',
             ],
             'paid_on' => ['nullable', 'date'],
             'tailorId' => [Rule::requiredIf((bool) $order->tailorId), 'nullable', 'integer'],
-            'tailor_price' => [Rule::requiredIf(fn () => $request->filled('tailorId')), 'nullable', 'regex:/^\d+-.+$/', 'max:255'],
+            'tailor_price' => [Rule::requiredIf(fn() => $request->filled('tailorId')), 'nullable', 'regex:/^\d+-.+$/', 'max:255'],
             'returnDate' => ['required', 'date'],
             'remarks' => ['nullable', 'string', 'max:1000'],
             'return_to_statement' => ['nullable', 'boolean'],
@@ -172,8 +183,10 @@ class OrderController extends Controller
             $this->ownedCustomer($validated['sub_id']);
         }
 
-        if (! $canChangeMeasurementProfile
-            && (int) ($validated['sub_id'] ?? $order->sub_customer) !== (int) $order->sub_customer) {
+        if (
+            ! $canChangeMeasurementProfile
+            && (int) ($validated['sub_id'] ?? $order->sub_customer) !== (int) $order->sub_customer
+        ) {
             throw ValidationException::withMessages([
                 'sub_id' => 'درزی مقرر ہونے کے بعد آرڈر کا ناپ والا فرد تبدیل نہیں کیا جا سکتا۔',
             ]);
@@ -248,7 +261,7 @@ class OrderController extends Controller
                 foreach ($measurementSystemKeys as $key) {
                     $meta = MeasurementService::SYSTEM_FIELDS[$key];
                     $value = $validated['system_measurements'][$key] ?? null;
-                    $sourceKey = 'system.'.$key;
+                    $sourceKey = 'system.' . $key;
                     if ($value === null || $value === '') {
                         $order->measurementValues()->where('source_key', $sourceKey)->delete();
                         continue;
@@ -266,7 +279,7 @@ class OrderController extends Controller
                 }
                 foreach ($measurementFields as $field) {
                     $value = $validated['custom_measurements'][$field->id] ?? null;
-                    $sourceKey = 'custom.'.$field->id;
+                    $sourceKey = 'custom.' . $field->id;
                     if ($value === null || $value === '') {
                         $order->measurementValues()->where('source_key', $sourceKey)->delete();
                         continue;
@@ -284,7 +297,7 @@ class OrderController extends Controller
                 }
 
                 $preferenceSourceKeys = collect(['necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
-                    ->map(fn ($key) => 'system.'.$key);
+                    ->map(fn($key) => 'system.' . $key);
                 $order->measurementValues()
                     ->whereIn('source_key', $preferenceSourceKeys)
                     ->where('value', '0')
@@ -318,10 +331,10 @@ class OrderController extends Controller
             $returnCustomer = $this->ownedCustomer($returnToOrders);
             $response = redirect()->route('admin.customer.orders', $returnCustomer);
         } elseif ($returnToDirectory) {
-            $response = redirect(url('admin/Customers').'?'.http_build_query([
+            $response = redirect(url('admin/Customers') . '?' . http_build_query([
                 'customer' => $validated['customerId'],
                 'search' => $returnSearch !== '' ? $returnSearch : $customer->phone_number1,
-            ]).'#orderDetail');
+            ]) . '#orderDetail');
         } else {
             $response = redirect('admin/Customers');
         }
@@ -341,7 +354,7 @@ class OrderController extends Controller
         $data['tailors'] = Tailor::with('tailorsalary')
             ->where('user_id', Auth::user()->businessOwnerId())->get();
         $data['hasReadyTailor'] = $data['tailors']->contains(
-            fn (Tailor $tailor) => $tailor->tailorsalary->isNotEmpty()
+            fn(Tailor $tailor) => $tailor->tailorsalary->isNotEmpty()
         );
         $data['childData'] = Customers::where('parent_id', $id)->get();
         $data['design'] = Options::where('option_id', 1)->where('user_id', auth()->user()->businessOwnerId())->get();
@@ -359,7 +372,7 @@ class OrderController extends Controller
             ->first() ?: $customer;
 
         $data['measurementTemplateRequirements'] = $data['measurementTemplates']->mapWithKeys(
-            fn (MeasurementTemplate $template) => [
+            fn(MeasurementTemplate $template) => [
                 $template->id => $this->measurements->missingRequiredMeasurements(
                     $data['selectedMeasurementProfile'],
                     auth()->user()->businessOwnerId(),
@@ -387,7 +400,7 @@ class OrderController extends Controller
             'design' => ['nullable', 'string', 'max:255'],
             'designPrice' => ['nullable', 'numeric', 'min:0'],
             'tailorId' => ['nullable', 'integer'],
-            'tailor_price' => [Rule::requiredIf(fn () => $req->filled('tailorId')), 'nullable', 'regex:/^\d+-.+$/', 'max:255'],
+            'tailor_price' => [Rule::requiredIf(fn() => $req->filled('tailorId')), 'nullable', 'regex:/^\d+-.+$/', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:1000'],
             'measurement_template_id' => ['nullable', 'integer', Rule::exists('measurement_templates', 'id')
                 ->where('user_id', Auth::user()->businessOwnerId())->where('is_active', true)],
@@ -417,9 +430,9 @@ class OrderController extends Controller
             ? MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['measurement_template_id'])
             : ($measurementCustomer->measurementTemplate
                 ?: MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())
-                    ->where('is_active', true)
-                    ->where('is_default', true)
-                    ->first());
+                ->where('is_active', true)
+                ->where('is_default', true)
+                ->first());
         $this->ensureRequiredMeasurements($measurementCustomer, $measurementTemplate);
         [$obj, $transaction] = DB::transaction(function () use ($validated, $tailor, $rateId, $tailorPrice, $remainingBalance, $designParts, $subCustomerId, $measurementCustomer, $measurementTemplate) {
             $obj = Order::create([
@@ -533,20 +546,20 @@ class OrderController extends Controller
             $canAssignTailor = Auth::user()->hasBusinessPermission(BusinessRole::TAILORING_WORKSHOP);
             $tailorOptions = $canAssignTailor
                 ? Tailor::query()
-                    ->with(['tailorsalary.options'])
-                    ->where('user_id', Auth::user()->businessOwnerId())
-                    ->orderBy('name')
-                    ->get()
-                    ->flatMap(fn (Tailor $tailor) => $tailor->tailorsalary->map(fn (Tailorsalary $rate) => [
-                        'tailorId' => (int) $tailor->id,
-                        'tailorName' => $tailor->name,
-                        'rateId' => (int) $rate->id,
-                        'rateValue' => $rate->id.'-'.$rate->price,
-                        'rateName' => $rate->options?->Name ?: ($rate->type ?: 'عام سلائی'),
-                        'price' => (float) $rate->price,
-                    ]))
-                    ->values()
-                    ->all()
+                ->with(['tailorsalary.options'])
+                ->where('user_id', Auth::user()->businessOwnerId())
+                ->orderBy('name')
+                ->get()
+                ->flatMap(fn(Tailor $tailor) => $tailor->tailorsalary->map(fn(Tailorsalary $rate) => [
+                    'tailorId' => (int) $tailor->id,
+                    'tailorName' => $tailor->name,
+                    'rateId' => (int) $rate->id,
+                    'rateValue' => $rate->id . '-' . $rate->price,
+                    'rateName' => $rate->options?->Name ?: ($rate->type ?: 'عام سلائی'),
+                    'price' => (float) $rate->price,
+                ]))
+                ->values()
+                ->all()
                 : [];
             $orderBalances = $canViewBalances
                 ? $this->customerLedger->orderBalances(Auth::user()->businessOwnerId(), (int) $id)
@@ -610,8 +623,8 @@ class OrderController extends Controller
                             'unassigned' => [],
                             'delivered' => [],
                             default => [
-                            ['value' => 'start', 'label' => 'کارخانے میں ہے'],
-                            ['value' => 'complete', 'label' => 'تیار ہے'],
+                                ['value' => 'start', 'label' => 'کارخانے میں ہے'],
+                                ['value' => 'complete', 'label' => 'تیار ہے'],
                             ],
                         },
                 ];
@@ -633,7 +646,10 @@ class OrderController extends Controller
         $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
 
         return view('order.orders', compact(
-            'customer', 'selectedCustomer', 'detailedWorkflow', 'canViewBalances'
+            'customer',
+            'selectedCustomer',
+            'detailedWorkflow',
+            'canViewBalances'
         ));
     }
 
@@ -650,7 +666,7 @@ class OrderController extends Controller
         // Find the latest order for the customer
         $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
         $printMeasurements = $this->measurements->displayValuesForOrder($orderDetail);
-        
+
         // dd($orderDetail);
 
         [$latestBalance, $previousBalance, $orderBalance] = $this->printBalanceSummary($order);
@@ -664,7 +680,7 @@ class OrderController extends Controller
         $counterOrderItem = CounterOrderItem::query()
             ->where('source_record_type', 'tailoring_order')
             ->where('source_record_id', $order->id)
-            ->whereHas('counterOrder', fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
+            ->whereHas('counterOrder', fn($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
             ->first();
         $receiptSerial = $counterOrderItem?->item_serial;
 
@@ -705,7 +721,7 @@ class OrderController extends Controller
         // Find the latest order for the customer
         $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
         $printMeasurements = $this->measurements->displayValuesForOrder($orderDetail);
-        
+
         [$latestBalance, $previousBalance, $orderBalance] = $this->printBalanceSummary($order);
 
         $setting = Setting::ensureDefaultFor(Auth::user());
@@ -717,7 +733,7 @@ class OrderController extends Controller
         $counterOrderItem = CounterOrderItem::query()
             ->where('source_record_type', 'tailoring_order')
             ->where('source_record_id', $order->id)
-            ->whereHas('counterOrder', fn ($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
+            ->whereHas('counterOrder', fn($query) => $query->where('user_id', Auth::user()->businessOwnerId()))
             ->first();
         $receiptSerial = $counterOrderItem?->item_serial;
         if (request()->boolean('serial_only')) {
@@ -765,7 +781,7 @@ class OrderController extends Controller
             }
         }
         $data = Customers::where('user_id', Auth::user()->businessOwnerId())
-            ->when($primaryCustomer, fn ($query) => $query->where(function ($family) use ($primaryCustomer) {
+            ->when($primaryCustomer, fn($query) => $query->where(function ($family) use ($primaryCustomer) {
                 $family->whereKey($primaryCustomer->id)
                     ->orWhere('parent_id', $primaryCustomer->id);
             }))
@@ -808,41 +824,74 @@ class OrderController extends Controller
             ->startOfDay();
         $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
 
-        $ordersQuery = Order::where('userId', $ownerId)
-            ->whereHas('customers', fn ($query) => $query->where('user_id', $ownerId))
-            ->with([
-                'customers' => fn ($query) => $query->where('user_id', $ownerId)
-                    ->select('id', 'name', 'phone_number1', 'serial_number'),
-                'tailor' => fn ($query) => $query->where('user_id', $ownerId)
-                    ->select('id', 'name'),
-                'rate.options',
-                'measurementTemplate:id,name',
-                'statusHistory' => fn ($query) => $query->latest()->limit(20),
-                'workAssignments.worker:id,name',
-                'workAssignments.workType:id,name',
-            ])
-            ->orderBy('returnDate')
-            ->orderBy('id');
+        $today = today()->toDateString();
+
+        // 1) Base query: ownership + the active filter. No eager loads here.
+        $base = Order::where('userId', $ownerId)
+            ->whereHas('customers', fn($query) => $query->where('user_id', $ownerId));
 
         if ($filter === 'upcoming') {
-            $ordersQuery->whereDate('returnDate', '>=', today())
+            $base->where('returnDate', '>=', $today)
                 ->whereNotIn('status', ['ready', 'delivered']);
         } elseif ($filter === 'overdue') {
-            $ordersQuery->whereDate('returnDate', '<', today())
+            $base->where('returnDate', '<', $today)
                 ->whereNotIn('status', ['ready', 'delivered']);
         } elseif ($filter === 'ready') {
-            $ordersQuery->where('status', 'ready');
+            $base->where('status', 'ready');
         } else {
-            $ordersQuery->whereBetween('returnDate', [$weekStart->toDateString(), $weekEnd->toDateString()]);
+            $base->whereBetween('returnDate', [$weekStart->toDateString(), $weekEnd->toDateString()]);
         }
 
-        $orders = $ordersQuery->get();
+        // 2) Summary cards: ONE aggregate query, no models loaded.
+        $totals = (clone $base)->toBase()->selectRaw("
+        count(*) as orders,
+        coalesce(sum(suitQuantity), 0) as suits,
+        coalesce(sum(case when status not in ('ready','delivered') then 1 else 0 end), 0) as in_workshop,
+        coalesce(sum(case when status in ('ready','delivered') then 1 else 0 end), 0) as ready,
+        coalesce(sum(case when status not in ('ready','delivered') and returnDate < ? then 1 else 0 end), 0) as overdue
+    ", [$today])->first();
+
+        $summary = [
+            'orders'      => (int) $totals->orders,
+            'suits'       => (int) $totals->suits,
+            'in_workshop' => (int) $totals->in_workshop,
+            'ready'       => (int) $totals->ready,
+            'overdue'     => (int) $totals->overdue,
+        ];
+
+        // 3) The rows: only the relations the table actually shows.
+        $rowQuery = (clone $base)
+            ->with([
+                'customers' => fn($query) => $query->where('user_id', $ownerId)
+                    ->select('id', 'name', 'phone_number1', 'serial_number'),
+                'tailor' => fn($query) => $query->where('user_id', $ownerId)
+                    ->select('id', 'name'),
+                'measurementTemplate:id,name',
+                'workAssignments' => fn($query) => $query->whereNull('legacy_key')
+                    ->select('id', 'order_id', 'production_worker_id', 'legacy_key'),
+            ]);
+
+        if ($filter === 'upcoming') {
+            // soonest due date first, newest id first within the same day
+            $rowQuery->orderBy('returnDate')->orderByDesc('id');
+        } else {
+            // overdue, ready and week view: latest first
+            $rowQuery->orderByDesc('returnDate')->orderByDesc('id');
+        }
+
+        if ($filter) {
+            $paginator = $rowQuery->paginate(100)->withQueryString();
+            $orders = $paginator->getCollection();
+        } else {
+            $paginator = null;
+            $orders = $rowQuery->get();
+        }
 
         $ordersByDate = $orders->groupBy(
-            fn (Order $order) => Carbon::parse($order->returnDate)->toDateString()
+            fn(Order $order) => Carbon::parse($order->returnDate)->toDateString()
         );
         $weekDays = $filter
-            ? $ordersByDate->map(fn ($dateOrders, string $date) => [
+            ? $ordersByDate->map(fn($dateOrders, string $date) => [
                 'date' => Carbon::parse($date),
                 'orders' => $dateOrders,
             ])->values()
@@ -854,35 +903,98 @@ class OrderController extends Controller
                     'orders' => $ordersByDate->get($date->toDateString(), collect()),
                 ];
             });
-        $summary = [
-            'orders' => $orders->count(),
-            'suits' => (int) $orders->sum('suitQuantity'),
-            'in_workshop' => $orders->whereNotIn('status', ['ready', 'delivered'])->count(),
-            'ready' => $orders->whereIn('status', ['ready', 'delivered'])->count(),
-        ];
 
-        $tailors = Tailor::with(['tailorsalary.options'])
-            ->where('user_id', $ownerId)
-            ->orderBy('name')
-            ->get();
+        $tailors = Cache::remember(
+            "wo:tailors:{$ownerId}",
+            120,
+            fn() =>
+            Tailor::with(['tailorsalary.options'])
+                ->where('user_id', $ownerId)
+                ->orderBy('name')
+                ->get()
+        );
+
         $tailorWorkloads = Order::where('userId', $ownerId)
             ->whereNotNull('tailorId')
             ->whereNotIn('status', ['ready', 'delivered'])
             ->selectRaw('tailorId, count(*) as active_jobs')
             ->groupBy('tailorId')
             ->pluck('active_jobs', 'tailorId');
+
+        $workers = ProductionWorker::where('user_id', $ownerId)
+            ->where('active', true)
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        return view('All_Total.order', compact(
+            'weekStart',
+            'weekEnd',
+            'weekDays',
+            'summary',
+            'detailedWorkflow',
+            'filter',
+            'tailors',
+            'tailorWorkloads',
+            'workers',
+            'paginator'
+        ));
+    }
+
+    private function statusLabels(bool $detailed): array
+    {
+        return $detailed ? Order::STATUS_LABELS : [
+            'unassigned' => 'درزی مقرر ہونا باقی',
+            'assigned'   => 'کارخانے میں ہے',
+            'cutting'    => 'کارخانے میں ہے',
+            'stitching'  => 'کارخانے میں ہے',
+            'trial'      => 'کارخانے میں ہے',
+            'ready'      => 'تیار ہے',
+            'delivered'  => 'حوالہ شدہ',
+        ];
+    }
+
+    public function productionPanel(Order $order)
+    {
+        $user = Auth::user();
+        $ownerId = $user->businessOwnerId();
+
+        abort_unless((int) $order->userId === (int) $ownerId, 403);
+        abort_unless($user->hasBusinessPermission('tailoring.workshop'), 403);
+
+        $order->load([
+            'customers:id,name',
+            'tailor:id,name',
+            'measurementTemplate:id,name',
+            'statusHistory' => fn($q) => $q->latest()->limit(20),
+            'workAssignments' => fn($q) => $q->whereNull('legacy_key'),
+            'workAssignments.worker:id,name',
+            'workAssignments.workType:id,name',
+        ]);
+
         $workers = ProductionWorker::where('user_id', $ownerId)
             ->where('active', true)
             ->with([
                 'skills:id,name',
-                'compensationPlans' => fn ($query) => $query->where('active', true)->with('workType:id,name'),
+                'compensationPlans' => fn($q) => $q->where('active', true),
             ])
             ->orderBy('name')
             ->get();
-        return view('All_Total.order', compact(
-            'weekStart', 'weekEnd', 'weekDays', 'summary', 'detailedWorkflow', 'filter',
-            'tailors', 'tailorWorkloads', 'workers'
-        ));
+
+        $detailed = Business::tailoringStatusModeForOwner($ownerId) === Business::TAILORING_STATUS_DETAILED;
+
+        return view('All_Total.partials.production-panel', [
+            'order' => $order,
+            'workers' => $workers,
+            'statusLabels' => $this->statusLabels($detailed),
+            'workerStatusLabels' => [
+                'assigned' => 'تفویض',
+                'in_progress' => 'جاری',
+                'completed' => 'مکمل',
+                'cancelled' => 'منسوخ',
+            ],
+            'canManageOrders' => $user->hasBusinessPermission('tailoring.orders'),
+        ]);
     }
 
     public function updateRackNo(Request $request, $orderId)
@@ -892,7 +1004,9 @@ class OrderController extends Controller
         $ownerId = Auth::user()->businessOwnerId();
         $validated = $request->validate([
             'rack_no' => [
-                'nullable', 'string', 'max:100',
+                'nullable',
+                'string',
+                'max:100',
                 Rule::exists('racks', 'rack_no')->where('user_id', $ownerId),
             ],
         ]);
@@ -917,7 +1031,7 @@ class OrderController extends Controller
             if ($customer) {
                 Log::info('Customer found:', ['customer' => $customer]);
 
-                $notification = new OrderCompleteNotification($order,$setting);
+                $notification = new OrderCompleteNotification($order, $setting);
                 Notification::send($customer, $notification);
                 Log::info('Notification sent.');
 
@@ -989,7 +1103,7 @@ class OrderController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'measurement_template_id' => 'آرڈر بنانے سے پہلے یہ ضروری پیمائش مکمل کریں: '.$missing->implode('، '),
+            'measurement_template_id' => 'آرڈر بنانے سے پہلے یہ ضروری پیمائش مکمل کریں: ' . $missing->implode('، '),
         ]);
     }
 }

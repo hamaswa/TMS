@@ -453,6 +453,10 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/total_orde', [OrderController::class, 'totalOrder'])
         ->middleware('business.permission:tailoring.orders|tailoring.workshop')
         ->name('order.total');
+    // routes/web.php (inside your existing admin group)
+    Route::get('/total_orders/{order}/production-panel', [OrderController::class, 'productionPanel'])
+        ->middleware('business.permission:tailoring.orders|tailoring.workshop')
+        ->name('orders.production-panel');
 
     // csv import and export route
 });

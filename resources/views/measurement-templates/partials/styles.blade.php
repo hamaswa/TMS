@@ -13,4 +13,175 @@
     .builder-preview{position:sticky;top:90px}.preview-label{display:inline-block;background:#e8f2ff;color:#1769aa;border-radius:999px;padding:.3rem .65rem;font-size:.8rem;font-weight:700}.column-mode{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-bottom:.85rem}.column-mode label{margin:0;cursor:pointer}.column-mode input{position:absolute;opacity:0}.column-mode span{display:flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid #d6e1ec;border-radius:10px;padding:.55rem;background:#fff;color:#526575;font-weight:700}.column-mode input:checked+span{border-color:#2d79da;background:#edf6ff;color:#1769aa;box-shadow:0 0 0 2px rgba(45,121,218,.08)}.layout-preview{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}.layout-preview.is-one-column{grid-template-columns:1fr}.layout-preview.is-one-column .layout-lane[data-column="left"]{display:none}.lane-title{display:block;margin-bottom:.45rem;color:#526575}.layout-preview.is-one-column .layout-lane[data-column="right"] .lane-title{font-size:0}.layout-preview.is-one-column .layout-lane[data-column="right"] .lane-title:after{content:'واحد کالم';font-size:.95rem}.preview-list{display:grid;gap:.5rem;min-height:54px;max-height:55vh;overflow:auto;border:1px dashed #d8e2ec;border-radius:11px;padding:.4rem}.preview-item{display:grid;grid-template-columns:28px minmax(0,1fr) 30px;gap:.35rem;align-items:center;padding:.5rem;border:1px solid #e2eaf2;border-radius:9px;background:#fff;color:#28445f;cursor:grab;box-shadow:0 2px 7px rgba(31,45,61,.05)}.preview-item.is-dragging{opacity:.45}.preview-item-label{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.drag-handle,.move-column{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:7px;background:#eef4fa;color:#66809a;cursor:grab}.move-column{background:#e8f2ff;color:#1769aa;cursor:pointer}.drag-handle i,.move-column i{color:inherit}.preview-empty{border:1px dashed #ccd9e5;border-radius:12px;padding:1rem;text-align:center;color:#8292a2}
     details summary{cursor:pointer;list-style:none}details summary::-webkit-details-marker{display:none}.saved-profile,.new-profile{border:1px solid #d7e4dc;background:#fff;border-radius:11px;overflow:hidden}.saved-profile>summary,.new-profile>summary{display:flex;justify-content:space-between;padding:.8rem 1rem;color:#17633c}.profile-measurement-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem}
     @media(max-width:1199px){.builder-preview{position:static;margin-bottom:1rem}}@media(max-width:767px){.template-hero{padding:1.3rem}.builder-head{align-items:flex-start;flex-direction:column}.template-summary,.layout-preview{grid-template-columns:1fr}.field-options{grid-template-columns:1fr}}
+    
+/* Modern Urdu keyboard */
+.mf-urdu-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.mf-urdu-keyboard {
+    display: none;
+    position: relative;
+    width: 100%;
+    margin-top: 12px;
+    padding: 16px;
+    background: #f8faff;
+    border: 1px solid #dce5f5;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(30, 64, 175, 0.09);
+    direction: rtl;
+    z-index: 20;
+}
+
+.mf-urdu-keyboard.is-open {
+    display: block;
+    animation: urduKeyboardIn 0.18s ease-out;
+}
+
+@keyframes urduKeyboardIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mf-urdu-keyboard-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #e3eaf5;
+    color: #253b67;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.mf-urdu-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 9px;
+    background: #e9eef8;
+    color: #40516f;
+    font-size: 23px;
+    cursor: pointer;
+}
+
+.mf-urdu-close:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.mf-urdu-keys {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.mf-urdu-key {
+    min-width: 0;
+    min-height: 43px;
+    padding: 6px 2px;
+    border: 1px solid #dbe4f2;
+    border-radius: 10px;
+    background: #fff;
+    color: #243b66;
+    font-family: inherit;
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 1.3;
+    cursor: pointer;
+    box-shadow: 0 2px 3px rgba(15, 23, 42, 0.035);
+    transition: background 0.15s ease, border-color 0.15s ease,
+                transform 0.15s ease, color 0.15s ease;
+}
+
+.mf-urdu-key:hover {
+    background: #e8efff;
+    border-color: #8eafff;
+    color: #244fc5;
+    transform: translateY(-1px);
+}
+
+.mf-urdu-key:active {
+    transform: scale(0.96);
+    background: #dbe7ff;
+}
+
+.mf-urdu-actions {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1fr;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.mf-urdu-action {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid #d7e1f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #344563;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mf-urdu-action:hover {
+    background: #edf3ff;
+    border-color: #9db7f5;
+}
+
+.mf-urdu-action.is-space {
+    background: #e9efff;
+    border-color: #d4e0ff;
+    color: #284eb5;
+}
+
+.mf-urdu-action[data-action="clear"] {
+    color: #c24141;
+}
+
+.mf-urdu-action[data-action="clear"]:hover {
+    background: #fff0f0;
+    border-color: #fecaca;
+}
+
+.mf-urdu-input {
+    text-align: right;
+    font-size: 16px;
+}
+
+@media (max-width: 480px) {
+    .mf-urdu-keyboard {
+        padding: 10px;
+        border-radius: 12px;
+    }
+
+    .mf-urdu-keys {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .mf-urdu-key {
+        min-height: 40px;
+        font-size: 19px;
+    }
+
+    .mf-urdu-actions {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
