@@ -111,31 +111,40 @@ class MeasurementTemplateController extends Controller
         }
         $selectedCustom = $templateId
             ? MeasurementField::where('user_id', $ownerId)->where('measurement_template_id', $templateId)
-                ->where('is_active', true)->orderBy('sort_order')->orderBy('label')->pluck('id')->map(fn ($id) => (int) $id)->all()
+            ->where('is_active', true)->orderBy('sort_order')->orderBy('label')->pluck('id')->map(fn($id) => (int) $id)->all()
             : [];
         if ($selectedSystem === [] && $selectedCustom === []) {
             throw ValidationException::withMessages(['system_fields' => 'کم از کم ایک پیمائش خانہ منتخب کریں۔']);
         }
 
-        $allowedSources = collect($selectedSystem)->map(fn (string $key) => 'system.'.$key)
-            ->merge(collect($selectedCustom)->map(fn (int $id) => 'custom.'.$id))->all();
+        $allowedSources = collect($selectedSystem)->map(fn(string $key) => 'system.' . $key)
+            ->merge(collect($selectedCustom)->map(fn(int $id) => 'custom.' . $id))->all();
         $layout = collect($validated['field_layout'] ?? [])
-            ->filter(fn (array $item) => in_array($item['source'], $allowedSources, true))
+            ->filter(fn(array $item) => in_array($item['source'], $allowedSources, true))
             ->unique('source')
             ->values()
-            ->map(fn (array $item, int $index) => [
+            ->map(fn(array $item, int $index) => [
                 'source' => $item['source'],
                 'column' => $item['column'],
                 'order' => (int) ($item['order'] ?? (($index + 1) * 10)),
             ]);
+
+        $customTypes = MeasurementField::whereIn('id', $selectedCustom)->pluck('field_type', 'id');
+
         foreach ($allowedSources as $index => $source) {
             if ($layout->contains('source', $source)) {
                 continue;
             }
             $systemKey = str_starts_with($source, 'system.') ? substr($source, 7) : null;
+            $customId = str_starts_with($source, 'custom.') ? (int) substr($source, 7) : null;
+
+            $column = $systemKey
+                ? ((MeasurementService::SYSTEM_FIELDS[$systemKey]['unit'] ?? '') === '' ? 'left' : 'right')
+                : (($customTypes[$customId] ?? null) === 'select' ? 'left' : 'right');
+
             $layout->push([
                 'source' => $source,
-                'column' => $systemKey && (MeasurementService::SYSTEM_FIELDS[$systemKey]['unit'] ?? '') === '' ? 'left' : 'right',
+                'column' => $column,
                 'order' => ($index + 1) * 10,
             ]);
         }
@@ -162,12 +171,12 @@ class MeasurementTemplateController extends Controller
 
         return [
             'template' => $template,
-            'measurementFields' => collect($systemFields)->filter(fn (array $field) => $field['unit'] !== ''),
-            'preferenceFields' => collect($systemFields)->filter(fn (array $field) => $field['unit'] === ''),
+            'measurementFields' => collect($systemFields)->filter(fn(array $field) => $field['unit'] !== ''),
+            'preferenceFields' => collect($systemFields)->filter(fn(array $field) => $field['unit'] === ''),
             'systemFields' => $systemFields,
             'customFields' => $template
                 ? MeasurementField::where('user_id', $ownerId)->where('measurement_template_id', $template->id)
-                    ->where('is_active', true)->orderBy('sort_order')->orderBy('label')->get()
+                ->where('is_active', true)->orderBy('sort_order')->orderBy('label')->get()
                 : collect(),
         ];
     }

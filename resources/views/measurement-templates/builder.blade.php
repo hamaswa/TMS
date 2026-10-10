@@ -52,7 +52,7 @@
                         @elseif($customFields->isEmpty())
                             <div class="builder-empty">اس ٹیمپلیٹ کا کوئی خصوصی خانہ نہیں۔ ضرورت ہو تو “نیا خانہ” دبائیں۔</div>
                         @else
-                            <div class="field-options">@foreach($customFields as $field)<div class="template-custom-field">@include('measurement-templates.partials.field-choice', ['kind' => 'custom', 'value' => $field->id, 'label' => $field->label, 'hint' => $field->field_type === 'select' ? 'فہرست' : ($field->unit === 'inch' ? 'انچ' : ($field->unit === 'cm' ? 'سینٹی میٹر' : 'اپنی قدر')), 'checked' => true, 'defaultColumn' => $field->field_type === 'number' ? 'right' : 'left', 'locked' => true])<button type="button" class="template-field-edit" data-toggle="modal" data-target="#editTemplateField{{ $field->id }}" aria-label="{{ $field->label }} تبدیل کریں"><i class="fas fa-pen"></i></button></div>@endforeach</div>
+                            <div class="field-options">@foreach($customFields as $field)<div class="template-custom-field">@include('measurement-templates.partials.field-choice', ['kind' => 'custom', 'value' => $field->id, 'label' => $field->label, 'hint' => $field->field_type === 'select' ? 'فہرست' : ($field->unit === 'inch' ? 'انچ' : ($field->unit === 'cm' ? 'سینٹی میٹر' : 'اپنی قدر')), 'checked' => true, 'defaultColumn' => $field->field_type === 'select' ? 'left' : 'right',])<button type="button" class="template-field-edit" data-toggle="modal" data-target="#editTemplateField{{ $field->id }}" aria-label="{{ $field->label }} تبدیل کریں"><i class="fas fa-pen"></i></button></div>@endforeach</div>
                         @endif
                     </div></div>
                 </div>
