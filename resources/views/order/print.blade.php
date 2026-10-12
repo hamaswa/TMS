@@ -61,7 +61,7 @@
             grid-template-columns: minmax(0, 56%) minmax(0, 44%);
         }
 
-        .measurement-row > .measurement-column-empty {
+        .measurement-row>.measurement-column-empty {
             min-height: 1px;
         }
 
@@ -332,8 +332,15 @@
             white-space: nowrap;
         }
 
-        .measurement-meta-label {text-align:right;white-space:nowrap}
-        .measurement-meta-value {text-align:left;overflow-wrap:anywhere}
+        .measurement-meta-label {
+            text-align: right;
+            white-space: nowrap
+        }
+
+        .measurement-meta-value {
+            text-align: left;
+            overflow-wrap: anywhere
+        }
 
         .measurement-footer {
             margin-top: 8px;
@@ -539,6 +546,7 @@
         }
 
         @media screen and (max-width: 520px) {
+
             body.tms-order-print #invoice-POS,
             body.tms-order-print.tms-paper-a4 #invoice-POS {
                 width: 100%;
@@ -555,16 +563,17 @@
 
 <body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
     @php
-        $displaySerial = $receiptSerial ?? $orderDetail->customers?->serial_number
-            ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer);
+        $displaySerial =
+            $receiptSerial ??
+            ($orderDetail->customers?->serial_number ?? ($orderDetail->suitNum ?: $orderDetail->sub_customer));
     @endphp
 
     <nav class="order-print-toolbar" aria-label="سلائی رسید پرنٹ اختیارات">
         <button type="button" class="print-order is-primary">صرف آرڈر پرنٹ کریں</button>
         <button type="button" class="print-length">صرف پیمائش پرنٹ کریں</button>
         <button type="button" class="print-full">مکمل رسید پرنٹ کریں</button>
-        @if(count($printConfig['paper_options']) > 1)
-            @foreach($printConfig['paper_options'] as $paper => $label)
+        @if (count($printConfig['paper_options']) > 1)
+            @foreach ($printConfig['paper_options'] as $paper => $label)
                 <a href="{{ request()->fullUrlWithQuery(['paper' => $paper]) }}"
                     class="{{ $printConfig['paper'] === $paper ? 'is-active' : '' }}">{{ $label }}</a>
             @endforeach
@@ -576,7 +585,10 @@
 
         <div id="fullSection">
             <div id="orderSection" style="max-width: 350px;" class="ticket order-section">
-                @if($setting?->logo_url)<p align="center"><img src="{{ $setting->logo_url }}" width="100" alt="{{ $setting->name }} لوگو"></p>@endif
+                @if ($setting?->logo_url)
+                    <p align="center"><img src="{{ $setting->logo_url }}" width="100"
+                            alt="{{ $setting->name }} لوگو"></p>
+                @endif
                 <h1 class="text-center" style="text-align: center;margin-top:-10px; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3" style="margin-top: 0px">
@@ -586,12 +598,15 @@
                             </h2>
                         </div>
                         <div style="font-weight:900;">
-                            <h3 class="receipt-reference"><span class="receipt-date">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</span></h3>
+                            <h3 class="receipt-reference"><span
+                                    class="receipt-date">{{ date('d-m-Y', strtotime($orderDetail->created_at)) }}</span>
+                            </h3>
                         </div>
                     </div>
                     <hr>
                     <div class="order-detail-list">
-                        <div class="order-detail-row order-summary-row"><span class="order-detail-label">نام:</span><strong
+                        <div class="order-detail-row order-summary-row"><span
+                                class="order-detail-label">نام:</span><strong
                                 class="order-detail-value">{{ $orderDetail->customers->name }}</strong></div>
                         <div class="order-detail-row"><span class="order-detail-label">سوٹ کی تعداد:</span><strong
                                 class="order-detail-value">{{ $orderDetail->suitQuantity }}</strong></div>
@@ -626,7 +641,8 @@
                         <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
                     </aside>
                     <div>
-                        <h3 class="text-center font-weight-900 order-note" dir="auto" style="font-size: 18px; margin: 25px 0 0 0;">
+                        <h3 class="text-center font-weight-900 order-note" dir="auto"
+                            style="font-size: 18px; margin: 25px 0 0 0;">
                             {{ $orderDetail->remarks }}</h3>
                     </div>
                     <div class="order-footer">
@@ -634,7 +650,10 @@
                         <p class="order-footer-contact">{{ $setting->contact_no }}</p>
                         <p>{{ $setting->note }}</p>
                         <p class="receipt-builder-credit">Built by IT Linked</p>
-                        @if($printConfig['show_qr'])<p class="receipt-reference">{{ $receiptSerial ? 'TECHNICAL REF' : 'ORDER REF' }}: {{ $orderDetail->id }}</p>@endif
+                        @if ($printConfig['show_qr'])
+                            <p class="receipt-reference">{{ $receiptSerial ? 'TECHNICAL REF' : 'ORDER REF' }}:
+                                {{ $orderDetail->id }}</p>
+                        @endif
                     </div>
                 </div>
 
@@ -643,23 +662,42 @@
             </div>
             <div id="sizeSection" style="max-width: 350px;" class="ticket size-section">
                 <div class="measurement-header">
-                    @if($setting?->logo_url)<p align="center" class="measurement-logo-wrap"><img class="measurement-logo" src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو"></p>@endif
+                    @if ($setting?->logo_url)
+                        <p align="center" class="measurement-logo-wrap"><img class="measurement-logo"
+                                src="{{ $setting->logo_url }}" alt="{{ $setting->name }} لوگو"></p>
+                    @endif
                     <h1 class="text-center measurement-shop-name">{{ $setting->name }}</h1>
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
                     <hr style="margin-top:4px;">
-                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آئٹم سیریل</span><strong class="measurement-meta-cell measurement-meta-value measurement-serial">{{ $displaySerial }}</strong></div>
-                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">گاہک</span><strong class="measurement-meta-cell measurement-meta-value">{{ $orderDetail->customers->name }}</strong></div>
-                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">درزی</span><strong class="measurement-meta-cell measurement-meta-value">{{ $tailor?->name ?? 'بعد میں مقرر ہوگا' }}</strong></div>
-                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">موبائل</span><strong class="measurement-meta-cell measurement-meta-value" dir="ltr">{{ $orderDetail->customers->phone_number1 }}</strong></div>
-                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آرڈر تاریخ</span><strong class="measurement-meta-cell measurement-meta-value" dir="ltr">{{ date('d-m-Y h:i A', strtotime($orderDetail->created_at)) }}</strong></div>
+                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آئٹم
+                            سیریل</span><strong
+                            class="measurement-meta-cell measurement-meta-value measurement-serial">{{ $displaySerial }}</strong>
+                    </div>
+                    <div class="measurement-meta-row"><span
+                            class="measurement-meta-cell measurement-meta-label">گاہک</span><strong
+                            class="measurement-meta-cell measurement-meta-value">{{ $orderDetail->customers->name }}</strong>
+                    </div>
+                    <div class="measurement-meta-row"><span
+                            class="measurement-meta-cell measurement-meta-label">درزی</span><strong
+                            class="measurement-meta-cell measurement-meta-value">{{ $tailor?->name ?? 'بعد میں مقرر ہوگا' }}</strong>
+                    </div>
+                    <div class="measurement-meta-row"><span
+                            class="measurement-meta-cell measurement-meta-label">موبائل</span><strong
+                            class="measurement-meta-cell measurement-meta-value"
+                            dir="ltr">{{ $orderDetail->customers->phone_number1 }}</strong></div>
+                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آرڈر
+                            تاریخ</span><strong class="measurement-meta-cell measurement-meta-value"
+                            dir="ltr">{{ date('d-m-Y h:i A', strtotime($orderDetail->created_at)) }}</strong>
+                    </div>
                     @if ($orderDetail->measurementTemplate)
                         <div class="measurement-meta-cell" style="margin-bottom:7px;text-align:center;">
                             {{ $orderDetail->measurementTemplate->name }}
                         </div>
                     @endif
-                    @if(filled($orderDetail->remarks))
-                        <div class="measurement-meta-cell" dir="auto" style="margin:8px 0;padding:7px 9px;border:1px solid #777;text-align:right;">
+                    @if (filled($orderDetail->remarks))
+                        <div class="measurement-meta-cell" dir="auto"
+                            style="margin:8px 0;padding:7px 9px;border:1px solid #777;text-align:right;">
                             <strong>خصوصی سلائی ہدایت:</strong> {{ $orderDetail->remarks }}
                         </div>
                     @endif
@@ -669,16 +707,24 @@
 
                             // Older production snapshots can miss this field because the
                             // legacy database column is named `Chuta` instead of `chuta`.
-                            if (! $allMeasurements->has('system.chuta') && filled($orderDetail->customers->chuta)) {
-                                $allMeasurements->put('system.chuta', (object) [
-                                    'source_key' => 'system.chuta',
-                                    'label' => 'چوتا',
-                                    'value' => (string) $orderDetail->customers->chuta,
-                                ]);
+                            if (!$allMeasurements->has('system.chuta') && filled($orderDetail->customers->chuta)) {
+                                $allMeasurements->put(
+                                    'system.chuta',
+                                    (object) [
+                                        'source_key' => 'system.chuta',
+                                        'label' => 'چوتا',
+                                        'value' => (string) $orderDetail->customers->chuta,
+                                    ],
+                                );
                             }
 
-                            // Left column (Design fields)
-                            $leftFields = [
+                            // Saved layout from the template builder
+                            $tpl = $orderDetail->measurementTemplate;
+                            $layoutMap = collect($tpl?->field_layout ?? [])->keyBy('source');
+                            $oneColumn = (int) ($tpl?->layout_columns ?? 2) === 1;
+
+                            // Fallback column for fields that have no saved layout entry
+                            $preferenceKeys = [
                                 'system.necktype',
                                 'system.sleeve',
                                 'system.Daaman',
@@ -688,45 +734,35 @@
                                 'system.plate_type',
                             ];
 
-                            // Right column (Measurements)
-                            $rightFields = [
-                                'system.length',
-                                'system.arms',
-                                'system.teraa',
-                                'system.senaChorai',
-                                'system.damanchorai',
-                                'system.shalwar',
-                                'system.pancha',
-                                'system.shalwarGheer',
-                                'system.shoulder',
-                                'system.chuta',
-                            ];
-
-                            // Only keep system fields that were saved with this order.
-                            $leftFields = array_values(
-                                array_filter($leftFields, fn($key) => isset($allMeasurements[$key])),
-                            );
-                            $rightFields = array_values(
-                                array_filter($rightFields, fn($key) => isset($allMeasurements[$key])),
-                            );
-
-                            $customFields = $printMeasurements
-                                ->filter(fn($item) => str_starts_with($item->source_key, 'custom.'))
-                                ->sortBy('sort_order')
-                                ->pluck('source_key')
+                            $items = $allMeasurements
                                 ->values()
-                                ->toArray();
+                                ->map(function ($m, $i) use ($layoutMap, $oneColumn, $preferenceKeys) {
+                                    $saved = $layoutMap->get($m->source_key);
+                                    $default = in_array($m->source_key, $preferenceKeys, true) ? 'left' : 'right';
+                                    return [
+                                        'key' => $m->source_key,
+                                        'column' => $oneColumn ? 'right' : $saved['column'] ?? $default,
+                                        'order' => (int) ($saved['order'] ?? 9000 + $i),
+                                        'i' => $i,
+                                    ];
+                                });
 
-                            // Keep the original system rows together, then print custom fields in pairs.
-                            $systemRows = max(count($leftFields), count($rightFields));
-                            $leftFields = array_pad($leftFields, $systemRows, null);
-                            $rightFields = array_pad($rightFields, $systemRows, null);
-                            foreach (array_chunk($customFields, 2) as $customPair) {
-                                $leftFields[] = $customPair[0];
-                                $rightFields[] = $customPair[1] ?? null;
-                            }
+                            $sortRule = [['order', 'asc'], ['i', 'asc']];
+                            $leftFields = $items
+                                ->where('column', 'left')
+                                ->sortBy($sortRule)
+                                ->pluck('key')
+                                ->values()
+                                ->all();
+                            $rightFields = $items
+                                ->where('column', 'right')
+                                ->sortBy($sortRule)
+                                ->pluck('key')
+                                ->values()
+                                ->all();
 
                             $rows = max(count($leftFields), count($rightFields));
+                            $colWidth = $oneColumn ? '100%' : '45%';
                         @endphp
 
                         <hr>
@@ -736,50 +772,39 @@
                                 style="display:flex;justify-content:space-between;padding:0 10px;">
 
                                 {{-- LEFT COLUMN --}}
-                                <div class="col-6 {{ !isset($leftFields[$i]) || !isset($allMeasurements[$leftFields[$i]]) ? 'measurement-column-empty' : '' }}" style="width:45%;">
-
-                                    @if (isset($leftFields[$i]) && isset($allMeasurements[$leftFields[$i]]))
-                                        @php
-                                            $item = $allMeasurements[$leftFields[$i]];
-                                        @endphp
-
-                                        <div
-                                            style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
-
-                                            <span class="measurement-value measurement-preference-value">{{ $item->value }}</span>
-
-                                            <span class="measurement-label"
-                                                style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
-
-                                        </div>
-                                    @endif
-
-                                </div>
+                                @unless ($oneColumn)
+                                    <div class="col-6 {{ !isset($leftFields[$i]) ? 'measurement-column-empty' : '' }}"
+                                        style="width:45%;">
+                                        @if (isset($leftFields[$i]))
+                                            @php $item = $allMeasurements[$leftFields[$i]]; @endphp
+                                            <div
+                                                style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
+                                                <span
+                                                    class="measurement-value measurement-preference-value">{{ $item->value }}</span>
+                                                <span class="measurement-label"
+                                                    style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endunless
 
                                 {{-- RIGHT COLUMN --}}
-                                <div class="col-6 {{ !isset($rightFields[$i]) || !isset($allMeasurements[$rightFields[$i]]) ? 'measurement-column-empty' : '' }}" style="width:45%;">
-
-                                    @if (isset($rightFields[$i]) && isset($allMeasurements[$rightFields[$i]]))
-                                        @php
-                                            $item = $allMeasurements[$rightFields[$i]];
-                                        @endphp
-
+                                <div class="col-6 {{ !isset($rightFields[$i]) ? 'measurement-column-empty' : '' }}"
+                                    style="width:{{ $colWidth }};">
+                                    @if (isset($rightFields[$i]))
+                                        @php $item = $allMeasurements[$rightFields[$i]]; @endphp
                                         <div
                                             style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
-
                                             <span class="measurement-value"
                                                 style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
                                                 {{ $item->value }}
                                             </span>
-
                                             <span class="measurement-label"
                                                 style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
                                                 {{ $item->label }}
                                             </span>
-
                                         </div>
                                     @endif
-
                                 </div>
 
                             </div>

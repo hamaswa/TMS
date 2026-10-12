@@ -664,7 +664,11 @@ class OrderController extends Controller
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
+        $orderDetail = $order->load([
+            'customers',
+            'measurementValues',
+            'measurementTemplate:id,name,field_layout,layout_columns',
+        ]);
         $printMeasurements = $this->measurements->displayValuesForOrder($orderDetail);
 
         // dd($orderDetail);
@@ -719,7 +723,11 @@ class OrderController extends Controller
         $customerId = $order->customerId;
 
         // Find the latest order for the customer
-        $orderDetail = $order->load(['customers', 'measurementValues', 'measurementTemplate:id,name']);
+        $orderDetail = $order->load([
+            'customers',
+            'measurementValues',
+            'measurementTemplate:id,name,field_layout,layout_columns',
+        ]);
         $printMeasurements = $this->measurements->displayValuesForOrder($orderDetail);
 
         [$latestBalance, $previousBalance, $orderBalance] = $this->printBalanceSummary($order);
