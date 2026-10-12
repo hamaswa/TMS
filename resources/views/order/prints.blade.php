@@ -499,7 +499,7 @@
                 <div class="pl-3 pr-3">
                     <div class="d-flex justify-content-between ">
                         <div>
-                            <h2 class="receipt-reference">رسید نمبر {{ $receiptSerial ?? $orderDetail->id }}
+                            <h2 class="receipt-reference">{{ $receiptSerial ?? $orderDetail->id }} : رسید نمبر
                             </h2>
                         </div>
                         <div>
