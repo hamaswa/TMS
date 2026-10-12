@@ -1,188 +1,443 @@
 @extends('main')
 @section('content')
-@php
-    $statementUrl = $parentCustomer
-        ? route('admin.customers.statement', ['id' => $parentCustomer->id, 'tab' => 'measurements', 'profile' => $customer->id])
-        : route('admin.customers.statement', $customer);
-    $recentOrdersUrl = route('admin.customer.orders', $customer);
-@endphp
-<style>
-    .customer-edit-page{background:#f4f7fb;min-height:calc(100vh - 70px)}
-    .customer-edit-shell{max-width:1180px;margin:0 auto}
-    .customer-edit-hero{background:linear-gradient(135deg,#102a43,#1769aa);border-radius:20px;color:#fff;padding:1.6rem 1.8rem;box-shadow:0 14px 32px rgba(16,42,67,.18)}
-    .customer-edit-hero h1,.customer-edit-hero p{color:#fff!important}.customer-edit-hero p{opacity:.82}
-    .customer-edit-hero-actions{display:flex;flex-wrap:wrap;gap:.65rem}
-    .customer-edit-card{border:0;border-radius:18px;box-shadow:0 10px 28px rgba(31,45,61,.08);overflow:hidden}
-    .edit-section{padding:1.5rem;border-bottom:1px solid #e8eef5}.edit-section:last-child{border-bottom:0}
-    .edit-section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.25rem}
-    .edit-section-heading h2{font-size:1.18rem;font-weight:800;margin:0 0 .25rem}.edit-section-heading p{color:#718096;margin:0;font-size:.9rem}
-    .section-icon{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:#eaf4fb;color:#1769aa;flex:0 0 42px}
-    .edit-field label{display:block;font-weight:700;color:#334e68;line-height:2;margin-bottom:.55rem}.edit-field .form-control{min-height:50px;height:auto;border-color:#d8e2ec;border-radius:10px;background:#fff}
-    .edit-field textarea.form-control{height:auto;min-height:120px;resize:vertical}.edit-field .form-control:focus{border-color:#1769aa;box-shadow:0 0 0 .18rem rgba(23,105,170,.12)}
-    .measurement-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:1rem}
-    .template-layout-grid{display:grid;grid-template-columns:1fr 1fr;align-items:start}.template-layout-grid>.edit-section{height:100%}.template-layout-grid>.edit-section:first-child{border-left:1px solid #e8eef5}
-    .template-layout-grid.template-one-column{grid-template-columns:1fr}.template-layout-grid.template-one-column>.edit-section:first-child{border-left:0;border-bottom:1px solid #e8eef5}
-    .measurement-template-picker{background:#f7fbff;border:1px solid #cfe3f3;border-radius:14px;padding:1rem 1.1rem}.measurement-template-picker select{border-radius:10px;border-color:#b9d5e8}
-    .preference-empty{border:1px dashed #cbd5e0;border-radius:12px;padding:1rem;color:#718096;background:#fafcff}
-    .security-panel{height:100%;background:#fff8e8;border:1px solid #f5dfaa;border-radius:14px;padding:1.1rem}
-    .edit-actions{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1.25rem 1.5rem;background:#fbfdff}
-    @media(max-width:991px){.template-layout-grid{grid-template-columns:1fr}.template-layout-grid>.edit-section:first-child{border-left:0}}
-    @media(max-width:767px){.customer-edit-hero{border-radius:14px;padding:1.25rem}.edit-section{padding:1.1rem}.edit-actions{position:static;flex-direction:column-reverse}.edit-actions .btn{width:100%}}
-</style>
+    @php
+        $statementUrl = $parentCustomer
+            ? route('admin.customers.statement', [
+                'id' => $parentCustomer->id,
+                'tab' => 'measurements',
+                'profile' => $customer->id,
+            ])
+            : route('admin.customers.statement', $customer);
+        $recentOrdersUrl = route('admin.customer.orders', $customer);
+    @endphp
+    <style>
+        .customer-edit-page {
+            background: #f4f7fb;
+            min-height: calc(100vh - 70px)
+        }
 
-<section class="main-content customer-edit-page" dir="rtl">
-    <div class="container-fluid px-3 px-lg-5 py-4">
-        <div class="customer-edit-shell">
-            <div class="customer-edit-hero mb-4">
-                <div class="d-flex flex-wrap justify-content-between align-items-center">
-                    <div>
-                        <span class="badge badge-light text-primary mb-2">{{ $parentCustomer ? 'خاندانی پیمائش پروفائل' : 'گاہک کی معلومات' }}</span>
-                        <h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1>
-                        <p class="mb-0">{{ $parentCustomer ? $parentCustomer->name.' کے مشترکہ اکاؤنٹ میں اس فرد کی پیمائش اور سلائی کی پسند تبدیل کریں۔' : 'رابطہ، پیمائش، سلائی کی پسند اور موبائل پن ایک جگہ تبدیل کریں۔' }}</p>
-                    </div>
-                    <div class="customer-edit-hero-actions mt-3 mt-md-0">
-                        <a href="{{ $recentOrdersUrl }}" class="btn btn-outline-light">
-                            <i class="fas fa-history ml-1"></i> حالیہ آرڈرز
-                        </a>
-                        <a href="{{ $statementUrl }}" class="btn btn-light">
-                            <i class="fas fa-user ml-1"></i> پروفائل / کھاتہ
-                        </a>
-                    </div>
-                </div>
-            </div>
+        .customer-edit-shell {
+            max-width: 1180px;
+            margin: 0 auto
+        }
 
-            @if(session('insert'))
-                <div class="alert alert-success customer-edit-card d-flex align-items-center" role="alert">
-                    <i class="fas fa-check-circle ml-2"></i>
-                    <div>{{ session('insert') }}</div>
-                </div>
-            @endif
+        .customer-edit-hero {
+            background: linear-gradient(135deg, #102a43, #1769aa);
+            border-radius: 20px;
+            color: #fff;
+            padding: 1.6rem 1.8rem;
+            box-shadow: 0 14px 32px rgba(16, 42, 67, .18)
+        }
 
-            @if($errors->any())
-                <div class="alert alert-danger customer-edit-card">
-                    <strong>براہ کرم درج ذیل معلومات درست کریں:</strong>
-                    <ul class="mb-0 mt-2">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
-                </div>
-            @endif
+        .customer-edit-hero h1,
+        .customer-edit-hero p {
+            color: #fff !important
+        }
 
-            <form id="customer-edit-form" action="{{ route('admin.Customers.update', $customer) }}" method="post" class="customer-edit-card bg-white">
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="return_customer" value="{{ old('return_customer', request('return_customer')) }}">
-                <input type="hidden" name="return_search" value="{{ old('return_search', request('return_search')) }}">
-                <input type="hidden" name="return_counter_order" value="{{ old('return_counter_order', request('return_counter_order')) }}">
-                <input type="hidden" name="return_profile" value="{{ old('return_profile', request('return_profile')) }}">
+        .customer-edit-hero p {
+            opacity: .82
+        }
 
-                <section class="edit-section">
-                    <div class="edit-section-heading">
-                        <div><h2>بنیادی معلومات</h2><p>{{ $parentCustomer ? 'نام الگ ہے، جبکہ رابطہ اور کھاتہ مرکزی گاہک کے ساتھ مشترک ہیں۔' : 'گاہک کی رابطہ معلومات اور شناخت۔' }}</p></div>
-                        <span class="section-icon"><i class="fas fa-user"></i></span>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 form-group edit-field">
-                            <label for="customer-name">نام <span class="text-danger">*</span></label>
-                            <input id="customer-name" type="text" class="form-control" name="name" value="{{ old('name', $customer->name) }}" required autocomplete="name">
-                            @error('name')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+        .customer-edit-hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .65rem
+        }
+
+        .customer-edit-card {
+            border: 0;
+            border-radius: 18px;
+            box-shadow: 0 10px 28px rgba(31, 45, 61, .08);
+            overflow: hidden
+        }
+
+        .edit-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e8eef5
+        }
+
+        .edit-section:last-child {
+            border-bottom: 0
+        }
+
+        .edit-section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.25rem
+        }
+
+        .edit-section-heading h2 {
+            font-size: 1.18rem;
+            font-weight: 800;
+            margin: 0 0 .25rem
+        }
+
+        .edit-section-heading p {
+            color: #718096;
+            margin: 0;
+            font-size: .9rem
+        }
+
+        .section-icon {
+            width: 42px;
+            height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: #eaf4fb;
+            color: #1769aa;
+            flex: 0 0 42px
+        }
+
+        .edit-field label {
+            display: block;
+            font-weight: 700;
+            color: #334e68;
+            line-height: 2;
+            margin-bottom: .55rem
+        }
+
+        .edit-field .form-control {
+            min-height: 50px;
+            height: auto;
+            border-color: #d8e2ec;
+            border-radius: 10px;
+            background: #fff
+        }
+
+        .edit-field textarea.form-control {
+            height: auto;
+            min-height: 120px;
+            resize: vertical
+        }
+
+        .edit-field .form-control:focus {
+            border-color: #1769aa;
+            box-shadow: 0 0 0 .18rem rgba(23, 105, 170, .12)
+        }
+
+        .measurement-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1rem
+        }
+
+        .template-layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: start
+        }
+
+        .template-layout-grid>.edit-section {
+            height: 100%
+        }
+
+        .template-layout-grid>.edit-section:first-child {
+            border-left: 1px solid #e8eef5
+        }
+
+        .template-layout-grid.template-one-column {
+            grid-template-columns: 1fr
+        }
+
+        .template-layout-grid.template-one-column>.edit-section:first-child {
+            border-left: 0;
+            border-bottom: 1px solid #e8eef5
+        }
+
+        .measurement-template-picker {
+            background: #f7fbff;
+            border: 1px solid #cfe3f3;
+            border-radius: 14px;
+            padding: 1rem 1.1rem
+        }
+
+        .measurement-template-picker select {
+            border-radius: 10px;
+            border-color: #b9d5e8
+        }
+
+        .preference-empty {
+            border: 1px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 1rem;
+            color: #718096;
+            background: #fafcff
+        }
+
+        .security-panel {
+            height: 100%;
+            background: #fff8e8;
+            border: 1px solid #f5dfaa;
+            border-radius: 14px;
+            padding: 1.1rem
+        }
+
+        .edit-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem 1.5rem;
+            background: #fbfdff
+        }
+
+        @media(max-width:991px) {
+            .template-layout-grid {
+                grid-template-columns: 1fr
+            }
+
+            .template-layout-grid>.edit-section:first-child {
+                border-left: 0
+            }
+        }
+
+        @media(max-width:767px) {
+            .customer-edit-hero {
+                border-radius: 14px;
+                padding: 1.25rem
+            }
+
+            .edit-section {
+                padding: 1.1rem
+            }
+
+            .edit-actions {
+                position: static;
+                flex-direction: column-reverse
+            }
+
+            .edit-actions .btn {
+                width: 100%
+            }
+        }
+    </style>
+
+    <section class="main-content customer-edit-page" dir="rtl">
+        <div class="container-fluid px-3 px-lg-5 py-4">
+            <div class="customer-edit-shell">
+                <div class="customer-edit-hero mb-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center">
+                        <div>
+                            <span
+                                class="badge badge-light text-primary mb-2">{{ $parentCustomer ? 'خاندانی پیمائش پروفائل' : 'گاہک کی معلومات' }}</span>
+                            <h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1>
+                            <p class="mb-0">
+                                {{ $parentCustomer ? $parentCustomer->name . ' کے مشترکہ اکاؤنٹ میں اس فرد کی پیمائش اور سلائی کی پسند تبدیل کریں۔' : 'رابطہ، پیمائش، سلائی کی پسند اور موبائل پن ایک جگہ تبدیل کریں۔' }}
+                            </p>
                         </div>
-                        <div class="col-md-6 form-group edit-field">
-                            <label for="customer-contact">رابطہ نمبر <span class="text-danger">*</span></label>
-                            <input id="customer-contact" type="tel" inputmode="tel" class="form-control text-left" name="contact" value="{{ old('contact', $parentCustomer?->phone_number1 ?? $customer->phone_number1) }}" required dir="ltr" autocomplete="tel" @if($parentCustomer) readonly @endif placeholder="03001234567 یا +923001234567">
-                            @if($parentCustomer)<small class="form-text text-muted">رابطہ نمبر مرکزی گاہک {{ $parentCustomer->name }} کے اکاؤنٹ سے استعمال ہوگا۔</small>@endif
-                            @error('contact')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        <div class="customer-edit-hero-actions mt-3 mt-md-0">
+                            <a href="{{ $recentOrdersUrl }}" class="btn btn-outline-light">
+                                <i class="fas fa-history ml-1"></i> حالیہ آرڈرز
+                            </a>
+                            <a href="{{ $statementUrl }}" class="btn btn-light">
+                                <i class="fas fa-user ml-1"></i> پروفائل / کھاتہ
+                            </a>
                         </div>
                     </div>
-                </section>
+                </div>
 
-                <div class="template-layout-grid">
-                <section class="edit-section">
-                    <div class="edit-section-heading">
-                        <div><h2>پیمائش</h2><p>لباس منتخب کریں اور صرف اس سے متعلق پیمائش تبدیل کریں۔</p></div>
-                        <span class="section-icon"><i class="fas fa-ruler-combined"></i></span>
+                @if (session('insert'))
+                    <div class="alert alert-success customer-edit-card d-flex align-items-center" role="alert">
+                        <i class="fas fa-check-circle ml-2"></i>
+                        <div>{{ session('insert') }}</div>
                     </div>
-                    @include('customer.partials.measurement-template-selector', ['selectedTemplateId' => old('measurement_template_id', request('measurement_template_id', $customer->measurement_template_id))])
-                    @php
-                        $systemMeasurements = [
-                            'length' => ['لمبائی', $savedMeasurementValues->get('system.length')],
-                            'arms' => ['بازو', $savedMeasurementValues->get('system.arms')],
-                            'teraa' => ['تیرا', $savedMeasurementValues->get('system.teraa')],
-                            'senaChorai' => ['سینہ چوڑائی', $savedMeasurementValues->get('system.senaChorai')],
-                            'damanchorai' => ['دامن چوڑائی', $savedMeasurementValues->get('system.damanchorai')],
-                            'shalwar' => ['شلوار', $savedMeasurementValues->get('system.shalwar')],
-                            'pancha' => ['پائنچہ', $savedMeasurementValues->get('system.pancha')],
-                            'shalwarGheer' => ['شلوار گھیر', $savedMeasurementValues->get('system.shalwarGheer')],
-                            'monda' => ['مونڈھا', $savedMeasurementValues->get('system.shoulder')],
-                            'chuta' => ['چوٹا', $savedMeasurementValues->get('system.chuta')],
-                        ];
-                    @endphp
-                    <div class="measurement-grid" data-template-column="right">
-                        @foreach($systemMeasurements as $name => [$label, $value])
-                            @php
-                                $templateKey = $name === 'monda' ? 'shoulder' : $name;
-                            @endphp
-                            <div class="form-group edit-field mb-0" data-measurement-field="system.{{ $templateKey }}" data-template-field="system.{{ $templateKey }}" data-default-column="right">
-                                <label for="measurement-{{ $name }}">{{ $label }}</label>
-                                <div class="input-group">
-                                    <input id="measurement-{{ $name }}" type="number" step="0.01" min="0" class="form-control" name="{{ $name }}" value="{{ old($name, $value) }}" dir="ltr">
-                                    <div class="input-group-append"><span class="input-group-text">انچ</span></div>
-                                </div>
-                            </div>
-                        @endforeach
-                        @include('customer.partials.custom-measurements', ['embedded' => true])
-                    </div>
-                </section>
+                @endif
 
-                <section class="edit-section">
-                    <div class="edit-section-heading">
-                        <div><h2>سلائی کی پسند</h2><p>یہ مستقل ترجیحات نئے آرڈر میں دوبارہ استعمال کی جا سکتی ہیں۔</p></div>
-                        <span class="section-icon"><i class="fas fa-cut"></i></span>
-                    </div>
-                    @if($optionTypes->isNotEmpty())
-                        <div class="measurement-grid" data-template-column="left">
-                            @foreach($optionTypes as $type)
-                                @php
-                                    $column = $type->type === 'daaman' ? 'Daaman' : $type->type;
-                                    $templateSystemField = $column;
-                                    $customerValue = trim((string) $savedMeasurementValues->get('system.'.$column, ''));
-                                @endphp
-                                <div class="form-group edit-field mb-0" data-template-field="system.{{ $templateSystemField }}" data-default-column="left">
-                                    <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
-                                    <select id="preference-{{ $type->slug }}" class="form-control" name="{{ $type->slug }}" data-template-system-field="{{ $templateSystemField }}">
-                                        <option value="">{{ $type->otn }} منتخب کریں</option>
-                                        @if(old($type->slug, $customerValue))<option value="{{ old($type->slug, $customerValue) }}" selected>{{ old($type->slug, $customerValue) }}</option>@endif
-                                    </select>
-                                </div>
+                @if ($errors->any())
+                    <div class="alert alert-danger customer-edit-card">
+                        <strong>براہ کرم درج ذیل معلومات درست کریں:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
                             @endforeach
-                        </div>
-                    @else
-                        <div class="preference-empty">ابھی سلائی کی کوئی پسند شامل نہیں۔ پیمائش کے اختیارات سے کالر، کف، جیب اور دوسرے انتخاب بنائے جا سکتے ہیں۔</div>
-                    @endif
-                </section>
-                </div>
-
-                <section class="edit-section">
-                    <div class="row">
-                        <div class="col-lg-7 form-group edit-field mb-lg-0">
-                            <label for="customer-note">خصوصی نوٹ</label>
-                            <textarea id="customer-note" class="form-control" name="note" rows="4" maxlength="2000" placeholder="مثلاً فٹنگ، کپڑے یا ڈیلیوری سے متعلق ہدایات">{{ old('note', $customer->note) }}</textarea>
-                            <small class="form-text text-muted">یہ نوٹ گاہک کے پروفائل میں دکھائی دے گا۔</small>
-                        </div>
-                        @unless($parentCustomer)<div class="col-lg-5">
-                            <div class="security-panel edit-field">
-                                <label for="mobile-pin"><i class="fas fa-shield-alt ml-1 text-warning"></i> نیا موبائل لاگ اِن پن</label>
-                                <input id="mobile-pin" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" class="form-control text-left" name="mobile_pin" placeholder="6 ہندسوں کا نیا پن" dir="ltr">
-                                <small class="form-text text-muted mt-2">خالی چھوڑنے سے موجودہ پن تبدیل نہیں ہوگا۔ نیا پن محفوظ کرنے پر پرانے موبائل سیشن بند ہو جائیں گے۔</small>
-                                @error('mobile_pin')<div class="text-danger small mt-1">پن لازماً 6 ہندسوں کا ہونا چاہیے۔</div>@enderror
-                            </div>
-                        </div>@endunless
+                        </ul>
                     </div>
-                </section>
+                @endif
 
-                <div class="edit-actions">
-                    <a href="{{ $statementUrl }}" class="btn btn-outline-secondary"><i class="fas fa-times ml-1"></i> منسوخ کریں</a>
-                    <button type="submit" class="btn btn-success px-5"><i class="fas fa-check ml-1"></i> تبدیلیاں محفوظ کریں</button>
-                </div>
-            </form>
+                <form id="customer-edit-form" action="{{ route('admin.Customers.update', $customer) }}" method="post"
+                    class="customer-edit-card bg-white">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="return_customer"
+                        value="{{ old('return_customer', request('return_customer')) }}">
+                    <input type="hidden" name="return_search" value="{{ old('return_search', request('return_search')) }}">
+                    <input type="hidden" name="return_counter_order"
+                        value="{{ old('return_counter_order', request('return_counter_order')) }}">
+                    <input type="hidden" name="return_profile"
+                        value="{{ old('return_profile', request('return_profile')) }}">
+
+                    <section class="edit-section">
+                        <div class="edit-section-heading">
+                            <div>
+                                <h2>بنیادی معلومات</h2>
+                                <p>{{ $parentCustomer ? 'نام الگ ہے، جبکہ رابطہ اور کھاتہ مرکزی گاہک کے ساتھ مشترک ہیں۔' : 'گاہک کی رابطہ معلومات اور شناخت۔' }}
+                                </p>
+                            </div>
+                            <span class="section-icon"><i class="fas fa-user"></i></span>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group edit-field">
+                                <label for="customer-name">نام <span class="text-danger">*</span></label>
+                                <input id="customer-name" type="text" class="form-control" name="name"
+                                    value="{{ old('name', $customer->name) }}" required autocomplete="name">
+                                @error('name')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6 form-group edit-field">
+                                <label for="customer-contact">رابطہ نمبر <span class="text-danger">*</span></label>
+                                <input id="customer-contact" type="tel" inputmode="tel" class="form-control text-left"
+                                    name="contact"
+                                    value="{{ old('contact', $parentCustomer?->phone_number1 ?? $customer->phone_number1) }}"
+                                    required dir="ltr" autocomplete="tel"
+                                    @if ($parentCustomer) readonly @endif
+                                    placeholder="03001234567 یا +923001234567">
+                                @if ($parentCustomer)
+                                    <small class="form-text text-muted">رابطہ نمبر مرکزی گاہک {{ $parentCustomer->name }}
+                                        کے اکاؤنٹ سے استعمال ہوگا۔</small>
+                                @endif
+                                @error('contact')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="template-layout-grid">
+                        <section class="edit-section">
+                            <div class="edit-section-heading">
+                                <div>
+                                    <h2>پیمائش</h2>
+                                    <p>لباس منتخب کریں اور صرف اس سے متعلق پیمائش تبدیل کریں۔</p>
+                                </div>
+                                <span class="section-icon"><i class="fas fa-ruler-combined"></i></span>
+                            </div>
+                            @include('customer.partials.measurement-template-selector', [
+                                'selectedTemplateId' => old(
+                                    'measurement_template_id',
+                                    request('measurement_template_id', $customer->measurement_template_id)),
+                            ])
+                            @php
+                                $systemMeasurements = [
+                                    'length' => ['لمبائی', $savedMeasurementValues->get('system.length')],
+                                    'arms' => ['بازو', $savedMeasurementValues->get('system.arms')],
+                                    'teraa' => ['تیرا', $savedMeasurementValues->get('system.teraa')],
+                                    'senaChorai' => ['سینہ چوڑائی', $savedMeasurementValues->get('system.senaChorai')],
+                                    'damanchorai' => [
+                                        'دامن چوڑائی',
+                                        $savedMeasurementValues->get('system.damanchorai'),
+                                    ],
+                                    'shalwar' => ['شلوار', $savedMeasurementValues->get('system.shalwar')],
+                                    'pancha' => ['پائنچہ', $savedMeasurementValues->get('system.pancha')],
+                                    'shalwarGheer' => [
+                                        'شلوار گھیر',
+                                        $savedMeasurementValues->get('system.shalwarGheer'),
+                                    ],
+                                    'monda' => ['مونڈھا', $savedMeasurementValues->get('system.shoulder')],
+                                    'chuta' => ['چوٹا', $savedMeasurementValues->get('system.chuta')],
+                                ];
+                            @endphp
+                            <div class="measurement-grid" data-template-column="right">
+                                @foreach ($systemMeasurements as $name => [$label, $value])
+                                    @php
+                                        $templateKey = $name === 'monda' ? 'shoulder' : $name;
+                                    @endphp
+                                    <div class="form-group edit-field mb-0"
+                                        data-measurement-field="system.{{ $templateKey }}"
+                                        data-template-field="system.{{ $templateKey }}" data-default-column="right">
+                                        <label for="measurement-{{ $name }}">{{ $label }}</label>
+                                        <div class="input-group">
+                                            <input id="measurement-{{ $name }}" type="number" step="0.01"
+                                                min="0" class="form-control" name="{{ $name }}"
+                                                value="{{ old($name, $value) }}" dir="ltr">
+                                            <div class="input-group-append"><span class="input-group-text">انچ</span></div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                @include('customer.partials.custom-measurements', ['embedded' => true])
+                            </div>
+                        </section>
+
+                        <section class="edit-section">
+                            <div class="edit-section-heading">
+                                <div>
+                                    <h2>سلائی کی پسند</h2>
+                                    <p>یہ مستقل ترجیحات نئے آرڈر میں دوبارہ استعمال کی جا سکتی ہیں۔</p>
+                                </div>
+                                <span class="section-icon"><i class="fas fa-cut"></i></span>
+                            </div>
+                            @if ($optionTypes->isNotEmpty())
+                                <div class="measurement-grid" data-template-column="left">
+                                    @foreach ($optionTypes as $type)
+                                        @php
+                                            $column = $type->type === 'daaman' ? 'Daaman' : $type->type;
+                                            $templateSystemField = $column;
+                                            $customerValue = trim(
+                                                (string) $savedMeasurementValues->get('system.' . $column, ''),
+                                            );
+                                        @endphp
+                                        <div class="form-group edit-field mb-0"
+                                            data-template-field="system.{{ $templateSystemField }}"
+                                            data-default-column="left">
+                                            <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
+                                            <select id="preference-{{ $type->slug }}" class="form-control"
+                                                name="{{ $type->slug }}"
+                                                data-template-system-field="{{ $templateSystemField }}">
+                                                <option value="">{{ $type->otn }} منتخب کریں</option>
+                                                @if (old($type->slug, $customerValue))
+                                                    <option value="{{ old($type->slug, $customerValue) }}" selected>
+                                                        {{ old($type->slug, $customerValue) }}</option>
+                                                @endif
+                                            </select>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="preference-empty">ابھی سلائی کی کوئی پسند شامل نہیں۔ پیمائش کے اختیارات سے
+                                    کالر، کف، جیب اور دوسرے انتخاب بنائے جا سکتے ہیں۔</div>
+                            @endif
+                        </section>
+                    </div>
+
+                    <section class="edit-section">
+                        <div class="row">
+                            <div class="col-lg-7 form-group edit-field mb-lg-0">
+                                <label for="customer-note">خصوصی نوٹ</label>
+                                <textarea id="customer-note" class="form-control" name="note" rows="4" maxlength="2000"
+                                    placeholder="مثلاً فٹنگ، کپڑے یا ڈیلیوری سے متعلق ہدایات">{{ old('note', $customer->note) }}</textarea>
+                                <small class="form-text text-muted">یہ نوٹ گاہک کے پروفائل میں دکھائی دے گا۔</small>
+                            </div>
+                            @unless ($parentCustomer)
+                                <div class="col-lg-5">
+                                    <div class="security-panel edit-field">
+                                        <label for="mobile-pin"><i class="fas fa-shield-alt ml-1 text-warning"></i> نیا موبائل
+                                            لاگ اِن پن</label>
+                                        <input id="mobile-pin" type="text" inputmode="numeric" pattern="[0-9]{6}"
+                                            maxlength="6" autocomplete="new-password" class="form-control text-left"
+                                            name="mobile_pin" placeholder="6 ہندسوں کا نیا پن" dir="ltr">
+                                        <small class="form-text text-muted mt-2">خالی چھوڑنے سے موجودہ پن تبدیل نہیں ہوگا۔ نیا
+                                            پن محفوظ کرنے پر پرانے موبائل سیشن بند ہو جائیں گے۔</small>
+                                        @error('mobile_pin')
+                                            <div class="text-danger small mt-1">پن لازماً 6 ہندسوں کا ہونا چاہیے۔</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            @endunless
+                        </div>
+                    </section>
+
+                    <div class="edit-actions">
+                        <a href="{{ $statementUrl }}" class="btn btn-outline-secondary"><i
+                                class="fas fa-times ml-1"></i> منسوخ کریں</a>
+                        <button type="submit" class="btn btn-success px-5"><i class="fas fa-check ml-1"></i> تبدیلیاں
+                            محفوظ کریں</button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
-</section>
+    </section>
 @endsection
