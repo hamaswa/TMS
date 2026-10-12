@@ -12,6 +12,8 @@ use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\SaleSession;
 use App\Models\Setting;
+use App\Models\Tailor;
+use App\Models\Tailorsalary;
 use App\Models\User;
 use App\Services\CounterOrderService;
 use App\Services\CounterOrderNumberService;
@@ -30,6 +32,8 @@ class CounterOrderController extends Controller
 {
     public function create(Request $request): View
     {
+        $tailors = Tailor::where('user_id',$request->user()->id)->get();
+        // dd($tailors);
         $this->authorizeAnyOrderAccess($request);
         $canAddCloth = $this->canManageCloth($request);
         $canAddTailoring = $this->canManageTailoring($request);
@@ -59,7 +63,7 @@ class CounterOrderController extends Controller
 
         return view('counter-orders.create', compact(
             'customers', 'selectedCustomer', 'selectedProfileId', 'openOrders',
-            'canAddCloth', 'canAddTailoring'
+            'canAddCloth', 'canAddTailoring', 'tailors'
         ));
     }
 
@@ -135,6 +139,8 @@ class CounterOrderController extends Controller
 
     public function edit(Request $request, CounterOrder $counterOrder): View
     {
+        $tailors = Tailor::where('user_id', $request->user()->id)->get();
+        // dd($tailors);
         $this->authorizeOrder($request, $counterOrder);
         $ownerId = $request->user()->businessOwnerId();
         $counterOrder->load([
@@ -177,7 +183,7 @@ class CounterOrderController extends Controller
         return view('counter-orders.edit', compact(
             'counterOrder', 'canAddCloth', 'canAddTailoring', 'cloths', 'profiles',
             'templates', 'paymentMethods', 'receiptLinks', 'selectedProfileId',
-            'canManageAllDrafts', 'canManageAllItems', 'profileTemplateIds'
+            'canManageAllDrafts', 'canManageAllItems', 'profileTemplateIds', 'tailors'
         ));
     }
 
@@ -205,6 +211,31 @@ class CounterOrderController extends Controller
         );
 
         return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig'));
+    }
+
+    public function getTailorRates(Request $request, int $tailorId)
+    {
+        $ownerId = $request->user()->businessOwnerId();
+
+        $tailor = Tailor::where('user_id', $ownerId)
+            ->findOrFail($tailorId);
+
+        $rates = $tailor->tailorsalary()
+            ->with('options')
+            ->get();
+
+        return response()->json(
+            $rates->map(function ($rate) {
+                return [
+                    'id' => $rate->id,
+                    'rateName' => $rate->options->Name
+                        ?? $rate->type
+                        ?? 'سلائی',
+                    'price' => (float) $rate->price,
+                    'rateValue' => $rate->id . '-' . $rate->price,
+                ];
+            })->values()
+        );
     }
 
     public function printItem(
@@ -456,19 +487,35 @@ class CounterOrderController extends Controller
             'unit_price' => ['required', 'numeric', 'min:0'],
             'due_date' => ['required', 'date', 'after_or_equal:today'],
             'note' => ['nullable', 'string', 'max:1000'],
+            'tailor_id' => ['required', 'integer'],
+            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
         ]);
+        
         $profile = Customers::where('user_id', $ownerId)->findOrFail($validated['measurement_profile_id']);
+        
         abort_unless((int) ($profile->parent_id ?: $profile->id) === (int) $counterOrder->customer_id, 404);
+        
         $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
             ->findOrFail($validated['measurement_template_id']);
         abort_unless($this->profileHasSavedTemplate($profile, $template, $ownerId), 422, 'Selected measurements do not belong to this person.');
+        
         $missing = $measurements->missingRequiredMeasurements($profile, $ownerId, $template);
         if ($missing->isNotEmpty()) {
             return back()->withErrors([
                 'measurement_profile_id' => 'پہلے یہ ضروری ناپ مکمل کریں: '.$missing->join('، '),
             ])->withInput();
-        }
+        
+            }
         $lineTotal = round((int) $validated['quantity'] * (float) $validated['unit_price'], 2);
+
+        $tailor = Tailor::where('user_id', $ownerId)
+                ->findOrFail($validated['tailor_id']);
+
+        [$rateId] = explode('-', $validated['tailor_price'], 2);
+
+        $rate = Tailorsalary::where('tailor_id', $tailor->id)
+            ->findOrFail((int) $rateId);
+        
         $numbers->createItem($counterOrder, [
             'type' => CounterOrderItem::TYPE_TAILORING,
             'status' => CounterOrderItem::STATUS_DRAFT,
@@ -481,6 +528,8 @@ class CounterOrderController extends Controller
             'details' => [
                 'measurement_snapshot' => $measurements->savedMeasurementRows($profile, $ownerId, $template)->values()->all(),
             ],
+           'tailor_id' => $tailor->id,
+            'rate_id' => $rate->id,
             'note' => $validated['note'] ?? null,
         ]);
         $counterOrder->recalculate();

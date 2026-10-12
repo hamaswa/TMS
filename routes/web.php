@@ -230,6 +230,11 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::post('/counter-orders/{counterOrder}/confirm', [CounterOrderController::class, 'confirm'])->name('counter-orders.confirm');
         Route::post('/counter-orders/{counterOrder}/close', [CounterOrderController::class, 'close'])->name('counter-orders.close');
         Route::get('/counter-orders/from-sale-session/{saleSession}', [CounterOrderController::class, 'importSaleSession'])->name('counter-orders.sale-session');
+
+        Route::get(
+    '/counter-orders/tailors/{tailorId}/rates',
+    [CounterOrderController::class, 'getTailorRates']
+)->name('counter-orders.tailors.rates');
     });
 
     Route::middleware('business.permission:storefront.manage')->group(function () {
