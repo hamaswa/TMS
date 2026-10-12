@@ -240,7 +240,34 @@
             line-height: 2;
         }
 
-        .order-preference-grid select.form-control {
+        .order-layout-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .9rem 1rem;
+            align-items: start;
+        }
+
+        .order-layout-grid .form-group {
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .order-layout-grid label {
+            display: block;
+            min-height: 2em;
+            margin-bottom: .55rem;
+            color: #243b53;
+            font-weight: 800;
+            line-height: 2;
+        }
+
+        .order-layout-grid input.form-control {
+            min-height: 54px;
+            border-radius: 10px;
+            border-color: #d7e1ed;
+        }
+
+        .order-layout-grid select.form-control {
             width: 100%;
             height: 54px;
             min-height: 54px;
@@ -254,7 +281,7 @@
             background-position: left .75rem center;
         }
 
-        .order-preference-grid select.form-control:focus {
+        .order-layout-grid select.form-control:focus {
             border-color: #1769aa;
             box-shadow: 0 0 0 .15rem rgba(23, 105, 170, .12);
         }
@@ -273,48 +300,17 @@
             .order-measurement-layout {
                 grid-template-columns: 1fr;
             }
-
-            .order-preference-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .order-layout-grid {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr);
-                gap: .9rem;
-            }
-
-            .order-layout-grid .form-group {
-                min-width: 0;
-                margin-bottom: 0;
-            }
-
-            .order-layout-grid label {
-                display: block;
-                min-height: 2em;
-                margin-bottom: .55rem;
-                color: #243b53;
-                font-weight: 800;
-                line-height: 2;
-            }
-
-            .order-measurement-layout.is-one-column {
-                grid-template-columns: minmax(0, 1fr);
-            }
         }
 
         @media (max-width: 575px) {
-            .order-basics-grid {
+
+            .order-basics-grid,
+            .order-layout-grid {
                 grid-template-columns: 1fr;
             }
 
             .order-basics-head {
                 align-items: flex-start;
-            }
-
-            .order-measurement-grid,
-            .order-preference-grid {
-                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -667,7 +663,7 @@
                                                                         fn($o) => trim((string) $o->Name) === $value,
                                                                     );
                                                                 @endphp
-                                                                <div class="form-group order-preference-grid">
+                                                                <div class="form-group">
                                                                     <label
                                                                         for="order-system-preference-{{ $key }}">
                                                                         {{ $meta['label'] }}
@@ -711,7 +707,7 @@
                                                                     );
                                                                 @endphp
                                                                 <div
-                                                                    class="form-group {{ $field->field_type === 'select' ? 'order-preference-grid' : '' }}">
+                                                                    class="form-group">
                                                                     <label
                                                                         for="order-custom-measurement-{{ $field->id }}">
                                                                         {{ $field->label }}
