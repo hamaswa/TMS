@@ -32,14 +32,14 @@ class CounterOrderController extends Controller
 {
     public function create(Request $request): View
     {
-        $tailors = Tailor::where('user_id',$request->user()->id)->get();
+        $tailors = Tailor::where('user_id', $request->user()->id)->get();
         // dd($tailors);
         $this->authorizeAnyOrderAccess($request);
         $canAddCloth = $this->canManageCloth($request);
         $canAddTailoring = $this->canManageTailoring($request);
         $selectedCustomer = $request->integer('customer')
             ? Customers::where('user_id', $request->user()->businessOwnerId())
-                ->whereNull('parent_id')->selectableForSales()->find($request->integer('customer'))
+            ->whereNull('parent_id')->selectableForSales()->find($request->integer('customer'))
             : null;
         $customers = $this->customers($request);
         if ($selectedCustomer && ! $customers->contains('id', $selectedCustomer->id)) {
@@ -47,23 +47,28 @@ class CounterOrderController extends Controller
         }
         $selectedProfileId = $selectedCustomer
             ? Customers::where('user_id', $request->user()->businessOwnerId())
-                ->whereKey($request->integer('profile', $selectedCustomer->id))
-                ->where(fn ($query) => $query->whereKey($selectedCustomer->id)->orWhere('parent_id', $selectedCustomer->id))
-                ->value('id')
+            ->whereKey($request->integer('profile', $selectedCustomer->id))
+            ->where(fn($query) => $query->whereKey($selectedCustomer->id)->orWhere('parent_id', $selectedCustomer->id))
+            ->value('id')
             : null;
         $openOrders = $selectedCustomer
             ? CounterOrder::where('user_id', $request->user()->businessOwnerId())
-                ->where('customer_id', $selectedCustomer->id)
-                ->where('status', '!=', CounterOrder::STATUS_CLOSED)
-                ->withCount([
-                    'items as draft_items_count' => fn ($query) => $query->where('status', CounterOrderItem::STATUS_DRAFT),
-                    'items as confirmed_items_count' => fn ($query) => $query->where('status', CounterOrderItem::STATUS_CONFIRMED),
-                ])->latest('updated_at')->get()
+            ->where('customer_id', $selectedCustomer->id)
+            ->where('status', '!=', CounterOrder::STATUS_CLOSED)
+            ->withCount([
+                'items as draft_items_count' => fn($query) => $query->where('status', CounterOrderItem::STATUS_DRAFT),
+                'items as confirmed_items_count' => fn($query) => $query->where('status', CounterOrderItem::STATUS_CONFIRMED),
+            ])->latest('updated_at')->get()
             : collect();
 
         return view('counter-orders.create', compact(
-            'customers', 'selectedCustomer', 'selectedProfileId', 'openOrders',
-            'canAddCloth', 'canAddTailoring', 'tailors'
+            'customers',
+            'selectedCustomer',
+            'selectedProfileId',
+            'openOrders',
+            'canAddCloth',
+            'canAddTailoring',
+            'tailors'
         ));
     }
 
@@ -78,7 +83,7 @@ class CounterOrderController extends Controller
             ->whereNull('parent_id')
             ->selectableForSales()
             ->when($search !== '', function ($query) use ($search) {
-                $like = '%'.addcslashes($search, '%_\\').'%';
+                $like = '%' . addcslashes($search, '%_\\') . '%';
                 $query->where(function ($match) use ($search, $like) {
                     $match->where('name', 'like', $like)
                         ->orWhere('phone_number1', 'like', $like);
@@ -144,18 +149,22 @@ class CounterOrderController extends Controller
         $this->authorizeOrder($request, $counterOrder);
         $ownerId = $request->user()->businessOwnerId();
         $counterOrder->load([
-            'customer', 'saleSession.agent', 'items.cloth.brand', 'items.cloth.type',
-            'items.measurementProfile', 'items.measurementTemplate',
+            'customer',
+            'saleSession.agent',
+            'items.cloth.brand',
+            'items.cloth.type',
+            'items.measurementProfile',
+            'items.measurementTemplate',
         ]);
         $canAddCloth = $this->canManageCloth($request);
         $canAddTailoring = $this->canManageTailoring($request);
         $canManageAllDrafts = $counterOrder->items->where('status', CounterOrderItem::STATUS_DRAFT)
-            ->every(fn (CounterOrderItem $item) => $this->canManageItem($request, $item));
+            ->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item));
         $canManageAllItems = $counterOrder->items->where('status', '!=', CounterOrderItem::STATUS_CANCELLED)
-            ->every(fn (CounterOrderItem $item) => $this->canManageItem($request, $item));
+            ->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item));
         $cloths = $canAddCloth ? Cloth::where('user_id', $ownerId)->with(['brand', 'type', 'colors'])->orderBy('id')->get() : collect();
         $profiles = Customers::where('user_id', $ownerId)
-            ->where(fn ($query) => $query->whereKey($counterOrder->customer_id)->orWhere('parent_id', $counterOrder->customer_id))
+            ->where(fn($query) => $query->whereKey($counterOrder->customer_id)->orWhere('parent_id', $counterOrder->customer_id))
             ->orderByRaw('parent_id is not null')->orderBy('name')->get();
         $selectedProfileId = $profiles->contains('id', $request->integer('profile'))
             ? $request->integer('profile')
@@ -171,7 +180,7 @@ class CounterOrderController extends Controller
         $profileTemplateIds = $profiles->mapWithKeys(function (Customers $profile) use ($historyTemplateIds, $templates) {
             $ids = collect([$profile->measurement_template_id])
                 ->merge($historyTemplateIds->get($profile->id, collect())->pluck('measurement_template_id'))
-                ->filter()->map(fn ($id) => (int) $id)->unique();
+                ->filter()->map(fn($id) => (int) $id)->unique();
 
             return [$profile->id => $templates->whereIn('id', $ids)->pluck('id')->values()->all()];
         });
@@ -181,9 +190,19 @@ class CounterOrderController extends Controller
             ->get()->keyBy('id');
 
         return view('counter-orders.edit', compact(
-            'counterOrder', 'canAddCloth', 'canAddTailoring', 'cloths', 'profiles',
-            'templates', 'paymentMethods', 'receiptLinks', 'selectedProfileId',
-            'canManageAllDrafts', 'canManageAllItems', 'profileTemplateIds', 'tailors'
+            'counterOrder',
+            'canAddCloth',
+            'canAddTailoring',
+            'cloths',
+            'profiles',
+            'templates',
+            'paymentMethods',
+            'receiptLinks',
+            'selectedProfileId',
+            'canManageAllDrafts',
+            'canManageAllItems',
+            'profileTemplateIds',
+            'tailors'
         ));
     }
 
@@ -194,8 +213,11 @@ class CounterOrderController extends Controller
     ): View {
         $this->authorizeOrder($request, $counterOrder);
         $counterOrder->load([
-            'customer', 'items.cloth.brand', 'items.cloth.type',
-            'items.measurementProfile', 'items.measurementTemplate',
+            'customer',
+            'items.cloth.brand',
+            'items.cloth.type',
+            'items.measurementProfile',
+            'items.measurementTemplate',
         ]);
         abort_unless(
             $counterOrder->items->contains('status', CounterOrderItem::STATUS_CONFIRMED),
@@ -262,12 +284,15 @@ class CounterOrderController extends Controller
             $setting,
             $request,
             'counter-order-item',
-            $item->item_serial ?: $counterOrder->reference.'-'.$item->id,
+            $item->item_serial ?: $counterOrder->reference . '-' . $item->id,
         );
         $singleItem = $item;
 
         return view('counter-orders.print', compact(
-            'counterOrder', 'setting', 'printConfig', 'singleItem'
+            'counterOrder',
+            'setting',
+            'printConfig',
+            'singleItem'
         ));
     }
 
@@ -292,19 +317,25 @@ class CounterOrderController extends Controller
         $savedRows = $measurements->savedMeasurementRows($profile, $ownerId, $template);
         $savedValues = $savedRows->pluck('value', 'source_key');
         $systemValues = collect($template->system_fields ?? [])
-            ->mapWithKeys(fn ($key) => [$key => $savedValues->get('system.'.$key)]);
-        $customValues = $fields->mapWithKeys(fn ($field) => [
-            $field->id => $savedValues->get('custom.'.$field->id),
+            ->mapWithKeys(fn($key) => [$key => $savedValues->get('system.' . $key)]);
+        $customValues = $fields->mapWithKeys(fn($field) => [
+            $field->id => $savedValues->get('custom.' . $field->id),
         ]);
         $preferenceChoices = $template->templateOptions
-            ->groupBy(fn ($option) => $option->optionType?->type === 'daaman' ? 'Daaman' : $option->optionType?->type)
-            ->map(fn ($options) => $options->pluck('Name')->values())
-            ->filter(fn ($options, $key) => filled($key));
+            ->groupBy(fn($option) => $option->optionType?->type === 'daaman' ? 'Daaman' : $option->optionType?->type)
+            ->map(fn($options) => $options->pluck('Name')->values())
+            ->filter(fn($options, $key) => filled($key));
         $layout = collect($template->field_layout ?? [])->keyBy('source');
 
         return view('counter-orders.partials.measurement-form', compact(
-            'counterOrder', 'profile', 'template', 'fields', 'customValues',
-            'preferenceChoices', 'layout', 'systemValues'
+            'counterOrder',
+            'profile',
+            'template',
+            'fields',
+            'customValues',
+            'preferenceChoices',
+            'layout',
+            'systemValues'
         ));
     }
 
@@ -327,9 +358,9 @@ class CounterOrderController extends Controller
         abort_unless($this->profileHasSavedTemplate($profile, $template, $ownerId), 404);
         $fields = $measurements->fieldsForTemplate($measurements->activeFields($ownerId), $template);
         $preferenceChoices = $template->templateOptions
-            ->groupBy(fn ($option) => $option->optionType?->type === 'daaman' ? 'Daaman' : $option->optionType?->type)
-            ->map(fn ($options) => $options->pluck('Name')->values())
-            ->filter(fn ($options, $key) => filled($key));
+            ->groupBy(fn($option) => $option->optionType?->type === 'daaman' ? 'Daaman' : $option->optionType?->type)
+            ->map(fn($options) => $options->pluck('Name')->values())
+            ->filter(fn($options, $key) => filled($key));
 
         $rules = [
             'measurement_template_id' => ['required', 'integer', Rule::in([$template->id])],
@@ -340,10 +371,12 @@ class CounterOrderController extends Controller
                 continue;
             }
             $meta = MeasurementService::SYSTEM_FIELDS[$key];
-            $rules['system_measurements.'.$key] = $meta['unit'] === 'inch'
+            $rules['system_measurements.' . $key] = $meta['unit'] === 'inch'
                 ? ['required', 'numeric', 'min:0']
                 : array_values(array_filter([
-                    'required', 'string', 'max:255',
+                    'required',
+                    'string',
+                    'max:255',
                     $preferenceChoices->has($key) ? Rule::in($preferenceChoices->get($key)->all()) : null,
                 ]));
         }
@@ -424,8 +457,7 @@ class CounterOrderController extends Controller
         Request $request,
         CounterOrder $counterOrder,
         CounterOrderNumberService $numbers,
-    ): RedirectResponse|JsonResponse
-    {
+    ): RedirectResponse|JsonResponse {
         $this->authorizeOrder($request, $counterOrder);
         abort_unless($this->canManageCloth($request), 403);
         abort_if($counterOrder->isClosed(), 409, 'This order is closed.');
@@ -474,8 +506,7 @@ class CounterOrderController extends Controller
         CounterOrder $counterOrder,
         MeasurementService $measurements,
         CounterOrderNumberService $numbers,
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $this->authorizeOrder($request, $counterOrder);
         abort_unless($this->canManageTailoring($request), 403);
         abort_if($counterOrder->isClosed(), 409, 'This order is closed.');
@@ -487,35 +518,40 @@ class CounterOrderController extends Controller
             'unit_price' => ['required', 'numeric', 'min:0'],
             'due_date' => ['required', 'date', 'after_or_equal:today'],
             'note' => ['nullable', 'string', 'max:1000'],
-            'tailor_id' => ['required', 'integer'],
-            'tailor_price' => ['required', 'regex:/^\d+-.+$/', 'max:255'],
+            'tailor_id' => ['nullable', 'integer'],
+            'tailor_price' => ['nullable', 'regex:/^\d+-.+$/', 'max:255'],
         ]);
-        
+
         $profile = Customers::where('user_id', $ownerId)->findOrFail($validated['measurement_profile_id']);
-        
+
         abort_unless((int) ($profile->parent_id ?: $profile->id) === (int) $counterOrder->customer_id, 404);
-        
+
         $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
             ->findOrFail($validated['measurement_template_id']);
         abort_unless($this->profileHasSavedTemplate($profile, $template, $ownerId), 422, 'Selected measurements do not belong to this person.');
-        
+
         $missing = $measurements->missingRequiredMeasurements($profile, $ownerId, $template);
         if ($missing->isNotEmpty()) {
             return back()->withErrors([
-                'measurement_profile_id' => 'پہلے یہ ضروری ناپ مکمل کریں: '.$missing->join('، '),
+                'measurement_profile_id' => 'پہلے یہ ضروری ناپ مکمل کریں: ' . $missing->join('، '),
             ])->withInput();
-        
-            }
+        }
         $lineTotal = round((int) $validated['quantity'] * (float) $validated['unit_price'], 2);
 
-        $tailor = Tailor::where('user_id', $ownerId)
+
+        $tailor = null;
+        $rate = null;
+
+        if (!empty($validated['tailor_id']) && !empty($validated['tailor_price'])) {
+            $tailor = Tailor::where('user_id', $ownerId)
                 ->findOrFail($validated['tailor_id']);
 
-        [$rateId] = explode('-', $validated['tailor_price'], 2);
+            [$rateId] = explode('-', $validated['tailor_price'], 2);
 
-        $rate = Tailorsalary::where('tailor_id', $tailor->id)
-            ->findOrFail((int) $rateId);
-        
+            $rate = Tailorsalary::where('tailor_id', $tailor->id)
+                ->findOrFail((int) $rateId);
+        }
+
         $numbers->createItem($counterOrder, [
             'type' => CounterOrderItem::TYPE_TAILORING,
             'status' => CounterOrderItem::STATUS_DRAFT,
@@ -528,8 +564,8 @@ class CounterOrderController extends Controller
             'details' => [
                 'measurement_snapshot' => $measurements->savedMeasurementRows($profile, $ownerId, $template)->values()->all(),
             ],
-           'tailor_id' => $tailor->id,
-            'rate_id' => $rate->id,
+            'tailor_id' => $tailor->id ??  null,
+            'rate_id' => $rate->id ?? null,
             'note' => $validated['note'] ?? null,
         ]);
         $counterOrder->recalculate();
@@ -562,8 +598,10 @@ class CounterOrderController extends Controller
             if ($cloth->hasSelectableColors() && blank($validated['color'] ?? null)) {
                 return back()->withErrors(['color' => 'اس کپڑے کے لیے رنگ منتخب کریں۔'])->withInput();
             }
-            if ($cloth->hasSelectableColors()
-                && ! in_array($validated['color'] ?? null, $cloth->selectableColorNames(), true)) {
+            if (
+                $cloth->hasSelectableColors()
+                && ! in_array($validated['color'] ?? null, $cloth->selectableColorNames(), true)
+            ) {
                 return back()->withErrors(['color' => 'منتخب رنگ اس کپڑے کے دستیاب رنگوں میں شامل نہیں ہے۔'])->withInput();
             }
             $quantity = $cloth->sellsPerSuit() ? (int) ($validated['quantity'] ?? 1) : 1;
@@ -608,7 +646,7 @@ class CounterOrderController extends Controller
             $missing = $measurements->missingRequiredMeasurementsFromRows($measurementSnapshot, $ownerId, $template);
             if ($missing->isNotEmpty()) {
                 return back()->withErrors([
-                    'measurement_profile_id' => 'پہلے یہ ضروری ناپ مکمل کریں: '.$missing->join('، '),
+                    'measurement_profile_id' => 'پہلے یہ ضروری ناپ مکمل کریں: ' . $missing->join('، '),
                 ])->withInput();
             }
             $item->update([
@@ -650,10 +688,10 @@ class CounterOrderController extends Controller
     {
         $this->authorizeOrder($request, $counterOrder);
         $draftItems = $counterOrder->items()->where('status', CounterOrderItem::STATUS_DRAFT)->get();
-        abort_unless($draftItems->every(fn (CounterOrderItem $item) => $this->canManageItem($request, $item)), 403);
+        abort_unless($draftItems->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item)), 403);
         $draftTotal = (float) $counterOrder->items()->where('status', CounterOrderItem::STATUS_DRAFT)->sum('line_total');
         $validated = $request->validate([
-            'payment' => ['required', 'numeric', 'min:0', 'max:'.$draftTotal],
+            'payment' => ['required', 'numeric', 'min:0', 'max:' . $draftTotal],
             'payment_method' => ['required', Rule::in(array_keys(PaymentMethods::LABELS))],
             'payment_reference' => ['nullable', 'string', 'max:255'],
         ]);
@@ -675,7 +713,7 @@ class CounterOrderController extends Controller
     {
         $this->authorizeOrder($request, $counterOrder);
         $items = $counterOrder->items()->where('status', '!=', CounterOrderItem::STATUS_CANCELLED)->get();
-        abort_unless($items->every(fn (CounterOrderItem $item) => $this->canManageItem($request, $item)), 403);
+        abort_unless($items->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item)), 403);
         abort_if($counterOrder->items()->where('status', CounterOrderItem::STATUS_DRAFT)->exists(), 409, 'Confirm or remove draft items first.');
         abort_if(! $counterOrder->items()->where('status', CounterOrderItem::STATUS_CONFIRMED)->exists(), 409, 'An empty order cannot be closed.');
         $counterOrder->update(['status' => CounterOrder::STATUS_CLOSED, 'closed_at' => now()]);
@@ -757,8 +795,11 @@ class CounterOrderController extends Controller
         string $message,
     ): JsonResponse {
         $counterOrder->refresh()->load([
-            'items.cloth.brand', 'items.cloth.type', 'items.cloth.colors',
-            'items.measurementProfile', 'items.measurementTemplate',
+            'items.cloth.brand',
+            'items.cloth.type',
+            'items.cloth.colors',
+            'items.measurementProfile',
+            'items.measurementTemplate',
         ]);
         $item = $counterOrder->items->firstWhere('id', $item->id);
         $draftItems = $counterOrder->items->where('status', CounterOrderItem::STATUS_DRAFT);
