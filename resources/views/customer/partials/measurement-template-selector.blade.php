@@ -44,18 +44,9 @@ document.addEventListener('DOMContentLoaded', function () {
             var match = input.name.match(/\[(\d+)\]/);
             toggleControl(input, match && selectedCustom.indexOf(Number(match[1])) !== -1);
         });
-        document.querySelectorAll('[data-template-system-field]').forEach(function (input) {
-            toggleControl(input, selectedSystem.indexOf(input.dataset.templateSystemField) !== -1);
-            var current = input.value.trim();
-            var choices = (selectedPreferences[input.dataset.templateSystemField] || []).map(function (choice) { return String(choice).trim(); });
-            // Keep saved legacy preferences even when the template does not list them.
-            if (current && choices.indexOf(current) === -1) choices.push(current);
-            var placeholder = input.options.length ? input.options[0].text : 'منتخب کریں';
-            input.innerHTML = '';
-            input.add(new Option(placeholder, ''));
-            choices.forEach(function (choice) { input.add(new Option(choice, choice)); });
-            input.value = current;
-        });
+       document.querySelectorAll('[data-template-system-field]').forEach(function (input) {
+    toggleControl(input, selectedSystem.indexOf(input.dataset.templateSystemField) !== -1);
+});
         var layout = {};
         selectedLayout.forEach(function (item) { layout[item.source] = item; });
         document.querySelectorAll('[data-template-field]').forEach(function (field, index) {

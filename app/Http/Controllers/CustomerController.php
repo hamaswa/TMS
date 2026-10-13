@@ -463,7 +463,38 @@ class CustomerController extends Controller
         $obj->pin_changed_at = $plainPin ? now() : null;
         DB::transaction(function () use ($obj, $measurementFields, $validated, $measurementTemplate) {
             $obj->save();
-            $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
+            // Save measurement values separately for the selected template.
+            if ($measurementTemplate) {
+                $this->measurements->saveTemplateMeasurements(
+                    $obj,
+                    Auth::user()->businessOwnerId(),
+                    $measurementTemplate,
+                    [
+                        'length' => $request->length,
+                        'arms' => $request->arms,
+                        'teraa' => $request->teraa,
+                        'senaChorai' => $request->senaChorai,
+                        'damanchorai' => $request->damanchorai,
+                        'shalwar' => $request->shalwar,
+                        'pancha' => $request->pancha,
+                        'shalwarGheer' => $request->shalwarGheer,
+                        'shoulder' => $request->monda,
+                        'chuta' => $request->chuta,
+                        'necktype' => $this->preferenceValue($request->add_neck_type),
+                        'sleeve' => $this->preferenceValue($request->add_sleeve_opening_type),
+                        'Daaman' => $this->preferenceValue($request->add_daaman_type),
+                        'jeab' => $this->preferenceValue($request->add_pocket_type),
+                        'swingtype' => $this->preferenceValue($request->add_sewing_type),
+                        'button' => $this->preferenceValue($request->add_button_type),
+                        'plate_type' => $this->preferenceValue($request->plate_type),
+                    ],
+                    $validated['custom_measurements'] ?? [],
+                    $measurementFields,
+                    Auth::id(),
+                    'customer_update'
+                );
+            }
+
             $this->measurements->recordHistory(
                 $obj,
                 Auth::user()->businessOwnerId(),
@@ -519,11 +550,29 @@ class CustomerController extends Controller
         $selectedTemplateId = (int) request('measurement_template_id', $customer->measurement_template_id);
         $selectedMeasurementTemplate = $measurementTemplates->firstWhere('id', $selectedTemplateId);
         $savedMeasurementValues = $this->measurements
-            ->savedMeasurementRows($customer, Auth::user()->businessOwnerId(), $selectedMeasurementTemplate)
+            ->savedMeasurementRows(
+                $customer,
+                Auth::user()->businessOwnerId(),
+                $selectedMeasurementTemplate
+            )
             ->pluck('value', 'source_key');
         $parentCustomer = $customer->parent_id !== null
             ? $this->ownedCustomer($customer->parent_id)
             : null;
+
+        $allTemplateValues = $measurementTemplates->mapWithKeys(fn($t) => [
+            $t->id => $this->measurements
+                ->savedMeasurementRows($customer, Auth::user()->businessOwnerId(), $t)
+                ->pluck('value', 'source_key'),
+        ]);
+
+        $optionChoices = DB::table('options')
+            ->where('user_id', Auth::user()->businessOwnerId())
+            ->whereIn('option_id', $optionTypes->pluck('option_id'))
+            ->get()
+            ->groupBy('option_id');
+
+        // dd($optionChoices->first()->first());
 
         return view('customer.edit', compact(
             'customer',
@@ -532,10 +581,11 @@ class CustomerController extends Controller
             'measurementValues',
             'measurementTemplates',
             'parentCustomer',
-            'savedMeasurementValues'
+            'savedMeasurementValues',
+            'allTemplateValues',
+            'optionChoices'
         ));
     }
-
 
     /**
      * Update the specified resource in storage.
@@ -545,6 +595,7 @@ class CustomerController extends Controller
      */
     public function update(Request $request, $id)
     {
+
         $obj = $this->ownedCustomer($id);
 
         $parentCustomer = $obj->parent_id !== null
@@ -560,6 +611,7 @@ class CustomerController extends Controller
             ]);
         }
 
+        $ownerId = Auth::user()->businessOwnerId();
         $measurementTemplates = $this->measurementTemplates();
 
         // Use the selected template to determine which measurements can be edited.
@@ -569,7 +621,7 @@ class CustomerController extends Controller
         );
 
         $measurementFields = $this->measurements->fieldsForTemplate(
-            $this->measurements->activeFields(Auth::user()->businessOwnerId()),
+            $this->measurements->activeFields($ownerId),
             $measurementTemplate,
         );
 
@@ -582,7 +634,7 @@ class CustomerController extends Controller
 
         if (! $parentCustomer) {
             $contactRules[] = new UniqueCustomerPhone(
-                Auth::user()->businessOwnerId(),
+                $ownerId,
                 (int) $id
             );
         }
@@ -605,57 +657,19 @@ class CustomerController extends Controller
             'note' => ['nullable', 'string', 'max:2000'],
         ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
 
-        // Compare measurement history using the template selected for this edit.
-        // Do not save this selected template as the customer's permanent template.
-        $previousTemplate = $measurementTemplate ?? $obj->measurementTemplate;
-
-        $previousRows = $this->measurements->measurementRows(
-            $obj,
-            Auth::user()->businessOwnerId(),
-            $previousTemplate
-        );
-
-        $previousFingerprint = $this->measurements->measurementFingerprint(
-            $previousRows,
-            $previousTemplate
-        );
-
-        $obj->name = $request->name;
-        $obj->phone_number1 = $request->contact;
-        $obj->length = $request->length;
-        $obj->arms = $request->arms;
-        $obj->teraa = $request->teraa;
-        $obj->senaChorai = $request->senaChorai;
-        $obj->damanchorai = $request->damanchorai;
-        $obj->shalwar = $request->shalwar;
-        $obj->pancha = $request->pancha;
-        $obj->shalwarGheer = $request->shalwarGheer;
-        $obj->shoulder = $request->monda;
-        $obj->chuta = $request->chuta;
-        $obj->note = $request->note;
-
-        $obj->Daaman = $this->preferenceValue($request->add_daaman_type);
-        $obj->plate_type = $this->preferenceValue($request->plate_type);
-        $obj->necktype = $this->preferenceValue($request->add_neck_type);
-        $obj->jeab = $this->preferenceValue($request->add_pocket_type);
-        $obj->button = $this->preferenceValue($request->add_button_type);
-        $obj->swingtype = $this->preferenceValue($request->add_sewing_type);
-        $obj->shirtbutton = $this->preferenceValue($request->add_shirt_button_type);
-        $obj->sleeve = $this->preferenceValue($request->add_sleeve_opening_type);
-        $obj->user_id = Auth::user()->businessOwnerId();
-
-        // IMPORTANT:
-        // Do not assign $measurementTemplate to $obj->measurement_template_id.
-        // The customer's saved template must remain unchanged.
+        // Update customer information only.
+        // Template-specific measurements are stored in measurement history.
+        $obj->name = $validated['name'];
+        $obj->phone_number1 = $validated['contact'];
+        $obj->note = $validated['note'] ?? null;
+        $obj->user_id = $ownerId;
 
         DB::transaction(function () use (
             $obj,
             $validated,
             $measurementFields,
             $measurementTemplate,
-            $previousTemplate,
-            $previousRows,
-            $previousFingerprint
+            $ownerId
         ) {
             if (! empty($validated['mobile_pin'])) {
                 $obj->mobile_pin = Hash::make($validated['mobile_pin']);
@@ -667,41 +681,38 @@ class CustomerController extends Controller
 
             $obj->save();
 
-            // Save only the measurement fields associated with the selected template.
-            $this->measurements->syncCustomer(
-                $obj,
-                $measurementFields,
-                $validated['custom_measurements'] ?? []
-            );
-
-            $currentRows = $this->measurements->measurementRows(
-                $obj,
-                Auth::user()->businessOwnerId(),
-                $measurementTemplate
-            );
-
-            $currentFingerprint = $this->measurements->measurementFingerprint(
-                $currentRows,
-                $measurementTemplate
-            );
-
-            if (! hash_equals($previousFingerprint, $currentFingerprint)) {
-                if (! $obj->measurementHistories()->exists()) {
-                    $this->measurements->recordHistoryRows(
-                        $obj,
-                        $previousRows,
-                        $previousTemplate,
-                        Auth::id(),
-                        'baseline'
-                    );
-                }
-
-                $this->measurements->recordHistoryRows(
+            // Save measurement values independently for the selected template.
+            if ($measurementTemplate) {
+                $this->measurements->saveTemplateMeasurements(
                     $obj,
-                    $currentRows,
+                    $ownerId,
                     $measurementTemplate,
+                    [
+                        'length' => request()->input('length'),
+                        'arms' => request()->input('arms'),
+                        'teraa' => request()->input('teraa'),
+                        'senaChorai' => request()->input('senaChorai'),
+                        'damanchorai' => request()->input('damanchorai'),
+                        'shalwar' => request()->input('shalwar'),
+                        'pancha' => request()->input('pancha'),
+                        'shalwarGheer' => request()->input('shalwarGheer'),
+                        'shoulder' => request()->input('monda'),
+                        'chuta' => request()->input('chuta'),
+
+                        // These keys must match the preference field slugs in Blade.
+                        // Array keys are the system field keys; input names are the select slugs from Blade.
+                        'necktype' => $this->preferenceValue(request()->input('add_neck_type')),
+                        'sleeve' => $this->preferenceValue(request()->input('add_sleeve_opening_type')),
+                        'Daaman' => $this->preferenceValue(request()->input('add_daaman_type')),
+                        'jeab' => $this->preferenceValue(request()->input('add_pocket_type')),
+                        'swingtype' => $this->preferenceValue(request()->input('add_sewing_type')),
+                        'button' => $this->preferenceValue(request()->input('add_button_type')),
+                        'plate_type' => $this->preferenceValue(request()->input('plate_type')),
+                    ],
+                    $validated['custom_measurements'] ?? [],
+                    $measurementFields,
                     Auth::id(),
-                    'customer_update'
+                    'customer_update',
                 );
             }
 
@@ -714,10 +725,7 @@ class CustomerController extends Controller
         $returnCounterOrder = (int) ($validated['return_counter_order'] ?? 0);
 
         if ($returnCounterOrder > 0) {
-            $counterOrder = CounterOrder::where(
-                'user_id',
-                Auth::user()->businessOwnerId()
-            )
+            $counterOrder = CounterOrder::where('user_id', $ownerId)
                 ->whereKey($returnCounterOrder)
                 ->where('customer_id', $obj->parent_id ?: $obj->id)
                 ->first();
@@ -733,6 +741,7 @@ class CustomerController extends Controller
         $returnContext = array_filter([
             'return_customer' => $returnCustomer > 0 ? $returnCustomer : null,
             'return_search' => $returnSearch !== '' ? $returnSearch : null,
+            'measurement_template_id' => $measurementTemplate?->id,
         ], fn($value) => $value !== null);
 
         $editUrl = route('admin.Customers.edit', $obj);

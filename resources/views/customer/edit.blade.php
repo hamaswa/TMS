@@ -351,7 +351,8 @@
                                         data-template-field="system.{{ $templateKey }}" data-default-column="right">
                                         <label for="measurement-{{ $name }}">{{ $label }}</label>
                                         <div class="input-group">
-                                            <input id="measurement-{{ $name }}" type="number" step="0.01"
+                                            <input id="measurement-{{ $name }}" type="number" step="0.01" name="{{ $name }}"
+                                                data-measure-key="system.{{ $templateKey }}"
                                                 min="0" class="form-control" name="{{ $name }}"
                                                 value="{{ old($name, $value) }}" dir="ltr">
                                             <div class="input-group-append"><span class="input-group-text">انچ</span></div>
@@ -385,14 +386,25 @@
                                             data-default-column="left">
                                             <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
                                             <select id="preference-{{ $type->slug }}" class="form-control"
-                                                name="{{ $type->slug }}"
-                                                data-template-system-field="{{ $templateSystemField }}">
-                                                <option value="">{{ $type->otn }} منتخب کریں</option>
-                                                @if (old($type->slug, $customerValue))
-                                                    <option value="{{ old($type->slug, $customerValue) }}" selected>
-                                                        {{ old($type->slug, $customerValue) }}</option>
-                                                @endif
-                                            </select>
+        name="{{ $type->slug }}"
+        data-measure-key="system.{{ $templateSystemField }}"
+        data-template-system-field="{{ $templateSystemField }}">
+    <option value="">{{ $type->otn }} منتخب کریں</option>
+    @php
+        $current = old($type->slug, $customerValue);
+        $choices = $optionChoices->get($type->option_id, collect());
+    @endphp
+    @foreach ($choices as $choice)
+        <option value="{{ $choice->Name }}"
+                data-template="{{ $choice->measurement_template_id }}"
+                @selected($current === $choice->Name)>
+            {{ $choice->Name }}
+        </option>
+    @endforeach
+    @if ($current && ! $choices->contains('Name', $current))
+        <option value="{{ $current }}" selected>{{ $current }}</option>
+    @endif
+</select>
                                         </div>
                                     @endforeach
                                 </div>
@@ -440,4 +452,32 @@
             </div>
         </div>
     </section>
+
+    <script>
+(function () {
+    const all = @json($allTemplateValues);
+    const select = document.querySelector('[name="measurement_template_id"]');
+    if (!select) return;
+
+    function applyTemplate(id) {
+        const vals = all[id] || {};
+
+        document.querySelectorAll('[data-measure-key]').forEach(el => {
+            const v = vals[el.dataset.measureKey] ?? '';
+            if (el.tagName === 'SELECT' && v && ![...el.options].some(o => o.value === v)) {
+                el.add(new Option(v, v));
+            }
+            el.value = v;
+        });
+
+        document.querySelectorAll('[data-template-field]').forEach(wrap => {
+            const hidden = wrap.offsetParent === null;
+            wrap.querySelectorAll('input, select').forEach(i => i.disabled = hidden);
+        });
+    }
+
+    select.addEventListener('change', e => setTimeout(() => applyTemplate(e.target.value), 0));
+    setTimeout(() => applyTemplate(select.value), 0);
+})();
+</script>
 @endsection

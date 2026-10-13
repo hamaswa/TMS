@@ -15,28 +15,34 @@ use Illuminate\Validation\Rule;
 class MeasurementService
 {
     private const PREFERENCE_SYSTEM_KEYS = [
-        'necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type',
+        'necktype',
+        'sleeve',
+        'Daaman',
+        'jeab',
+        'swingtype',
+        'button',
+        'plate_type',
     ];
 
     public const SYSTEM_FIELDS = [
-    'length' => ['label' => 'لمبائی', 'unit' => 'inch'],
-    'necktype' => ['label' => 'گلہ', 'unit' => ''],
-    'arms' => ['label' => 'بازو', 'unit' => 'inch'],
-    'sleeve' => ['label' => 'کف', 'unit' => ''],
-    'teraa' => ['label' => 'تیرا', 'unit' => 'inch'],
-    'Daaman' => ['label' => 'دامن', 'unit' => ''],
-    'jeab' => ['label' => 'جیب', 'unit' => ''],
-    'senaChorai' => ['label' => 'سینہ چوڑائی', 'unit' => 'inch'],
-    'swingtype' => ['label' => 'سلائی', 'unit' => ''],
-    'damanchorai' => ['label' => 'دامن چوڑائی', 'unit' => 'inch'],
-    'button' => ['label' => 'بٹن', 'unit' => ''],
-    'shalwar' => ['label' => 'شلوار', 'unit' => 'inch'],
-    'plate_type' => ['label' => 'پلیٹ', 'unit' => ''],
-    'pancha' => ['label' => 'پائنچہ', 'unit' => 'inch'],
-    'shalwarGheer' => ['label' => 'شلوار گھیر', 'unit' => 'inch'],
-    'shoulder' => ['label' => 'مونڈھا', 'unit' => 'inch'],
-    'chuta' => ['label' => 'چوتا', 'unit' => 'inch'],
-];
+        'length' => ['label' => 'لمبائی', 'unit' => 'inch'],
+        'necktype' => ['label' => 'گلہ', 'unit' => ''],
+        'arms' => ['label' => 'بازو', 'unit' => 'inch'],
+        'sleeve' => ['label' => 'کف', 'unit' => ''],
+        'teraa' => ['label' => 'تیرا', 'unit' => 'inch'],
+        'Daaman' => ['label' => 'دامن', 'unit' => ''],
+        'jeab' => ['label' => 'جیب', 'unit' => ''],
+        'senaChorai' => ['label' => 'سینہ چوڑائی', 'unit' => 'inch'],
+        'swingtype' => ['label' => 'سلائی', 'unit' => ''],
+        'damanchorai' => ['label' => 'دامن چوڑائی', 'unit' => 'inch'],
+        'button' => ['label' => 'بٹن', 'unit' => ''],
+        'shalwar' => ['label' => 'شلوار', 'unit' => 'inch'],
+        'plate_type' => ['label' => 'پلیٹ', 'unit' => ''],
+        'pancha' => ['label' => 'پائنچہ', 'unit' => 'inch'],
+        'shalwarGheer' => ['label' => 'شلوار گھیر', 'unit' => 'inch'],
+        'shoulder' => ['label' => 'مونڈھا', 'unit' => 'inch'],
+        'chuta' => ['label' => 'چوتا', 'unit' => 'inch'],
+    ];
 
     public function activeFields(int $ownerId): Collection
     {
@@ -52,7 +58,7 @@ class MeasurementService
 
         $selected = array_map('intval', $template->custom_field_ids ?? []);
 
-        return $fields->filter(fn ($field) => in_array((int) $field->id, $selected, true))->values();
+        return $fields->filter(fn($field) => in_array((int) $field->id, $selected, true))->values();
     }
 
     /**
@@ -69,7 +75,7 @@ class MeasurementService
         }
 
         foreach (self::PREFERENCE_SYSTEM_KEYS as $key) {
-            $sourceKey = 'system.'.$key;
+            $sourceKey = 'system.' . $key;
             $snapshotValue = trim((string) optional($values->get($sourceKey))->value);
             $currentValue = trim((string) $customer->{$key});
             if (($snapshotValue === '' || $snapshotValue === '0') && $currentValue !== '' && $currentValue !== '0') {
@@ -88,7 +94,7 @@ class MeasurementService
         $fields = $this->fieldsForTemplate(
             $this->activeFields((int) $order->userId),
             $order->measurementTemplate,
-        )->reject(fn ($field) => $values->has('custom.'.$field->id));
+        )->reject(fn($field) => $values->has('custom.' . $field->id));
 
         if ($fields->isEmpty()) {
             return $values->sortBy('sort_order')->values();
@@ -106,7 +112,7 @@ class MeasurementService
                     return;
                 }
 
-                $sourceKey = 'custom.'.$field->id;
+                $sourceKey = 'custom.' . $field->id;
                 $values->put($sourceKey, new OrderMeasurementValue([
                     'order_id' => null,
                     'measurement_field_id' => $field->id,
@@ -133,7 +139,7 @@ class MeasurementService
             } else {
                 array_push($fieldRules, 'string', 'max:500');
             }
-            $rules['custom_measurements.'.$field->id] = $fieldRules;
+            $rules['custom_measurements.' . $field->id] = $fieldRules;
         }
 
         return $rules;
@@ -141,8 +147,8 @@ class MeasurementService
 
     public function attributes(Collection $fields): array
     {
-        return $fields->mapWithKeys(fn ($field) => [
-            'custom_measurements.'.$field->id => $field->label,
+        return $fields->mapWithKeys(fn($field) => [
+            'custom_measurements.' . $field->id => $field->label,
         ])->all();
     }
 
@@ -247,7 +253,7 @@ class MeasurementService
             ->first();
 
         if ($history) {
-            return $history->values->map(fn ($value) => [
+            return $history->values->map(fn($value) => [
                 'measurement_field_id' => $value->measurement_field_id,
                 'source_key' => $value->source_key,
                 'label' => $value->label,
@@ -276,7 +282,7 @@ class MeasurementService
             if ($value !== null && $value !== '') {
                 $rows->push([
                     'measurement_field_id' => null,
-                    'source_key' => 'system.'.$key,
+                    'source_key' => 'system.' . $key,
                     'label' => $meta['label'],
                     'value' => (string) $value,
                     'unit' => $meta['unit'],
@@ -286,15 +292,15 @@ class MeasurementService
         }
 
         $customValues = $customer->measurementValues()->with('field')
-            ->whereHas('field', fn ($query) => $query
+            ->whereHas('field', fn($query) => $query
                 ->where('user_id', $ownerId)->where('is_active', true))
-            ->when($template, fn ($query) => $query->whereIn('measurement_field_id', $template->custom_field_ids ?? []))
-            ->get()->sortBy(fn ($value) => [$value->field->sort_order, $value->field->label]);
+            ->when($template, fn($query) => $query->whereIn('measurement_field_id', $template->custom_field_ids ?? []))
+            ->get()->sortBy(fn($value) => [$value->field->sort_order, $value->field->label]);
 
         foreach ($customValues as $customValue) {
             $rows->push([
                 'measurement_field_id' => $customValue->measurement_field_id,
-                'source_key' => 'custom.'.$customValue->measurement_field_id,
+                'source_key' => 'custom.' . $customValue->measurement_field_id,
                 'label' => $customValue->field->label,
                 'value' => $customValue->value,
                 'unit' => $customValue->field->unit,
@@ -329,9 +335,9 @@ class MeasurementService
         $savedValues = $rows->pluck('value', 'source_key');
 
         $missing = collect($template->system_fields ?? [])
-            ->filter(fn (string $key) => array_key_exists($key, self::SYSTEM_FIELDS))
-            ->filter(fn (string $key) => blank($savedValues->get('system.'.$key)))
-            ->map(fn (string $key) => self::SYSTEM_FIELDS[$key]['label']);
+            ->filter(fn(string $key) => array_key_exists($key, self::SYSTEM_FIELDS))
+            ->filter(fn(string $key) => blank($savedValues->get('system.' . $key)))
+            ->map(fn(string $key) => self::SYSTEM_FIELDS[$key]['label']);
 
         $requiredCustomFields = MeasurementField::query()
             ->where('user_id', $ownerId)
@@ -341,12 +347,12 @@ class MeasurementService
             ->orderBy('sort_order')
             ->get(['id', 'label']);
         $availableCustomIds = $savedValues->keys()
-            ->filter(fn ($key) => str_starts_with((string) $key, 'custom.'))
-            ->map(fn ($key) => (int) Str::after((string) $key, 'custom.'));
+            ->filter(fn($key) => str_starts_with((string) $key, 'custom.'))
+            ->map(fn($key) => (int) Str::after((string) $key, 'custom.'));
 
         return $missing->concat(
             $requiredCustomFields
-                ->reject(fn ($field) => $availableCustomIds->contains((int) $field->id))
+                ->reject(fn($field) => $availableCustomIds->contains((int) $field->id))
                 ->pluck('label')
         )->values();
     }
@@ -355,7 +361,7 @@ class MeasurementService
     {
         return hash('sha256', json_encode([
             'template_id' => $template?->id,
-            'values' => $rows->map(fn (array $row) => [
+            'values' => $rows->map(fn(array $row) => [
                 'source_key' => $row['source_key'],
                 'value' => (string) $row['value'],
                 'unit' => $row['unit'],
@@ -397,6 +403,77 @@ class MeasurementService
             'source' => $source,
         ]);
         $history->values()->createMany($rows->all());
+
+        return $history;
+    }
+
+    public function saveTemplateMeasurements(
+        Customers $customer,
+        int $ownerId,
+        MeasurementTemplate $template,
+        array $systemValues,
+        array $customValues,
+        Collection $fields,
+        ?int $recordedByUserId,
+        string $source = 'customer_update',
+    ): ?CustomerMeasurementHistory {
+        $rows = collect();
+        $sortOrder = 0;
+
+        // Save system measurements only for fields belonging to this template.
+        foreach ($template->system_fields ?? [] as $key) {
+            if (! array_key_exists($key, self::SYSTEM_FIELDS)) {
+                continue;
+            }
+
+            $value = $systemValues[$key] ?? null;
+
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $meta = self::SYSTEM_FIELDS[$key];
+
+            $rows->push([
+                'measurement_field_id' => null,
+                'source_key' => 'system.' . $key,
+                'label' => $meta['label'],
+                'value' => (string) $value,
+                'unit' => $meta['unit'],
+                'sort_order' => $sortOrder++,
+            ]);
+        }
+
+        // Save custom measurements only when they belong to this template.
+        $templateFields = $this->fieldsForTemplate($fields, $template);
+
+        foreach ($templateFields as $field) {
+            $value = $customValues[$field->id] ?? null;
+
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $rows->push([
+                'measurement_field_id' => $field->id,
+                'source_key' => 'custom.' . $field->id,
+                'label' => $field->label,
+                'value' => (string) $value,
+                'unit' => $field->unit,
+                'sort_order' => 1000 + (int) $field->sort_order,
+            ]);
+        }
+
+        $history = $customer->measurementHistories()->create([
+            'user_id' => $ownerId,
+            'measurement_template_id' => $template->id,
+            'recorded_by_user_id' => $recordedByUserId,
+            'source' => $source,
+        ]);
+
+        if ($rows->isNotEmpty()) {
+            $history->values()->createMany($rows->all());
+        }
 
         return $history;
     }
