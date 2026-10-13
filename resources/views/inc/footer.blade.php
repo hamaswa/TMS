@@ -91,6 +91,28 @@
     });
 }());
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.tms-dropdown-toggle').forEach(function (toggle) {
+        toggle.addEventListener('click', function (event) {
+            event.preventDefault();
+
+            const submenu = document.querySelector(this.getAttribute('href'));
+
+            if (!submenu) {
+                return;
+            }
+
+            const isOpen = submenu.classList.contains('is-open');
+
+            submenu.classList.toggle('is-open', !isOpen);
+            this.setAttribute('aria-expanded', String(!isOpen));
+        });
+    });
+});
+</script>
+
 @stack('scripts')
 <!--<script src="{{ asset('assets/js/popper.min.js')}}"></script>-->
 <!--<script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>-->
