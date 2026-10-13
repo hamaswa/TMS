@@ -229,7 +229,12 @@ class CounterOrderController extends Controller
             $counterOrder->reference,
         );
 
-        return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig'));
+       $printDocumentService = app(\App\Services\PrintDocumentService::class);
+        $printConfig = $printDocumentService->make($setting, request(), 'tailor-order-copy', $counterOrder->id);
+        $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $counterOrder->id]);
+        $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
+
+        return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
     }
 
     public function getTailorRates(Request $request, int $tailorId)

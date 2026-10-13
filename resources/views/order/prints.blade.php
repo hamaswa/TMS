@@ -269,6 +269,7 @@
 
         .measurement-meta-value {
             text-align: left;
+            padding: 0px;
             overflow-wrap: anywhere
         }
 
@@ -413,6 +414,50 @@
             text-align: right;
         }
 
+        .measurement-serial-row {
+            text-align: center;
+            padding-bottom: 10px;
+            margin: 0;
+            line-height: 1.3;
+            border-bottom: 1px dotted #bbb;
+        }
+
+        .measurement-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0px;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .measurement-meta-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 3px;
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+            line-height: 1.25;
+            border-bottom: 1px dotted #bbb;
+        }
+
+        .measurement-meta-label {
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .measurement-meta-value {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            text-align: center;
+        }
+
+        .measurement-meta-row strong {
+            margin: 0;
+        }
+
         @media print {
             @page {
                 margin: 6mm 0 3mm;
@@ -448,6 +493,10 @@
 
             .btn {
                 display: none;
+            }
+
+            .measurement-meta-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
@@ -568,25 +617,44 @@
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
                     <hr style="margin-top:4px;">
-                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آئٹم
-                            سیریل</span><strong
-                            class="measurement-meta-cell measurement-meta-value measurement-serial">{{ $displaySerial }}</strong>
+                    {{-- Item serial centered --}}
+                    <div class="measurement-serial-row">
+                        <strong>
+                            آئٹم سیریل نمبر
+                            <bdi>{{ $displaySerial }}</bdi>
+                        </strong>
                     </div>
-                    <div class="measurement-meta-row"><span
-                            class="measurement-meta-cell measurement-meta-label">گاہک</span><strong
-                            class="measurement-meta-cell measurement-meta-value">{{ $orderDetail->customers->name }}</strong>
-                    </div>
-                    <div class="measurement-meta-row"><span
-                            class="measurement-meta-cell measurement-meta-label">درزی</span><strong
-                            class="measurement-meta-cell measurement-meta-value">{{ $tailor?->name ?? 'بعد میں مقرر ہوگا' }}</strong>
-                    </div>
-                    <div class="measurement-meta-row"><span
-                            class="measurement-meta-cell measurement-meta-label">موبائل</span><strong
-                            class="measurement-meta-cell measurement-meta-value"
-                            dir="ltr">{{ $orderDetail->customers->phone_number1 }}</strong></div>
-                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آرڈر
-                            تاریخ</span><strong class="measurement-meta-cell measurement-meta-value"
-                            dir="ltr">{{ date('d-m-Y h:i A', strtotime($orderDetail->created_at)) }}</strong>
+
+                    {{-- Customer and mobile --}}
+                    <div class="measurement-meta-grid">
+                        <div class="measurement-meta-row">
+                            <strong class="measurement-meta-value" dir="ltr">
+                                {{ $orderDetail->customers->phone_number1 }}
+                            </strong>
+                             <span class="measurement-meta-label">موبائل</span>
+                        </div>
+
+                        <div class="measurement-meta-row">
+                            <strong class="measurement-meta-value">
+                                {{ $orderDetail->customers->name }}
+                            </strong>
+                           <span class="measurement-meta-label">گاہک</span>
+                        </div>
+
+                        {{-- Tailor and order date --}}
+                        <div class="measurement-meta-row">
+                            <strong class="measurement-meta-value" dir="ltr">
+                                {{ date('d-m-Y h:i A', strtotime($orderDetail->created_at)) }}
+                            </strong>
+                            <span class="measurement-meta-label">آرڈر تاریخ</span>
+                        </div>
+
+                        <div class="measurement-meta-row">
+                            <strong class="measurement-meta-value">
+                                {{ $tailor?->name ?? 'بعد میں مقرر ہوگا' }}
+                            </strong>
+                            <span class="measurement-meta-label">درزی</span>
+                        </div>
                     </div>
                     @if ($orderDetail->measurementTemplate)
                         <div class="measurement-meta-cell" style="margin-bottom:7px;text-align:center;">

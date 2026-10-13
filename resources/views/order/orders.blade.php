@@ -476,7 +476,7 @@
                         گاہکوں کی فہرست
                     </a>
 
-                    <a href="{{ route('admin.counter-orders.edit', $selectedCustomer->id ) }}" class="customer-orders-back">
+                    <a href="{{ route('admin.counter-orders.create' ) }}" class="customer-orders-back">
                         <i class="fas fa-plus"></i>
                         نیا آرڈر
                     </a>
