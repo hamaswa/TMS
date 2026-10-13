@@ -631,14 +631,14 @@
                             <strong class="measurement-meta-value" dir="ltr">
                                 {{ $orderDetail->customers->phone_number1 }}
                             </strong>
-                             <span class="measurement-meta-label">موبائل</span>
+                            <span class="measurement-meta-label">موبائل</span>
                         </div>
 
                         <div class="measurement-meta-row">
                             <strong class="measurement-meta-value">
                                 {{ $orderDetail->customers->name }}
                             </strong>
-                           <span class="measurement-meta-label">گاہک</span>
+                            <span class="measurement-meta-label">گاہک</span>
                         </div>
 
                         {{-- Tailor and order date --}}
@@ -669,37 +669,69 @@
                             $layoutMap = collect($tpl->field_layout ?? [])->keyBy('source');
                             $oneColumn = (int) ($tpl->layout_columns ?? 2) === 1;
 
-                            // Keep only fields that belong to THIS order's template
-$allMeasurements = $printMeasurements
-    ->keyBy('source_key')
-    ->filter(fn($m) => $layoutMap->has($m->source_key));
+                            // Preference fields go left by default, measurements go right
+                            $preferenceKeys = [
+                                'system.necktype',
+                                'system.sleeve',
+                                'system.Daaman',
+                                'system.jeab',
+                                'system.swingtype',
+                                'system.button',
+                                'system.plate_type',
+                            ];
 
-$items = $allMeasurements->values()->map(function ($m, $i) use ($layoutMap, $oneColumn) {
-    $saved = $layoutMap->get($m->source_key);
-    return [
-        'key' => $m->source_key,
-        'column' => $oneColumn ? 'right' : $saved['column'] ?? 'right',
-        'order' => (int) ($saved['order'] ?? 0),
-        'i' => $i,
-    ];
-});
+                            $allMeasurements = $printMeasurements->keyBy('source_key');
 
-$sortRule = [['order', 'asc'], ['i', 'asc']];
-$leftFields = $items
-    ->where('column', 'left')
-    ->sortBy($sortRule)
-    ->pluck('key')
+                            // Use the saved layout to filter only when it actually matches the saved rows.
+                            // If the template has no layout (or none of its keys match), print every saved row.
+                            if ($layoutMap->isNotEmpty()) {
+                                $matched = $allMeasurements->filter(fn($m) => $layoutMap->has($m->source_key));
+                                if ($matched->isNotEmpty()) {
+                                    $allMeasurements = $matched;
+                                }
+                            }
+
+                            
+$items = $allMeasurements
     ->values()
-    ->all();
-$rightFields = $items
-    ->where('column', 'right')
-    ->sortBy($sortRule)
-    ->pluck('key')
-    ->values()
-    ->all();
+    ->map(function ($m, $i) use ($layoutMap, $oneColumn, $preferenceKeys) {
+        $saved = $layoutMap->get($m->source_key);
 
-$rows = max(count($leftFields), count($rightFields));
-$colWidth = $oneColumn ? '100%' : '45%';
+        $defaultColumn = in_array($m->source_key, $preferenceKeys, true)
+            ? 'left'
+            : 'right';
+
+        $column = $oneColumn ? 'right' : ($saved['column'] ?? $defaultColumn);
+
+        if (! in_array($column, ['left', 'right'], true)) {
+            $column = $defaultColumn;
+        }
+
+        return [
+            'key' => $m->source_key,
+            'column' => $column,
+            'order' => (int) ($saved['order'] ?? $i),
+            'i' => $i,
+        ];
+    });
+
+
+                            $sortRule = [['order', 'asc'], ['i', 'asc']];
+                            $leftFields = $items
+                                ->where('column', 'left')
+                                ->sortBy($sortRule)
+                                ->pluck('key')
+                                ->values()
+                                ->all();
+                            $rightFields = $items
+                                ->where('column', 'right')
+                                ->sortBy($sortRule)
+                                ->pluck('key')
+                                ->values()
+                                ->all();
+
+                            $rows = max(count($leftFields), count($rightFields));
+                            $colWidth = $oneColumn ? '100%' : '45%';
                         @endphp
 
                         @if ($allMeasurements->count())
