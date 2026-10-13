@@ -594,81 +594,93 @@
                         </div>
                     @endif
                     @if ($orderDetail->measurementTemplate)
- 
-    {{-- ============ TEMPLATE ORDER: print ONLY this template's fields ============ --}}
-    @php
-        $tpl       = $orderDetail->measurementTemplate;
-        $layoutMap = collect($tpl->field_layout ?? [])->keyBy('source');
-        $oneColumn = (int) ($tpl->layout_columns ?? 2) === 1;
- 
-        // Keep only fields that belong to THIS order's template
-        $allMeasurements = $printMeasurements
-            ->keyBy('source_key')
-            ->filter(fn ($m) => $layoutMap->has($m->source_key));
- 
-        $items = $allMeasurements->values()->map(function ($m, $i) use ($layoutMap, $oneColumn) {
-            $saved = $layoutMap->get($m->source_key);
-            return [
-                'key'    => $m->source_key,
-                'column' => $oneColumn ? 'right' : ($saved['column'] ?? 'right'),
-                'order'  => (int) ($saved['order'] ?? 0),
-                'i'      => $i,
-            ];
-        });
- 
-        $sortRule    = [['order', 'asc'], ['i', 'asc']];
-        $leftFields  = $items->where('column', 'left')->sortBy($sortRule)->pluck('key')->values()->all();
-        $rightFields = $items->where('column', 'right')->sortBy($sortRule)->pluck('key')->values()->all();
- 
-        $rows     = max(count($leftFields), count($rightFields));
-        $colWidth = $oneColumn ? '100%' : '45%';
-    @endphp
- 
-    @if ($allMeasurements->count())
-        <hr>
- 
-        @for ($i = 0; $i < $rows; $i++)
-            <div class="row measurement-row"
-                style="display:flex;justify-content:space-between;padding:0 10px;">
- 
-                {{-- LEFT COLUMN --}}
-                @unless ($oneColumn)
-                    <div class="col-6 {{ !isset($leftFields[$i]) ? 'measurement-column-empty' : '' }}"
-                        style="width:45%;">
-                        @if (isset($leftFields[$i]))
-                            @php $item = $allMeasurements[$leftFields[$i]]; @endphp
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
-                                <span class="measurement-value measurement-preference-value">{{ $item->value }}</span>
-                                <span class="measurement-label"
-                                    style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
-                            </div>
+
+                        {{-- ============ TEMPLATE ORDER: print ONLY this template's fields ============ --}}
+                        @php
+                            $tpl = $orderDetail->measurementTemplate;
+                            $layoutMap = collect($tpl->field_layout ?? [])->keyBy('source');
+                            $oneColumn = (int) ($tpl->layout_columns ?? 2) === 1;
+
+                            // Keep only fields that belong to THIS order's template
+$allMeasurements = $printMeasurements
+    ->keyBy('source_key')
+    ->filter(fn($m) => $layoutMap->has($m->source_key));
+
+$items = $allMeasurements->values()->map(function ($m, $i) use ($layoutMap, $oneColumn) {
+    $saved = $layoutMap->get($m->source_key);
+    return [
+        'key' => $m->source_key,
+        'column' => $oneColumn ? 'right' : $saved['column'] ?? 'right',
+        'order' => (int) ($saved['order'] ?? 0),
+        'i' => $i,
+    ];
+});
+
+$sortRule = [['order', 'asc'], ['i', 'asc']];
+$leftFields = $items
+    ->where('column', 'left')
+    ->sortBy($sortRule)
+    ->pluck('key')
+    ->values()
+    ->all();
+$rightFields = $items
+    ->where('column', 'right')
+    ->sortBy($sortRule)
+    ->pluck('key')
+    ->values()
+    ->all();
+
+$rows = max(count($leftFields), count($rightFields));
+$colWidth = $oneColumn ? '100%' : '45%';
+                        @endphp
+
+                        @if ($allMeasurements->count())
+                            <hr>
+
+                            @for ($i = 0; $i < $rows; $i++)
+                                <div class="row measurement-row"
+                                    style="display:flex;justify-content:space-between;padding:0 10px;">
+
+                                    {{-- LEFT COLUMN --}}
+                                    @unless ($oneColumn)
+                                        <div class="col-6 {{ !isset($leftFields[$i]) ? 'measurement-column-empty' : '' }}"
+                                            style="width:45%;">
+                                            @if (isset($leftFields[$i]))
+                                                @php $item = $allMeasurements[$leftFields[$i]]; @endphp
+                                                <div
+                                                    style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
+                                                    <span
+                                                        class="measurement-value measurement-preference-value">{{ $item->value }}</span>
+                                                    <span class="measurement-label"
+                                                        style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endunless
+
+                                    {{-- RIGHT COLUMN --}}
+                                    <div class="col-6 {{ !isset($rightFields[$i]) ? 'measurement-column-empty' : '' }}"
+                                        style="width:{{ $colWidth }};">
+                                        @if (isset($rightFields[$i]))
+                                            @php $item = $allMeasurements[$rightFields[$i]]; @endphp
+                                            <div
+                                                style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
+                                                <span class="measurement-value"
+                                                    style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
+                                                    {{ $item->value }}
+                                                </span>
+                                                <span class="measurement-label"
+                                                    style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
+                                                    {{ $item->label }}
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                </div>
+                            @endfor
                         @endif
-                    </div>
-                @endunless
- 
-                {{-- RIGHT COLUMN --}}
-                <div class="col-6 {{ !isset($rightFields[$i]) ? 'measurement-column-empty' : '' }}"
-                    style="width:{{ $colWidth }};">
-                    @if (isset($rightFields[$i]))
-                        @php $item = $allMeasurements[$rightFields[$i]]; @endphp
-                        <div style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
-                            <span class="measurement-value"
-                                style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
-                                {{ $item->value }}
-                            </span>
-                            <span class="measurement-label"
-                                style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
-                                {{ $item->label }}
-                            </span>
-                        </div>
-                    @endif
-                </div>
- 
-            </div>
-        @endfor
-    @endif
- 
-@else
+                    @else
                         <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
                             <div class="col-6 mt-2 mb-2" style="width: 45%">
                                 <div class="d-flex justify-content-between"
@@ -870,7 +882,8 @@
                             <div>
                                 @if (filled($orderDetail->remarks))
                                     <h3 class="text-center font-weight-400 mt-2" style="font-size: 16px;">
-                                        <strong>خصوصی سلائی ہدایت:</strong> {{ $orderDetail->remarks }}</h3>
+                                        <strong>خصوصی سلائی ہدایت:</strong> {{ $orderDetail->remarks }}
+                                    </h3>
                                 @endif
                             </div>
                             <div class="measurement-footer">

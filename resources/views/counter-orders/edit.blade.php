@@ -691,6 +691,67 @@
             background: #fcfefd
         }
 
+        .co-closed-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: stretch;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 0 0 24px;
+            direction: rtl;
+        }
+
+        .co-closed-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 165px;
+            min-height: 54px;
+            padding: 12px 18px;
+
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #fff;
+            color: #26364b !important;
+
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none !important;
+
+            box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+            transition: all 0.2s ease;
+        }
+
+        .co-closed-btn i {
+            font-size: 17px;
+            color: #4775b8;
+        }
+
+        .co-closed-btn:hover {
+            transform: translateY(-2px);
+            border-color: #b9cfee;
+            background: #f7faff;
+            box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08);
+        }
+
+        .co-closed-btn-primary {
+            color: #fff !important;
+            background: var(--blue);
+            border-color: var(--blue);
+            box-shadow: 0 3px 8px rgba(37, 99, 235, 0.18);
+        }
+
+        .co-closed-btn-primary i {
+            color: #fff;
+        }
+
+        .co-closed-btn-primary:hover {
+            color: #fff !important;
+            background: #1256bd;
+            border-color: #1256bd;
+        }
+
         .co-row-status {
             display: inline-flex;
             margin-top: 3px;
@@ -783,6 +844,19 @@
                     grid-column: 1
                 }
             }
+
+            @media (max-width: 600px) {
+                .co-closed-actions {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 10px;
+                }
+
+                .co-closed-btn {
+                    width: 100%;
+                    min-width: 0;
+                }
+            }
     </style>
     <section class="main-content co-page">
         <div class="co-shell">
@@ -795,6 +869,24 @@
                     </p>
                 </div><span class="co-status">{{ $statusLabels[$counterOrder->status] ?? $counterOrder->status }}</span>
             </header>
+            @if ($counterOrder->isClosed())
+                <div class="co-closed-actions">
+                    <a href="{{ route('admin.Customers.index') }}" class="co-closed-btn">
+                        <i class="fas fa-users"></i>
+                        <span>گاہکوں کی فہرست</span>
+                    </a>
+
+                    <a href="{{ route('admin.counter-orders.create') }}" class="co-closed-btn co-closed-btn-primary">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>نیا آرڈر</span>
+                    </a>
+
+                    <a href="{{ route('admin.customer.orders', $counterOrder->customer?->id) }}" class="co-closed-btn">
+                        <i class="fas fa-history"></i>
+                        <span>حالیہ آرڈرز</span>
+                    </a>
+                </div>
+            @endif
             <div id="co-live-alert" class="alert co-alert" role="status" hidden></div>
             @if (session('success'))
                 <div class="alert alert-success co-alert">{{ session('success') }}</div>
@@ -1004,13 +1096,9 @@
 
                                 <div>
                                     <label for="co-tailor-rate">سلائی کی شرح منتخب کریں</label>
-                                    <select
-                                        id="co-tailor-rate"
-                                        class="form-control"
-                                        name="tailor_price"
+                                    <select id="co-tailor-rate" class="form-control" name="tailor_price"
                                         data-rate-url="{{ route('admin.counter-orders.tailors.rates', ['tailorId' => '__ID__']) }}"
-                                        disabled
-                                    >
+                                        disabled>
                                         <option value="">پہلے درزی منتخب کریں</option>
                                     </select>
                                 </div>
@@ -1224,7 +1312,7 @@
                     else color.disabled = true;
                 }
 
-                $(document).on('change', '#co-tailor', function () {
+                $(document).on('change', '#co-tailor', function() {
                     var tailorId = $(this).val();
                     var rateSelect = $('#co-tailor-rate');
 
@@ -1232,9 +1320,8 @@
                         .empty()
                         .append($('<option>', {
                             value: '',
-                            text: tailorId
-                                ? 'شرح لوڈ ہو رہی ہے...'
-                                : 'پہلے درزی منتخب کریں'
+                            text: tailorId ?
+                                'شرح لوڈ ہو رہی ہے...' : 'پہلے درزی منتخب کریں'
                         }))
                         .prop('disabled', true);
 
@@ -1251,7 +1338,7 @@
                         method: 'GET',
                         dataType: 'json',
 
-                        success: function (rates) {
+                        success: function(rates) {
                             rateSelect.empty();
 
                             rateSelect.append($('<option>', {
@@ -1259,7 +1346,7 @@
                                 text: 'سلائی کی شرح منتخب کریں'
                             }));
 
-                            $.each(rates, function (_, rate) {
+                            $.each(rates, function(_, rate) {
                                 rateSelect.append($('<option>', {
                                     value: rate.rateValue,
                                     text: rate.rateName + ' — Rs. ' +
@@ -1279,8 +1366,9 @@
                             // console.log('Fetched tailor rates:', rates);
                         },
 
-                        error: function (xhr) {
-                            console.error('Failed to fetch tailor rates:', xhr.status, xhr.responseText);
+                        error: function(xhr) {
+                            console.error('Failed to fetch tailor rates:', xhr.status, xhr
+                                .responseText);
 
                             rateSelect
                                 .empty()
