@@ -375,150 +375,180 @@ class CustomerController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
-     *
-     * @return Response
-     */
-    public function store(Request $request)
-    {
-        $parentCustomer = null;
-        if ($request->filled('parent_customer_id')) {
-            $request->validate(['parent_customer_id' => ['integer']]);
-            $parentCustomer = Customers::where('user_id', Auth::user()->businessOwnerId())
-                ->whereNull('parent_id')
-                ->findOrFail($request->integer('parent_customer_id'));
-            $request->merge(['contact' => $parentCustomer->phone_number1]);
-        }
-        $measurementTemplates = $this->measurementTemplates();
-        $measurementTemplate = $measurementTemplates->firstWhere('id', (int) $request->input('measurement_template_id'));
-        $measurementFields = $this->measurements->fieldsForTemplate(
-            $this->measurements->activeFields(Auth::user()->businessOwnerId()),
-            $measurementTemplate,
-        );
-        $validated = $request->validate(array_merge([
-            'name' => ['required', 'string', 'max:255'],
-            'contact' => [
-                'required',
-                'string',
-                'max:50',
-                new PakistanMobileNumber,
-            ],
-            'parent_customer_id' => ['nullable', 'integer'],
-            'mobile_pin' => ['nullable', 'digits:6'],
-            'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
-            'length' => ['nullable', 'numeric', 'min:0'],
-            'arms' => ['nullable', 'numeric', 'min:0'],
-            'teraa' => ['nullable', 'numeric', 'min:0'],
-            'senaChorai' => ['nullable', 'numeric', 'min:0'],
-            'damanchorai' => ['nullable', 'numeric', 'min:0'],
-            'shalwar' => ['nullable', 'numeric', 'min:0'],
-            'pancha' => ['nullable', 'numeric', 'min:0'],
-            'shalwarGheer' => ['nullable', 'numeric', 'min:0'],
-            'monda' => ['nullable', 'numeric', 'min:0'],
-            'chuta' => ['nullable', 'numeric', 'min:0'],
-            'note' => ['nullable', 'string', 'max:2000'],
-        ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
-
-        $existingCustomer = $parentCustomer ?: $this->existingRootCustomerByPhone($validated['contact']);
-
-        $obj = new Customers;
-        $obj->name = $request->name;
-        $obj->phone_number1 = $existingCustomer?->phone_number1 ?? $request->contact;
-        $obj->length = $request->length;
-        $obj->arms = $request->arms;
-        $obj->teraa = $request->teraa;
-        $obj->senaChorai = $request->senaChorai; //
-        $obj->damanchorai = $request->damanchorai;
-        $obj->shalwar = $request->shalwar; //
-        $obj->pancha = $request->pancha; //
-        $obj->shalwarGheer = $request->shalwarGheer; //
-        $obj->shoulder = $request->monda;
-        $obj->chuta = $request->chuta;
-        $obj->note = $request->note;
-        if ($existingCustomer) {
-            $obj->parent_id = $existingCustomer->id;
-        }
-
-        // New template forms submit the readable label directly. Older forms
-        // submitted "option-id - label", so accept both without turning a
-        // valid modern selection into the legacy numeric zero sentinel.
-        $obj->Daaman = $this->preferenceValue($request->add_daaman_type);
-        $obj->plate_type = $this->preferenceValue($request->plate_type);
-        $obj->necktype = $this->preferenceValue($request->add_neck_type);
-        $obj->jeab = $this->preferenceValue($request->add_pocket_type);
-        $obj->button = $this->preferenceValue($request->add_button_type);
-        $obj->swingtype = $this->preferenceValue($request->add_sewing_type);
-        $obj->shirtbutton = $this->preferenceValue($request->add_shirt_button_type);
-        $obj->sleeve = $this->preferenceValue($request->add_sleeve_opening_type);
-        $obj->user_id = Auth::user()->businessOwnerId();
-        if (! $existingCustomer) {
-            $obj->acquisition_source = 'tailoring';
-        }
-        $obj->measurement_template_id = $measurementTemplate?->id;
-        $isSecondaryProfile = $obj->parent_id !== null;
-        $plainPin = $isSecondaryProfile
-            ? null
-            : ($validated['mobile_pin'] ?? (string) random_int(100000, 999999));
-        $obj->mobile_pin = $plainPin ? Hash::make($plainPin) : null;
-        $obj->pin_changed_at = $plainPin ? now() : null;
-        DB::transaction(function () use ($obj, $measurementFields, $validated, $measurementTemplate) {
-            $obj->save();
-            // Save measurement values separately for the selected template.
-            if ($measurementTemplate) {
-                $this->measurements->saveTemplateMeasurements(
-                    $obj,
-                    Auth::user()->businessOwnerId(),
-                    $measurementTemplate,
-                    [
-                        'length' => $request->length,
-                        'arms' => $request->arms,
-                        'teraa' => $request->teraa,
-                        'senaChorai' => $request->senaChorai,
-                        'damanchorai' => $request->damanchorai,
-                        'shalwar' => $request->shalwar,
-                        'pancha' => $request->pancha,
-                        'shalwarGheer' => $request->shalwarGheer,
-                        'shoulder' => $request->monda,
-                        'chuta' => $request->chuta,
-                        'necktype' => $this->preferenceValue($request->add_neck_type),
-                        'sleeve' => $this->preferenceValue($request->add_sleeve_opening_type),
-                        'Daaman' => $this->preferenceValue($request->add_daaman_type),
-                        'jeab' => $this->preferenceValue($request->add_pocket_type),
-                        'swingtype' => $this->preferenceValue($request->add_sewing_type),
-                        'button' => $this->preferenceValue($request->add_button_type),
-                        'plate_type' => $this->preferenceValue($request->plate_type),
-                    ],
-                    $validated['custom_measurements'] ?? [],
-                    $measurementFields,
-                    Auth::id(),
-                    'customer_update'
-                );
-            }
-
-            $this->measurements->recordHistory(
-                $obj,
-                Auth::user()->businessOwnerId(),
-                $measurementTemplate,
-                Auth::id(),
-                'customer_created',
-            );
-        });
-
-        if ($isSecondaryProfile) {
-            return redirect()->route('admin.customers.statement', [
-                'id' => $existingCustomer->id,
-                'tab' => 'measurements',
-                'profile' => $obj->id,
-            ])
-                ->with('insert', "{$obj->name} کا نیا ناپ/پروفائل موجودہ گاہک کے ساتھ شامل کر دیا گیا ہے۔");
-        }
-
-        // dd($obj);
-        return redirect()->route('admin.Customers.index', ['created' => $obj->id])
-            ->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔')
-            ->with('customer_pin', $plainPin)
-            ->with('customer_pin_name', $obj->name);
+ * Store a newly created resource in storage.
+ *
+ * @return Response
+ */
+public function store(Request $request)
+{
+    $parentCustomer = null;
+    if ($request->filled('parent_customer_id')) {
+        $request->validate(['parent_customer_id' => ['integer']]);
+        $parentCustomer = Customers::where('user_id', Auth::user()->businessOwnerId())
+            ->whereNull('parent_id')
+            ->findOrFail($request->integer('parent_customer_id'));
+        $request->merge(['contact' => $parentCustomer->phone_number1]);
     }
+
+    $ownerId = Auth::user()->businessOwnerId();
+    $measurementTemplates = $this->measurementTemplates();
+    $measurementTemplate = $measurementTemplates->firstWhere('id', (int) $request->input('measurement_template_id'));
+    $measurementFields = $this->measurements->fieldsForTemplate(
+        $this->measurements->activeFields($ownerId),
+        $measurementTemplate,
+    );
+
+    $validated = $request->validate(array_merge([
+        'name' => ['required', 'string', 'max:255'],
+        'contact' => [
+            'required',
+            'string',
+            'max:50',
+            new PakistanMobileNumber,
+        ],
+        'parent_customer_id' => ['nullable', 'integer'],
+        'mobile_pin' => ['nullable', 'digits:6'],
+        'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
+        'length' => ['nullable', 'numeric', 'min:0'],
+        'arms' => ['nullable', 'numeric', 'min:0'],
+        'teraa' => ['nullable', 'numeric', 'min:0'],
+        'senaChorai' => ['nullable', 'numeric', 'min:0'],
+        'damanchorai' => ['nullable', 'numeric', 'min:0'],
+        'shalwar' => ['nullable', 'numeric', 'min:0'],
+        'pancha' => ['nullable', 'numeric', 'min:0'],
+        'shalwarGheer' => ['nullable', 'numeric', 'min:0'],
+        'monda' => ['nullable', 'numeric', 'min:0'],
+        'chuta' => ['nullable', 'numeric', 'min:0'],
+        'note' => ['nullable', 'string', 'max:2000'],
+    ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
+
+    $existingCustomer = $parentCustomer ?: $this->existingRootCustomerByPhone($validated['contact']);
+
+    $obj = new Customers;
+    $obj->name = $request->name;
+    $obj->phone_number1 = $existingCustomer?->phone_number1 ?? $request->contact;
+    $obj->length = $request->length;
+    $obj->arms = $request->arms;
+    $obj->teraa = $request->teraa;
+    $obj->senaChorai = $request->senaChorai;
+    $obj->damanchorai = $request->damanchorai;
+    $obj->shalwar = $request->shalwar;
+    $obj->pancha = $request->pancha;
+    $obj->shalwarGheer = $request->shalwarGheer;
+    $obj->shoulder = $request->monda;
+    $obj->chuta = $request->chuta;
+    $obj->note = $request->note;
+    if ($existingCustomer) {
+        $obj->parent_id = $existingCustomer->id;
+    }
+
+    // New template forms submit the readable label directly. Older forms
+    // submitted "option-id - label", so accept both without turning a
+    // valid modern selection into the legacy numeric zero sentinel.
+    $obj->Daaman = $this->preferenceValue($request->add_daaman_type);
+    $obj->plate_type = $this->preferenceValue($request->plate_type);
+    $obj->necktype = $this->preferenceValue($request->add_neck_type);
+    $obj->jeab = $this->preferenceValue($request->add_pocket_type);
+    $obj->button = $this->preferenceValue($request->add_button_type);
+    $obj->swingtype = $this->preferenceValue($request->add_sewing_type);
+    $obj->shirtbutton = $this->preferenceValue($request->add_shirt_button_type);
+    $obj->sleeve = $this->preferenceValue($request->add_sleeve_opening_type);
+    $obj->user_id = $ownerId;
+    if (! $existingCustomer) {
+        $obj->acquisition_source = 'tailoring';
+    }
+    $obj->measurement_template_id = $measurementTemplate?->id;
+
+    $isSecondaryProfile = $obj->parent_id !== null;
+    $plainPin = $isSecondaryProfile
+        ? null
+        : ($validated['mobile_pin'] ?? (string) random_int(100000, 999999));
+    $obj->mobile_pin = $plainPin ? Hash::make($plainPin) : null;
+    $obj->pin_changed_at = $plainPin ? now() : null;
+
+    // Build the values outside the transaction ($request is not available inside the closure).
+    $systemValues = [
+        'length' => $request->length,
+        'arms' => $request->arms,
+        'teraa' => $request->teraa,
+        'senaChorai' => $request->senaChorai,
+        'damanchorai' => $request->damanchorai,
+        'shalwar' => $request->shalwar,
+        'pancha' => $request->pancha,
+        'shalwarGheer' => $request->shalwarGheer,
+        'shoulder' => $request->monda,
+        'chuta' => $request->chuta,
+        'necktype' => $this->preferenceValue($request->add_neck_type),
+        'sleeve' => $this->preferenceValue($request->add_sleeve_opening_type),
+        'Daaman' => $this->preferenceValue($request->add_daaman_type),
+        'jeab' => $this->preferenceValue($request->add_pocket_type),
+        'swingtype' => $this->preferenceValue($request->add_sewing_type),
+        'button' => $this->preferenceValue($request->add_button_type),
+        'plate_type' => $this->preferenceValue($request->plate_type),
+    ];
+
+    $customValues = $validated['custom_measurements'] ?? [];
+
+    $filled = fn ($v) => $v !== null && $v !== '';
+
+    // Only count fields that belong to the selected template.
+    $templateKeys = $measurementTemplate?->system_fields ?? [];
+    $hasMeasurements = $measurementTemplate
+        && (
+            collect($systemValues)->only($templateKeys)->contains($filled)
+            || collect($customValues)->contains($filled)
+        );
+
+    DB::transaction(function () use (
+        $obj,
+        $measurementFields,
+        $measurementTemplate,
+        $systemValues,
+        $customValues,
+        $ownerId,
+        $hasMeasurements
+    ) {
+        $obj->save();
+
+        // No measurements entered, so store no measurement history.
+        if (! $hasMeasurements) {
+            return;
+        }
+
+        $this->measurements->saveTemplateMeasurements(
+            $obj,
+            $ownerId,
+            $measurementTemplate,
+            $systemValues,
+            $customValues,
+            $measurementFields,
+            Auth::id(),
+            'customer_created',
+        );
+
+        $this->measurements->recordHistory(
+            $obj,
+            $ownerId,
+            $measurementTemplate,
+            Auth::id(),
+            'customer_created',
+        );
+    });
+
+    if ($isSecondaryProfile) {
+        return redirect()->route('admin.customers.statement', [
+            'id' => $existingCustomer->id,
+            'tab' => 'measurements',
+            'profile' => $obj->id,
+        ])
+            ->with('insert', "{$obj->name} کا نیا ناپ/پروفائل موجودہ گاہک کے ساتھ شامل کر دیا گیا ہے۔");
+    }
+
+    return redirect()->route('admin.Customers.index', ['created' => $obj->id])
+        ->with('insert', 'گاہک کامیابی سے شامل کر دیا گیا ہے۔')
+        ->with('customer_pin', $plainPin)
+        ->with('customer_pin_name', $obj->name);
+}
 
     /**
      * Show the form for editing the specified resource.

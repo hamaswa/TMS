@@ -291,12 +291,12 @@
                                 <div class="row">
                                     <div class="col-md-6 form-group"><label>نام <span
                                                 class="text-danger">*</span></label><input type="text"
-                                            class="form-control" name="name" value="{{ old('name') }}" required
+                                            class="form-control" name="name" value="{{ old('name') }}" 
                                             autocomplete="name"></div>
                                     <div class="col-md-6 form-group"><label for="customer-contact">رابطہ نمبر <span
                                                 class="text-danger">*</span></label><input id="customer-contact"
                                             type="tel" inputmode="tel" class="form-control" name="contact"
-                                            value="{{ old('contact', $parentCustomer?->phone_number1) }}" required dir="ltr" autocomplete="tel"
+                                            value="{{ old('contact', $parentCustomer?->phone_number1) }}"  dir="ltr" autocomplete="tel"
                                             @if($parentCustomer) readonly @endif
                                             placeholder="03001234567 یا +923001234567">
                                         @error('contact')
@@ -354,7 +354,7 @@
                                                         class="text-danger">*</span></label><input
                                                     id="measurement-{{ $name }}" type="number" step="0.01"
                                                     min="0" class="form-control" name="{{ $name }}"
-                                                    value="{{ old($name) }}" required></div>
+                                                    value="{{ old($name) }}" ></div>
                                         @endforeach
                                         @include('customer.partials.custom-measurements', [
                                             'embedded' => true,

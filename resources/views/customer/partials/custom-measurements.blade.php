@@ -15,7 +15,9 @@
                 <div class="form-row">
                 @endunless
                 @foreach ($measurementFields as $field)
+                @php($savedMeasurementValues = $savedMeasurementValues ?? collect())
                     @php($value = old('custom_measurements.' . $field->id, $savedMeasurementValues->get('custom.' . $field->id)))
+                    
 
                     <div class="form-group {{ $embedded ? 'edit-field mb-0' : 'col-md-6' }}"
                         data-measurement-field="custom.{{ $field->id }}"
