@@ -77,8 +77,13 @@ class CustomerController extends Controller
 
         return view('customer.list', array_merge(
             compact(
-                'customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements',
-                'canCreateBasicCustomer', 'canViewTailoringOrders', 'createdCustomer'
+                'customers',
+                'canViewBalances',
+                'canCreateTailoringOrder',
+                'canManageMeasurements',
+                'canCreateBasicCustomer',
+                'canViewTailoringOrders',
+                'createdCustomer'
             ),
             $stats,
         ));
@@ -105,7 +110,11 @@ class CustomerController extends Controller
 
         return response()->json([
             'html' => view('customer.partials.directory-rows', compact(
-                'customers', 'canViewBalances', 'canCreateTailoringOrder', 'canManageMeasurements', 'canViewTailoringOrders'
+                'customers',
+                'canViewBalances',
+                'canCreateTailoringOrder',
+                'canManageMeasurements',
+                'canViewTailoringOrders'
             ))->render(),
             'count' => $customers->total(),
             'from' => $customers->firstItem(),
@@ -119,7 +128,7 @@ class CustomerController extends Controller
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
             ->whereNull('parent_id')
             ->withSum([
-                'transactions as current_balance' => fn ($transactions) => $transactions
+                'transactions as current_balance' => fn($transactions) => $transactions
                     ->where('userId', Auth::user()->businessOwnerId()),
             ], 'remainingBalance')
             ->orderBy('name')
@@ -191,9 +200,9 @@ class CustomerController extends Controller
             : null;
         $orders = $canViewTailoring
             ? $customer->orders()->where('userId', $ownerId)
-                ->with(['tailor:id,name', 'customers:id,name,serial_number', 'measurementTemplate:id,name'])
-                ->withSum(['transactions as outstanding_amount' => fn ($query) => $query->where('userId', $ownerId)], 'remainingBalance')
-                ->latest()->limit(50)->get()
+            ->with(['tailor:id,name', 'customers:id,name,serial_number', 'measurementTemplate:id,name'])
+            ->withSum(['transactions as outstanding_amount' => fn($query) => $query->where('userId', $ownerId)], 'remainingBalance')
+            ->latest()->limit(50)->get()
             : collect();
         $sales = collect();
         if ($canViewShop) {
@@ -203,15 +212,15 @@ class CustomerController extends Controller
                 ->latest()
                 ->limit(50)
                 ->get()
-                ->map(fn ($sale) => (object) [
+                ->map(fn($sale) => (object) [
                     'id' => $sale->id,
                     'source' => 'legacy',
-                    'display_number' => '#'.$sale->id,
+                    'display_number' => '#' . $sale->id,
                     'counter_order_id' => null,
                     'created_at' => $sale->created_at,
                     'items_count' => $sale->detail->sum('quantity'),
                     'summary' => $sale->detail->pluck('product_name')->filter()->take(3)->implode('، '),
-                    'amount' => $sale->detail->sum(fn ($detail) => (float) $detail->price * (int) $detail->quantity),
+                    'amount' => $sale->detail->sum(fn($detail) => (float) $detail->price * (int) $detail->quantity),
                     'received' => (float) ($sale->transaction?->recivedPayment ?? 0),
                     'balance' => (float) ($sale->transaction?->remainingBalance ?? 0),
                     'status' => $sale->status,
@@ -223,17 +232,17 @@ class CustomerController extends Controller
                 ->latest()
                 ->limit(200)
                 ->get()
-                ->groupBy(fn ($sale) => $sale->counter_sale_receipt_id
-                    ? 'receipt-'.$sale->counter_sale_receipt_id
-                    : 'legacy-'.$sale->created_at?->format('Y-m-d H:i:s'));
+                ->groupBy(fn($sale) => $sale->counter_sale_receipt_id
+                    ? 'receipt-' . $sale->counter_sale_receipt_id
+                    : 'legacy-' . $sale->created_at?->format('Y-m-d H:i:s'));
             $stockTransactions = Transaction::where('userId', $ownerId)
                 ->where('Order_type', 'Sale')
-                ->whereIn('sale_id', $stockGroups->map(fn ($items) => $items->first()->id))
+                ->whereIn('sale_id', $stockGroups->map(fn($items) => $items->first()->id))
                 ->get()->keyBy('sale_id');
             $counterOrderLinks = CounterOrderItem::query()
                 ->where('source_record_type', 'counter_sale_receipt')
-                ->whereIn('source_record_id', $stockGroups->map(fn ($items) => $items->first()->counter_sale_receipt_id)->filter())
-                ->whereHas('counterOrder', fn ($query) => $query->where('user_id', $ownerId))
+                ->whereIn('source_record_id', $stockGroups->map(fn($items) => $items->first()->counter_sale_receipt_id)->filter())
+                ->whereHas('counterOrder', fn($query) => $query->where('user_id', $ownerId))
                 ->with('counterOrder:id,reference,serial_number')
                 ->get()
                 ->keyBy('source_record_id');
@@ -247,12 +256,12 @@ class CustomerController extends Controller
                         'id' => $first->id,
                         'source' => 'stock',
                         'display_number' => $counterOrder?->displayNumber()
-                            ?: ($first->receipt?->receipt_number ?: '#'.$first->id),
+                            ?: ($first->receipt?->receipt_number ?: '#' . $first->id),
                         'counter_order_id' => $counterOrder?->id,
                         'created_at' => $first->created_at,
                         'items_count' => $items->count(),
-                        'summary' => $items->map(fn ($item) => collect([$item->brand?->name, $item->type?->name, $item->color])->filter()->implode(' '))->filter()->take(3)->implode('، '),
-                        'amount' => $items->sum(fn ($item) => (float) $item->selling_price * (float) $item->length),
+                        'summary' => $items->map(fn($item) => collect([$item->brand?->name, $item->type?->name, $item->color])->filter()->implode(' '))->filter()->take(3)->implode('، '),
+                        'amount' => $items->sum(fn($item) => (float) $item->selling_price * (float) $item->length),
                         'received' => (float) ($transaction?->recivedPayment ?? 0),
                         'balance' => (float) ($transaction?->remainingBalance ?? 0),
                         'status' => $first->receipt?->status ?? 'completed',
@@ -263,7 +272,7 @@ class CustomerController extends Controller
             $sales = $legacySales->concat($stockSales)->sortByDesc('created_at')->take(50)->values();
         }
         if ($transactions) {
-            $saleDisplayNumbers = $sales->keyBy(fn ($sale) => (string) $sale->id);
+            $saleDisplayNumbers = $sales->keyBy(fn($sale) => (string) $sale->id);
             $transactions->getCollection()->each(function ($transaction) use ($saleDisplayNumbers) {
                 if ($transaction->sale_id) {
                     $transaction->setAttribute(
@@ -292,25 +301,25 @@ class CustomerController extends Controller
             $requestedProfileId = request()->integer('profile');
             $measurementProfile = $measurementProfiles->firstWhere('id', $requestedProfileId) ?? $customer;
             $systemMeasurements = collect(MeasurementService::SYSTEM_FIELDS)
-                ->map(fn (array $meta, string $key) => [
+                ->map(fn(array $meta, string $key) => [
                     'label' => $meta['label'],
                     'value' => $measurementProfile->{$key},
                     'unit' => $meta['unit'],
-                ])->filter(fn (array $measurement) => $measurement['value'] !== null
+                ])->filter(fn(array $measurement) => $measurement['value'] !== null
                     && $measurement['value'] !== ''
                     && ! ($measurement['unit'] === '' && (string) $measurement['value'] === '0'));
             $customMeasurements = $measurementProfile->measurementValues()
                 ->with('field')
-                ->whereHas('field', fn ($query) => $query->where('user_id', $ownerId)->where('is_active', true))
-                ->get()->sortBy(fn ($value) => [$value->field->sort_order, $value->field->label]);
+                ->whereHas('field', fn($query) => $query->where('user_id', $ownerId)->where('is_active', true))
+                ->get()->sortBy(fn($value) => [$value->field->sort_order, $value->field->label]);
             $measurementHistories = $measurementProfile->measurementHistories()
                 ->with(['template:id,name', 'recorder:id,name', 'values'])
                 ->limit(12)->get();
             $preferenceSourceKeys = collect(['necktype', 'sleeve', 'Daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
-                ->map(fn (string $key) => 'system.'.$key);
+                ->map(fn(string $key) => 'system.' . $key);
             $measurementHistories->each(function ($history) use ($preferenceSourceKeys) {
                 $history->setRelation('values', $history->values
-                    ->reject(fn ($value) => $preferenceSourceKeys->contains($value->source_key)
+                    ->reject(fn($value) => $preferenceSourceKeys->contains($value->source_key)
                         && in_array(strtolower(trim((string) $value->value)), ['', '0', 'none', 'null'], true))
                     ->values());
             });
@@ -335,11 +344,26 @@ class CustomerController extends Controller
         $paymentRoute = $canViewBalances ? route('admin.customer-payments.store') : null;
 
         return view('customer.statement', compact(
-            'customer', 'totalBalance', 'transactions', 'orders', 'sales',
-            'canViewBalances', 'canViewTailoring', 'canViewShop', 'canManageMeasurements',
-            'totalReceived', 'systemMeasurements', 'customMeasurements', 'measurementHistories',
-            'measurementProfiles', 'measurementProfile', 'tabs', 'activeTab', 'paymentRoute',
-            'hasTailoringActivity', 'isClothOnlyCustomer'
+            'customer',
+            'totalBalance',
+            'transactions',
+            'orders',
+            'sales',
+            'canViewBalances',
+            'canViewTailoring',
+            'canViewShop',
+            'canManageMeasurements',
+            'totalReceived',
+            'systemMeasurements',
+            'customMeasurements',
+            'measurementHistories',
+            'measurementProfiles',
+            'measurementProfile',
+            'tabs',
+            'activeTab',
+            'paymentRoute',
+            'hasTailoringActivity',
+            'isClothOnlyCustomer'
         ));
     }
 
@@ -374,7 +398,10 @@ class CustomerController extends Controller
         $validated = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'contact' => [
-                'required', 'string', 'max:50', new PakistanMobileNumber,
+                'required',
+                'string',
+                'max:50',
+                new PakistanMobileNumber,
             ],
             'parent_customer_id' => ['nullable', 'integer'],
             'mobile_pin' => ['nullable', 'digits:6'],
@@ -499,40 +526,65 @@ class CustomerController extends Controller
             : null;
 
         return view('customer.edit', compact(
-            'customer', 'optionTypes', 'measurementFields', 'measurementValues',
-            'measurementTemplates', 'parentCustomer', 'savedMeasurementValues'
+            'customer',
+            'optionTypes',
+            'measurementFields',
+            'measurementValues',
+            'measurementTemplates',
+            'parentCustomer',
+            'savedMeasurementValues'
         ));
     }
+
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  int  $id
+     * @param int $id
      * @return Response
      */
     public function update(Request $request, $id)
     {
         $obj = $this->ownedCustomer($id);
+
         $parentCustomer = $obj->parent_id !== null
             ? Customers::where('user_id', Auth::user()->businessOwnerId())
-                ->whereNull('parent_id')
-                ->findOrFail($obj->parent_id)
+            ->whereNull('parent_id')
+            ->findOrFail($obj->parent_id)
             : null;
+
         if ($parentCustomer) {
             $request->merge([
                 'contact' => $parentCustomer->phone_number1,
                 'mobile_pin' => null,
             ]);
         }
+
         $measurementTemplates = $this->measurementTemplates();
-        $measurementTemplate = $measurementTemplates->firstWhere('id', (int) $request->input('measurement_template_id'));
+
+        // Use the selected template to determine which measurements can be edited.
+        $measurementTemplate = $measurementTemplates->firstWhere(
+            'id',
+            (int) $request->input('measurement_template_id')
+        );
+
         $measurementFields = $this->measurements->fieldsForTemplate(
             $this->measurements->activeFields(Auth::user()->businessOwnerId()),
             $measurementTemplate,
         );
-        $contactRules = ['required', 'string', 'max:50', new PakistanMobileNumber];
+
+        $contactRules = [
+            'required',
+            'string',
+            'max:50',
+            new PakistanMobileNumber,
+        ];
+
         if (! $parentCustomer) {
-            $contactRules[] = new UniqueCustomerPhone(Auth::user()->businessOwnerId(), (int) $id);
+            $contactRules[] = new UniqueCustomerPhone(
+                Auth::user()->businessOwnerId(),
+                (int) $id
+            );
         }
 
         $validated = $request->validate(array_merge([
@@ -543,25 +595,41 @@ class CustomerController extends Controller
             'return_search' => ['nullable', 'string', 'max:200'],
             'return_counter_order' => ['nullable', 'integer'],
             'return_profile' => ['nullable', 'integer'],
-            'measurement_template_id' => ['nullable', Rule::in($measurementTemplates->pluck('id')->all())],
+            'measurement_template_id' => [
+                'nullable',
+                Rule::in($measurementTemplates->pluck('id')->all()),
+            ],
             'length' => ['nullable', 'numeric', 'min:0'],
             'arms' => ['nullable', 'numeric', 'min:0'],
             'teraa' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:2000'],
         ], $this->measurements->rules($measurementFields)), [], $this->measurements->attributes($measurementFields));
-        $previousTemplate = $obj->measurementTemplate;
-        $previousRows = $this->measurements->measurementRows($obj, Auth::user()->businessOwnerId(), $previousTemplate);
-        $previousFingerprint = $this->measurements->measurementFingerprint($previousRows, $previousTemplate);
+
+        // Compare measurement history using the template selected for this edit.
+        // Do not save this selected template as the customer's permanent template.
+        $previousTemplate = $measurementTemplate ?? $obj->measurementTemplate;
+
+        $previousRows = $this->measurements->measurementRows(
+            $obj,
+            Auth::user()->businessOwnerId(),
+            $previousTemplate
+        );
+
+        $previousFingerprint = $this->measurements->measurementFingerprint(
+            $previousRows,
+            $previousTemplate
+        );
+
         $obj->name = $request->name;
         $obj->phone_number1 = $request->contact;
         $obj->length = $request->length;
         $obj->arms = $request->arms;
         $obj->teraa = $request->teraa;
-        $obj->senaChorai = $request->senaChorai; //
+        $obj->senaChorai = $request->senaChorai;
         $obj->damanchorai = $request->damanchorai;
-        $obj->shalwar = $request->shalwar; //
-        $obj->pancha = $request->pancha; //
-        $obj->shalwarGheer = $request->shalwarGheer; //
+        $obj->shalwar = $request->shalwar;
+        $obj->pancha = $request->pancha;
+        $obj->shalwarGheer = $request->shalwarGheer;
         $obj->shoulder = $request->monda;
         $obj->chuta = $request->chuta;
         $obj->note = $request->note;
@@ -575,8 +643,20 @@ class CustomerController extends Controller
         $obj->shirtbutton = $this->preferenceValue($request->add_shirt_button_type);
         $obj->sleeve = $this->preferenceValue($request->add_sleeve_opening_type);
         $obj->user_id = Auth::user()->businessOwnerId();
-        $obj->measurement_template_id = $measurementTemplate?->id;
-        DB::transaction(function () use ($obj, $validated, $measurementFields, $measurementTemplate, $previousTemplate, $previousRows, $previousFingerprint) {
+
+        // IMPORTANT:
+        // Do not assign $measurementTemplate to $obj->measurement_template_id.
+        // The customer's saved template must remain unchanged.
+
+        DB::transaction(function () use (
+            $obj,
+            $validated,
+            $measurementFields,
+            $measurementTemplate,
+            $previousTemplate,
+            $previousRows,
+            $previousFingerprint
+        ) {
             if (! empty($validated['mobile_pin'])) {
                 $obj->mobile_pin = Hash::make($validated['mobile_pin']);
                 $obj->pin_failed_attempts = 0;
@@ -584,48 +664,64 @@ class CustomerController extends Controller
                 $obj->pin_changed_at = now();
                 $obj->tokens()->delete();
             }
-            $obj->save();
-            $this->measurements->syncCustomer($obj, $measurementFields, $validated['custom_measurements'] ?? []);
 
-            $currentRows = $this->measurements->measurementRows($obj, Auth::user()->businessOwnerId(), $measurementTemplate);
-            $currentFingerprint = $this->measurements->measurementFingerprint($currentRows, $measurementTemplate);
+            $obj->save();
+
+            // Save only the measurement fields associated with the selected template.
+            $this->measurements->syncCustomer(
+                $obj,
+                $measurementFields,
+                $validated['custom_measurements'] ?? []
+            );
+
+            $currentRows = $this->measurements->measurementRows(
+                $obj,
+                Auth::user()->businessOwnerId(),
+                $measurementTemplate
+            );
+
+            $currentFingerprint = $this->measurements->measurementFingerprint(
+                $currentRows,
+                $measurementTemplate
+            );
+
             if (! hash_equals($previousFingerprint, $currentFingerprint)) {
                 if (! $obj->measurementHistories()->exists()) {
-                    $this->measurements->recordHistoryRows($obj, $previousRows, $previousTemplate, Auth::id(), 'baseline');
+                    $this->measurements->recordHistoryRows(
+                        $obj,
+                        $previousRows,
+                        $previousTemplate,
+                        Auth::id(),
+                        'baseline'
+                    );
                 }
-                $this->measurements->recordHistoryRows($obj, $currentRows, $measurementTemplate, Auth::id(), 'customer_update');
 
-                $openOrders = Order::query()
-                    ->where('userId', Auth::user()->businessOwnerId())
-                    ->where('status', '!=', 'delivered')
-                    ->where(function ($query) use ($obj) {
-                        $query->where('sub_customer', $obj->id);
-
-                        if ($obj->parent_id === null) {
-                            $query->orWhere(function ($legacyQuery) use ($obj) {
-                                $legacyQuery->whereNull('sub_customer')
-                                    ->where('customerId', $obj->id);
-                            });
-                        }
-                    })
-                    ->get();
-
-                $openOrders->each(function (Order $order) use ($obj, $measurementTemplate) {
-                    $order->measurement_template_id = $measurementTemplate?->id;
-                    $order->save();
-                    $this->measurements->snapshotOrder($order, $obj, $measurementTemplate);
-                });
+                $this->measurements->recordHistoryRows(
+                    $obj,
+                    $currentRows,
+                    $measurementTemplate,
+                    Auth::id(),
+                    'customer_update'
+                );
             }
+
+            // Existing orders are intentionally not updated here.
+            // Their saved measurement snapshots and template IDs remain unchanged.
         });
-        // dd($obj);
+
         $returnCustomer = (int) ($validated['return_customer'] ?? 0);
         $returnSearch = trim((string) ($validated['return_search'] ?? ''));
         $returnCounterOrder = (int) ($validated['return_counter_order'] ?? 0);
+
         if ($returnCounterOrder > 0) {
-            $counterOrder = CounterOrder::where('user_id', Auth::user()->businessOwnerId())
+            $counterOrder = CounterOrder::where(
+                'user_id',
+                Auth::user()->businessOwnerId()
+            )
                 ->whereKey($returnCounterOrder)
                 ->where('customer_id', $obj->parent_id ?: $obj->id)
                 ->first();
+
             if ($counterOrder) {
                 return redirect()->route('admin.counter-orders.edit', [
                     'counterOrder' => $counterOrder,
@@ -633,14 +729,18 @@ class CustomerController extends Controller
                 ])->with('success', 'پیمائش محفوظ ہو گئی ہے۔ اب سلائی آرڈر شامل کریں۔');
             }
         }
+
         $returnContext = array_filter([
             'return_customer' => $returnCustomer > 0 ? $returnCustomer : null,
             'return_search' => $returnSearch !== '' ? $returnSearch : null,
-        ], fn ($value) => $value !== null);
+        ], fn($value) => $value !== null);
+
         $editUrl = route('admin.Customers.edit', $obj);
+
         if ($returnContext !== []) {
-            $editUrl .= '?'.http_build_query($returnContext);
+            $editUrl .= '?' . http_build_query($returnContext);
         }
+
         $response = redirect($editUrl);
         $response->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
 
@@ -651,6 +751,7 @@ class CustomerController extends Controller
 
         return $response;
     }
+
 
     /**
      * Remove the specified resource from storage.
@@ -758,7 +859,7 @@ class CustomerController extends Controller
                 $query['search'] = $search;
             }
 
-            $response = redirect(url('admin/Customers').'?'.http_build_query($query).'#orderDetail');
+            $response = redirect(url('admin/Customers') . '?' . http_build_query($query) . '#orderDetail');
         } else {
             $response = redirect('admin/Customers');
         }
@@ -837,7 +938,10 @@ class CustomerController extends Controller
         $validatedData = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_num' => [
-                'required', 'string', 'max:50', new PakistanMobileNumber,
+                'required',
+                'string',
+                'max:50',
+                new PakistanMobileNumber,
                 new UniqueCustomerPhone(auth()->user()->businessOwnerId()),
             ],
         ]);
@@ -881,7 +985,7 @@ class CustomerController extends Controller
         }
 
         return $query->get()->first(
-            fn (Customers $customer) => PakistanPhoneNumber::normalize($customer->phone_number1) === $normalized
+            fn(Customers $customer) => PakistanPhoneNumber::normalize($customer->phone_number1) === $normalized
         );
     }
 
@@ -892,7 +996,7 @@ class CustomerController extends Controller
         $familyParentIds = collect();
 
         if ($search !== '') {
-            $like = '%'.addcslashes($search, '%_\\').'%';
+            $like = '%' . addcslashes($search, '%_\\') . '%';
             $familyParentIds = Customers::query()
                 ->where('user_id', $ownerId)
                 ->whereNotNull('parent_id')
@@ -902,7 +1006,7 @@ class CustomerController extends Controller
                 })
                 ->pluck('parent_id')
                 ->filter()
-                ->map(fn ($parentId) => (int) $parentId)
+                ->map(fn($parentId) => (int) $parentId)
                 ->unique()
                 ->values();
         }
@@ -910,10 +1014,10 @@ class CustomerController extends Controller
         return Customers::query()
             ->where('user_id', $ownerId)
             ->whereNull('parent_id')
-            ->with(['familyMeasurementProfiles' => fn ($query) => $query
+            ->with(['familyMeasurementProfiles' => fn($query) => $query
                 ->with('measurementTemplate')])
             ->when($search !== '', function ($query) use ($search, $familyParentIds) {
-                $like = '%'.addcslashes($search, '%_\\').'%';
+                $like = '%' . addcslashes($search, '%_\\') . '%';
                 $query->where(function ($searchQuery) use ($search, $like, $familyParentIds) {
                     $searchQuery->where('name', 'like', $like)
                         ->orWhere('phone_number1', 'like', $like);
@@ -931,7 +1035,7 @@ class CustomerController extends Controller
     {
         $ownerId = Auth::user()->businessOwnerId();
         $pageCustomers = $customers->getCollection();
-        $customerIds = $pageCustomers->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $customerIds = $pageCustomers->pluck('id')->map(fn($id) => (string) $id)->all();
 
         if ($canViewBalances && $customerIds !== []) {
             $balances = Transaction::query()
@@ -940,7 +1044,7 @@ class CustomerController extends Controller
                 ->selectRaw('customerId, SUM(remainingBalance) AS current_balance')
                 ->groupBy('customerId')
                 ->get()
-                ->keyBy(fn ($balance) => (string) $balance->customerId);
+                ->keyBy(fn($balance) => (string) $balance->customerId);
 
             foreach ($pageCustomers as $customer) {
                 $customer->setAttribute(
@@ -951,9 +1055,9 @@ class CustomerController extends Controller
         }
 
         $profiles = $pageCustomers->flatMap(
-            fn (Customers $customer) => $customer->familyMeasurementProfiles
+            fn(Customers $customer) => $customer->familyMeasurementProfiles
         );
-        $profileIds = $profiles->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $profileIds = $profiles->pluck('id')->map(fn($id) => (string) $id)->all();
         if ($profileIds === []) {
             return;
         }
@@ -964,7 +1068,7 @@ class CustomerController extends Controller
             ->selectRaw('sub_customer, COUNT(*) AS profile_orders_count, SUM(totalPayment) AS orders_total')
             ->groupBy('sub_customer')
             ->get()
-            ->keyBy(fn ($orderTotal) => (string) $orderTotal->sub_customer);
+            ->keyBy(fn($orderTotal) => (string) $orderTotal->sub_customer);
 
         foreach ($profiles as $profile) {
             $summary = $orderTotals->get((string) $profile->id);
