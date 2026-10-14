@@ -374,13 +374,31 @@
                                     </div>
                                     <div class="preference-grid" data-template-column="left">
                                         @foreach ($data['optionTypes'] as $type)
-                                            @php($templateSystemField = $type->type === 'daaman' ? 'Daaman' : $type->type)
-                                            <div class="form-group" data-template-field="system.{{ $templateSystemField }}" data-default-column="left"><label>{{ $type->otn }}</label><select
-                                                    class="form-control" name="{{ $type->slug }}" data-template-system-field="{{ $templateSystemField }}">
-                                                    <option value="">{{ $type->otn }} منتخب کریں</option>
-                                                    @if(old($type->slug))<option value="{{ old($type->slug) }}" selected>{{ old($type->slug) }}</option>@endif
-                                                </select></div>
-                                        @endforeach
+    @php
+        $templateSystemField = $type->type === 'daaman' ? 'Daaman' : $type->type;
+        $selectedValue = trim((string) old($type->slug));
+        $choices = $optionChoices->get($type->option_id, collect());
+        $hasSelected = $choices->contains(fn ($c) => trim((string) $c->Name) === $selectedValue);
+    @endphp
+    <div class="form-group" data-template-field="system.{{ $templateSystemField }}" data-default-column="left">
+        <label>{{ $type->otn }}</label>
+        <select class="form-control" name="{{ $type->slug }}"
+            data-template-system-field="{{ $templateSystemField }}">
+            <option value="">{{ $type->otn }} منتخب کریں</option>
+
+            @if ($selectedValue !== '' && !$hasSelected)
+                <option value="{{ $selectedValue }}" selected>{{ $selectedValue }}</option>
+            @endif
+
+            @foreach ($choices as $choice)
+                @php $choiceName = trim((string) $choice->Name); @endphp
+                <option value="{{ $choiceName }}" @selected($choiceName === $selectedValue)>
+                    {{ $choiceName }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+@endforeach
                                     </div>
                                     <div class="preference-note"><label class="font-weight-bold">خصوصی نوٹ</label>
                                         <textarea class="form-control" name="note" rows="5" maxlength="2000"

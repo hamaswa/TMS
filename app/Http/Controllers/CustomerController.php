@@ -137,6 +137,15 @@ class CustomerController extends Controller
         return view('customer.accounts', compact('customers'));
     }
 
+    private function optionChoicesFor($optionTypes)
+    {
+        return DB::table('options')
+            ->where('user_id', Auth::user()->businessOwnerId())
+            ->whereIn('option_id', $optionTypes->pluck('option_id'))
+            ->get()
+            ->groupBy('option_id');
+    }
+
     /**
      * Show the form for creating a new resource.
      *
@@ -144,32 +153,36 @@ class CustomerController extends Controller
      */
     public function create()
     {
-        // $data=[];
-        // // dd(Auth::user()->businessOwnerId());
-        // $data['optionTypes'] = DB::table('options')
-        //                     ->join('option_types', 'options.option_id', '=', 'option_types.id')
-        //                     ->select('options.option_id','options.user_id','option_types.Name as otn','option_types.type','option_types.slug')
-        //                     ->where('options.user_id',Auth::user()->businessOwnerId())
-        //                     ->groupBy('options.option_id')
-        //                     ->get();
         $data['optionTypes'] = OptionType::query()
             ->whereIn('type', ['necktype', 'sleeve', 'daaman', 'jeab', 'swingtype', 'button', 'plate_type'])
-            ->select('id as option_id', 'Name as otn', 'type', 'slug')->orderBy('id')->get();
+            ->select('id as option_id', 'Name as otn', 'type', 'slug')
+            ->orderBy('id')
+            ->get();
 
-        // $data['optionTypes'] = OptionType::with('options')->where('user_id',Auth::user()->businessOwnerId())->get();
-        // dd($data);
+        $optionTypes   = $data['optionTypes'];
+        $optionChoices = $this->optionChoicesFor($optionTypes);
+
         $data['Tailors'] = Tailor::where('user_id', Auth::user()->businessOwnerId())->get();
-        $measurementFields = $this->measurements->activeFields(Auth::user()->businessOwnerId());
-        $measurementValues = collect();
+        $measurementFields    = $this->measurements->activeFields(Auth::user()->businessOwnerId());
+        $measurementValues    = collect();
         $measurementTemplates = $this->measurementTemplates();
         $parentCustomer = null;
+
         if (request()->filled('parent')) {
             $parentCustomer = Customers::where('user_id', Auth::user()->businessOwnerId())
                 ->whereNull('parent_id')
                 ->findOrFail(request()->integer('parent'));
         }
 
-        return view('customer.create', compact('data', 'measurementFields', 'measurementValues', 'measurementTemplates', 'parentCustomer'));
+        return view('customer.create', compact(
+            'data',
+            'optionTypes',
+            'optionChoices',
+            'measurementFields',
+            'measurementValues',
+            'measurementTemplates',
+            'parentCustomer'
+        ));
     }
 
     public function statement($id)
@@ -596,11 +609,7 @@ class CustomerController extends Controller
                 ->pluck('value', 'source_key'),
         ]);
 
-        $optionChoices = DB::table('options')
-            ->where('user_id', Auth::user()->businessOwnerId())
-            ->whereIn('option_id', $optionTypes->pluck('option_id'))
-            ->get()
-            ->groupBy('option_id');
+        $optionChoices = $this->optionChoicesFor($optionTypes);
 
         // dd($optionChoices->first()->first());
 
