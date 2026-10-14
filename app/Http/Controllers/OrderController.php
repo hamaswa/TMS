@@ -522,22 +522,24 @@ class OrderController extends Controller
                 );
                 $profileId = $profile->id;
             }
+            // Get the selected customer's parent account.
+            $customerIds = \App\Models\Customers::query()
+                ->where('id', $id)
+                ->orWhere('parent_id', $id)
+                ->pluck('id')
+                ->all();
+
+            // Show orders belonging to the parent and all sub-customers.
             $Orders = DB::table('orders')
                 ->leftJoin('tailors', 'orders.tailorId', '=', 'tailors.id')
                 ->select('orders.*', 'tailors.name as tailor_name')
-                ->where('orders.customerId', $id)
                 ->where('orders.userId', Auth::user()->businessOwnerId())
-                ->when($profileId, function ($query) use ($profileId, $accountCustomer) {
-                    if ($profileId === $accountCustomer->id) {
-                        $query->where(function ($rootOrders) use ($profileId) {
-                            $rootOrders->where('orders.sub_customer', $profileId)
-                                ->orWhereNull('orders.sub_customer')
-                                ->orWhere('orders.sub_customer', 0);
-                        });
-                    } else {
-                        $query->where('orders.sub_customer', $profileId);
-                    }
+                ->where(function ($query) use ($customerIds) {
+                    $query->whereIn('orders.customerId', $customerIds)
+                        ->orWhereIn('orders.sub_customer', $customerIds);
                 })
+                ->orderByDesc('orders.created_at')
+                ->orderByDesc('orders.id')
                 ->get();
             $racks = rack::where('user_id', auth()->user()->businessOwnerId())->get();
             $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
