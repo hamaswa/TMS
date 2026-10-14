@@ -268,6 +268,10 @@
                     <p class="mb-0">
                         {{ $parentCustomer ? $parentCustomer->name . ' کے مشترکہ اکاؤنٹ میں الگ نام اور پیمائش محفوظ کریں۔' : 'بنیادی معلومات کے بعد پیمائش اور سلائی کی پسند ایک ہی جگہ مکمل کریں۔' }}
                     </p>
+                     {{-- @include('customer.partials.action-menu', [
+                        'customer' => $parentCustomer,
+                        'selectedCustomer' => $parentCustomer,
+                    ]) --}}
                 </div>
                 <div class="card-body p-4 p-lg-5">
                     @if ($errors->any())

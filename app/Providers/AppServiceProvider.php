@@ -43,6 +43,11 @@ class AppServiceProvider extends ServiceProvider
                     ? $user->hasModule(User::MODULE_TAILORING)
                     && $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS)
                     : false,
+
+                'canCreateTailoringOrder' => $user
+                    ? $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS)
+                    || $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES)
+                    : false,
             ]);
         });
     }

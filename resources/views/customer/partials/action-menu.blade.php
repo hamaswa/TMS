@@ -1,12 +1,72 @@
 @php
     $selectedCustomer = $selectedCustomer ?? $customer;
     $returnSearch = request('search', '');
+
+    $measurementUrl =
+        url('admin/Customers/' . $selectedCustomer->id . '/edit') .
+        '?' .
+        http_build_query([
+            'return_customer' => $selectedCustomer->id,
+            'return_search' => $returnSearch,
+        ]);
+    $isMeasurementPage = request()->routeIs('admin.Customers.edit');
+    $isNewOrderPage = request()->routeIs('admin.counter-orders.create')
+        || request()->routeIs('admin.counter-orders.edit');
+    $isrecentOrderPage = request()->routeIs('admin.customer.orders');
+    $isStatemetPage    = request()->routeIs('admin.customers.statement');
 @endphp
 
 <style>
-    .customer-more-actions {
-        position: relative;
-        display: inline-block;
+    .customer-action-buttons {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .customer-action-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 34px;
+        padding: 7px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        font-size: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all .2s ease;
+    }
+
+    .customer-action-button--order {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+    }
+
+    .customer-action-button--order:hover {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        color: #fff;
+        text-decoration: none;
+    }
+
+    .customer-action-button--measurements {
+        background: #fff;
+        color: #334155;
+    }
+
+    .customer-action-button--measurements:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #0f172a;
+        text-decoration: none;
+    }
+
+    .customer-action-button i {
+        font-size: 12px;
     }
 
     .customer-more-actions .customer-overflow-button {
@@ -92,75 +152,72 @@
     }
 </style>
 
-<div class="dropdown customer-more-actions">
-    <button type="button" class="customer-row-action customer-overflow-button" data-toggle="dropdown" aria-haspopup="true"
-        aria-expanded="false" data-boundary="viewport" aria-label="{{ $selectedCustomer->name }} کی مزید کارروائیاں">
-        <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
-    </button>
+<div class="customer-more-actions">
+    <div class="customer-action-buttons">
 
-    <div class="dropdown-menu dropdown-menu-left text-right" dir="rtl">
-        {{-- Create a new order --}}
-        <form method="POST" action="{{ route('admin.counter-orders.store') }}" class="m-0">
-            @csrf
+        {{-- New Order --}}
+        @if ($canCreateTailoringOrder)
+            <form method="POST" action="{{ route('admin.counter-orders.store') }}" class="m-0">
+                @csrf
+                <input type="hidden" name="customer_id" value="{{ $customer->id }}">
+                <input type="hidden" name="profile_id" value="{{ $selectedCustomer->id }}">
 
-            <input type="hidden" name="customer_id" value="{{ $customer->id }}">
-            <input type="hidden" name="profile_id" value="{{ $selectedCustomer->id }}">
-
-            <button type="submit" class="customer-new-order-button">
-                <i class="fas fa-plus"></i>
-                <span>نیا آرڈر</span>
-            </button>
-        </form>
-
-        {{-- Customer profile and account --}}
-        <a href="{{ route('admin.customers.statement', $customer) }}" class="dropdown-item">
-            <i class="fas fa-id-card"></i>
-            <span>پروفائل / کھاتہ کھولیں</span>
-        </a>
-
-        <a href="{{ route('admin.Customers.index') }}" class="dropdown-item">
-            <i class="fas fa-arrow-right"></i>
-            گاہکوں کی فہرست
-        </a>
-
-        {{-- Recent orders --}}
-        @if ($canViewTailoringOrders)
-            <a href="{{ route('admin.customer.orders', $customer) }}" class="dropdown-item">
-                <i class="fas fa-history"></i>
-                <span>حالیہ آرڈر دیکھیں</span>
-            </a>
+                <button type="submit" class="customer-action-button customer-action-button--order">
+                    <i class="fas fa-plus"></i>
+                    <span>نیا آرڈر</span>
+                </button>
+            </form>
         @endif
 
-        {{-- Edit customer or selected measurement profile --}}
+        {{-- Measurements --}}
         @if ($canManageMeasurements)
-            <a href="{{ url('admin/Customers/' . $selectedCustomer->id . '/edit') .
-                '?' .
-                http_build_query([
-                    'return_customer' => $selectedCustomer->id,
-                    'return_search' => $returnSearch,
-                ]) }}"
-                class="dropdown-item">
+            <a href="{{ $measurementUrl }}" class="customer-action-button customer-action-button--measurements">
                 <i class="fas fa-ruler-combined"></i>
-                <span>معلومات اور پیمائش تبدیل کریں</span>
-            </a>
-
-            {{-- Add a family measurement profile --}}
-            <a href="{{ route('admin.Customers.create', ['parent' => $customer->id]) }}" class="dropdown-item">
-                <i class="fas fa-user-plus"></i>
-                <span>خاندان کا نیا ناپ شامل کریں</span>
+                <span>پیمائش</span>
             </a>
         @endif
 
-        {{-- Record payment --}}
-        @if ($canViewBalances)
-            <div class="dropdown-divider"></div>
-
-            <button type="button" class="dropdown-item customer_payment_paid"
-                aria-label="{{ $selectedCustomer->name }} کی ادائیگی درج کریں" data-customerid="{{ $customer->id }}"
-                data-toggle="modal" data-target="#myModalpayment">
-                <i class="fas fa-wallet"></i>
-                <span>ادائیگی درج کریں</span>
+        {{-- More Actions --}}
+        <div class="dropdown">
+            <button type="button" class="customer-row-action customer-overflow-button" data-toggle="dropdown"
+                aria-haspopup="true" aria-expanded="false" data-boundary="viewport"
+                aria-label="{{ $selectedCustomer->name }} کی مزید کارروائیاں">
+                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
             </button>
-        @endif
+
+            <div class="dropdown-menu dropdown-menu-left text-right" dir="rtl">
+                @if(!$isStatemetPage)
+                <a href="{{ route('admin.customers.statement', $customer) }}" class="dropdown-item">
+                    <i class="fas fa-id-card"></i>
+                    <span>پروفائل / کھاتہ کھولیں</span>
+                </a>
+                @endif
+                
+                @if ($canViewTailoringOrders && !$isrecentOrderPage)
+                    <a href="{{ route('admin.customer.orders', $customer) }}" class="dropdown-item">
+                        <i class="fas fa-history"></i>
+                        <span>حالیہ آرڈر دیکھیں</span>
+                    </a>
+                @endif
+
+                @if ($canManageMeasurements)
+                    <a href="{{ route('admin.Customers.create', ['parent' => $customer->id]) }}" class="dropdown-item">
+                        <i class="fas fa-user-plus"></i>
+                        <span>خاندان کا نیا ناپ شامل کریں</span>
+                    </a>
+                @endif
+
+                @if ($canViewBalances)
+                    <div class="dropdown-divider"></div>
+
+                    <button type="button" class="dropdown-item customer_payment_paid"
+                        aria-label="{{ $selectedCustomer->name }} کی ادائیگی درج کریں"
+                        data-customerid="{{ $customer->id }}" data-toggle="modal" data-target="#myModalpayment">
+                        <i class="fas fa-wallet"></i>
+                        <span>ادائیگی درج کریں</span>
+                    </button>
+                @endif
+            </div>
+        </div>
     </div>
 </div>
