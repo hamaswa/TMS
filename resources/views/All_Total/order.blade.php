@@ -1165,7 +1165,7 @@
                                         </div>
                                         <div class="wo-actions">
                                             @if ($canManageOrders)
-                                                <a class="wo-action" href="{{ route('admin.order-print', $order->id) }}"
+                                                <a class="wo-action" href="{{ route('admin.order-prints', $order->id) }}"
                                                     target="_blank" rel="noopener" title="رسید"><i
                                                         class="fas fa-print"></i></a><a class="wo-action is-edit"
                                                     href="{{ route('admin.order.edit', $order->id) }}" title="ترمیم"><i

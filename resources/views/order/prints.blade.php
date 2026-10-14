@@ -245,39 +245,62 @@
             border-bottom: 1px dotted #aaa;
         }
 
-        .measurement-meta-cell {
-            min-width: 0;
-            color: #000;
-            font-size: 15px;
-            font-weight: 800;
-            line-height: 1.45;
+        .measurement-meta-list {
+            margin: 4px 0 6px;
         }
 
-        .measurement-serial {
-            direction: ltr;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            font-weight: 800;
-            text-align: left;
+        .meta-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            direction: rtl;
+            border-bottom: 1px dotted #888;
+        }
+
+        .meta-row-full {
+            grid-template-columns: 1fr;
+        }
+
+        .meta-line {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+            min-width: 0;
+            padding: 5px 3px;
             white-space: nowrap;
         }
 
-        .measurement-meta-label {
+        /* thin divider between the two cells */
+        .meta-row:not(.meta-row-full) .meta-line:first-child {
+            border-left: 1px dotted #888;
+        }
+
+        .meta-label {
+            flex: 0 0 auto;
+            color: #000;
+            font-size: 14px;
+            font-weight: 900;
+            line-height: 1.6;
+        }
+
+        .meta-value {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #000;
+            font-size: 15px;
+            font-weight: 900;
+            line-height: 1.6;
             text-align: right;
-            white-space: nowrap
+            unicode-bidi: plaintext;
         }
 
-        .measurement-meta-value {
-            text-align: left;
-            padding: 0px;
-            overflow-wrap: anywhere
-        }
-
-        .measurement-footer {
-            margin-top: 8px;
-            padding: 7px 8px 5px;
-            border-top: 1px solid #777;
-            text-align: center;
+        .meta-ltr {
+            direction: ltr;
+            text-align: right;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            letter-spacing: 0;
         }
 
         .measurement-footer,
@@ -618,385 +641,373 @@
                 <div class="pl-1 pr-1 measurement-meta">
                     <hr style="margin-top:4px;">
                     {{-- Item serial centered --}}
-                    <div class="measurement-serial-row">
-                        <strong>
-                            آئٹم سیریل نمبر
-                            <bdi>{{ $displaySerial }}</bdi>
-                        </strong>
-                    </div>
-
-                    {{-- Customer and mobile --}}
-                    <div class="measurement-meta-grid">
-                        <div class="measurement-meta-row">
-                            <strong class="measurement-meta-value" dir="ltr">
-                                {{ $orderDetail->customers->phone_number1 }}
-                            </strong>
-                            <span class="measurement-meta-label">موبائل</span>
+                    <div class="measurement-meta-list">
+                        {{-- Serial: full row (longest value) --}}
+                        <div class="meta-row meta-row-full">
+                            <div class="meta-line">
+                                <span class="meta-label">آئٹم سیریل:</span>
+                                <strong class="meta-value meta-ltr">{{ $displaySerial }}</strong>
+                            </div>
                         </div>
 
-                        <div class="measurement-meta-row">
-                            <strong class="measurement-meta-value">
-                                {{ $orderDetail->customers->name }}
-                            </strong>
-                            <span class="measurement-meta-label">گاہک</span>
+                        {{-- Customer | Mobile --}}
+                        <div class="meta-row">
+                            <div class="meta-line">
+                                <span class="meta-label">گاہک:</span>
+                                <strong class="meta-value">{{ $orderDetail->customers->name }}</strong>
+                            </div>
+                            <div class="meta-line">
+                                <span class="meta-label">موبائل:</span>
+                                <strong
+                                    class="meta-value meta-ltr">{{ $orderDetail->customers->phone_number1 }}</strong>
+                            </div>
                         </div>
 
-                        {{-- Tailor and order date --}}
-                        <div class="measurement-meta-row">
-                            <strong class="measurement-meta-value" dir="ltr">
-                                {{ date('d-m-Y h:i A', strtotime($orderDetail->created_at)) }}
-                            </strong>
-                            <span class="measurement-meta-label">آرڈر تاریخ</span>
-                        </div>
-
-                        <div class="measurement-meta-row">
-                            <strong class="measurement-meta-value">
-                                {{ $tailor?->name ?? 'بعد میں مقرر ہوگا' }}
-                            </strong>
-                            <span class="measurement-meta-label">درزی</span>
+                        {{-- Tailor | Return date --}}
+                        <div class="meta-row">
+                            <div class="meta-line">
+                                <span class="meta-label">درزی:</span>
+                                <strong class="meta-value">{{ $tailor?->name ?? 'بعد میں' }}</strong>
+                            </div>
+                            <div class="meta-line">
+                                <span class="meta-label">تاریخ واپسی :</span>
+                                <strong
+                                    class="meta-value meta-ltr">{{ $orderDetail->returnDate ? \Illuminate\Support\Carbon::parse($orderDetail->returnDate)->format('d-m-Y') : '—' }}</strong>
+                            </div>
                         </div>
                     </div>
-                    @if ($orderDetail->measurementTemplate)
-                        <div class="measurement-meta-cell" style="margin-bottom:7px;text-align:center;">
-                            {{ $orderDetail->measurementTemplate->name }}
-                        </div>
-                    @endif
-                    @if ($orderDetail->measurementTemplate)
+                </div>
+                @if ($orderDetail->measurementTemplate)
+                    <div class="measurement-meta-cell" style="margin-bottom:7px;text-align:center;">
+                        {{ $orderDetail->measurementTemplate->name }}
+                    </div>
+                @endif
+                @if ($orderDetail->measurementTemplate)
 
-                        {{-- ============ TEMPLATE ORDER: print ONLY this template's fields ============ --}}
-                        @php
-                            $tpl = $orderDetail->measurementTemplate;
-                            $layoutMap = collect($tpl->field_layout ?? [])->keyBy('source');
-                            $oneColumn = (int) ($tpl->layout_columns ?? 2) === 1;
+                    {{-- ============ TEMPLATE ORDER: print ONLY this template's fields ============ --}}
+                    @php
+                        $tpl = $orderDetail->measurementTemplate;
+                        $layoutMap = collect($tpl->field_layout ?? [])->keyBy('source');
+                        $oneColumn = (int) ($tpl->layout_columns ?? 2) === 1;
 
-                            // Preference fields go left by default, measurements go right
-                            $preferenceKeys = [
-                                'system.necktype',
-                                'system.sleeve',
-                                'system.Daaman',
-                                'system.jeab',
-                                'system.swingtype',
-                                'system.button',
-                                'system.plate_type',
-                            ];
+                        // Preference fields go left by default, measurements go right
+                        $preferenceKeys = [
+                            'system.necktype',
+                            'system.sleeve',
+                            'system.Daaman',
+                            'system.jeab',
+                            'system.swingtype',
+                            'system.button',
+                            'system.plate_type',
+                        ];
 
-                            $allMeasurements = $printMeasurements->keyBy('source_key');
+                        $allMeasurements = $printMeasurements->keyBy('source_key');
 
-                            // Use the saved layout to filter only when it actually matches the saved rows.
-                            // If the template has no layout (or none of its keys match), print every saved row.
-                            if ($layoutMap->isNotEmpty()) {
-                                $matched = $allMeasurements->filter(fn($m) => $layoutMap->has($m->source_key));
-                                if ($matched->isNotEmpty()) {
-                                    $allMeasurements = $matched;
-                                }
+                        // Use the saved layout to filter only when it actually matches the saved rows.
+                        // If the template has no layout (or none of its keys match), print every saved row.
+                        if ($layoutMap->isNotEmpty()) {
+                            $matched = $allMeasurements->filter(fn($m) => $layoutMap->has($m->source_key));
+                            if ($matched->isNotEmpty()) {
+                                $allMeasurements = $matched;
                             }
+                        }
 
-                            
-$items = $allMeasurements
-    ->values()
-    ->map(function ($m, $i) use ($layoutMap, $oneColumn, $preferenceKeys) {
-        $saved = $layoutMap->get($m->source_key);
+                        $items = $allMeasurements
+                            ->values()
+                            ->map(function ($m, $i) use ($layoutMap, $oneColumn, $preferenceKeys) {
+                                $saved = $layoutMap->get($m->source_key);
 
-        $defaultColumn = in_array($m->source_key, $preferenceKeys, true)
-            ? 'left'
-            : 'right';
+                                $defaultColumn = in_array($m->source_key, $preferenceKeys, true) ? 'left' : 'right';
 
-        $column = $oneColumn ? 'right' : ($saved['column'] ?? $defaultColumn);
+                                $column = $oneColumn ? 'right' : $saved['column'] ?? $defaultColumn;
 
-        if (! in_array($column, ['left', 'right'], true)) {
-            $column = $defaultColumn;
-        }
+                                if (!in_array($column, ['left', 'right'], true)) {
+                                    $column = $defaultColumn;
+                                }
 
-        return [
-            'key' => $m->source_key,
-            'column' => $column,
-            'order' => (int) ($saved['order'] ?? $i),
-            'i' => $i,
-        ];
-    });
+                                return [
+                                    'key' => $m->source_key,
+                                    'column' => $column,
+                                    'order' => (int) ($saved['order'] ?? $i),
+                                    'i' => $i,
+                                ];
+                            });
 
+                        $sortRule = [['order', 'asc'], ['i', 'asc']];
+                        $leftFields = $items->where('column', 'left')->sortBy($sortRule)->pluck('key')->values()->all();
+                        $rightFields = $items
+                            ->where('column', 'right')
+                            ->sortBy($sortRule)
+                            ->pluck('key')
+                            ->values()
+                            ->all();
 
-                            $sortRule = [['order', 'asc'], ['i', 'asc']];
-                            $leftFields = $items
-                                ->where('column', 'left')
-                                ->sortBy($sortRule)
-                                ->pluck('key')
-                                ->values()
-                                ->all();
-                            $rightFields = $items
-                                ->where('column', 'right')
-                                ->sortBy($sortRule)
-                                ->pluck('key')
-                                ->values()
-                                ->all();
+                        $rows = max(count($leftFields), count($rightFields));
+                        $colWidth = $oneColumn ? '100%' : '45%';
+                    @endphp
 
-                            $rows = max(count($leftFields), count($rightFields));
-                            $colWidth = $oneColumn ? '100%' : '45%';
-                        @endphp
+                    @if ($allMeasurements->count())
+                        <hr>
 
-                        @if ($allMeasurements->count())
-                            <hr>
+                        @for ($i = 0; $i < $rows; $i++)
+                            <div class="row measurement-row"
+                                style="display:flex;justify-content:space-between;padding:0 10px;">
 
-                            @for ($i = 0; $i < $rows; $i++)
-                                <div class="row measurement-row"
-                                    style="display:flex;justify-content:space-between;padding:0 10px;">
-
-                                    {{-- LEFT COLUMN --}}
-                                    @unless ($oneColumn)
-                                        <div class="col-6 {{ !isset($leftFields[$i]) ? 'measurement-column-empty' : '' }}"
-                                            style="width:45%;">
-                                            @if (isset($leftFields[$i]))
-                                                @php $item = $allMeasurements[$leftFields[$i]]; @endphp
-                                                <div
-                                                    style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
-                                                    <span
-                                                        class="measurement-value measurement-preference-value">{{ $item->value }}</span>
-                                                    <span class="measurement-label"
-                                                        style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @endunless
-
-                                    {{-- RIGHT COLUMN --}}
-                                    <div class="col-6 {{ !isset($rightFields[$i]) ? 'measurement-column-empty' : '' }}"
-                                        style="width:{{ $colWidth }};">
-                                        @if (isset($rightFields[$i]))
-                                            @php $item = $allMeasurements[$rightFields[$i]]; @endphp
+                                {{-- LEFT COLUMN --}}
+                                @unless ($oneColumn)
+                                    <div class="col-6 {{ !isset($leftFields[$i]) ? 'measurement-column-empty' : '' }}"
+                                        style="width:45%;">
+                                        @if (isset($leftFields[$i]))
+                                            @php $item = $allMeasurements[$leftFields[$i]]; @endphp
                                             <div
-                                                style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
-                                                <span class="measurement-value"
-                                                    style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
-                                                    {{ $item->value }}
-                                                </span>
+                                                style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;font-weight:600;">
+                                                <span
+                                                    class="measurement-value measurement-preference-value">{{ $item->value }}</span>
                                                 <span class="measurement-label"
-                                                    style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
-                                                    {{ $item->label }}
-                                                </span>
+                                                    style="flex-shrink:0; white-space:nowrap; font-size:20px;">{{ $item->label }}</span>
                                             </div>
                                         @endif
                                     </div>
+                                @endunless
 
-                                </div>
-                            @endfor
-                        @endif
-                    @else
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 mt-2 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:800;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->necktype }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">گلہ</div>
-                                </div>
-                            </div>
-                            <div class="col-6" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->length }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:22px">لمبائی</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->sleeve }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">کف</div>
-                                </div>
-                            </div>
-                            <div class="col-6 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->arms }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">بازو</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 mt-2 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->Daaman }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">دامن</div>
-                                </div>
-                            </div>
-                            <div class="col-6" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div>{{ $orderDetail->customers->teraa }}</div>
-                                    <div style="font-weight:600; font-size:20px;">تیرا</div>
+                                {{-- RIGHT COLUMN --}}
+                                <div class="col-6 {{ !isset($rightFields[$i]) ? 'measurement-column-empty' : '' }}"
+                                    style="width:{{ $colWidth }};">
+                                    @if (isset($rightFields[$i]))
+                                        @php $item = $allMeasurements[$rightFields[$i]]; @endphp
+                                        <div
+                                            style="display:flex;align-items:flex-start;gap:6px;font-weight:600;padding:2px 4px;">
+                                            <span class="measurement-value"
+                                                style="width:35%; text-align:left; white-space:normal; overflow-wrap:anywhere;">
+                                                {{ $item->value }}
+                                            </span>
+                                            <span class="measurement-label"
+                                                style="width:65%; text-align:right; white-space:nowrap; font-size:20px;">
+                                                {{ $item->label }}
+                                            </span>
+                                        </div>
+                                    @endif
                                 </div>
 
                             </div>
-                        </div>
-
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 mt-2 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex; justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->jeab }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">جیب</div>
-                                </div>
-                            </div>
-                            <div class="col-6" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex; justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->senaChorai }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">سینہ چوڑائی</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 mt-2 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between mb-2"
-                                    style="display: flex;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->swingtype }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">سلائی</div>
-                                </div>
-                            </div>
-                            <div class="col-6" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->damanchorai }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">دامن چوڑائی</div>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 mt-2 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between mb-1"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->button }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">بٹن</div>
-                                </div>
-                            </div>
-                            <div class="col-6" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->shalwar }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">شلوار</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 mt-2 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->plate_type }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">پلیٹ</div>
-                                </div>
-                            </div>
-                            <div class="col-6" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->pancha }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">پانچہ</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 mt-2 mb-2" style="width: 45%">
-
-                            </div>
-                            <div class="col-6 mt-2 " style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->shalwarGheer }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">شلوار گھیر</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 " style="width: 45%">
-
-                            </div>
-
-                            <div class="col-6 mt-2 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->shoulder }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">مونڈا</div>
-                                </div>
-                            </div>
-
-                        </div>
-                        <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
-                            <div class="col-6 mt-2" style="width: 45%">
-
-                            </div>
-
-                            <div class="col-6  mt-2 mb-2" style="width: 45%">
-                                <div class="d-flex justify-content-between"
-                                    style="display: flex;justify-content: space-between;font-weight:600;">
-                                    <div style="word-break: break-word; white-space: normal; min-width: 0;">
-                                        {{ $orderDetail->customers->chuta }}
-                                    </div>
-                                    <div style="font-weight:600; font-size:20px;">چوتا</div>
-                                </div>
-                            </div>
-
-                        </div>
+                        @endfor
                     @endif
-                    <hr>
-                    <div>
-                        <div align="center">
-                            <div>
-                                @if (filled($orderDetail->remarks))
-                                    <h3 class="text-center font-weight-400 mt-2" style="font-size: 16px;">
-                                        <strong>خصوصی سلائی ہدایت:</strong> {{ $orderDetail->remarks }}
-                                    </h3>
-                                @endif
+                @else
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:800;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->necktype }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">گلہ</div>
                             </div>
-                            <div class="measurement-footer">
-                                <p>{!! $setting->address !!}</p>
-                                <p class="measurement-footer-contact">{{ $setting->contact_no }}</p>
-                                <p class="receipt-builder-credit">Built by IT Linked</p>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->length }}
+                                </div>
+                                <div style="font-weight:600; font-size:22px">لمبائی</div>
                             </div>
                         </div>
                     </div>
-                    <!--<p style="text-align:center">{{ $setting->note }}</p>-->
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->sleeve }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">کف</div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->arms }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">بازو</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->Daaman }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">دامن</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div>{{ $orderDetail->customers->teraa }}</div>
+                                <div style="font-weight:600; font-size:20px;">تیرا</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex; justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->jeab }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">جیب</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex; justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->senaChorai }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">سینہ چوڑائی</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between mb-2" style="display: flex;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->swingtype }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">سلائی</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->damanchorai }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">دامن چوڑائی</div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between mb-1"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->button }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">بٹن</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->shalwar }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">شلوار</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->plate_type }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">پلیٹ</div>
+                            </div>
+                        </div>
+                        <div class="col-6" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->pancha }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">پانچہ</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+
+                        </div>
+                        <div class="col-6 mt-2 " style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->shalwarGheer }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">شلوار گھیر</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 " style="width: 45%">
+
+                        </div>
+
+                        <div class="col-6 mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->shoulder }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">مونڈا</div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="row" style="display: flex; justify-content: space-between; padding: 0 10px">
+                        <div class="col-6 mt-2" style="width: 45%">
+
+                        </div>
+
+                        <div class="col-6  mt-2 mb-2" style="width: 45%">
+                            <div class="d-flex justify-content-between"
+                                style="display: flex;justify-content: space-between;font-weight:600;">
+                                <div style="word-break: break-word; white-space: normal; min-width: 0;">
+                                    {{ $orderDetail->customers->chuta }}
+                                </div>
+                                <div style="font-weight:600; font-size:20px;">چوتا</div>
+                            </div>
+                        </div>
+
+                    </div>
+                @endif
+                <hr>
+                <div>
+                    <div align="center">
+                        <div>
+                            @if (filled($orderDetail->remarks))
+                                <h3 class="text-center font-weight-400 mt-2" style="font-size: 16px;">
+                                    <strong>خصوصی سلائی ہدایت:</strong> {{ $orderDetail->remarks }}
+                                </h3>
+                            @endif
+                        </div>
+                        <div class="measurement-footer">
+                            <p>{!! $setting->address !!}</p>
+                            <p class="measurement-footer-contact">{{ $setting->contact_no }}</p>
+                            <p class="receipt-builder-credit">Built by IT Linked</p>
+                        </div>
+                    </div>
                 </div>
+                <!--<p style="text-align:center">{{ $setting->note }}</p>-->
             </div>
         </div>
+    </div>
 
 
 
