@@ -327,14 +327,32 @@
                                                 @else
                                                     اس گاہک کی پیمائش، آرڈرز، بقایا اور ادائیگیاں اسی کھاتے میں رہیں گی۔
                                                 @endif
-                                            </small></div>
+                                            </small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="step-actions"><a class="btn btn-outline-secondary"
-                                    href="{{ $parentCustomer ? route('admin.customers.statement', ['id' => $parentCustomer->id, 'tab' => 'measurements']) : route('admin.Customers.index') }}">منسوخ
-                                    کریں</a><button type="button" class="btn btn-primary px-4 next-step">پیمائش اور پسند
-                                    درج کریں <i class="fas fa-arrow-left mr-1"></i></button></div>
+                            <div class="step-actions">
+                                <a class="btn btn-outline-secondary"
+                                    href="{{ $parentCustomer
+                                        ? route('admin.customers.statement', ['id' => $parentCustomer->id, 'tab' => 'measurements'])
+                                        : route('admin.Customers.index') }}">
+                                    منسوخ کریں
+                                </a>
+
+                                <div class="d-flex flex-wrap justify-content-end" style="gap: .5rem;">
+                                    <button type="submit" name="save_basic_customer" value="1" formnovalidate
+                                        class="btn btn-outline-success">
+                                        <i class="fas fa-user-check ml-1"></i>
+                                        صرف گاہک محفوظ کریں
+                                    </button>
+
+                                    <button type="button" class="btn btn-primary px-4 next-step">
+                                        پیمائش اور پسند درج کریں
+                                        <i class="fas fa-arrow-left mr-1"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </section>
 
                         <section class="customer-step" data-step="2" aria-labelledby="customer-step-two">
@@ -427,9 +445,12 @@
                             </div>
                             <div class="step-actions"><button type="button"
                                     class="btn btn-outline-secondary previous-step"><i
-                                        class="fas fa-arrow-right ml-1"></i> بنیادی معلومات</button><button type="submit"
-                                    class="btn btn-success px-5"><i class="fas fa-check ml-1"></i> گاہک محفوظ
-                                    کریں</button></div>
+                                        class="fas fa-arrow-right ml-1"></i> بنیادی معلومات</button>
+                                <button type="submit" class="btn btn-success px-5">
+                                    <i class="fas fa-ruler-combined ml-1"></i>
+                                    پیمائش محفوظ کریں
+                                </button>
+                            </div>
                         </section>
                     </form>
                     <noscript>
