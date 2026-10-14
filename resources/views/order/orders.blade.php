@@ -471,15 +471,11 @@
                 </div>
 
                 <div class="customer-orders-hero__actions">
-                    <a href="{{ route('admin.Customers.index') }}" class="customer-orders-back">
-                        <i class="fas fa-arrow-right"></i>
-                        گاہکوں کی فہرست
-                    </a>
 
-                    <a href="{{ route('admin.counter-orders.create' ) }}" class="customer-orders-back">
-                        <i class="fas fa-plus"></i>
-                        نیا آرڈر
-                    </a>
+                    @include('customer.partials.action-menu', [
+                        'customer' => $customer,
+                        'selectedCustomer' => $selectedCustomer,
+                    ])
                 </div>
             </header>
 

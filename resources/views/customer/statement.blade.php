@@ -23,9 +23,10 @@
                     <div><span class="badge badge-light text-primary mb-2">{{ $isClothOnlyCustomer ? 'کپڑے کا گاہک' : 'مشترکہ گاہک پروفائل' }}</span><h1 class="h3 font-weight-bold mb-1">{{ $customer->name }}</h1><p class="mb-0">{{ $customer->phone_number1 }} · {{ $customerScopeLabel }}</p></div>
                 </div>
                 <div class="col-lg-4 text-lg-left mt-3 mt-lg-0">
-                    @if($canManageMeasurements)<a href="{{ route('admin.Customers.edit', $customer) }}" class="btn btn-light ml-2"><i class="fas fa-edit ml-1"></i> معلومات تبدیل کریں</a>@endif
-                    @if($canManageMeasurements && $hasTailoringActivity)<a href="{{ route('admin.Customers.create', ['parent' => $customer->id]) }}" class="btn btn-success ml-2"><i class="fas fa-user-plus ml-1"></i> خاندان کا نیا ناپ</a>@endif
-                    <a href="{{ route('admin.workspace.current') }}" class="btn btn-outline-light">ڈیش بورڈ</a>
+                    @include('customer.partials.action-menu', [
+                        'customer' => $customer,
+                        'selectedCustomer' => $customer,
+                    ])
                 </div>
             </div>
         </div>

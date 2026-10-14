@@ -252,6 +252,7 @@
         }
 
         @media(max-width:420px) {
+
             .measurement-grid,
             .preference-grid {
                 grid-template-columns: 1fr
@@ -262,8 +263,11 @@
         <div class="container-fluid px-3 px-lg-5 py-4">
             <div class="customer-form-card bg-white mx-auto" style="max-width:1420px">
                 <div class="customer-form-head">
-                    <h1 class="h3 font-weight-bold mb-2">{{ $parentCustomer ? 'خاندان کا نیا ناپ شامل کریں' : 'نیا گاہک شامل کریں' }}</h1>
-                    <p class="mb-0">{{ $parentCustomer ? $parentCustomer->name.' کے مشترکہ اکاؤنٹ میں الگ نام اور پیمائش محفوظ کریں۔' : 'بنیادی معلومات کے بعد پیمائش اور سلائی کی پسند ایک ہی جگہ مکمل کریں۔' }}</p>
+                    <h1 class="h3 font-weight-bold mb-2">
+                        {{ $parentCustomer ? 'خاندان کا نیا ناپ شامل کریں' : 'نیا گاہک شامل کریں' }}</h1>
+                    <p class="mb-0">
+                        {{ $parentCustomer ? $parentCustomer->name . ' کے مشترکہ اکاؤنٹ میں الگ نام اور پیمائش محفوظ کریں۔' : 'بنیادی معلومات کے بعد پیمائش اور سلائی کی پسند ایک ہی جگہ مکمل کریں۔' }}
+                    </p>
                 </div>
                 <div class="card-body p-4 p-lg-5">
                     @if ($errors->any())
@@ -283,7 +287,9 @@
                     </div>
 
                     <form id="customer-create-form" action="{{ route('admin.Customers.store') }}" method="post">@csrf
-                        @if($parentCustomer)<input type="hidden" name="parent_customer_id" value="{{ $parentCustomer->id }}">@endif
+                        @if ($parentCustomer)
+                            <input type="hidden" name="parent_customer_id" value="{{ $parentCustomer->id }}">
+                        @endif
                         <section class="customer-step active" data-step="1" aria-labelledby="customer-step-one">
                             <div class="customer-section">
                                 <h2 id="customer-step-one" class="h5 font-weight-bold mb-1">گاہک کی بنیادی معلومات</h2>
@@ -291,28 +297,33 @@
                                 <div class="row">
                                     <div class="col-md-6 form-group"><label>نام <span
                                                 class="text-danger">*</span></label><input type="text"
-                                            class="form-control" name="name" value="{{ old('name') }}" 
+                                            class="form-control" name="name" value="{{ old('name') }}"
                                             autocomplete="name"></div>
                                     <div class="col-md-6 form-group"><label for="customer-contact">رابطہ نمبر <span
                                                 class="text-danger">*</span></label><input id="customer-contact"
                                             type="tel" inputmode="tel" class="form-control" name="contact"
-                                            value="{{ old('contact', $parentCustomer?->phone_number1) }}"  dir="ltr" autocomplete="tel"
-                                            @if($parentCustomer) readonly @endif
+                                            value="{{ old('contact', $parentCustomer?->phone_number1) }}" dir="ltr"
+                                            autocomplete="tel" @if ($parentCustomer) readonly @endif
                                             placeholder="03001234567 یا +923001234567">
                                         @error('contact')
                                             <div class="text-danger small mt-1">{{ $message }}</div>
                                         @enderror
                                     </div>
-                                    @unless($parentCustomer)<div class="col-md-6 form-group"><label for="mobile_pin">موبائل لاگ اِن پن</label><input
-                                            id="mobile_pin" type="text" inputmode="numeric" pattern="[0-9]{6}"
-                                            maxlength="6" autocomplete="new-password" class="form-control"
-                                            name="mobile_pin" value="{{ old('mobile_pin') }}" placeholder="6 ہندسوں کا پن"
-                                            dir="ltr"><small class="form-text text-muted">خالی چھوڑنے پر محفوظ پن خود
-                                            بنے گا اور صرف ایک بار دکھایا جائے گا۔</small></div>@endunless
+                                    @unless ($parentCustomer)
+                                        <div class="col-md-6 form-group"><label for="mobile_pin">موبائل لاگ اِن پن</label><input
+                                                id="mobile_pin" type="text" inputmode="numeric" pattern="[0-9]{6}"
+                                                maxlength="6" autocomplete="new-password" class="form-control"
+                                                name="mobile_pin" value="{{ old('mobile_pin') }}" placeholder="6 ہندسوں کا پن"
+                                                dir="ltr"><small class="form-text text-muted">خالی چھوڑنے پر محفوظ پن خود
+                                                بنے گا اور صرف ایک بار دکھایا جائے گا۔</small></div>
+                                    @endunless
                                     <div class="col-md-6">
-                                        <div class="alert alert-info mb-0"><strong>{{ $parentCustomer ? 'خاندانی پیمائش پروفائل' : 'گاہک اکاؤنٹ' }}</strong><br><small>
-                                                @if($parentCustomer)
-                                                    رابطہ، موبائل لاگ اِن، بقایا اور ادائیگیاں {{ $parentCustomer->name }} کے مشترکہ اکاؤنٹ میں رہیں گی؛ صرف نام، پیمائش اور سلائی کی پسند الگ محفوظ ہوگی۔
+                                        <div class="alert alert-info mb-0">
+                                            <strong>{{ $parentCustomer ? 'خاندانی پیمائش پروفائل' : 'گاہک اکاؤنٹ' }}</strong><br><small>
+                                                @if ($parentCustomer)
+                                                    رابطہ، موبائل لاگ اِن، بقایا اور ادائیگیاں {{ $parentCustomer->name }}
+                                                    کے مشترکہ اکاؤنٹ میں رہیں گی؛ صرف نام، پیمائش اور سلائی کی پسند الگ
+                                                    محفوظ ہوگی۔
                                                 @else
                                                     اس گاہک کی پیمائش، آرڈرز، بقایا اور ادائیگیاں اسی کھاتے میں رہیں گی۔
                                                 @endif
@@ -321,9 +332,9 @@
                                 </div>
                             </div>
                             <div class="step-actions"><a class="btn btn-outline-secondary"
-                                    href="{{ $parentCustomer ? route('admin.customers.statement', ['id' => $parentCustomer->id, 'tab' => 'measurements']) : route('admin.Customers.index') }}">منسوخ کریں</a><button type="button"
-                                    class="btn btn-primary px-4 next-step">پیمائش اور پسند درج کریں <i
-                                        class="fas fa-arrow-left mr-1"></i></button></div>
+                                    href="{{ $parentCustomer ? route('admin.customers.statement', ['id' => $parentCustomer->id, 'tab' => 'measurements']) : route('admin.Customers.index') }}">منسوخ
+                                    کریں</a><button type="button" class="btn btn-primary px-4 next-step">پیمائش اور پسند
+                                    درج کریں <i class="fas fa-arrow-left mr-1"></i></button></div>
                         </section>
 
                         <section class="customer-step" data-step="2" aria-labelledby="customer-step-two">
@@ -349,12 +360,14 @@
                                             @php
                                                 $templateKey = $name === 'monda' ? 'shoulder' : $name;
                                             @endphp
-                                            <div class="form-group measurement-field" data-template-field="system.{{ $templateKey }}" data-default-column="right"><label
+                                            <div class="form-group measurement-field"
+                                                data-template-field="system.{{ $templateKey }}"
+                                                data-default-column="right"><label
                                                     for="measurement-{{ $name }}">{{ $label }} <span
                                                         class="text-danger">*</span></label><input
                                                     id="measurement-{{ $name }}" type="number" step="0.01"
                                                     min="0" class="form-control" name="{{ $name }}"
-                                                    value="{{ old($name) }}" ></div>
+                                                    value="{{ old($name) }}"></div>
                                         @endforeach
                                         @include('customer.partials.custom-measurements', [
                                             'embedded' => true,
@@ -374,31 +387,37 @@
                                     </div>
                                     <div class="preference-grid" data-template-column="left">
                                         @foreach ($data['optionTypes'] as $type)
-    @php
-        $templateSystemField = $type->type === 'daaman' ? 'Daaman' : $type->type;
-        $selectedValue = trim((string) old($type->slug));
-        $choices = $optionChoices->get($type->option_id, collect());
-        $hasSelected = $choices->contains(fn ($c) => trim((string) $c->Name) === $selectedValue);
-    @endphp
-    <div class="form-group" data-template-field="system.{{ $templateSystemField }}" data-default-column="left">
-        <label>{{ $type->otn }}</label>
-        <select class="form-control" name="{{ $type->slug }}"
-            data-template-system-field="{{ $templateSystemField }}">
-            <option value="">{{ $type->otn }} منتخب کریں</option>
+                                            @php
+                                                $templateSystemField =
+                                                    $type->type === 'daaman' ? 'Daaman' : $type->type;
+                                                $selectedValue = trim((string) old($type->slug));
+                                                $choices = $optionChoices->get($type->option_id, collect());
+                                                $hasSelected = $choices->contains(
+                                                    fn($c) => trim((string) $c->Name) === $selectedValue,
+                                                );
+                                            @endphp
+                                            <div class="form-group"
+                                                data-template-field="system.{{ $templateSystemField }}"
+                                                data-default-column="left">
+                                                <label>{{ $type->otn }}</label>
+                                                <select class="form-control" name="{{ $type->slug }}"
+                                                    data-template-system-field="{{ $templateSystemField }}">
+                                                    <option value="">{{ $type->otn }} منتخب کریں</option>
 
-            @if ($selectedValue !== '' && !$hasSelected)
-                <option value="{{ $selectedValue }}" selected>{{ $selectedValue }}</option>
-            @endif
+                                                    @if ($selectedValue !== '' && !$hasSelected)
+                                                        <option value="{{ $selectedValue }}" selected>
+                                                            {{ $selectedValue }}</option>
+                                                    @endif
 
-            @foreach ($choices as $choice)
-                @php $choiceName = trim((string) $choice->Name); @endphp
-                <option value="{{ $choiceName }}" @selected($choiceName === $selectedValue)>
-                    {{ $choiceName }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-@endforeach
+                                                    @foreach ($choices as $choice)
+                                                        @php $choiceName = trim((string) $choice->Name); @endphp
+                                                        <option value="{{ $choiceName }}" @selected($choiceName === $selectedValue)>
+                                                            {{ $choiceName }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        @endforeach
                                     </div>
                                     <div class="preference-note"><label class="font-weight-bold">خصوصی نوٹ</label>
                                         <textarea class="form-control" name="note" rows="5" maxlength="2000"

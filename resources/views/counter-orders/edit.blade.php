@@ -869,22 +869,12 @@
                     </p>
                 </div><span class="co-status">{{ $statusLabels[$counterOrder->status] ?? $counterOrder->status }}</span>
             </header>
-            @if ($counterOrder->isClosed())
+            @if ($counterOrder)
                 <div class="co-closed-actions">
-                    <a href="{{ route('admin.Customers.index') }}" class="co-closed-btn">
-                        <i class="fas fa-users"></i>
-                        <span>گاہکوں کی فہرست</span>
-                    </a>
-
-                    <a href="{{ route('admin.counter-orders.create') }}" class="co-closed-btn co-closed-btn-primary">
-                        <i class="fas fa-plus-circle"></i>
-                        <span>نیا آرڈر</span>
-                    </a>
-
-                    <a href="{{ route('admin.customer.orders', $counterOrder->customer?->id) }}" class="co-closed-btn">
-                        <i class="fas fa-history"></i>
-                        <span>حالیہ آرڈرز</span>
-                    </a>
+                    @include('customer.partials.action-menu', [
+                'customer' => $counterOrder->customer,
+                'selectedCustomer' => $counterOrder->customer,
+            ])
                 </div>
             @endif
             <div id="co-live-alert" class="alert co-alert" role="status" hidden></div>
