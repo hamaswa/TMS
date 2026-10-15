@@ -594,6 +594,22 @@ class CustomerController extends Controller
                 || collect($customValues)->contains($filled)
             );
 
+        // if (! $basicSave) {
+        //     dd([
+        //         'basic_save' => $basicSave,
+        //         'selected_template_id' => $request->input('measurement_template_id'),
+        //         'resolved_template_id' => $measurementTemplate?->id,
+        //         'template_custom_field_ids' => $measurementTemplate?->custom_field_ids,
+        //         'available_measurement_fields' => $measurementFields->map(fn($field) => [
+        //             'id' => $field->id,
+        //             'label' => $field->label,
+        //         ])->values()->all(),
+        //         'submitted_custom_measurements' => $request->input('custom_measurements', []),
+        //         'validated_custom_measurements' => $validated['custom_measurements'] ?? [],
+        //         'has_measurements' => $hasMeasurements,
+        //     ]);
+        // }
+
         DB::transaction(function () use (
             $obj,
             $measurementFields,
@@ -629,6 +645,8 @@ class CustomerController extends Controller
                 'customer_created',
             );
         });
+
+        
 
         if ($isSecondaryProfile) {
             return redirect()->route('admin.customers.statement', [

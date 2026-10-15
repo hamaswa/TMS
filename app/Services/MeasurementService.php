@@ -464,6 +464,9 @@ class MeasurementService
             ]);
         }
 
+        // Save current custom measurements for the customer edit form.
+        $this->syncCustomer($customer, $templateFields, $customValues);
+
         $history = $customer->measurementHistories()->create([
             'user_id' => $ownerId,
             'measurement_template_id' => $template->id,
