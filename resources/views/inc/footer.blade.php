@@ -108,44 +108,62 @@
 </script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const dropdowns = document.querySelectorAll('.tms-dropdown-toggle');
+document.addEventListener('DOMContentLoaded', function () {
+    const sidebar = document.querySelector('.tms-sidebar');
 
-        dropdowns.forEach(function(toggle) {
-            const submenu = document.querySelector(toggle.getAttribute('href'));
+    if (!sidebar) {
+        return;
+    }
 
-            if (!submenu) {
-                return;
-            }
+    const dropdowns = sidebar.querySelectorAll('.tms-dropdown-toggle');
 
-            // Expand submenu when hovering over its parent menu.
-            toggle.addEventListener('mouseenter', function() {
-                submenu.classList.add('is-open');
-                toggle.setAttribute('aria-expanded', 'true');
+    dropdowns.forEach(function (toggle) {
+        const submenu = document.querySelector(toggle.getAttribute('href'));
+
+        if (!submenu) {
+            return;
+        }
+
+        toggle.setAttribute(
+            'aria-expanded',
+            String(submenu.classList.contains('is-open'))
+        );
+
+        toggle.addEventListener('click', function (event) {
+            event.preventDefault();
+
+            const isOpen = submenu.classList.contains('is-open');
+
+            // Close other submenus.
+            dropdowns.forEach(function (otherToggle) {
+                const otherSubmenu = document.querySelector(
+                    otherToggle.getAttribute('href')
+                );
+
+                if (otherSubmenu && otherSubmenu !== submenu) {
+                    otherSubmenu.classList.remove('is-open');
+                    otherToggle.setAttribute('aria-expanded', 'false');
+                }
             });
 
-            // Collapse submenu when leaving the parent menu and submenu.
-            const closeSubmenu = function() {
-                setTimeout(function() {
-                    if (
-                        !toggle.matches(':hover') &&
-                        !submenu.matches(':hover')
-                    ) {
-                        submenu.classList.remove('is-open');
-                        toggle.setAttribute('aria-expanded', 'false');
-                    }
-                }, 150);
-            };
-
-            toggle.addEventListener('mouseleave', closeSubmenu);
-            submenu.addEventListener('mouseleave', closeSubmenu);
-
-            // Prevent submenu links from acting as dropdown toggles.
-            toggle.addEventListener('click', function(event) {
-                event.preventDefault();
-            });
+            // Toggle the clicked submenu.
+            submenu.classList.toggle('is-open', !isOpen);
+            toggle.setAttribute('aria-expanded', String(!isOpen));
         });
     });
+
+    // Close submenus when the sidebar collapses.
+    sidebar.addEventListener('mouseleave', function () {
+        dropdowns.forEach(function (toggle) {
+            const submenu = document.querySelector(toggle.getAttribute('href'));
+
+            if (submenu) {
+                submenu.classList.remove('is-open');
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+    });
+});
 </script>
 
 @stack('scripts')

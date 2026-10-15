@@ -129,39 +129,29 @@
             background: rgba(255, 255, 255, .1)
         }
 
-.tms-side-submenu {
-    display: block;
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    visibility: hidden;
-    transform: translateY(-6px);
 
-    margin: 2px 43px 0 0;
+.tms-side-submenu {
+    display: none;
+    margin: 2px 43px 8px 0;
     padding-right: 10px;
     border-right: 1px solid rgba(124, 180, 255, .45);
-
-    transition:
-        max-height .28s ease,
-        opacity .2s ease,
-        transform .25s ease,
-        margin-bottom .28s ease,
-        visibility 0s linear .28s;
 }
 
 .tms-side-submenu.is-open {
-    max-height: 500px;
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-    margin-bottom: 8px;
+    display: block;
+    animation: tms-submenu-open .2s ease-out;
+}
 
-    transition:
-        max-height .3s ease,
-        opacity .22s ease,
-        transform .25s ease,
-        margin-bottom .3s ease,
-        visibility 0s;
+@keyframes tms-submenu-open {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .tms-side-submenu a {
@@ -173,6 +163,24 @@
     color: rgba(255, 255, 255, .68) !important;
     text-decoration: none !important;
     white-space: nowrap;
+}
+
+.tms-side-submenu a i {
+    width: 17px;
+    text-align: center;
+    color: #7ec8ff;
+    transition: color .18s ease;
+}
+
+.tms-side-submenu a:hover i,
+.tms-side-submenu a.is-active i {
+    color: #fff;
+}
+
+.tms-side-submenu a:hover,
+.tms-side-submenu a.is-active {
+    background: rgba(49, 128, 255, .18);
+    color: #fff !important;
 }
 
         .tms-side-submenu a i {
@@ -273,7 +281,7 @@
                             class="tms-side-label">انوینٹری</span><i class="fas fa-chevron-down tms-side-caret"></i></a>
 
                     <div id="inventory-submenu"
-                        class="tms-side-submenu {{ request()->routeIs('admin.stock.*') ? 'is-open' : '' }}">
+                        class="tms-side-submenu">
                         <a class="{{ request()->routeIs('admin.cloth.index', 'admin.cloth.show') ? 'is-active' : '' }}"
                             href="{{ route('admin.cloth.index') }}"><i class="fas fa-th-list"></i>کپڑوں کی فہرست</a>
                         <a class="{{ request()->routeIs('admin.cloth.create') ? 'is-active' : '' }}"
