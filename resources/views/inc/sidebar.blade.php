@@ -129,27 +129,51 @@
             background: rgba(255, 255, 255, .1)
         }
 
-        .tms-side-submenu {
-            display: none;
-            margin: 2px 43px 8px 0;
-            padding-right: 10px;
-            border-right: 1px solid rgba(124, 180, 255, .45)
-        }
+.tms-side-submenu {
+    display: block;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    visibility: hidden;
+    transform: translateY(-6px);
 
-        .tms-side-submenu.is-open {
-            display: block;
-        }
+    margin: 2px 43px 0 0;
+    padding-right: 10px;
+    border-right: 1px solid rgba(124, 180, 255, .45);
 
-        .tms-side-submenu a {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            color: rgba(255, 255, 255, .68) !important;
-            text-decoration: none !important;
-            white-space: nowrap
-        }
+    transition:
+        max-height .28s ease,
+        opacity .2s ease,
+        transform .25s ease,
+        margin-bottom .28s ease,
+        visibility 0s linear .28s;
+}
+
+.tms-side-submenu.is-open {
+    max-height: 500px;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    margin-bottom: 8px;
+
+    transition:
+        max-height .3s ease,
+        opacity .22s ease,
+        transform .25s ease,
+        margin-bottom .3s ease,
+        visibility 0s;
+}
+
+.tms-side-submenu a {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, .68) !important;
+    text-decoration: none !important;
+    white-space: nowrap;
+}
 
         .tms-side-submenu a i {
             width: 17px;
@@ -227,6 +251,11 @@
                         <a class="{{ request()->routeIs('admin.purchases.index', 'admin.purchases.show') ? 'is-active' : '' }}"
                             href="{{ route('admin.purchases.index') }}"><i class="fas fa-list-ul"></i>خریداری کی
                             فہرست</a>
+
+                        <a class="{{ request()->routeIs('admin.clothbrand.*') ? 'is-active' : '' }}"
+                            href="{{ route('admin.clothbrand.index') }}"><i class="fas fa-copyright"></i>کپڑے کے
+                            برانڈز</a>
+
                         <a class="{{ request()->routeIs('admin.purchases.create') ? 'is-active' : '' }}"
                             href="{{ route('admin.purchases.create') }}"><i class="fas fa-plus-circle"></i>نئی
                             خریداری</a>
@@ -255,9 +284,6 @@
                                 class="fas fa-qrcode"></i>تمام سیٹ QR پرنٹ</a>
                         <a class="{{ request()->routeIs('admin.clothtype.*') ? 'is-active' : '' }}"
                             href="{{ route('admin.clothtype.index') }}"><i class="fas fa-tags"></i>کپڑے کی اقسام</a>
-                        <a class="{{ request()->routeIs('admin.clothbrand.*') ? 'is-active' : '' }}"
-                            href="{{ route('admin.clothbrand.index') }}"><i class="fas fa-copyright"></i>کپڑے کے
-                            برانڈز</a>
                         <a class="{{ request()->routeIs('admin.inventory-ledger.*') ? 'is-active' : '' }}"
                             href="{{ route('admin.inventory-ledger.index') }}"><i class="fas fa-exchange-alt"></i>اسٹاک
                             کھاتہ</a>

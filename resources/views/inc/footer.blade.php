@@ -5,8 +5,8 @@
                 Language
             </a>
             <div class="dropdown-menu" aria-labelledby="navbarLanguage">
-                <a class="dropdown-item" href="{{url('admin/Lang-change?lang=eng')}}" id="english">English</a>
-                <a class="dropdown-item" href="{{url('admin/Lang-change?lang=ur')}}" id="urdu">urdu</a>
+                <a class="dropdown-item" href="{{ url('admin/Lang-change?lang=eng') }}" id="english">English</a>
+                <a class="dropdown-item" href="{{ url('admin/Lang-change?lang=ur') }}" id="urdu">urdu</a>
             </div>
         </li>
     </ul>
@@ -17,108 +17,143 @@
 ================================================== -->
 @php($isSuperAdminFooter = request()->is('administrator') || request()->is('administrator/*') || (Auth::check() && Auth::user()->hasRole('administrative')))
 @include('components.confirmation-modal')
-<script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>
-<script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>
-<script src="{{ asset('assets/js/main.js')}}"></script>
+<script src="{{ asset('assets/js/jquery.dataTables.min.js') }}"></script>
+<script src="{{ asset('assets/owlcarousel/owl.carousel.min.js') }}"></script>
+<script src="{{ asset('assets/js/main.js') }}"></script>
 <script src="{{ asset('assets/js/custom.js') }}?v=20260924d"></script>
 <script src="{{ asset('assets/js/form-accessibility.js') }}?v=20260728"></script>
 <script src="{{ asset('assets/js/confirm-modal.js') }}?v=20260923b"></script>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/service-worker.js?v=20261006a',{scope:'/',updateViaCache:'none'});}</script>
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js?v=20261006a', {
+            scope: '/',
+            updateViaCache: 'none'
+        });
+    }
+</script>
 <script src="{{ asset('assets/js/offline-workspace.js') }}?v=20261006a"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script>
-(function () {
-    'use strict';
+    (function() {
+        'use strict';
 
-    const isUrdu = document.documentElement.lang === 'ur';
-    @unless($isSuperAdminFooter)
-    const urduLocale = {
-        weekdays: {
-            shorthand: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'],
-            longhand: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ']
-        },
-        months: {
-            shorthand: ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'],
-            longhand: ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر']
-        },
-        firstDayOfWeek: 0,
-        rangeSeparator: ' سے ',
-        weekAbbreviation: 'ہفتہ',
-        scrollTitle: 'تبدیل کرنے کے لیے اسکرول کریں',
-        toggleTitle: 'کیلنڈر تبدیل کریں',
-        time_24hr: false
-    };
-    @endunless
+        const isUrdu = document.documentElement.lang === 'ur';
+        @unless ($isSuperAdminFooter)
+            const urduLocale = {
+                weekdays: {
+                    shorthand: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'],
+                    longhand: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ']
+                },
+                months: {
+                    shorthand: ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر',
+                        'اکتوبر', 'نومبر', 'دسمبر'
+                    ],
+                    longhand: ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر',
+                        'اکتوبر', 'نومبر', 'دسمبر'
+                    ]
+                },
+                firstDayOfWeek: 0,
+                rangeSeparator: ' سے ',
+                weekAbbreviation: 'ہفتہ',
+                scrollTitle: 'تبدیل کرنے کے لیے اسکرول کریں',
+                toggleTitle: 'کیلنڈر تبدیل کریں',
+                time_24hr: false
+            };
+        @endunless
 
-    const datePickerSelector = 'input[type="date"], input#myflatpickr, input[data-flatpickr]';
+        const datePickerSelector = 'input[type="date"], input#myflatpickr, input[data-flatpickr]';
 
-    const initializeDatePicker = function (input) {
-        if (!window.flatpickr || input._flatpickr || input.hasAttribute('data-no-flatpickr') || input.disabled) {
-            return;
-        }
+        const initializeDatePicker = function(input) {
+            if (!window.flatpickr || input._flatpickr || input.hasAttribute('data-no-flatpickr') || input
+                .disabled) {
+                return;
+            }
 
-        window.flatpickr(input, {
-            altInput: true,
-            altFormat: isUrdu ? 'j F Y' : 'F j, Y',
-            dateFormat: 'Y-m-d',
-            allowInput: true,
-            disableMobile: true,
-            locale: isUrdu ? urduLocale : 'default',
-            minDate: input.getAttribute('min') || null,
-            maxDate: input.getAttribute('max') || null,
-            ariaDateFormat: isUrdu ? 'j F Y' : 'F j, Y'
-        });
-    };
-
-    const initializeWithin = function (root) {
-        if (root.matches && root.matches(datePickerSelector)) {
-            initializeDatePicker(root);
-        }
-        if (root.querySelectorAll) {
-            root.querySelectorAll(datePickerSelector).forEach(initializeDatePicker);
-        }
-    };
-
-    document.addEventListener('DOMContentLoaded', function () {
-        initializeWithin(document);
-        new MutationObserver(function (mutations) {
-            mutations.forEach(function (mutation) {
-                mutation.addedNodes.forEach(function (node) {
-                    if (node.nodeType === 1) initializeWithin(node);
-                });
+            window.flatpickr(input, {
+                altInput: true,
+                altFormat: isUrdu ? 'j F Y' : 'F j, Y',
+                dateFormat: 'Y-m-d',
+                allowInput: true,
+                disableMobile: true,
+                locale: isUrdu ? urduLocale : 'default',
+                minDate: input.getAttribute('min') || null,
+                maxDate: input.getAttribute('max') || null,
+                ariaDateFormat: isUrdu ? 'j F Y' : 'F j, Y'
             });
-        }).observe(document.body, { childList: true, subtree: true });
-    });
-}());
+        };
+
+        const initializeWithin = function(root) {
+            if (root.matches && root.matches(datePickerSelector)) {
+                initializeDatePicker(root);
+            }
+            if (root.querySelectorAll) {
+                root.querySelectorAll(datePickerSelector).forEach(initializeDatePicker);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeWithin(document);
+            new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) initializeWithin(node);
+                    });
+                });
+            }).observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+    }());
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.tms-dropdown-toggle').forEach(function (toggle) {
-        toggle.addEventListener('click', function (event) {
-            event.preventDefault();
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropdowns = document.querySelectorAll('.tms-dropdown-toggle');
 
-            const submenu = document.querySelector(this.getAttribute('href'));
+        dropdowns.forEach(function(toggle) {
+            const submenu = document.querySelector(toggle.getAttribute('href'));
 
             if (!submenu) {
                 return;
             }
 
-            const isOpen = submenu.classList.contains('is-open');
+            // Expand submenu when hovering over its parent menu.
+            toggle.addEventListener('mouseenter', function() {
+                submenu.classList.add('is-open');
+                toggle.setAttribute('aria-expanded', 'true');
+            });
 
-            submenu.classList.toggle('is-open', !isOpen);
-            this.setAttribute('aria-expanded', String(!isOpen));
+            // Collapse submenu when leaving the parent menu and submenu.
+            const closeSubmenu = function() {
+                setTimeout(function() {
+                    if (
+                        !toggle.matches(':hover') &&
+                        !submenu.matches(':hover')
+                    ) {
+                        submenu.classList.remove('is-open');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    }
+                }, 150);
+            };
+
+            toggle.addEventListener('mouseleave', closeSubmenu);
+            submenu.addEventListener('mouseleave', closeSubmenu);
+
+            // Prevent submenu links from acting as dropdown toggles.
+            toggle.addEventListener('click', function(event) {
+                event.preventDefault();
+            });
         });
     });
-});
 </script>
 
 @stack('scripts')
-<!--<script src="{{ asset('assets/js/popper.min.js')}}"></script>-->
-<!--<script src="{{ asset('assets/js/jquery.dataTables.min.js')}}"></script>-->
-<!--<script src="{{ asset('assets/owlcarousel/owl.carousel.min.js')}}"></script>-->
-<!--<script src="{{ asset('assets/js/main.js')}}"></script>-->
-<!--<script src="{{asset('assets/js/custom.js')}}"></script>-->
+<!--<script src="{{ asset('assets/js/popper.min.js') }}"></script>-->
+<!--<script src="{{ asset('assets/js/jquery.dataTables.min.js') }}"></script>-->
+<!--<script src="{{ asset('assets/owlcarousel/owl.carousel.min.js') }}"></script>-->
+<!--<script src="{{ asset('assets/js/main.js') }}"></script>-->
+<!--<script src="{{ asset('assets/js/custom.js') }}"></script>-->
 <!--{{-- <script src="{{asset('public/assets/js/notifications.js')}}"></script> --}}-->
 <!-- <script src="https://cdn.ckeditor.com/4.9.2/standard/ckeditor.js"></script> -->
 
@@ -133,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <!--    </script> --}}-->
 <!--    {{-- <script>-->
         // Define the eventSourceUrl dynamically based on the user role
-<!--        @if(Auth::check() && Auth::user()->hasRole('shop_owner'))-->
+<!--        @if (Auth::check() && Auth::user()->hasRole('shop_owner'))-->
 <!--            const eventSourceUrl = "{{ route('admin.notifications-stream') }}";-->
 <!--        @endif-->
 
