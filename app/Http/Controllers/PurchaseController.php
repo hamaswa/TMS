@@ -44,15 +44,15 @@ class PurchaseController extends Controller
             'balance' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('balance_amount'),
         ];
         $purchases = Purchase::where('user_id', $ownerId)->with('supplier')
-            ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
-            ->when($filters['supplier_id'] ?? null, fn ($q, $supplier) => $q->where('supplier_id', $supplier))
-            ->when($filters['q'] ?? null, fn ($q, $search) => $q->where(function ($nested) use ($search) {
+            ->when($filters['status'] ?? null, fn($q, $status) => $q->where('status', $status))
+            ->when($filters['supplier_id'] ?? null, fn($q, $supplier) => $q->where('supplier_id', $supplier))
+            ->when($filters['q'] ?? null, fn($q, $search) => $q->where(function ($nested) use ($search) {
                 $nested->where('purchase_number', 'like', "%{$search}%")
                     ->orWhere('reference', 'like', "%{$search}%")
-                    ->orWhereHas('supplier', fn ($supplier) => $supplier->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('supplier', fn($supplier) => $supplier->where('name', 'like', "%{$search}%"));
             }))
-            ->when($filters['from_date'] ?? null, fn ($q, $date) => $q->whereDate('purchase_date', '>=', $date))
-            ->when($filters['to_date'] ?? null, fn ($q, $date) => $q->whereDate('purchase_date', '<=', $date))
+            ->when($filters['from_date'] ?? null, fn($q, $date) => $q->whereDate('purchase_date', '>=', $date))
+            ->when($filters['to_date'] ?? null, fn($q, $date) => $q->whereDate('purchase_date', '<=', $date))
             ->latest('purchase_date')->latest('id')
             ->paginate((int) ($filters['per_page'] ?? 25))->withQueryString();
         $suppliers = Supplier::where('user_id', Auth::user()->businessOwnerId())->where('active', true)->orderBy('name')->get();
@@ -62,16 +62,29 @@ class PurchaseController extends Controller
 
     public function create()
     {
+        $purchase = null;
+
+        if (request()->filled('purchase_id')) {
+            $purchase = $this->ownedPurchase(
+                (int) request()->query('purchase_id')
+            )->load(['supplier', 'payments']);
+
+            // The payment panel is only for purchases whose stock was received.
+            if ($purchase->status !== 'received') {
+                $purchase = null;
+            }
+        }
+
         $suppliers = Supplier::where('user_id', Auth::user()->businessOwnerId())->where('active', true)->orderBy('name')->get();
         $cloths = Cloth::where('user_id', Auth::user()->businessOwnerId())
-            ->with(['brand', 'type', 'colors' => fn ($query) => $query->orderBy('color')])
+            ->with(['brand', 'type', 'colors' => fn($query) => $query->orderBy('color')])
             ->whereHas('colors')
             ->orderBy('name')
             ->get();
         $colors = $cloths->flatMap->colors;
         $brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
         $types = ClothType::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
-        $catalog = $cloths->mapWithKeys(fn (Cloth $cloth) => [
+        $catalog = $cloths->mapWithKeys(fn(Cloth $cloth) => [
             (string) $cloth->id => [
                 'id' => $cloth->id,
                 'name' => $cloth->name,
@@ -80,7 +93,7 @@ class PurchaseController extends Controller
                 'stock_code' => $cloth->stock_code,
                 'brand_code' => $cloth->brand?->bundle_code,
                 'tracks_colors' => $cloth->tracksColors(),
-                'colors' => $cloth->colors->map(fn (ClothColor $color) => [
+                'colors' => $cloth->colors->map(fn(ClothColor $color) => [
                     'id' => $color->id,
                     'name' => $color->color,
                     'stock' => (float) $color->length,
@@ -89,7 +102,7 @@ class PurchaseController extends Controller
             ],
         ]);
 
-        return view('purchases.create', compact('suppliers', 'cloths', 'colors', 'catalog', 'brands', 'types'));
+        return view('purchases.create', compact('suppliers', 'cloths', 'colors', 'catalog', 'brands', 'types','purchase'));
     }
 
     public function store(Request $request)
@@ -98,7 +111,7 @@ class PurchaseController extends Controller
             'supplier_id' => ['required', 'integer'],
             'purchase_date' => ['required', 'date'],
             'reference' => [
-                Rule::requiredIf(fn () => PaymentMethods::requiresReference($request->input('payment_method'))),
+                Rule::requiredIf(fn() => PaymentMethods::requiresReference($request->input('payment_method'))),
                 'nullable',
                 'string',
                 'max:255',
@@ -166,7 +179,7 @@ class PurchaseController extends Controller
                 if ($setColors === []) {
                     throw ValidationException::withMessages(["new_sets.{$index}.colors" => 'کم از کم ایک رنگ شامل کریں۔']);
                 }
-                $names = collect($setColors)->pluck('name')->map(fn ($name) => mb_strtolower(trim($name)));
+                $names = collect($setColors)->pluck('name')->map(fn($name) => mb_strtolower(trim($name)));
                 if ($names->unique()->count() !== $names->count()) {
                     throw ValidationException::withMessages(["new_sets.{$index}.colors" => 'ایک رنگ صرف ایک مرتبہ شامل کریں۔']);
                 }
@@ -174,13 +187,19 @@ class PurchaseController extends Controller
                 throw ValidationException::withMessages(["new_sets.{$index}.quantity" => 'خریدے گئے میٹر درج کریں۔']);
             }
         }
+
+
         $supplier = $this->ownedSupplier($validated['supplier_id']);
 
         $purchase = DB::transaction(function () use ($validated, $supplier, $existingColorIds, $existingQuantities, $submittedLineTotals, $submittedUnitCosts, $newSets, $ownerId) {
             $purchase = Purchase::create([
-                'user_id' => Auth::user()->businessOwnerId(), 'supplier_id' => $supplier->id,
-                'purchase_number' => 'TMP-'.Str::uuid(), 'purchase_date' => $validated['purchase_date'],
-                'status' => 'draft', 'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? null,
+                'user_id' => Auth::user()->businessOwnerId(),
+                'supplier_id' => $supplier->id,
+                'purchase_number' => 'TMP-' . Str::uuid(),
+                'purchase_date' => $validated['purchase_date'],
+                'status' => 'draft',
+                'reference' => $validated['reference'] ?? null,
+                'note' => $validated['note'] ?? null,
             ]);
             $total = 0;
             foreach ($existingColorIds as $index => $colorId) {
@@ -192,14 +211,18 @@ class PurchaseController extends Controller
                     : round($quantity * (float) $submittedUnitCosts[$index], 2);
                 $unitCost = round($lineTotal / $quantity, 4);
                 $purchase->items()->create([
-                    'cloth_id' => $color->cloth_id, 'cloth_color_id' => $color->id, 'color' => $color->color,
-                    'quantity' => $quantity, 'unit_cost' => $unitCost, 'line_total' => $lineTotal,
+                    'cloth_id' => $color->cloth_id,
+                    'cloth_color_id' => $color->id,
+                    'color' => $color->color,
+                    'quantity' => $quantity,
+                    'unit_cost' => $unitCost,
+                    'line_total' => $lineTotal,
                 ]);
                 $total += $lineTotal;
             }
             foreach ($newSets as $set) {
                 $quantities = $set['tracking_mode'] === Cloth::COLOR_TRACKING_PER_COLOR
-                    ? collect($set['colors'])->map(fn ($color) => [
+                    ? collect($set['colors'])->map(fn($color) => [
                         'name' => trim($color['name']),
                         'hex' => $color['hex'] ?? null,
                         'quantity' => round((float) $color['quantity'], 2),
@@ -253,24 +276,35 @@ class PurchaseController extends Controller
                 $total += $setTotal;
             }
             $purchase->update([
-                'purchase_number' => 'PO-'.now()->format('Ymd').'-'.str_pad((string) $purchase->id, 6, '0', STR_PAD_LEFT),
-                'total_amount' => $total, 'balance_amount' => $total,
+                'purchase_number' => 'PO-' . now()->format('Ymd') . '-' . str_pad((string) $purchase->id, 6, '0', STR_PAD_LEFT),
+                'total_amount' => $total,
+                'balance_amount' => $total,
             ]);
 
             return $purchase;
         });
 
         $receiveNow = ($validated['submit_action'] ?? 'draft') === 'receive';
+
         if ($receiveNow) {
             $this->receivePurchase($purchase->id);
+
+            return redirect()
+                ->route('admin.purchases.create', [
+                    'purchase_id' => $purchase->id,
+                ])
+                ->with(
+                    'success',
+                    'خریداری محفوظ ہو گئی، مال انوینٹری میں شامل کر دیا گیا ہے۔'
+                );
         }
 
-        return redirect()->route('admin.purchases.show', $purchase)->with(
-            'success',
-            $receiveNow
-                ? 'خریداری محفوظ ہو گئی، مال انوینٹری میں شامل کر دیا گیا ہے۔'
-                : 'خریداری کا مسودہ محفوظ ہو گیا ہے؛ مال وصول ہونے پر انوینٹری میں شامل کریں۔'
-        );
+        return redirect()
+            ->route('admin.purchases.show', $purchase)
+            ->with(
+                'success',
+                'خریداری کا مسودہ محفوظ ہو گیا ہے؛ مال وصول ہونے پر انوینٹری میں شامل کریں۔'
+            );
     }
 
     public function show(int $purchase)
@@ -285,6 +319,22 @@ class PurchaseController extends Controller
         $this->receivePurchase($purchase);
 
         return back()->with('success', 'مال وصول ہو گیا اور اسٹاک اپ ڈیٹ کر دیا گیا ہے۔');
+    }
+
+    public function destroy(Purchase $purchase)
+    {
+        // Optional safety: block deleting received purchases because they affect stock/balances
+        if ($purchase->status === 'received') {
+            return back()->withErrors(['delete' => 'وصول شدہ خریداری حذف نہیں کی جا سکتی۔']);
+        }
+
+        DB::transaction(function () use ($purchase) {
+            $purchase->items()->delete(); // skip if you have cascadeOnDelete in the migration
+            $purchase->delete();
+        });
+
+        return redirect()->route('admin.purchases.index')
+            ->with('success', 'خریداری کامیابی سے حذف ہو گئی۔');
     }
 
     public function cancel(int $purchase)
@@ -309,11 +359,12 @@ class PurchaseController extends Controller
         $purchase = $this->ownedPurchase($purchase);
         abort_unless($purchase->status === 'received', 422, 'Payments can only be posted to received purchases.');
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0', 'max:'.max(0, (float) $purchase->balance_amount)],
+            'amount' => ['required', 'numeric', 'gt:0', 'max:' . max(0, (float) $purchase->balance_amount)],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:1000'],
+            'return_to' => ['nullable', Rule::in(['create', 'show'])],
         ]);
         DB::transaction(function () use ($purchase, $validated) {
             $purchase = Purchase::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($purchase->id);
@@ -322,15 +373,29 @@ class PurchaseController extends Controller
                 throw ValidationException::withMessages(['amount' => 'Payment exceeds the current purchase balance.']);
             }
             SupplierPayment::create([
-                'user_id' => Auth::user()->businessOwnerId(), 'supplier_id' => $purchase->supplier_id, 'purchase_id' => $purchase->id,
-                'payment_date' => $validated['payment_date'], 'amount' => $amount,
+                'user_id' => Auth::user()->businessOwnerId(),
+                'supplier_id' => $purchase->supplier_id,
+                'purchase_id' => $purchase->id,
+                'payment_date' => $validated['payment_date'],
+                'amount' => $amount,
                 'payment_method' => $validated['payment_method'] ?? 'cash',
-                'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? null,
+                'reference' => $validated['reference'] ?? null,
+                'note' => $validated['note'] ?? null,
             ]);
             $purchase->update(['paid_amount' => (float) $purchase->paid_amount + $amount, 'balance_amount' => (float) $purchase->balance_amount - $amount]);
         });
 
-        return back()->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');
+        if (($validated['return_to'] ?? 'show') === 'create') {
+            return redirect()
+                ->route('admin.purchases.create', [
+                    'purchase_id' => $purchase->id,
+                ])
+                ->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');
+        }
+
+        return redirect()
+            ->route('admin.purchases.show', $purchase)
+            ->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');
     }
 
     public function returnItem(Request $request, int $purchase)
@@ -338,8 +403,10 @@ class PurchaseController extends Controller
         $purchase = $this->ownedPurchase($purchase);
         abort_unless($purchase->status === 'received', 422, 'Only received goods can be returned.');
         $validated = $request->validate([
-            'purchase_item_id' => ['required', 'integer'], 'quantity' => ['required', 'numeric', 'gt:0'],
-            'return_date' => ['required', 'date'], 'note' => ['nullable', 'string', 'max:1000'],
+            'purchase_item_id' => ['required', 'integer'],
+            'quantity' => ['required', 'numeric', 'gt:0'],
+            'return_date' => ['required', 'date'],
+            'note' => ['nullable', 'string', 'max:1000'],
         ]);
         DB::transaction(function () use ($purchase, $validated) {
             $inventory = app(InventoryService::class);
@@ -356,14 +423,21 @@ class PurchaseController extends Controller
             }
             $lineTotal = round($quantity * (float) $item->unit_cost, 2);
             $return = PurchaseReturn::create([
-                'user_id' => Auth::user()->businessOwnerId(), 'supplier_id' => $purchase->supplier_id, 'purchase_id' => $purchase->id,
-                'return_number' => 'TMP-'.Str::uuid(), 'return_date' => $validated['return_date'],
-                'total_amount' => $lineTotal, 'note' => $validated['note'] ?? null,
+                'user_id' => Auth::user()->businessOwnerId(),
+                'supplier_id' => $purchase->supplier_id,
+                'purchase_id' => $purchase->id,
+                'return_number' => 'TMP-' . Str::uuid(),
+                'return_date' => $validated['return_date'],
+                'total_amount' => $lineTotal,
+                'note' => $validated['note'] ?? null,
             ]);
-            $return->update(['return_number' => 'PR-'.now()->format('Ymd').'-'.str_pad((string) $return->id, 6, '0', STR_PAD_LEFT)]);
+            $return->update(['return_number' => 'PR-' . now()->format('Ymd') . '-' . str_pad((string) $return->id, 6, '0', STR_PAD_LEFT)]);
             $return->items()->create([
-                'purchase_item_id' => $item->id, 'cloth_color_id' => $color->id,
-                'quantity' => $quantity, 'unit_cost' => $item->unit_cost, 'line_total' => $lineTotal,
+                'purchase_item_id' => $item->id,
+                'cloth_color_id' => $color->id,
+                'quantity' => $quantity,
+                'unit_cost' => $item->unit_cost,
+                'line_total' => $lineTotal,
             ]);
             $inventory->issue($color, $quantity, 'purchase_return', $return, $return->return_number, (float) $item->unit_cost);
             $item->increment('returned_quantity', $quantity);

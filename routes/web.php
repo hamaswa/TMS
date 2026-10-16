@@ -486,6 +486,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::patch('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
         Route::post('/purchases/{purchase}/payments', [PurchaseController::class, 'payment'])->name('purchases.payment');
         Route::post('/purchases/{purchase}/returns', [PurchaseController::class, 'returnItem'])->name('purchases.return');
+        Route::delete('purchases/{purchase}', [PurchaseController::class, 'destroy'])->name('purchases.destroy');
     });
     Route::middleware('business.permission:clothing.inventory')->group(function () {
         Route::get('/inventory-ledger', [InventoryLedgerController::class, 'index'])->name('inventory-ledger.index');

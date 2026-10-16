@@ -130,58 +130,58 @@
         }
 
 
-.tms-side-submenu {
-    display: none;
-    margin: 2px 43px 8px 0;
-    padding-right: 10px;
-    border-right: 1px solid rgba(124, 180, 255, .45);
-}
+        .tms-side-submenu {
+            display: none;
+            margin: 2px 43px 8px 0;
+            padding-right: 10px;
+            border-right: 1px solid rgba(124, 180, 255, .45);
+        }
 
-.tms-side-submenu.is-open {
-    display: block;
-    animation: tms-submenu-open .2s ease-out;
-}
+        .tms-side-submenu.is-open {
+            display: block;
+            animation: tms-submenu-open .2s ease-out;
+        }
 
-@keyframes tms-submenu-open {
-    from {
-        opacity: 0;
-        transform: translateY(-4px);
-    }
+        @keyframes tms-submenu-open {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-.tms-side-submenu a {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    color: rgba(255, 255, 255, .68) !important;
-    text-decoration: none !important;
-    white-space: nowrap;
-}
+        .tms-side-submenu a {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, .68) !important;
+            text-decoration: none !important;
+            white-space: nowrap;
+        }
 
-.tms-side-submenu a i {
-    width: 17px;
-    text-align: center;
-    color: #7ec8ff;
-    transition: color .18s ease;
-}
+        .tms-side-submenu a i {
+            width: 17px;
+            text-align: center;
+            color: #7ec8ff;
+            transition: color .18s ease;
+        }
 
-.tms-side-submenu a:hover i,
-.tms-side-submenu a.is-active i {
-    color: #fff;
-}
+        .tms-side-submenu a:hover i,
+        .tms-side-submenu a.is-active i {
+            color: #fff;
+        }
 
-.tms-side-submenu a:hover,
-.tms-side-submenu a.is-active {
-    background: rgba(49, 128, 255, .18);
-    color: #fff !important;
-}
+        .tms-side-submenu a:hover,
+        .tms-side-submenu a.is-active {
+            background: rgba(49, 128, 255, .18);
+            color: #fff !important;
+        }
 
         .tms-side-submenu a i {
             width: 17px;
@@ -280,8 +280,7 @@
                             class="tms-side-icon"><i class="fas fa-layer-group"></i></span><span
                             class="tms-side-label">انوینٹری</span><i class="fas fa-chevron-down tms-side-caret"></i></a>
 
-                    <div id="inventory-submenu"
-                        class="tms-side-submenu">
+                    <div id="inventory-submenu" class="tms-side-submenu">
                         <a class="{{ request()->routeIs('admin.cloth.index', 'admin.cloth.show') ? 'is-active' : '' }}"
                             href="{{ route('admin.cloth.index') }}"><i class="fas fa-th-list"></i>کپڑوں کی فہرست</a>
                         <a class="{{ request()->routeIs('admin.cloth.create') ? 'is-active' : '' }}"
