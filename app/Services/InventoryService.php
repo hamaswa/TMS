@@ -11,6 +11,7 @@ class InventoryService
 {
     public function receive(ClothColor $color, float $quantity, float $unitCost, string $type, Model $reference, ?string $note = null, bool $recalculateCost = true): InventoryMovement
     {
+        $this->validateQuantity($color, $quantity);
         $quantity = round($quantity, 2);
         $oldQuantity = (float) $color->length;
         $oldCost = (float) $color->average_unit_cost;
@@ -38,6 +39,18 @@ class InventoryService
     public function restore(ClothColor $color, float $quantity, string $type, Model $reference, ?string $note = null): InventoryMovement
     {
         return $this->receive($color, $quantity, (float) $color->average_unit_cost, $type, $reference, $note, false);
+    }
+
+    private function validateQuantity(ClothColor $color, float $quantity): void
+    {
+        if (!is_finite($quantity) || $quantity <= 0) {
+            throw ValidationException::withMessages(['quantity' => 'مقدار صفر سے زیادہ ہونی چاہیے۔']);
+        }
+
+        $unit = $color->cloth()->value('inventory_unit') ?: 'meter';
+        if (in_array($unit, ['piece', 'set'], true) && floor($quantity) !== $quantity) {
+            throw ValidationException::withMessages(['quantity' => 'پیس یا سیٹ کی مقدار مکمل عدد ہونی چاہیے۔']);
+        }
     }
 
     private function movement(ClothColor $color, string $type, float $quantity, float $unitCost, Model $reference, ?string $note): InventoryMovement
