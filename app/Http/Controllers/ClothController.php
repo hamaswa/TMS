@@ -156,7 +156,7 @@ class ClothController extends Controller
     public function create()
     {
         try {
-            $cloth_types = ClothType::where('user_id', auth()->user()->businessOwnerId())->latest()->get();
+            $cloth_types = ClothType::where('user_id', auth()->user()->businessOwnerId())->with('parent')->orderBy('name')->get();
             $cloth_brands = ClothBrand::where('user_id', auth()->user()->businessOwnerId())->latest()->get();
             [$storefront, $canConfigureOnline] = $this->storefrontContext();
             return view('cloths.create', compact('cloth_types', 'cloth_brands', 'storefront', 'canConfigureOnline'));
@@ -472,7 +472,7 @@ class ClothController extends Controller
     {
         try {
             abort_unless((int) $cloth->user_id === (int) Auth::user()->businessOwnerId(), 404);
-            $cloth_types = ClothType::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
+            $cloth_types = ClothType::where('user_id', Auth::user()->businessOwnerId())->with('parent')->orderBy('name')->get();
             $cloth_brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
             // Fetch related colors, images, and videos
             $cloth->load('colors', 'images', 'videos');
@@ -490,7 +490,7 @@ class ClothController extends Controller
 
     public function editCloth($id, $color)
     {
-        $cloth_types = ClothType::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
+        $cloth_types = ClothType::where('user_id', Auth::user()->businessOwnerId())->with('parent')->orderBy('name')->get();
         $cloth_brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->latest()->get();
         // Fetch the cloth details based on $id and $color
         $cloth = Cloth::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
