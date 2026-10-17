@@ -64,7 +64,7 @@
             <div class="cloth-section-heading"><span class="cloth-section-number">1</span><div><h2>سیٹ کی بنیادی معلومات</h2><p>نام، برانڈ، قسم اور قیمت ایک مرتبہ درج کریں</p></div></div>
             <div class="cloth-field-grid">
                 <div class="cloth-field is-wide"><label for="name">سیٹ کا نام <span class="cloth-required">*</span></label><input id="name" type="text" name="name" class="form-control" value="{{ old('name', $cloth?->name) }}" maxlength="100" placeholder="مثلاً Dilbar، Waqar یا Premium Gold" required>@error('name')<div class="cloth-error">{{ $message }}</div>@enderror</div>
-                <div class="cloth-field"><label for="cloth_type_id">کپڑے کی قسم <span class="cloth-required">*</span></label><select id="cloth_type_id" name="cloth_type_id" class="form-control" required><option value="">قسم منتخب کریں</option>@foreach($cloth_types as $type)<option value="{{ $type->id }}" @selected(old('cloth_type_id', $cloth?->cloth_type_id) == $type->id)>{{ $type->name }}</option>@endforeach</select></div>
+                <div class="cloth-field"><label for="cloth_type_id">پروڈکٹ کیٹیگری <span class="cloth-required">*</span></label><div class="d-flex align-items-center" style="gap:8px"><select id="cloth_type_id" name="cloth_type_id" class="form-control" required><option value="">کیٹیگری منتخب کریں</option>@foreach($cloth_types as $type)<option value="{{ $type->id }}" @selected(old('cloth_type_id', $cloth?->cloth_type_id) == $type->id)>{{ $type->parent ? $type->parent->name.' ← ' : '' }}{{ $type->name }}</option>@endforeach</select><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#quickCategoryModal" title="نئی کیٹیگری شامل کریں" aria-label="نئی کیٹیگری شامل کریں"><i class="fas fa-plus"></i></button></div><small>کیٹیگری یہیں شامل کریں، صفحہ چھوڑنے کی ضرورت نہیں۔</small></div>
                 <div class="cloth-field"><label for="cloth_brand_id">برانڈ / کمپنی <span class="cloth-required">*</span></label><select id="cloth_brand_id" name="cloth_brand_id" class="form-control" required><option value="">برانڈ منتخب کریں</option>@foreach($cloth_brands as $brand)<option value="{{ $brand->id }}" @selected(old('cloth_brand_id', $cloth?->cloth_brand_id) == $brand->id)>{{ $brand->name }}</option>@endforeach</select></div>
                 <div class="cloth-field"><label for="price">فی میٹر قیمت خرید <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="price" type="number" name="price" class="form-control" value="{{ old('price', $cloth?->price) }}" min="0" step="0.01" required></div></div>
                 <div class="cloth-field"><label for="sale_price_basis">فروخت کے ریٹ کی بنیاد <span class="cloth-required">*</span></label><select id="sale_price_basis" name="sale_price_basis" class="form-control" required><option value="per_meter" @selected(old('sale_price_basis', $cloth?->sale_price_basis ?? 'per_meter') === 'per_meter')>فی میٹر</option><option value="per_suit" @selected(old('sale_price_basis', $cloth?->sale_price_basis) === 'per_suit')>فی سوٹ</option></select></div>
@@ -97,6 +97,7 @@
 </div>
 </section>
 
+<div class="modal fade" id="quickCategoryModal" tabindex="-1" role="dialog" aria-labelledby="quickCategoryTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title" id="quickCategoryTitle">نئی کیٹیگری</h5><button type="button" class="close" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button></div><form id="quickCategoryForm" action="{{ route('admin.clothtype.store') }}" method="post">@csrf<div class="modal-body"><div id="quickCategoryError" class="alert alert-danger" role="alert" hidden></div><div class="form-group"><label for="quickCategoryUr">نام (اردو)</label><input id="quickCategoryUr" name="name_ur" class="form-control" maxlength="255" required></div><div class="form-group"><label for="quickCategoryEn">Name (English)</label><input id="quickCategoryEn" name="name_en" class="form-control" maxlength="255" required></div><div class="form-group"><label for="quickCategoryParent">مرکزی کیٹیگری (اختیاری)</label><select id="quickCategoryParent" name="parent_id" class="form-control"><option value="">مرکزی کیٹیگری</option>@foreach($cloth_types->whereNull('parent_id') as $root)<option value="{{ $root->id }}">{{ $root->name }}</option>@endforeach</select></div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">منسوخ</button><button type="submit" class="btn btn-primary">محفوظ کریں</button></div></form></div></div></div>
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -125,6 +126,33 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('addColorRow').addEventListener('click',()=>addRow({hex:'#808080',length:0}));
     document.querySelectorAll('[name="stock_mode"]').forEach(input=>input.addEventListener('change',syncMode));
     basis.addEventListener('change',syncPricing);
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('quickCategoryForm');
+    const error = document.getElementById('quickCategoryError');
+    const select = document.getElementById('cloth_type_id');
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        error.hidden = true;
+        const submit = form.querySelector('[type="submit"]');
+        submit.disabled = true;
+        try {
+            const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(' ') || 'کیٹیگری محفوظ نہیں ہو سکی۔');
+            const parent = document.getElementById('quickCategoryParent');
+            const parentName = parent.selectedOptions[0]?.textContent || '';
+            const option = new Option((data.parent_id ? parentName + ' ← ' : '') + data.name, data.id, true, true);
+            select.add(option);
+            if (!data.parent_id) parent.add(new Option(data.name, data.id));
+            if (window.jQuery) window.jQuery('#quickCategoryModal').modal('hide');
+            form.reset();
+        } catch (e) { error.textContent = e.message; error.hidden = false; }
+        finally { submit.disabled = false; }
+    });
 });
 </script>
 @endpush
