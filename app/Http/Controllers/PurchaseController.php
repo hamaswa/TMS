@@ -344,6 +344,11 @@ class PurchaseController extends Controller
     {
         $purchase = $this->ownedPurchase($purchase)->load(['supplier', 'items.cloth.brand', 'items.cloth.type', 'payments', 'returns.items']);
 
+        // Existing allocations may predate the cached totals being synchronized.
+        // Display the actual linked ledger, not stale purchase columns.
+        $purchase->paid_amount = round((float) $purchase->payments->sum('amount'), 2);
+        $purchase->balance_amount = round((float) $purchase->total_amount - (float) $purchase->paid_amount, 2);
+
         return view('purchases.show', compact('purchase'));
     }
 
