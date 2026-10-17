@@ -14,8 +14,19 @@ class ClothType extends Model
         'name_ur',
         'name_en',
         'type_slug',
+        'parent_id',
         'user_id'
     ];
+
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(self::class, 'parent_id');
+    }
 
     public function localizedName(?string $locale = null): string
     {
