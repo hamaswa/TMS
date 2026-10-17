@@ -53,13 +53,13 @@
                             class="fas fa-arrow-down"></i></span>
                 </article>
                 <article class="purchase-stat">
-                    <div class="purchase-stat-copy"><small>بقیہ ادائیگی</small><strong>Rs.
-                            {{ number_format($summary['balance'], 2) }}</strong></div><span class="purchase-stat-icon"><i
+                    <div class="purchase-stat-copy"><small>وصول شدہ خریداریاں</small><strong>
+                            {{ number_format($summary['received']) }}</strong></div><span class="purchase-stat-icon"><i
                             class="fas fa-shopping-cart"></i></span>
                 </article>
                 <article class="purchase-stat">
-                    <div class="purchase-stat-copy"><small>ادا شدہ رقم</small><strong>Rs.
-                            {{ number_format($summary['paid'], 2) }}</strong></div><span class="purchase-stat-icon"><i
+                    <div class="purchase-stat-copy"><small>زیرِ تیاری خریداریاں</small><strong>
+                            {{ number_format($summary['draft']) }}</strong></div><span class="purchase-stat-icon"><i
                             class="fas fa-wallet"></i></span>
                 </article>
             </div>
@@ -132,8 +132,6 @@
                                 <th>سپلائر</th>
                                 <th>حالت</th>
                                 <th>کل رقم</th>
-                                <th>ادا شدہ</th>
-                                <th>بقایا</th>
                                 <th>عمل</th>
                             </tr>
                         </thead>
@@ -152,10 +150,6 @@
                                     </td>
                                     <td data-label="کل رقم"><span class="purchase-money">Rs.
                                             {{ number_format($purchase->total_amount, 2) }}</span></td>
-                                    <td data-label="ادا شدہ"><span class="purchase-money">Rs.
-                                            {{ number_format($purchase->paid_amount, 2) }}</span></td>
-                                    <td data-label="بقایا"><span class="purchase-money purchase-balance">Rs.
-                                            {{ number_format($purchase->balance_amount, 2) }}</span></td>
                                     <td class="purchase-list-action" data-label="عمل">
                                         <div class="dropdown">
                                             <button type="button" class="purchase-open" data-toggle="dropdown"
@@ -183,7 +177,7 @@
                                     </td>
                                 </tr>
                             @empty<tr>
-                                    <td colspan="8" class="text-center text-muted py-5">منتخب فلٹر کے مطابق کوئی
+                                    <td colspan="6" class="text-center text-muted py-5">منتخب فلٹر کے مطابق کوئی
                                         خریداری موجود نہیں۔</td>
                                 </tr>
                             @endforelse
