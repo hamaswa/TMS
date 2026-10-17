@@ -86,7 +86,7 @@
                                 </div>
                                 <div class="field-options">
                                     @foreach ($measurementFields as $key => $meta)
-                                        @include('measurement-templates.partials.field-choice', [
+                                        <div class="template-system-field">@include('measurement-templates.partials.field-choice', [
                                             'kind' => 'system',
                                             'value' => $key,
                                             'label' => $meta['label'],
@@ -94,7 +94,7 @@
                                             'checked' => in_array($key, $selectedSystem, true),
                                             'defaultColumn' => 'right',
                                             'locked' => (bool) $template?->is_builtin,
-                                        ])
+                                        ])@if($editing)<button type="button" class="template-field-edit" data-toggle="modal" data-target="#systemChoiceModal" data-system-key="{{ $key }}" data-system-label="{{ $meta['label'] }}" title="انتخاب تبدیل کریں" aria-label="{{ $meta['label'] }} کے انتخاب تبدیل کریں"><i class="fas fa-pen"></i></button>@endif</div>
                                     @endforeach
                                 </div>
                             </div>
@@ -109,12 +109,6 @@
                                             <p>معیاری خانے مشترک ہیں، مگر ان کے انتخاب صرف اسی ٹیمپلیٹ کے ہیں۔</p>
                                         </div>
                                     </div>
-                                    @if ($editing)
-                                        <button type="button" class="btn btn-sm btn-outline-primary mb-3 ml-2" data-toggle="modal" data-target="#templateOptionsModal"><i class="fas fa-plus ml-1"></i> انتخاب شامل / دیکھیں</button>
-                                        <a href="{{ route('admin.OptionType.index', ['template' => $template->id]) }}"
-                                            class="btn btn-sm btn-outline-primary mb-3"><i class="fas fa-list ml-1"></i> اس
-                                            ٹیمپلیٹ کے انتخاب</a>
-                                    @endif
                                 </div>
                                 <div class="field-options">
                                     @foreach ($preferenceFields as $key => $meta)
@@ -218,8 +212,59 @@
 
 
             @if($editing)
-            <div class="modal fade" id="templateOptionsModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title">سلائی کے انتخاب — {{ $template->name }}</h5><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں">&times;</button></div><div class="modal-body p-0"><iframe title="سلائی کے انتخاب شامل کریں اور دیکھیں" data-src="{{ route('admin.OptionType.index', ['template' => $template->id]) }}" style="display:block;width:100%;height:min(72vh,760px);border:0"></iframe></div><div class="modal-footer"><button type="button" class="btn btn-primary" data-dismiss="modal">مکمل</button></div></div></div></div>
-            <script>document.addEventListener('DOMContentLoaded',function(){if(!window.jQuery)return;window.jQuery('#templateOptionsModal').on('show.bs.modal',function(){var frame=this.querySelector('iframe');if(!frame.src)frame.src=frame.dataset.src;});});</script>
+            <div class="modal fade template-field-modal" id="systemChoiceModal" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered" role="document"><div class="modal-content" dir="rtl">
+                    <div class="modal-header"><h5 class="modal-title" id="systemChoiceTitle">سلائی کے انتخاب</h5><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں">&times;</button></div>
+                    <div class="modal-body">
+                        <form id="systemChoiceAdd" method="POST" action="{{ route('admin.Options.store') }}">@csrf<input type="hidden" name="OptionTypeId"><input type="hidden" name="measurement_template_id" value="{{ $template->id }}">
+                            <label for="systemChoiceName">نیا انتخاب شامل کریں</label><div class="input-group mb-2"><input id="systemChoiceName" class="form-control" name="Name" maxlength="255" required placeholder="انتخاب کا نام"><div class="input-group-append"><button class="btn btn-success" type="submit">شامل کریں</button></div></div>
+                        </form>
+                        <p id="systemChoiceMessage" class="small text-danger" role="alert"></p><strong>محفوظ انتخاب</strong><div id="systemChoiceList" class="list-group mt-2" style="max-height:55vh;overflow:auto"></div>
+                    </div><div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">بند کریں</button></div>
+                </div></div>
+            </div>
+            <script>
+            document.addEventListener('DOMContentLoaded',function(){
+                if(!window.jQuery)return;
+                const modal=document.getElementById('systemChoiceModal'),form=document.getElementById('systemChoiceAdd'),list=document.getElementById('systemChoiceList'),message=document.getElementById('systemChoiceMessage');
+                const types=@json($systemOptionTypes);let active=null;
+                function error(s){message.textContent=s||''}
+                async function request(url,method,name){
+                    const data=new FormData();data.append('_token',form.querySelector('[name="_token"]').value);data.append('OptionTypeId',active.id);data.append('measurement_template_id',{{ (int)$template->id }});
+                    if(name!==null)data.append('Name',name);
+                    if(method!=='POST')data.append('_method',method);
+                    const response=await fetch(url,{method:'POST',body:data,credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
+                    const result=await response.json();if(!response.ok)throw Error(result.message||Object.values(result.errors||{}).flat().join(' ')||'محفوظ نہیں ہوا');return result;
+                }
+                function render(){
+                    list.replaceChildren();
+                    if(!active||!active.options.length){const p=document.createElement('p');p.className='text-muted p-3';p.textContent='ابھی کوئی انتخاب محفوظ نہیں۔';list.append(p);return}
+                    active.options.forEach(choice=>{
+                        const row=document.createElement('div');row.className='list-group-item d-flex flex-wrap align-items-center';row.style.gap='8px';
+                        const input=document.createElement('input');input.className='form-control flex-grow-1';input.value=choice.name;input.setAttribute('aria-label','انتخاب');
+                        const save=document.createElement('button');save.type='button';save.className='btn btn-sm btn-outline-primary';save.textContent='محفوظ کریں';
+                        const del=document.createElement('button');del.type='button';del.className='btn btn-sm btn-outline-danger';del.textContent='حذف';
+                        save.onclick=async()=>{save.disabled=true;error('');try{await request(choice.update,'PUT',input.value);choice.name=input.value;render()}catch(e){error(e.message)}finally{save.disabled=false}};
+                        del.onclick=async()=>{if(!confirm('کیا انتخاب حذف کرنا چاہتے ہیں؟'))return;del.disabled=true;error('');try{await request(choice.destroy,'DELETE',null);active.options=active.options.filter(x=>x.id!==choice.id);render()}catch(e){error(e.message)}finally{del.disabled=false}};
+                        row.append(input,save,del);list.append(row);
+                    });
+                }
+                window.jQuery(modal).on('show.bs.modal',event=>{
+                    const button=event.relatedTarget;active=types[button.getAttribute('data-system-key')]||null;
+                    document.getElementById('systemChoiceTitle').textContent=button.getAttribute('data-system-label')+' — انتخاب';
+                    form.querySelector('[name="OptionTypeId"]').value=active?active.id:'';
+                    form.querySelector('button[type="submit"]').disabled=!active;form.querySelector('[name="Name"]').value='';error('');render();
+                });
+                form.onsubmit=async event=>{
+                    event.preventDefault();if(!active)return;const button=form.querySelector('button[type="submit"]');button.disabled=true;error('');
+                    try{const name=form.querySelector('[name="Name"]').value.trim();if(!name)return;
+                        const result=await request(form.action,'POST',name);
+                        active.options.push({id:result.id,name:result.name,update:active.updateBase.replace('__ID__',result.id),destroy:active.deleteBase.replace('__ID__',result.id)});
+                        form.querySelector('[name="Name"]').value='';render();
+                    }catch(e){error(e.message)}finally{button.disabled=false}
+                };
+            });
+            </script>
             @endif
             @if ($editing)
                 <div class="modal fade template-field-modal" id="newTemplateField" tabindex="-1" role="dialog"
