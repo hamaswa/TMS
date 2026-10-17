@@ -86,7 +86,7 @@
                                 </div>
                                 <div class="field-options">
                                     @foreach ($measurementFields as $key => $meta)
-                                        <div class="template-system-field">@include('measurement-templates.partials.field-choice', [
+                                        @include('measurement-templates.partials.field-choice', [
                                             'kind' => 'system',
                                             'value' => $key,
                                             'label' => $meta['label'],
@@ -94,7 +94,7 @@
                                             'checked' => in_array($key, $selectedSystem, true),
                                             'defaultColumn' => 'right',
                                             'locked' => (bool) $template?->is_builtin,
-                                        ])@if($editing)<button type="button" class="template-field-edit" data-toggle="modal" data-target="#systemChoiceModal" data-system-key="{{ $key }}" data-system-label="{{ $meta['label'] }}" title="انتخاب تبدیل کریں" aria-label="{{ $meta['label'] }} کے انتخاب تبدیل کریں"><i class="fas fa-pen"></i></button>@endif</div>
+                                        ])
                                     @endforeach
                                 </div>
                             </div>
@@ -112,6 +112,7 @@
                                 </div>
                                 <div class="field-options">
                                     @foreach ($preferenceFields as $key => $meta)
+                                        <div class="template-system-field">
                                         @include('measurement-templates.partials.field-choice', [
                                             'kind' => 'system',
                                             'value' => $key,
@@ -121,6 +122,10 @@
                                             'defaultColumn' => 'left',
                                             'locked' => (bool) $template?->is_builtin,
                                         ])
+                                            @if($editing && isset($systemOptionTypes[$key]))
+                                                <button type="button" class="template-field-edit" data-toggle="modal" data-target="#systemChoiceModal" data-system-key="{{ $key }}" data-system-label="{{ $meta['label'] }}" title="انتخاب تبدیل کریں" aria-label="{{ $meta['label'] }} کے انتخاب تبدیل کریں"><i class="fas fa-pen"></i></button>
+                                            @endif
+                                        </div>
                                     @endforeach
                                 </div>
                             </div>
