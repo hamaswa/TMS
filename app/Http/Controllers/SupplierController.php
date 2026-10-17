@@ -16,8 +16,8 @@ class SupplierController extends Controller
     public function index()
     {
         $suppliers = Supplier::where('user_id', Auth::user()->businessOwnerId())
-            ->withSum(['purchases as purchase_balance' => fn ($query) => $query->where('status', 'received')], 'balance_amount')
-            ->withSum(['payments as unallocated_payments' => fn ($query) => $query->whereNull('purchase_id')], 'amount')
+            ->withSum(['purchases as purchase_total' => fn ($query) => $query->where('status', 'received')], 'total_amount')
+            ->withSum('payments as total_paid', 'amount')
             ->orderBy('name')->get();
 
         return view('suppliers.index', compact('suppliers'));
@@ -37,8 +37,8 @@ class SupplierController extends Controller
 
     public function edit(int $supplier)
     {
-        $supplier = $this->owned($supplier)->loadSum(['purchases as purchase_balance' => fn ($query) => $query->where('status', 'received')], 'balance_amount')
-            ->loadSum(['payments as unallocated_payments' => fn ($query) => $query->whereNull('purchase_id')], 'amount')
+        $supplier = $this->owned($supplier)->loadSum(['purchases as purchase_total' => fn ($query) => $query->where('status', 'received')], 'total_amount')
+            ->loadSum('payments as total_paid', 'amount')
             ->load(['payments' => fn ($query) => $query->with('purchase')->latest('payment_date')->latest('id')]);
 
         return view('suppliers.edit', compact('supplier'));
@@ -78,24 +78,8 @@ class SupplierController extends Controller
         $ownerId = Auth::user()->businessOwnerId();
         DB::transaction(function () use ($validated, $ownerId, $supplier) {
             $lockedSupplier = Supplier::where('user_id', $ownerId)->lockForUpdate()->findOrFail($supplier);
-            $purchaseBalance = (float) $lockedSupplier->purchases()
-                ->where('status', 'received')
-                ->lockForUpdate()
-                ->get(['id', 'balance_amount'])
-                ->sum('balance_amount');
-            $unallocatedPayments = (float) $lockedSupplier->payments()
-                ->whereNull('purchase_id')
-                ->lockForUpdate()
-                ->get(['id', 'amount'])
-                ->sum('amount');
-            $outstanding = round((float) $lockedSupplier->opening_balance + $purchaseBalance - $unallocatedPayments, 2);
-
-            if ((float) $validated['amount'] > max(0, $outstanding)) {
-                throw ValidationException::withMessages([
-                    'amount' => 'ادائیگی سپلائر کی موجودہ بقایا رقم سے زیادہ نہیں ہو سکتی۔',
-                ]);
-            }
-
+            // Supplier payments are account-level; purchase references are informational only.
+            // Advance payments are permitted when no balance is due.
             SupplierPayment::create([
                 'user_id' => $ownerId, 'supplier_id' => $lockedSupplier->id, 'purchase_id' => null,
                 'payment_date' => $validated['payment_date'], 'amount' => $validated['amount'],
