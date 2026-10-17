@@ -55,13 +55,16 @@ class ClothTypeController extends Controller
             if (!empty($validated['parent_id']) && ClothType::where('user_id', $user_id)->whereKey($validated['parent_id'])->whereNotNull('parent_id')->exists()) {
                 return back()->withErrors(['parent_id' => 'صرف مرکزی قسم کے تحت ذیلی قسم شامل کریں۔'])->withInput();
             }
-            ClothType::create([
+            $createdType = ClothType::create([
                 'name' => $validated['name_ur'],
                 'name_ur' => $validated['name_ur'],
                 'name_en' => $validated['name_en'],
                 'parent_id' => $validated['parent_id'] ?? null,
                 'user_id' => $user_id
             ]);
+            if ($request->expectsJson()) {
+                return response()->json(['id' => $createdType->id, 'name' => $createdType->name, 'parent_id' => $createdType->parent_id], 201);
+            }
             return redirect()->route('admin.clothtype.index')->with('insert', 'کپڑے کی قسم کامیابی کے ساتھ شامل کی گئی۔');
         } catch (\Throwable $th) {
             throw $th;
