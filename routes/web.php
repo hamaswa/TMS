@@ -477,6 +477,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
         Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
         Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'payment'])->name('suppliers.payment');
+        Route::patch('/suppliers/{supplier}/payments/{payment}/purchase', [SupplierController::class, 'linkPayment'])->name('suppliers.payments.link');
     });
     Route::middleware('business.permission:clothing.purchases')->group(function () {
         Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
