@@ -174,7 +174,7 @@
                                                     type="button" class="template-field-edit" data-toggle="modal"
                                                     data-target="#editTemplateField{{ $field->id }}"
                                                     aria-label="{{ $field->label }} تبدیل کریں"><i
-                                                        class="fas fa-pen"></i></button></div>
+                                                        class="fas fa-pen"></i></button><button type="submit" form="removeTemplateField{{ $field->id }}" class="btn btn-sm btn-outline-danger ml-1" title="خانہ فارم سے ہٹائیں" aria-label="{{ $field->label }} ہٹائیں" onclick="return confirm('کیا یہ خانہ فارم سے ہٹانا چاہتے ہیں؟ پرانی پیمائش محفوظ رہے گی۔')"><i class="fas fa-times"></i></button></div>
                                         @endforeach
                                     </div>
                                 @endif
@@ -241,6 +241,7 @@
                     </div>
                 </div>
                 @foreach ($customFields as $field)
+                    <form id="removeTemplateField{{ $field->id }}" method="POST" action="{{ route('admin.measurement-fields.destroy', $field) }}">@csrf @method('DELETE')</form>
                     <div class="modal fade template-field-modal" id="editTemplateField{{ $field->id }}"
                         tabindex="-1" role="dialog" aria-hidden="true">
                         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
