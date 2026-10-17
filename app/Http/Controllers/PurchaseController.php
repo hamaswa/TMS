@@ -131,7 +131,8 @@ class PurchaseController extends Controller
             'new_sets.*.cloth_type_id' => ['required', 'integer'],
             // New sets are priced per suit at the default suit length (e.g. 4.5 m for Rs 2200).
             'new_sets.*.suit_sale_price' => ['required', 'numeric', 'min:0'],
-            'new_sets.*.default_sale_length' => ['required', 'numeric', 'gt:0'],
+            'new_sets.*.default_sale_length' => ['nullable', 'numeric', 'gt:0'],
+            'new_sets.*.inventory_unit' => ['nullable', Rule::in(['meter', 'piece', 'set'])],
             'new_sets.*.tracking_mode' => ['required', Rule::in([Cloth::COLOR_TRACKING_NONE, Cloth::COLOR_TRACKING_PER_COLOR])],
             'new_sets.*.quantity' => ['nullable', 'numeric', 'gt:0'],
             'new_sets.*.total' => ['required', 'numeric', 'gt:0'],
@@ -173,6 +174,20 @@ class PurchaseController extends Controller
                 throw ValidationException::withMessages([
                     "new_sets.{$index}.name" => 'یہ سیٹ پہلے سے موجود ہے؛ اسے موجودہ سیٹ دوبارہ خریدیں سے منتخب کریں۔',
                 ]);
+            }
+            $unit = $set['inventory_unit'] ?? 'meter';
+            if ($unit === 'meter' && empty($set['default_sale_length'])) {
+                throw ValidationException::withMessages(["new_sets.{$index}.default_sale_length" => 'فیبرک کی ڈیفالٹ سوٹ لمبائی درج کریں۔']);
+            }
+            if (in_array($unit, ['piece', 'set'], true)) {
+                $quantitiesToCheck = $set['tracking_mode'] === Cloth::COLOR_TRACKING_PER_COLOR
+                    ? array_column($set['colors'] ?? [], 'quantity')
+                    : [$set['quantity'] ?? 0];
+                foreach ($quantitiesToCheck as $quantity) {
+                    if (floor((float) $quantity) !== (float) $quantity) {
+                        throw ValidationException::withMessages(["new_sets.{$index}.quantity" => 'پیس یا سیٹ کی مقدار مکمل عدد ہونی چاہیے۔']);
+                    }
+                }
             }
             if ($set['tracking_mode'] === Cloth::COLOR_TRACKING_PER_COLOR) {
                 $setColors = array_values($set['colors'] ?? []);
@@ -243,10 +258,14 @@ class PurchaseController extends Controller
                     'cloth_type_id' => $set['cloth_type_id'],
                     'cloth_brand_id' => $set['cloth_brand_id'],
                     'price' => $unitCost,
-                    'sale_price' => round((float) $set['suit_sale_price'] / (float) $set['default_sale_length'], 2),
+                    'sale_price' => ($set['inventory_unit'] ?? 'meter') === 'meter'
+                        ? round((float) $set['suit_sale_price'] / (float) $set['default_sale_length'], 2)
+                        : round((float) $set['suit_sale_price'], 2),
                     'suit_sale_price' => round((float) $set['suit_sale_price'], 2),
-                    'default_sale_length' => round((float) $set['default_sale_length'], 2),
+                    'default_sale_length' => ($set['inventory_unit'] ?? 'meter') === 'meter'
+                        ? round((float) $set['default_sale_length'], 2) : null,
                     'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
+                    'inventory_unit' => $set['inventory_unit'] ?? 'meter',
                     'color_tracking_mode' => $set['tracking_mode'],
                     'user_id' => $ownerId,
                 ]);
