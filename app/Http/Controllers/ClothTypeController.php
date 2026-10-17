@@ -52,6 +52,9 @@ class ClothTypeController extends Controller
                 'parent_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('cloth_types', 'id')->where('user_id', Auth::user()->businessOwnerId())],
             ]);
             $user_id = Auth::user()->businessOwnerId();
+            if (!empty($validated['parent_id']) && ClothType::where('user_id', $user_id)->whereKey($validated['parent_id'])->whereNotNull('parent_id')->exists()) {
+                return back()->withErrors(['parent_id' => 'صرف مرکزی قسم کے تحت ذیلی قسم شامل کریں۔'])->withInput();
+            }
             ClothType::create([
                 'name' => $validated['name_ur'],
                 'name_ur' => $validated['name_ur'],
@@ -106,6 +109,7 @@ class ClothTypeController extends Controller
             $validated = $request->validate([
                 'name_ur' => ['required', 'string', 'max:255'],
                 'name_en' => ['required', 'string', 'max:255'],
+                'parent_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('cloth_types', 'id')->where('user_id', Auth::user()->businessOwnerId())],
             ]);
             $validated['name'] = $validated['name_ur'];
             if ((int) ($validated['parent_id'] ?? 0) === (int) $id) {
