@@ -39,9 +39,9 @@ class PurchaseController extends Controller
         $summaryQuery = Purchase::where('user_id', $ownerId);
         $summary = [
             'count' => (clone $summaryQuery)->count(),
-            'total' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('total_amount'),
-            'paid' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('paid_amount'),
-            'balance' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('balance_amount'),
+            'total' => (float) (clone $summaryQuery)->where('status', 'received')->sum('total_amount'),
+            'received' => (clone $summaryQuery)->where('status', 'received')->count(),
+            'draft' => (clone $summaryQuery)->where('status', 'draft')->count(),
         ];
         $purchases = Purchase::where('user_id', $ownerId)->with('supplier')
             ->when($filters['status'] ?? null, fn($q, $status) => $q->where('status', $status))
