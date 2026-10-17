@@ -101,8 +101,34 @@ class SupplierController extends Controller
         $validated = $request->validate(['purchase_id' => ['nullable', 'integer']]);
         $ownerId = Auth::user()->businessOwnerId();
         $this->owned($supplier);
-        $record = SupplierPayment::where('user_id', $ownerId)->where('supplier_id', $supplier)->findOrFail($payment);
-        $record->update(['purchase_id' => $this->validatedPurchaseId($validated['purchase_id'] ?? null, $supplier, $ownerId)]);
+
+        DB::transaction(function () use ($ownerId, $supplier, $payment, $validated) {
+            $record = SupplierPayment::where('user_id', $ownerId)->where('supplier_id', $supplier)
+                ->lockForUpdate()->findOrFail($payment);
+            $newPurchaseId = $this->validatedPurchaseId($validated['purchase_id'] ?? null, $supplier, $ownerId);
+            $oldPurchaseId = $record->purchase_id;
+
+            if ($oldPurchaseId == $newPurchaseId) {
+                return;
+            }
+
+            // Lock affected purchases in a consistent order to avoid deadlocks.
+            $purchases = Purchase::where('user_id', $ownerId)->where('supplier_id', $supplier)
+                ->whereIn('id', array_filter([$oldPurchaseId, $newPurchaseId]))
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
+            $record->update(['purchase_id' => $newPurchaseId]);
+
+            foreach ($purchases as $purchase) {
+                // The purchase's stored totals must match the payment ledger after reassignment.
+                $paid = round((float) SupplierPayment::where('user_id', $ownerId)
+                    ->where('supplier_id', $supplier)->where('purchase_id', $purchase->id)->sum('amount'), 2);
+                $purchase->update([
+                    'paid_amount' => $paid,
+                    'balance_amount' => round((float) $purchase->total_amount - $paid, 2),
+                ]);
+            }
+        });
 
         return back()->with('success', 'ادائیگی کا خریداری حوالہ محفوظ کر دیا گیا ہے۔');
     }
