@@ -110,6 +110,7 @@
                                         </div>
                                     </div>
                                     @if ($editing)
+                                        <button type="button" class="btn btn-sm btn-outline-primary mb-3 ml-2" data-toggle="modal" data-target="#templateOptionsModal"><i class="fas fa-plus ml-1"></i> انتخاب شامل / دیکھیں</button>
                                         <a href="{{ route('admin.OptionType.index', ['template' => $template->id]) }}"
                                             class="btn btn-sm btn-outline-primary mb-3"><i class="fas fa-list ml-1"></i> اس
                                             ٹیمپلیٹ کے انتخاب</a>
@@ -215,6 +216,11 @@
                 </div>
             </form>
 
+
+            @if($editing)
+            <div class="modal fade" id="templateOptionsModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title">سلائی کے انتخاب — {{ $template->name }}</h5><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں">&times;</button></div><div class="modal-body p-0"><iframe title="سلائی کے انتخاب شامل کریں اور دیکھیں" data-src="{{ route('admin.OptionType.index', ['template' => $template->id]) }}" style="display:block;width:100%;height:min(72vh,760px);border:0"></iframe></div><div class="modal-footer"><button type="button" class="btn btn-primary" data-dismiss="modal">مکمل</button></div></div></div></div>
+            <script>document.addEventListener('DOMContentLoaded',function(){if(!window.jQuery)return;window.jQuery('#templateOptionsModal').on('show.bs.modal',function(){var frame=this.querySelector('iframe');if(!frame.src)frame.src=frame.dataset.src;});});</script>
+            @endif
             @if ($editing)
                 <div class="modal fade template-field-modal" id="newTemplateField" tabindex="-1" role="dialog"
                     aria-hidden="true">
