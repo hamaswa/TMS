@@ -59,6 +59,9 @@ class OptionsController extends Controller
         $obj->user_id = Auth::user()->businessOwnerId();
         $obj->measurement_template_id = $template->id;
         $obj->save();
+        if ($request->expectsJson()) {
+            return response()->json(['id' => $obj->id, 'name' => $obj->Name, 'template_id' => $template->id], 201);
+        }
         return redirect()->route('admin.OptionType.index', ['template' => $template->id])
             ->with('success', 'نیا انتخاب شامل کر دیا گیا ہے۔')
             ->with('openChoiceModal', $validated['OptionTypeId']);
@@ -115,6 +118,9 @@ class OptionsController extends Controller
         $obj->Name = $validated['Name'];
         $obj->slug = $slug;
         $obj->save();
+        if ($request->expectsJson()) {
+            return response()->json(['id' => $obj->id, 'name' => $obj->Name]);
+        }
         return redirect()->route('admin.OptionType.index', ['template' => $template->id])
             ->with('success', 'انتخاب کا نام تبدیل کر دیا گیا ہے۔')
             ->with('openChoiceModal', $OptionTypeId);
@@ -131,6 +137,9 @@ class OptionsController extends Controller
         $obj = Options::where('user_id', Auth::user()->businessOwnerId())->whereNotNull('measurement_template_id')->findOrFail($id);
         $optionTypeId = $obj->option_id;
         $obj->delete();
+        if (request()->expectsJson()) {
+            return response()->json(['deleted' => true, 'id' => (int) $id]);
+        }
         return redirect()->route('admin.OptionType.index', ['template' => $obj->measurement_template_id])
             ->with('success', 'انتخاب حذف کر دیا گیا ہے۔')
             ->with('openChoiceModal', $optionTypeId);

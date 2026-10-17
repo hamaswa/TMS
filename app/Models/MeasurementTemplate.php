@@ -8,11 +8,12 @@ class MeasurementTemplate extends Model
 {
     protected $fillable = [
         'user_id', 'name', 'description', 'system_fields', 'custom_field_ids',
-        'is_builtin', 'field_layout', 'layout_columns', 'is_default', 'is_active',
+        'is_builtin', 'system_field_labels', 'field_layout', 'layout_columns', 'is_default', 'is_active',
     ];
 
     protected $casts = [
         'system_fields' => 'array',
+        'system_field_labels' => 'array',
         'custom_field_ids' => 'array',
         'is_builtin' => 'boolean',
         'field_layout' => 'array',

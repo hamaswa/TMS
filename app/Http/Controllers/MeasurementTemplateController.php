@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MeasurementField;
+use App\Models\OptionType;
 use App\Models\MeasurementTemplate;
 use App\Services\MeasurementService;
 use App\Services\TailoringOptionDefaultsService;
@@ -71,6 +72,29 @@ class MeasurementTemplateController extends Controller
 
         return redirect()->route('admin.measurement-templates.edit', $template)
             ->with('success', 'پیمائش ٹیمپلیٹ محفوظ ہو گیا ہے۔');
+    }
+
+    public function updateFieldTitle(Request $request, int $template)
+    {
+        $template = $this->ownedTemplate($template);
+        $data = $request->validate([
+            'field_key' => ['required', 'string', Rule::in(array_keys(MeasurementService::SYSTEM_FIELDS))],
+            'title' => ['required', 'string', 'max:100'],
+        ]);
+
+        $labels = $template->system_field_labels ?? [];
+        $title = trim($data['title']);
+        if ($title === '') {
+            throw ValidationException::withMessages(['title' => 'خانے کا نام درج کریں۔']);
+        }
+        if ($title === MeasurementService::SYSTEM_FIELDS[$data['field_key']]['label']) {
+            unset($labels[$data['field_key']]);
+        } else {
+            $labels[$data['field_key']] = $title;
+        }
+        $template->update(['system_field_labels' => $labels]);
+
+        return response()->json(['field_key' => $data['field_key'], 'title' => $title]);
     }
 
     public function destroy(int $template)
@@ -167,10 +191,35 @@ class MeasurementTemplateController extends Controller
     private function builderData(?MeasurementTemplate $template = null): array
     {
         $ownerId = Auth::user()->businessOwnerId();
-        $systemFields = MeasurementService::SYSTEM_FIELDS;
+        $systemFields = collect(MeasurementService::SYSTEM_FIELDS)->mapWithKeys(function (array $meta, string $key) use ($template) {
+            $meta['label'] = $template?->system_field_labels[$key] ?? $meta['label'];
+            return [$key => $meta];
+        })->all();
+        $systemOptionTypes = [];
+        if ($template) {
+            $keys = collect($systemFields)->filter(fn (array $field) => $field['unit'] === '')->keys();
+            $types = OptionType::where(function ($query) use ($ownerId) {
+                $query->whereNull('user_id')->orWhere('user_id', $ownerId);
+            })->whereIn('type', $keys->map(fn ($key) => $key === 'Daaman' ? 'daaman' : $key)->all())
+                ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)->orderBy('Name')])->get();
+            foreach ($types as $type) {
+                $key = $type->type === 'daaman' ? 'Daaman' : $type->type;
+                $systemOptionTypes[$key] = [
+                    'id' => $type->id,
+                    'updateBase' => route('admin.Options.update', ['Option' => '__ID__']),
+                    'deleteBase' => route('admin.Options.destroy', ['Option' => '__ID__']),
+                    'options' => $type->options->map(fn ($option) => [
+                        'id' => $option->id, 'name' => $option->Name,
+                        'update' => route('admin.Options.update', $option),
+                        'destroy' => route('admin.Options.destroy', $option),
+                    ])->values()->all(),
+                ];
+            }
+        }
 
         return [
             'template' => $template,
+            'systemOptionTypes' => $systemOptionTypes,
             'measurementFields' => collect($systemFields)->filter(fn(array $field) => $field['unit'] !== ''),
             'preferenceFields' => collect($systemFields)->filter(fn(array $field) => $field['unit'] === ''),
             'systemFields' => $systemFields,

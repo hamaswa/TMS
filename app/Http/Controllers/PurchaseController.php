@@ -39,9 +39,9 @@ class PurchaseController extends Controller
         $summaryQuery = Purchase::where('user_id', $ownerId);
         $summary = [
             'count' => (clone $summaryQuery)->count(),
-            'total' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('total_amount'),
-            'paid' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('paid_amount'),
-            'balance' => (float) (clone $summaryQuery)->where('status', '!=', 'cancelled')->sum('balance_amount'),
+            'total' => (float) (clone $summaryQuery)->where('status', 'received')->sum('total_amount'),
+            'received' => (clone $summaryQuery)->where('status', 'received')->count(),
+            'draft' => (clone $summaryQuery)->where('status', 'draft')->count(),
         ];
         $purchases = Purchase::where('user_id', $ownerId)->with('supplier')
             ->when($filters['status'] ?? null, fn($q, $status) => $q->where('status', $status))
@@ -343,6 +343,11 @@ class PurchaseController extends Controller
     public function show(int $purchase)
     {
         $purchase = $this->ownedPurchase($purchase)->load(['supplier', 'items.cloth.brand', 'items.cloth.type', 'payments', 'returns.items']);
+
+        // Existing allocations may predate the cached totals being synchronized.
+        // Display the actual linked ledger, not stale purchase columns.
+        $purchase->paid_amount = round((float) $purchase->payments->sum('amount'), 2);
+        $purchase->balance_amount = round((float) $purchase->total_amount - (float) $purchase->paid_amount, 2);
 
         return view('purchases.show', compact('purchase'));
     }

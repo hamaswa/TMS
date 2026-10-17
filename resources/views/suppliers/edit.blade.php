@@ -13,51 +13,30 @@
 @endpush
 @section('content')
 <section class="main-content"><div class="container-fluid px-3 px-md-4">
+    @php($outstanding = max(0, (float)$supplier->opening_balance + (float)($supplier->purchase_total ?? 0) - (float)($supplier->total_paid ?? 0)))
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-        <div><h1 class="h3 mb-1">{{ $supplier->name }}</h1><p class="text-muted mb-0">سپلائر کی معلومات، بقایا اور ادائیگیوں کا مکمل ریکارڈ۔</p></div>
-        <a href="{{ route('admin.suppliers.index') }}" class="btn btn-light">سپلائرز پر واپس جائیں</a>
+        <div><h1 class="h3 mb-1">{{ $supplier->name }}</h1><p class="text-muted mb-0">سپلائر کی ادائیگیوں اور لین دین کی تاریخ۔</p></div>
+        <div class="d-flex flex-wrap align-items-center" style="gap:8px">
+            <button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#editSupplier{{ $supplier->id }}"><i class="fas fa-pen ml-1"></i> سپلائر کی ترمیم</button>
+            @if($supplier->active)
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#paySupplier{{ $supplier->id }}"><i class="fas fa-money-bill-wave ml-1"></i> نئی ادائیگی</button>
+            @endif
+            <a href="{{ route('admin.suppliers.index') }}" class="btn btn-light">سپلائرز پر واپس جائیں</a>
+        </div>
     </div>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
-    @php($outstanding = max(0, (float)$supplier->opening_balance + (float)($supplier->purchase_balance ?? 0) - (float)($supplier->unallocated_payments ?? 0)))
+
     <div class="row mb-3">
         <div class="col-6 col-lg-3 mb-2"><div class="card h-100"><div class="card-body py-3"><small class="text-muted">ابتدائی بقایا</small><div class="h5 mb-0">روپے {{ number_format($supplier->opening_balance,2) }}</div></div></div></div>
-        <div class="col-6 col-lg-3 mb-2"><div class="card h-100"><div class="card-body py-3"><small class="text-muted">خریداری بقایا</small><div class="h5 mb-0">روپے {{ number_format($supplier->purchase_balance ?? 0,2) }}</div></div></div></div>
-        <div class="col-6 col-lg-3 mb-2"><div class="card h-100"><div class="card-body py-3"><small class="text-muted">عمومی ادائیگیاں</small><div class="h5 mb-0">روپے {{ number_format($supplier->unallocated_payments ?? 0,2) }}</div></div></div></div>
+        <div class="col-6 col-lg-3 mb-2"><div class="card h-100"><div class="card-body py-3"><small class="text-muted">کل خریداریاں</small><div class="h5 mb-0">روپے {{ number_format($supplier->purchase_total ?? 0,2) }}</div></div></div></div>
+        <div class="col-6 col-lg-3 mb-2"><div class="card h-100"><div class="card-body py-3"><small class="text-muted">کل ادائیگیاں</small><div class="h5 mb-0">روپے {{ number_format($supplier->total_paid ?? 0,2) }}</div></div></div></div>
         <div class="col-6 col-lg-3 mb-2"><div class="card h-100 border-{{ $outstanding > 0 ? 'warning' : 'success' }}"><div class="card-body py-3"><small class="text-muted">موجودہ بقایا</small><div class="h5 mb-0">روپے {{ number_format($outstanding,2) }}</div></div></div></div>
     </div>
 
-    <div class="card mb-3"><div class="card-header">سپلائر کی معلومات</div><div class="card-body">
-        <form method="POST" action="{{ route('admin.suppliers.update', $supplier) }}">@csrf @method('PUT')
-            <div class="form-row"><div class="form-group col-md-6"><label for="supplier_name">نام</label><input id="supplier_name" name="name" value="{{ old('name', $supplier->name) }}" class="form-control" required></div><div class="form-group col-md-6"><label for="supplier_contact">رابطہ شخص</label><input id="supplier_contact" name="contact_person" value="{{ old('contact_person', $supplier->contact_person) }}" class="form-control"></div></div>
-            <div class="form-row"><div class="form-group col-md-6"><label for="supplier_phone">فون نمبر</label><input id="supplier_phone" name="phone" value="{{ old('phone', $supplier->phone) }}" class="form-control"></div><div class="form-group col-md-6"><label for="supplier_email">ای میل</label><input id="supplier_email" type="email" name="email" value="{{ old('email', $supplier->email) }}" class="form-control"></div></div>
-            <div class="form-group"><label for="supplier_opening_balance">ابتدائی بقایا</label><input id="supplier_opening_balance" type="number" step="0.01" min="0" name="opening_balance" value="{{ old('opening_balance', $supplier->opening_balance) }}" class="form-control"><small class="form-text text-muted">یہ صرف کاروبار شروع کرتے وقت پہلے سے واجب رقم کے لیے ہے؛ نئی خریداری کا بقایا خود شامل ہوتا ہے۔</small></div>
-            <div class="form-group"><label for="supplier_address">پتہ</label><textarea id="supplier_address" name="address" class="form-control">{{ old('address', $supplier->address) }}</textarea></div>
-            <input type="hidden" name="active" value="0"><div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="active" value="1" id="active" @checked(old('active', $supplier->active))><label class="form-check-label" for="active">فعال سپلائر</label></div>
-            <button class="btn btn-primary">سپلائر اپ ڈیٹ کریں</button>
-        </form>
-    </div></div>
-
-    <div class="card mb-3"><div class="card-header">عمومی ادائیگی · موجودہ بقایا روپے {{ number_format($outstanding,2) }}</div><div class="card-body">
-        <p class="text-muted">کسی مخصوص خریداری کی ادائیگی اس خریداری کے صفحے پر درج کریں۔ یہاں درج رقم پہلے مجموعی سپلائر بقایا سے کم ہو گی۔</p>
-        @if($outstanding > 0)
-            <form method="POST" action="{{ route('admin.suppliers.payment',$supplier) }}" data-confirm="کیا سپلائر کو یہ ادائیگی درج کرنا چاہتے ہیں؟" data-confirm-variant="success">@csrf
-                <div class="form-row align-items-end">
-                    <div class="form-group col-md-3 mb-md-0"><label for="supplier_payment_amount">رقم</label><input id="supplier_payment_amount" type="number" name="amount" step="0.01" min="0.01" max="{{ $outstanding }}" value="{{ old('amount') }}" class="form-control" required></div>
-                    <div class="form-group col-md-3 mb-md-0"><label for="supplier_payment_date">تاریخ</label><input id="supplier_payment_date" type="date" name="payment_date" value="{{ old('payment_date', now()->toDateString()) }}" class="form-control" required></div>
-                    <x-payment-method-fields prefix="supplier_payment" method-name="payment_method" reference-name="reference" method-group-class="form-group col-md-3 mb-md-0" reference-group-class="form-group col-md-3 mb-md-0" />
-                    <div class="form-group col-12 mt-3 mb-0"><label for="supplier_payment_note">نوٹ</label><input id="supplier_payment_note" name="note" maxlength="1000" value="{{ old('note') }}" class="form-control" placeholder="مثلاً پچھلا بقایا یا مجموعی ادائیگی"></div>
-                    <div class="col-12 mt-3"><button class="btn btn-success">ادائیگی درج کریں</button></div>
-                </div>
-            </form>
-        @else
-            <span class="text-success">سپلائر کی کوئی بقایا رقم نہیں۔</span>
-        @endif
-    </div></div>
-
     <div class="card"><div class="card-header">ادائیگیوں کی تاریخ</div><div class="table-responsive"><table class="table table-hover mb-0 supplier-payment-table">
-        <thead class="thead-light"><tr><th>تاریخ</th><th>قسم</th><th>طریقہ</th><th>حوالہ</th><th>نوٹ</th><th>رقم</th></tr></thead>
+        <thead class="thead-light"><tr><th>تاریخ</th><th>قسم</th><th>طریقہ</th><th>حوالہ</th><th>نوٹ</th><th>رقم</th><th>آرڈر سے منسلک کریں</th></tr></thead>
         <tbody>@forelse($supplier->payments as $payment)<tr>
             <td data-label="تاریخ">{{ $payment->payment_date->format('d-m-Y') }}</td>
             <td data-label="قسم">
@@ -69,7 +48,13 @@
             <td data-label="حوالہ">{{ $payment->reference ?: '—' }}</td>
             <td data-label="نوٹ">{{ $payment->note ?: '—' }}</td>
             <td data-label="رقم"><strong>روپے {{ number_format($payment->amount,2) }}</strong></td>
-        </tr>@empty<tr><td colspan="6" class="text-center text-muted py-4">ابھی کوئی ادائیگی درج نہیں کی گئی۔</td></tr>@endforelse</tbody>
+        <td data-label="آرڈر سے منسلک کریں"><form method="POST" action="{{ route('admin.suppliers.payments.link', [$supplier, $payment]) }}" class="d-flex" style="gap:6px">@csrf @method('PATCH')<select name="purchase_id" class="form-control form-control-sm"><option value="">عمومی ادائیگی</option>@foreach($purchaseOptions as $purchase)<option value="{{ $purchase->id }}" @selected($payment->purchase_id == $purchase->id)>{{ $purchase->purchase_number }}</option>@endforeach</select><button class="btn btn-sm btn-outline-primary">محفوظ</button></form></td></tr>@empty<tr><td colspan="7" class="text-center text-muted py-4">ابھی کوئی ادائیگی درج نہیں کی گئی۔</td></tr>@endforelse</tbody>
     </table></div></div>
-</div></section>
+</div>
+        <div class="modal fade" id="editSupplier{{ $supplier->id }}" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title">{{ $supplier->name }} — ترمیم</h5><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں">&times;</button></div><form method="POST" action="{{ route('admin.suppliers.update', $supplier) }}">@csrf @method('PUT')<div class="modal-body"><div class="form-row"><div class="form-group col-md-6"><label>نام</label><input class="form-control" name="name" value="{{ $supplier->name }}" required maxlength="255"></div><div class="form-group col-md-6"><label>رابطہ شخص</label><input class="form-control" name="contact_person" value="{{ $supplier->contact_person }}"></div><div class="form-group col-md-6"><label>فون</label><input class="form-control" name="phone" value="{{ $supplier->phone }}"></div><div class="form-group col-md-6"><label>ای میل</label><input type="email" class="form-control" name="email" value="{{ $supplier->email }}"></div><div class="form-group col-md-6"><label>ابتدائی بقایا</label><input type="number" step="0.01" min="0" class="form-control" name="opening_balance" value="{{ $supplier->opening_balance }}"></div><div class="form-group col-md-6"><label>پتہ</label><textarea class="form-control" name="address">{{ $supplier->address }}</textarea></div></div><input type="hidden" name="active" value="0"><label><input type="checkbox" name="active" value="1" @checked($supplier->active)> فعال سپلائر</label></div><div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">منسوخ</button><button class="btn btn-primary">محفوظ کریں</button></div></form></div></div></div>
+        @if($supplier->active)
+        <div class="modal fade" id="paySupplier{{ $supplier->id }}" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title">{{ $supplier->name }} — ادائیگی · بقایا Rs. {{ number_format($outstanding,2) }}</h5><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں">&times;</button></div><form method="POST" action="{{ route('admin.suppliers.payment', $supplier) }}" data-confirm="کیا آپ یہ ادائیگی درج کرنا چاہتے ہیں؟" data-confirm-variant="success">@csrf<div class="modal-body"><div class="form-row"><div class="form-group col-md-6"><label>رقم</label><input class="form-control" type="number" name="amount" min="0.01"  step="0.01" required></div><div class="form-group col-md-6"><label>تاریخ</label><input class="form-control" type="date" name="payment_date" value="{{ now()->toDateString() }}" required></div><x-payment-method-fields prefix="supplier_list_payment_{{ $supplier->id }}" method-name="payment_method" reference-name="reference" method-group-class="form-group col-md-6" reference-group-class="form-group col-md-6" /><div class="form-group col-12"><label>خریداری آرڈر (اختیاری)</label><select class="form-control" name="purchase_id"><option value="">عمومی ادائیگی — کوئی آرڈر نہیں</option>@foreach($purchaseOptions as $purchase)<option value="{{ $purchase->id }}">{{ $purchase->purchase_number }}</option>@endforeach</select></div><div class="form-group col-12"><label>نوٹ</label><input class="form-control" name="note" maxlength="1000"></div></div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">منسوخ</button><button class="btn btn-success">ادائیگی درج کریں</button></div></form></div></div></div>
+        @endif
+
+</section>
 @endsection

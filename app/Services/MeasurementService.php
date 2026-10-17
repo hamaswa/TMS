@@ -83,7 +83,7 @@ class MeasurementService
                     'order_id' => $order->id,
                     'measurement_field_id' => null,
                     'source_key' => $sourceKey,
-                    'label' => self::SYSTEM_FIELDS[$key]['label'],
+                    'label' => $order->measurementTemplate?->system_field_labels[$key] ?? self::SYSTEM_FIELDS[$key]['label'],
                     'value' => $currentValue,
                     'unit' => '',
                     'sort_order' => array_search($key, array_keys(self::SYSTEM_FIELDS), true),
@@ -283,7 +283,7 @@ class MeasurementService
                 $rows->push([
                     'measurement_field_id' => null,
                     'source_key' => 'system.' . $key,
-                    'label' => $meta['label'],
+                    'label' => $template?->system_field_labels[$key] ?? $meta['label'],
                     'value' => (string) $value,
                     'unit' => $meta['unit'],
                     'sort_order' => $sortOrder++,
@@ -437,7 +437,7 @@ class MeasurementService
             $rows->push([
                 'measurement_field_id' => null,
                 'source_key' => 'system.' . $key,
-                'label' => $meta['label'],
+                'label' => $template->system_field_labels[$key] ?? $meta['label'],
                 'value' => (string) $value,
                 'unit' => $meta['unit'],
                 'sort_order' => $sortOrder++,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
+use App\Models\Purchase;
 use App\Models\SupplierPayment;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
@@ -16,11 +17,12 @@ class SupplierController extends Controller
     public function index()
     {
         $suppliers = Supplier::where('user_id', Auth::user()->businessOwnerId())
-            ->withSum(['purchases as purchase_balance' => fn ($query) => $query->where('status', 'received')], 'balance_amount')
-            ->withSum(['payments as unallocated_payments' => fn ($query) => $query->whereNull('purchase_id')], 'amount')
+            ->withSum(['purchases as purchase_total' => fn ($query) => $query->where('status', 'received')], 'total_amount')
+            ->withSum('payments as total_paid', 'amount')
             ->orderBy('name')->get();
 
-        return view('suppliers.index', compact('suppliers'));
+        $purchaseOptions = Purchase::where('user_id', Auth::user()->businessOwnerId())->where('status', 'received')->orderByDesc('purchase_date')->get(['id','supplier_id','purchase_number']);
+        return view('suppliers.index', compact('suppliers', 'purchaseOptions'));
     }
 
     public function create()
@@ -37,11 +39,12 @@ class SupplierController extends Controller
 
     public function edit(int $supplier)
     {
-        $supplier = $this->owned($supplier)->loadSum(['purchases as purchase_balance' => fn ($query) => $query->where('status', 'received')], 'balance_amount')
-            ->loadSum(['payments as unallocated_payments' => fn ($query) => $query->whereNull('purchase_id')], 'amount')
+        $supplier = $this->owned($supplier)->loadSum(['purchases as purchase_total' => fn ($query) => $query->where('status', 'received')], 'total_amount')
+            ->loadSum('payments as total_paid', 'amount')
             ->load(['payments' => fn ($query) => $query->with('purchase')->latest('payment_date')->latest('id')]);
 
-        return view('suppliers.edit', compact('supplier'));
+        $purchaseOptions = $supplier->purchases()->where('status', 'received')->orderByDesc('purchase_date')->get(['id','purchase_number']);
+        return view('suppliers.edit', compact('supplier', 'purchaseOptions'));
     }
 
     public function update(Request $request, int $supplier)
@@ -63,6 +66,7 @@ class SupplierController extends Controller
     public function payment(Request $request, int $supplier)
     {
         $validated = $request->validate([
+            'purchase_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
@@ -78,26 +82,11 @@ class SupplierController extends Controller
         $ownerId = Auth::user()->businessOwnerId();
         DB::transaction(function () use ($validated, $ownerId, $supplier) {
             $lockedSupplier = Supplier::where('user_id', $ownerId)->lockForUpdate()->findOrFail($supplier);
-            $purchaseBalance = (float) $lockedSupplier->purchases()
-                ->where('status', 'received')
-                ->lockForUpdate()
-                ->get(['id', 'balance_amount'])
-                ->sum('balance_amount');
-            $unallocatedPayments = (float) $lockedSupplier->payments()
-                ->whereNull('purchase_id')
-                ->lockForUpdate()
-                ->get(['id', 'amount'])
-                ->sum('amount');
-            $outstanding = round((float) $lockedSupplier->opening_balance + $purchaseBalance - $unallocatedPayments, 2);
-
-            if ((float) $validated['amount'] > max(0, $outstanding)) {
-                throw ValidationException::withMessages([
-                    'amount' => 'ادائیگی سپلائر کی موجودہ بقایا رقم سے زیادہ نہیں ہو سکتی۔',
-                ]);
-            }
-
+            $purchaseId = $this->validatedPurchaseId($validated['purchase_id'] ?? null, $lockedSupplier->id, $ownerId);
+            // Supplier payments are account-level; purchase references are informational only.
+            // Advance payments are permitted when no balance is due.
             SupplierPayment::create([
-                'user_id' => $ownerId, 'supplier_id' => $lockedSupplier->id, 'purchase_id' => null,
+                'user_id' => $ownerId, 'supplier_id' => $lockedSupplier->id, 'purchase_id' => $purchaseId,
                 'payment_date' => $validated['payment_date'], 'amount' => $validated['amount'],
                 'payment_method' => $validated['payment_method'] ?? 'cash',
                 'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? 'General supplier payment',
@@ -105,6 +94,49 @@ class SupplierController extends Controller
         });
 
         return back()->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');
+    }
+
+    public function linkPayment(Request $request, int $supplier, int $payment)
+    {
+        $validated = $request->validate(['purchase_id' => ['nullable', 'integer']]);
+        $ownerId = Auth::user()->businessOwnerId();
+        $this->owned($supplier);
+
+        DB::transaction(function () use ($ownerId, $supplier, $payment, $validated) {
+            $record = SupplierPayment::where('user_id', $ownerId)->where('supplier_id', $supplier)
+                ->lockForUpdate()->findOrFail($payment);
+            $newPurchaseId = $this->validatedPurchaseId($validated['purchase_id'] ?? null, $supplier, $ownerId);
+            $oldPurchaseId = $record->purchase_id;
+
+            // Reconcile even when the link is unchanged: older links may have stale totals.
+            // Lock affected purchases in a consistent order to avoid deadlocks.
+            $purchases = Purchase::where('user_id', $ownerId)->where('supplier_id', $supplier)
+                ->whereIn('id', array_filter([$oldPurchaseId, $newPurchaseId]))
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
+            if ($oldPurchaseId != $newPurchaseId) {
+                $record->update(['purchase_id' => $newPurchaseId]);
+            }
+
+            foreach ($purchases as $purchase) {
+                // The purchase's stored totals must match the payment ledger after reassignment.
+                $paid = round((float) SupplierPayment::where('user_id', $ownerId)
+                    ->where('supplier_id', $supplier)->where('purchase_id', $purchase->id)->sum('amount'), 2);
+                $purchase->update([
+                    'paid_amount' => $paid,
+                    'balance_amount' => round((float) $purchase->total_amount - $paid, 2),
+                ]);
+            }
+        });
+
+        return back()->with('success', 'ادائیگی کا خریداری حوالہ محفوظ کر دیا گیا ہے۔');
+    }
+
+    private function validatedPurchaseId(?int $purchaseId, int $supplierId, int $ownerId): ?int
+    {
+        if ($purchaseId === null) return null;
+        return Purchase::where('user_id', $ownerId)->where('supplier_id', $supplierId)
+            ->where('status', 'received')->findOrFail($purchaseId)->id;
     }
 
     private function validated(Request $request, ?int $supplier = null): array
