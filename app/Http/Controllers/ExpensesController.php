@@ -5,141 +5,164 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use App\Models\Workers;
 use App\Models\Expenses;
-use Nette\Schema\Expect;
 use Illuminate\Http\Request;
-use Illuminate\Queue\Worker;
 use App\Models\DaliyExpenses;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ExpensesController extends Controller
 {
-    public function index()
-{
-    // Get the current date
-    $currentDate = Carbon::now()->toDateString();
+    /**
+     * Monthly expenses: rent/bills and staff salaries, with an optional date filter.
+     */
+    public function index(Request $request)
+    {
+        $ownerId = auth()->user()->businessOwnerId();
+        $filters = $this->dateFilters($request);
 
-    // Retrieve expenses for the current day
-    $expenses = Expenses::where('user_id',auth()->user()->businessOwnerId())->get();
+        $expenses = Expenses::where('user_id', $ownerId)
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('expense_date', '>=', $date))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('expense_date', '<=', $date))
+            ->orderByDesc('expense_date')->orderByDesc('id')
+            ->get();
 
-    $workers = Workers::where('user_id',auth()->user()->businessOwnerId())->get();
+        $workers = Workers::where('user_id', $ownerId)
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('dateentered', '>=', $date))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('dateentered', '<=', $date))
+            ->orderByDesc('dateentered')->orderByDesc('id')
+            ->get();
 
-    // Calculate total expenses
-    $totalExpenses = $expenses->sum('Monthly_Rent') + $expenses->sum('Monthly_Bill');
+        $totalExpenses = $expenses->sum('Monthly_Rent') + $expenses->sum('Monthly_Bill');
+        $totalSalaries = $workers->sum('Worker_salary');
 
-    $totalSalaries = $workers->sum('Worker_salary');
-
-    return view('Expenses.index', compact('expenses', 'workers', 'totalExpenses', 'totalSalaries'));
-}
+        return view('Expenses.index', compact('expenses', 'workers', 'totalExpenses', 'totalSalaries', 'filters'));
+    }
 
     public function create()
     {
-        return view('Expenses.create');
+        // The forms live in modals on the index page.
+        return redirect()->route('admin.expense.index', ['modal' => 'bill']);
     }
 
+    /**
+     * Stores rent/bill and/or staff salaries, posted from the index page modals.
+     */
     public function insert(Request $request)
     {
-        $monthly_bill = $request->input('bill');
-        $monthly_rent = $request->input('rent');
-        $user_id = auth()->user()->businessOwnerId();
-
-        Expenses::create([
-            'Monthly_Rent' => $monthly_rent ?? 0,
-            'Monthly_Bill' => $monthly_bill ?? 0,
-            'expense_day' => Carbon::now()->format('l'),
-            'expense_date' => now(),
-            'user_id' => $user_id,
+        $validated = $request->validate([
+            'rent' => ['nullable', 'numeric', 'min:0'],
+            'bill' => ['nullable', 'numeric', 'min:0'],
+            'expense_date' => ['nullable', 'date'],
+            'workers' => ['nullable', 'array'],
+            'workers.*.name' => ['required', 'string', 'max:255'],
+            'workers.*.salary' => ['required', 'numeric', 'min:0'],
+        ], [], [
+            'rent' => 'ماہانہ کرایہ',
+            'bill' => 'ماہانہ بل',
+            'workers.*.name' => 'ملازم کا نام',
+            'workers.*.salary' => 'ملازم تنخواہ',
         ]);
 
-        $numWorkers = $request->input('num_workers');
+        $rent = (float) ($validated['rent'] ?? 0);
+        $bill = (float) ($validated['bill'] ?? 0);
+        $workers = array_values($validated['workers'] ?? []);
 
-        $worker_names = [];
-        $worker_salaries = [];
-
-        for ($i = 1; $i <= $numWorkers; $i++) {
-            // Use the loop index to differentiate between worker inputs
-            $worker_name = $request->input('worker_name_' . $i);
-            $worker_salary = $request->input('worker_salary_' . $i);
-
-            // Add the values to arrays
-            $worker_names[] = $worker_name;
-            $worker_salaries[] = $worker_salary;
+        if ($rent <= 0 && $bill <= 0 && $workers === []) {
+            throw ValidationException::withMessages(['rent' => 'کرایہ، بل یا کم از کم ایک ملازم درج کریں۔']);
         }
 
-        // Create records for each worker
-        for ($i = 0; $i < $numWorkers; $i++) {
-            Workers::create([
-                'Worker_Name' => $worker_names[$i] ?? null,
-                'Worker_salary' => $worker_salaries[$i] ?? 0,
-                'dateentered' => now(),
-                'user_id' => $user_id,
-            ]);
-        }
+        $userId = auth()->user()->businessOwnerId();
 
+        DB::transaction(function () use ($rent, $bill, $workers, $validated, $userId) {
+            if ($rent > 0 || $bill > 0) {
+                $date = Carbon::parse($validated['expense_date'] ?? now());
+                Expenses::create([
+                    'Monthly_Rent' => $rent,
+                    'Monthly_Bill' => $bill,
+                    'expense_day' => $date->format('l'),
+                    'expense_date' => $date,
+                    'user_id' => $userId,
+                ]);
+            }
 
-        // dd($monthly_bill,$monthly_rent,$monthly_extra,$worker_names,$worker_salaries);
-        return redirect()->route('admin.expense.index')->with('success', 'Expense records added successfully');
+            foreach ($workers as $worker) {
+                Workers::create([
+                    'Worker_Name' => trim($worker['name']),
+                    'Worker_salary' => $worker['salary'],
+                    'dateentered' => now(),
+                    'user_id' => $userId,
+                ]);
+            }
+        });
+
+        return redirect()->route('admin.expense.index')->with('insert', 'اخراجات کامیابی سے شامل کر دیے گئے۔');
     }
 
     public function edit($id)
     {
         $data = Expenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
-        return view('Expenses.expense_edit',compact('data'));
+
+        return redirect()->route('admin.expense.index', ['edit_bill' => $data->id]);
     }
 
     public function update(Request $request, $id)
     {
         $data = Expenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
-        $monthly_bill = $request->input('bill');
-        $monthly_rent = $request->input('rent');
-        $monthly_extra = $request->input('extra');
+        $validated = $request->validate([
+            'rent' => ['nullable', 'numeric', 'min:0'],
+            'bill' => ['nullable', 'numeric', 'min:0'],
+            'expense_date' => ['nullable', 'date'],
+        ], [], ['rent' => 'ماہانہ کرایہ', 'bill' => 'ماہانہ بل']);
 
-        $data->update([
-            'Monthly_Rent' => $monthly_rent ?? 0,
-            'Monthly_Bill' => $monthly_bill ?? 0,
-        ]);
+        $attributes = [
+            'Monthly_Rent' => $validated['rent'] ?? 0,
+            'Monthly_Bill' => $validated['bill'] ?? 0,
+        ];
+        if (! empty($validated['expense_date'])) {
+            $date = Carbon::parse($validated['expense_date']);
+            $attributes['expense_date'] = $date;
+            $attributes['expense_day'] = $date->format('l');
+        }
+        $data->update($attributes);
 
-        return redirect()->route('admin.expense.index')->with('success','ریکارڈ تبدیل کر دیا گیا ہے۔');
+        return redirect()->route('admin.expense.index')->with('update', 'ریکارڈ تبدیل کر دیا گیا ہے۔');
     }
+
     public function delete($id)
     {
-        $data = Expenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
+        Expenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id)->delete();
 
-        if($data)
-        {
-            $data->delete();
-            return redirect()->route('admin.expense.index')->with('error','ریکارڈ حذف کر دیا گیا ہے۔');
-        }
+        return redirect()->route('admin.expense.index')->with('delete', 'ریکارڈ حذف کر دیا گیا ہے۔');
     }
 
     public function workersedit($id)
     {
         $data = Workers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
-        return view('Expenses.workers_edit',compact('data'));
+
+        return redirect()->route('admin.expense.index', ['edit_staff' => $data->id]);
     }
 
-    public function workersupdate(Request $request,$id)
+    public function workersupdate(Request $request, $id)
     {
         $data = Workers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
-        $employee_name = $request->input('name');
-        $employee_salary = $request->input('salary');
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'salary' => ['required', 'numeric', 'min:0'],
+        ], [], ['name' => 'ملازم کا نام', 'salary' => 'ملازم تنخواہ']);
 
         $data->update([
-            'Worker_Name' => $employee_name ?? 0,
-            'Worker_salary' => $employee_salary ?? 0,
+            'Worker_Name' => trim($validated['name']),
+            'Worker_salary' => $validated['salary'],
         ]);
 
-        return redirect()->route('admin.expense.index')->with('success','ریکارڈ تبدیل کر دیا گیا ہے۔');
+        return redirect()->route('admin.expense.index')->with('update', 'ریکارڈ تبدیل کر دیا گیا ہے۔');
     }
 
     public function workersdelete($id)
     {
-        $data = Workers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
+        Workers::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id)->delete();
 
-        if($data)
-        {
-            $data->delete();
-            return redirect()->route('admin.expense.index')->with('error','ریکارڈ حذف کر دیا گیا ہے۔');
-        }
+        return redirect()->route('admin.expense.index')->with('delete', 'ریکارڈ حذف کر دیا گیا ہے۔');
     }
 
     public function showSpecificExpense(Request $request)
@@ -149,7 +172,6 @@ class ExpensesController extends Controller
 
         $start_date = $date_parts[0];
         $end_date = $date_parts[1];
-        // dd($start_date,$end_date);
 
         // Fetching expenses details
         $expenses_detail = Expenses::select('Monthly_Rent', 'Monthly_Bill', 'expense_date')
@@ -168,13 +190,9 @@ class ExpensesController extends Controller
             ->where('user_id', auth()->user()->businessOwnerId())
             ->get();
 
-        // dd($salaries_detail);
-
         $salaries = Workers::whereBetween('dateentered', [date($start_date), date($end_date)])
         ->where('user_id', auth()->user()->businessOwnerId())
         ->sum('Worker_salary');
-
-        // dd($salaries);
 
         // Return the data as JSON
         return response()->json([
@@ -186,65 +204,98 @@ class ExpensesController extends Controller
 
     }
 
-    public function Dailyindex()
+    /**
+     * Daily expenses with today/month totals and an optional date filter.
+     */
+    public function Dailyindex(Request $request)
     {
-        $currentDate = Carbon::now()->toDateString();
-        $expense = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())
-                             ->get();
-        return view('DailyExpenses.index',compact('expense'));
+        $ownerId = auth()->user()->businessOwnerId();
+        $filters = $this->dateFilters($request);
+
+        $query = DaliyExpenses::where('user_id', $ownerId)
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '<=', $date));
+
+        // Total of the whole filtered list, not just the current page.
+        $listTotal = (float) (clone $query)->sum('Expense_payment');
+        $expense = $query->latest()->orderByDesc('id')->paginate(10)->withQueryString();
+
+        // The record to edit may not be on the current page (old edit URL or a failed edit).
+        $editId = old('_form') === 'daily-edit' ? old('_edit_id') : $request->query('edit');
+        $editRecord = $editId ? DaliyExpenses::where('user_id', $ownerId)->find($editId) : null;
+        $editTarget = $editRecord ? [
+            'id' => $editRecord->id,
+            'name' => $editRecord->Expense_name,
+            'amount' => $editRecord->Expense_payment,
+            'action' => route('admin.dailyexpense.update', ['id' => $editRecord->id]),
+        ] : null;
+
+        $todayTotal = (float) DaliyExpenses::where('user_id', $ownerId)->whereDate('created_at', today())->sum('Expense_payment');
+        $monthTotal = (float) DaliyExpenses::where('user_id', $ownerId)
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->sum('Expense_payment');
+
+        return view('DailyExpenses.index', compact('expense', 'filters', 'todayTotal', 'monthTotal', 'listTotal', 'editTarget'));
     }
 
     public function Dailycreate()
     {
-        return view('DailyExpenses.create');
+        // The form lives in a modal on the index page.
+        return redirect()->route('admin.dailyexpense.index', ['modal' => 'create']);
     }
 
     public function Dailyinsert(Request $request)
     {
-        $name = $request->input('name');
-        $rupee = $request->input('rupee');
-        $user_id = auth()->user()->businessOwnerId();
+        $validated = $request->validate([
+            'name' => ['required', 'array', 'min:1'],
+            'name.*' => ['required', 'string', 'max:255'],
+            'rupee' => ['required', 'array', 'size:'.count((array) $request->input('name', []))],
+            'rupee.*' => ['required', 'numeric', 'min:0'],
+        ], [], ['name.*' => 'اخراجات کا عنوان', 'rupee.*' => 'اخراجات کی رقم']);
 
-        foreach (array_map(null, $name, $rupee) as [$name, $rupee]) {
-            DaliyExpenses::create([
-                'Expense_name' => $name,
-                'Expense_payment' => $rupee,
-                'user_id' => $user_id,
-            ]);
-        }
+        $userId = auth()->user()->businessOwnerId();
 
-        return redirect()->route('admin.dailyexpense.index');
+        DB::transaction(function () use ($validated, $userId) {
+            foreach (array_values($validated['name']) as $index => $name) {
+                DaliyExpenses::create([
+                    'Expense_name' => trim($name),
+                    'Expense_payment' => array_values($validated['rupee'])[$index],
+                    'user_id' => $userId,
+                ]);
+            }
+        });
+
+        return redirect()->route('admin.dailyexpense.index')->with('insert', 'روزانہ اخراجات کامیابی سے شامل کر دیے گئے۔');
     }
 
     public function Dailyedit($id)
     {
         $data = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
-        return view('DailyExpenses.edit',compact('data'));
+
+        return redirect()->route('admin.dailyexpense.index', ['edit' => $data->id]);
     }
 
     public function Dailyupdate(Request $request,$id)
     {
         $data = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
-        $name = $request->input('name');
-        $rupee = $request->input('rupee');
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'rupee' => ['required', 'numeric', 'min:0'],
+        ], [], ['name' => 'اخراجات کا عنوان', 'rupee' => 'اخراجات کی رقم']);
 
-        foreach (array_map(null, $name, $rupee) as [$name, $rupee]) {
-            $data->update([
-                'Expense_name' => $name,
-                'Expense_payment' => $rupee,
-            ]);
-        }
+        $data->update([
+            'Expense_name' => trim($validated['name']),
+            'Expense_payment' => $validated['rupee'],
+        ]);
 
-        return redirect()->route('admin.dailyexpense.index');
+        return redirect()->route('admin.dailyexpense.index')->with('update', 'ریکارڈ تبدیل کر دیا گیا ہے۔');
     }
 
     public function Dailydelete($id)
     {
-        $data = DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id);
-        if($data){
-            $data->delete();
-        }
-        return redirect()->back();
+        DaliyExpenses::where('user_id', auth()->user()->businessOwnerId())->findOrFail($id)->delete();
+
+        return redirect()->back()->with('delete', 'ریکارڈ حذف کر دیا گیا ہے۔');
     }
 
     public function showdailySpecificExpense(Request $request)
@@ -254,11 +305,18 @@ class ExpensesController extends Controller
 
         $start_date = $date_parts[0];
         $end_date = $date_parts[1];
-        // dd($start_date,$end_date);
 
         $daily_expense = DaliyExpenses::whereBetween('created_at',[date($start_date),date($end_date)])->where('user_id',auth()->user()->businessOwnerId())->get();
 
         return response()->json(['expense' => $daily_expense]);
 
+    }
+
+    private function dateFilters(Request $request): array
+    {
+        return $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
     }
 }

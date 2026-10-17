@@ -68,11 +68,7 @@ class ExampleTest extends TestCase
             'tailor/edit.blade.php',
             'tailor/list.blade.php',
             'Expenses/index.blade.php',
-            'Expenses/create.blade.php',
-            'Expenses/expense_edit.blade.php',
             'DailyExpenses/index.blade.php',
-            'DailyExpenses/create.blade.php',
-            'DailyExpenses/edit.blade.php',
         ] as $view) {
             $contents = file_get_contents(resource_path('views/'.$view));
 

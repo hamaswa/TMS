@@ -343,6 +343,25 @@
             @endif
 
             <div class="tms-side-section"></div>
+            @if (Auth::user()->hasBusinessPermission('expenses.manage'))
+                @php
+                    $expensesOpen = request()->routeIs('admin.expense.*', 'admin.dailyexpense.*', 'admin.worker.*');
+                @endphp
+                <a class="tms-side-link tms-dropdown-toggle {{ $expensesOpen ? 'is-active' : '' }}"
+                    href="#expenses-submenu">
+                    <span class="tms-side-icon"><i class="fas fa-receipt"></i></span>
+                    <span class="tms-side-label">اخراجات</span>
+                    <i class="fas fa-chevron-down tms-side-caret"></i>
+                </a>
+                <div id="expenses-submenu" class="tms-side-submenu {{ $expensesOpen ? 'is-open' : '' }}">
+                    <a class="{{ request()->routeIs('admin.dailyexpense.*') ? 'is-active' : '' }}"
+                        href="{{ route('admin.dailyexpense.index') }}"><i
+                            class="fas fa-receipt"></i>روزانہ اخراجات</a>
+                    <a class="{{ request()->routeIs('admin.expense.*', 'admin.worker.*') ? 'is-active' : '' }}"
+                        href="{{ route('admin.expense.index') }}"><i
+                            class="fas fa-calendar-alt"></i>ماہانہ اخراجات</a>
+                </div>
+            @endif
             @if (Auth::user()->hasBusinessPermission('finance.view'))
                 <a class="tms-side-link {{ request()->routeIs('admin.financial-reports.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.financial-reports.index') }}"><span class="tms-side-icon"><i

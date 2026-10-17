@@ -1,274 +1,458 @@
 @extends('main')
+
+@push('styles')
+    @include('Expenses.partials.styles')
+@endpush
+
 @section('content')
-    <section class="main-content">
-        <div class="container">
-            <div class="card col-sm-10 mx-auto">
-                <div class="row">
-                    <div class="col-md-12">
-                        @include('inc.message')
+    @php
+        $filtered = ! empty($filters['from']) || ! empty($filters['to']);
+        $oldWorkers = old('_form') === 'staff-create' ? array_values((array) old('workers', [[]])) : [[]];
+    @endphp
 
-                        <div class="bg-white px-3 py-4">
-                            <p class="text-right"><a href="{{ route('admin.expense.create') }}" class="btn btn-primary"> نئے
-                                    اخراجات شامل کریں۔ +</a>
-                            </p>
-                            <h1 class="h4 text-right">اپنے اخراجات چیک کریں</h1>
+    <section class="main-content xp-page">
+        <div class="container-fluid px-3 px-lg-4">
+            @include('inc.message')
 
-                            <form class="form-inline reversed-flex-direction" method="POST"
-                                action="{{ route('admin.expense.specific') }}" id="date">
-                                @csrf
-                                <!-- Date range picker input field -->
-                                <div class="form-group mr-2">
-                                    <label class="sr-only" for="expense_date_range">تاریخ کی حد</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" name="date_range" id="expense_date_range"
-                                            placeholder="تاریخ کی حد منتخب کریں۔" autocomplete="off">
-                                        <div class="input-group-append">
-                                            <span class="input-group-text">
-                                                <i class="fa fa-calendar"></i>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group mr-2">
-                                    <button type="submit" class="btn btn-primary"> چیک کریں۔</button>
-                                </div>
-                            </form>
+            @if ($errors->any() && ! old('_form'))
+                <div class="alert alert-danger">
+                    @foreach ($errors->all() as $error)
+                        <div>{{ $error }}</div>
+                    @endforeach
+                </div>
+            @endif
 
-                            <div class="table-title  mb-4 mt-2">
-                                <h2 class="h5 text-right">اخراجات کی فہرست</h2>
-                            </div>
+            <div class="xp-card">
+                <div class="xp-header">
+                    <div>
+                        <h1 class="xp-title">ماہانہ اخراجات</h1>
+                        <p class="xp-subtitle">دکان کا کرایہ، بل اور ملازمین کی تنخواہیں ایک جگہ منظم کریں۔</p>
+                    </div>
+                    <div class="xp-header-actions">
+                        <button type="button" class="xp-add" data-xp-bill-create>
+                            <i class="fas fa-file-invoice" aria-hidden="true"></i>
+                            <span>کرایہ / بل شامل کریں</span>
+                        </button>
+                        <button type="button" class="xp-add is-secondary" data-toggle="modal" data-target="#staffCreateModal">
+                            <i class="fas fa-user-plus" aria-hidden="true"></i>
+                            <span>ملازم کی تنخواہ شامل کریں</span>
+                        </button>
+                    </div>
+                </div>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="table-responsive">
-                                        <!-- First Table -->
-                                        <table class="table js-sortable-table cc-table-data-options-history"
-                                            id="cc-table-data-options-history1">
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col" class="no-sort">#</th>
-                                                    <th scope="col" class="no-sort"> ماہانہ کرایہ </th>
-                                                    <th scope="col" class="no-sort">ماہانہ بل</th>
-                                                    <th scope="col" class="no-sort">عمل</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @php $serialNumber=1; @endphp
-                                                @foreach ($expenses as $expense)
-                                                    <tr>
-                                                        <td>{{ $serialNumber++ }}</td>
-                                                        <td>{{ $expense->Monthly_Rent ?? 0 }}</td>
-                                                        <td>{{ $expense->Monthly_Bill ?? 0 }}</td>
-                                                        <td style="display: flex;">
-                                                            <a href="{{route('admin.expense.edit',['id'=>$expense->id])}}">
-                                                                <i class="fas fa-edit"></i>
-                                                            </a>
-                                                            <form action="{{ route('admin.expense.delete', ['id' => $expense->id]) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ خرچ حذف کرنا چاہتے ہیں؟">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-link p-0"><i class="fas fa-trash-alt" style="font-size: 16px;"></i></button>
-                                                            </form>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                            <tfoot class="bg-gray">
-                                                <tr class="table-info">
-                                                    <td colspan="2" class="text-right"><strong> کل اخراجات</strong></td>
-                                                    <td>{{ $totalExpenses }}</td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="table-responsive">
-                                        <!-- Second Table -->
-                                        <table class="table js-sortable-table cc-table-data-options-history"
-                                            id="cc-table-data-options-history2">
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col" class="no-sort">#</th>
-                                                    <th scope="col" class="no-sort"> ملازم کا نام </th>
-                                                    <th scope="col" class="no-sort">ملازم تنخواہ</th>
-                                                    <th scope="col" class="no-sort">عمل</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @php $serialNumber=1; @endphp
-                                                @foreach ($workers as $worker)
-                                                    <tr>
-                                                        <td>{{ $serialNumber++ }}</td>
-                                                        <td>{{ $worker->Worker_Name ?? ''}}</td>
-                                                        <td>{{ $worker->Worker_salary ?? 0}}  </td>
-                                                        <td style="display: flex;">
-                                                            <a href="{{route('admin.worker.edit',['id'=>$worker->id])}}">
-                                                                <i class="fas fa-edit"></i>
-                                                            </a>
-                                                            <form action="{{ route('admin.worker.delete', ['id' => $worker->id]) }}" method="POST" class="d-inline" data-confirm="کیا آپ واقعی یہ کاریگر حذف کرنا چاہتے ہیں؟">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-link p-0"><i class="fas fa-trash-alt" style="font-size: 16px;"></i></button>
-                                                            </form>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                            <tfoot class="bg-gray">
-                                                <tr class="table-info">
-                                                    <td colspan="1" class="text-right"><strong> کل تنخواہ</strong></td>
-                                                    <td>{{ $totalSalaries }}</td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="xp-stats">
+                    <div class="xp-stat">
+                        <span class="xp-stat-icon blue"><i class="fas fa-file-invoice-dollar"></i></span>
+                        <div><small>کرایہ اور بل</small><strong dir="ltr">Rs. {{ number_format($totalExpenses, 2) }}</strong></div>
+                    </div>
+                    <div class="xp-stat">
+                        <span class="xp-stat-icon orange"><i class="fas fa-users"></i></span>
+                        <div><small>تنخواہیں</small><strong dir="ltr">Rs. {{ number_format($totalSalaries, 2) }}</strong></div>
+                    </div>
+                    <div class="xp-stat">
+                        <span class="xp-stat-icon green"><i class="fas fa-wallet"></i></span>
+                        <div>
+                            <small>{{ $filtered ? 'منتخب مدت کا کل خرچ' : 'کل ماہانہ خرچ' }}</small>
+                            <strong dir="ltr">Rs. {{ number_format($totalExpenses + $totalSalaries, 2) }}</strong>
                         </div>
                     </div>
+                </div>
+
+                <div class="xp-toolbar">
+                    <form method="GET" action="{{ route('admin.expense.index') }}" class="xp-filter">
+                        <div>
+                            <label for="monthlyFrom">سے</label>
+                            <input type="date" id="monthlyFrom" name="from" value="{{ $filters['from'] ?? '' }}" class="form-control">
+                        </div>
+                        <div>
+                            <label for="monthlyTo">تک</label>
+                            <input type="date" id="monthlyTo" name="to" value="{{ $filters['to'] ?? '' }}" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-filter ml-1"></i> فلٹر کریں</button>
+                        @if ($filtered)
+                            <a href="{{ route('admin.expense.index') }}" class="btn btn-light">صاف کریں</a>
+                        @endif
+                    </form>
+                </div>
+
+                <div class="xp-section-title">
+                    <h2><i class="fas fa-file-invoice text-primary ml-1"></i> کرایہ اور بل</h2>
+                </div>
+                <div class="xp-table-shell">
+                    <table class="xp-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">تاریخ</th>
+                                <th scope="col">ماہانہ کرایہ</th>
+                                <th scope="col">ماہانہ بل</th>
+                                <th scope="col">کل</th>
+                                <th scope="col">عمل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($expenses as $expense)
+                                @php $expenseDate = $expense->expense_date ? \Carbon\Carbon::parse($expense->expense_date) : null; @endphp
+                                <tr>
+                                    <td class="xp-date">{{ $expenseDate?->format('d-m-Y') ?? '—' }}</td>
+                                    <td class="xp-amount" dir="ltr">Rs. {{ number_format((float) $expense->Monthly_Rent, 2) }}</td>
+                                    <td class="xp-amount" dir="ltr">Rs. {{ number_format((float) $expense->Monthly_Bill, 2) }}</td>
+                                    <td class="xp-amount" dir="ltr">Rs. {{ number_format((float) $expense->Monthly_Rent + (float) $expense->Monthly_Bill, 2) }}</td>
+                                    <td>
+                                        <div class="xp-actions">
+                                            <button type="button" class="xp-icon-btn" data-bill-edit
+                                                data-id="{{ $expense->id }}"
+                                                data-rent="{{ $expense->Monthly_Rent }}"
+                                                data-bill="{{ $expense->Monthly_Bill }}"
+                                                data-date="{{ $expenseDate?->toDateString() }}"
+                                                data-action="{{ route('admin.expense.update', ['id' => $expense->id]) }}"
+                                                aria-label="ریکارڈ میں ترمیم کریں">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <form action="{{ route('admin.expense.delete', ['id' => $expense->id]) }}" method="POST" data-confirm="کیا آپ واقعی یہ خرچ حذف کرنا چاہتے ہیں؟">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="xp-icon-btn is-danger" aria-label="ریکارڈ حذف کریں"><i class="fas fa-trash-alt"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="xp-empty">
+                                        <i class="fas fa-file-invoice"></i>
+                                        {{ $filtered ? 'اس مدت میں کوئی کرایہ یا بل درج نہیں۔' : 'ابھی کوئی کرایہ یا بل درج نہیں کیا گیا۔' }}
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                        @if ($expenses->isNotEmpty())
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3">کل کرایہ اور بل</td>
+                                    <td class="xp-amount" dir="ltr" colspan="2">Rs. {{ number_format($totalExpenses, 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        @endif
+                    </table>
+                </div>
+
+                <div class="xp-section-title">
+                    <h2><i class="fas fa-users text-warning ml-1"></i> ملازمین کی تنخواہیں</h2>
+                    <div class="xp-search">
+                        <label for="staffSearch" class="sr-only">ملازم تلاش کریں</label>
+                        <input type="search" id="staffSearch" class="form-control" placeholder="ملازم کا نام تلاش کریں۔۔۔" autocomplete="off" data-xp-search="#staffTable">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="xp-table-shell">
+                    <table class="xp-table" id="staffTable">
+                        <thead>
+                            <tr>
+                                <th scope="col">تاریخ</th>
+                                <th scope="col">ملازم کا نام</th>
+                                <th scope="col">تنخواہ</th>
+                                <th scope="col">عمل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($workers as $worker)
+                                <tr data-xp-row>
+                                    <td class="xp-date">{{ $worker->dateentered ? \Carbon\Carbon::parse($worker->dateentered)->format('d-m-Y') : '—' }}</td>
+                                    <td data-xp-text>{{ $worker->Worker_Name }}</td>
+                                    <td class="xp-amount" dir="ltr">Rs. {{ number_format((float) $worker->Worker_salary, 2) }}</td>
+                                    <td>
+                                        <div class="xp-actions">
+                                            <button type="button" class="xp-icon-btn" data-staff-edit
+                                                data-id="{{ $worker->id }}"
+                                                data-name="{{ $worker->Worker_Name }}"
+                                                data-salary="{{ $worker->Worker_salary }}"
+                                                data-action="{{ route('admin.worker.update', ['id' => $worker->id]) }}"
+                                                aria-label="{{ $worker->Worker_Name }} میں ترمیم کریں">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <form action="{{ route('admin.worker.delete', ['id' => $worker->id]) }}" method="POST" data-confirm="کیا آپ واقعی یہ ملازم حذف کرنا چاہتے ہیں؟">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="xp-icon-btn is-danger" aria-label="{{ $worker->Worker_Name }} حذف کریں"><i class="fas fa-trash-alt"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="xp-empty">
+                                        <i class="fas fa-users"></i>
+                                        {{ $filtered ? 'اس مدت میں کوئی تنخواہ درج نہیں۔' : 'ابھی کوئی تنخواہ درج نہیں کی گئی۔' }}
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                        @if ($workers->isNotEmpty())
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2">کل تنخواہ</td>
+                                    <td class="xp-amount" dir="ltr" colspan="2">Rs. {{ number_format($totalSalaries, 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        @endif
+                    </table>
                 </div>
             </div>
         </div>
     </section>
 
-    @include('Expenses.modal'){{-- to show date range modal box --}}
+    {{-- Add or edit rent / bill --}}
+    <div class="modal fade xp-modal" id="billModal" tabindex="-1" role="dialog" aria-labelledby="billModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" dir="rtl">
+                <form method="POST" id="billForm" action="{{ route('admin.expense.insert') }}" data-store-action="{{ route('admin.expense.insert') }}">
+                    @csrf
+                    <input type="hidden" name="_form" id="billFormMode" value="{{ old('_form') === 'bill-edit' ? 'bill-edit' : 'bill-create' }}">
+                    <input type="hidden" name="_edit_id" id="billEditId" value="{{ old('_edit_id') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="billModalTitle">کرایہ / بل شامل کریں</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        @if ($errors->any() && in_array(old('_form'), ['bill-create', 'bill-edit'], true))
+                            <div class="alert alert-danger">
+                                @foreach ($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                            </div>
+                        @endif
+                        <div class="form-group">
+                            <label for="billDate">تاریخ</label>
+                            <input type="date" id="billDate" name="expense_date" value="{{ old('expense_date', now()->toDateString()) }}" class="form-control" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label for="billRent">ماہانہ کرایہ</label>
+                                <input type="number" id="billRent" name="rent" value="{{ old('rent') }}" class="form-control" step="0.01" min="0" dir="ltr" placeholder="0.00" data-bill-amount>
+                            </div>
+                            <div class="form-group col-6">
+                                <label for="billBill">ماہانہ بل</label>
+                                <input type="number" id="billBill" name="bill" value="{{ old('bill') }}" class="form-control" step="0.01" min="0" dir="ltr" placeholder="0.00" data-bill-amount>
+                            </div>
+                        </div>
+                        <div class="xp-modal-total mt-0">
+                            <span>کل</span>
+                            <span dir="ltr" id="billTotal">Rs. 0.00</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
+                        <button type="submit" class="btn btn-blue">محفوظ کریں</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-    <!-- Include jQuery (required) and daterangepicker JS files -->
-<script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/moment.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.min.js"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.css" />
+    {{-- Add one or more staff salaries --}}
+    <div class="modal fade xp-modal" id="staffCreateModal" tabindex="-1" role="dialog" aria-labelledby="staffCreateTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" dir="rtl">
+                <form method="POST" action="{{ route('admin.expense.insert') }}">
+                    @csrf
+                    <input type="hidden" name="_form" value="staff-create">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="staffCreateTitle">ملازمین کی تنخواہ شامل کریں</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        @if ($errors->any() && old('_form') === 'staff-create')
+                            <div class="alert alert-danger">
+                                @foreach ($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                            </div>
+                        @endif
+                        <div class="xp-rows" id="staffRows">
+                            @foreach ($oldWorkers as $oldWorker)
+                                <div class="xp-row" data-xp-entry>
+                                    <div class="form-group">
+                                        <label>ملازم کا نام</label>
+                                        <input type="text" data-field="name" value="{{ $oldWorker['name'] ?? '' }}" class="form-control" maxlength="255" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>تنخواہ</label>
+                                        <input type="number" data-field="salary" value="{{ $oldWorker['salary'] ?? '' }}" class="form-control" step="0.01" min="0" required dir="ltr" data-xp-amount>
+                                    </div>
+                                    <button type="button" class="btn btn-light xp-row-remove" data-xp-remove aria-label="قطار ہٹائیں"><i class="fas fa-times"></i></button>
+                                </div>
+                            @endforeach
+                        </div>
+                        <button type="button" class="btn btn-link px-0 xp-add-row" id="staffAddRow">
+                            <i class="fas fa-plus-circle ml-1"></i> مزید ملازم شامل کریں
+                        </button>
+                        <div class="xp-modal-total">
+                            <span>کل تنخواہ</span>
+                            <span dir="ltr" id="staffCreateTotal">Rs. 0.00</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
+                        <button type="submit" class="btn btn-blue">محفوظ کریں</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
+    {{-- Edit a single staff salary --}}
+    <div class="modal fade xp-modal" id="staffEditModal" tabindex="-1" role="dialog" aria-labelledby="staffEditTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" dir="rtl">
+                <form method="POST" id="staffEditForm" action="">
+                    @csrf
+                    <input type="hidden" name="_form" value="staff-edit">
+                    <input type="hidden" name="_edit_id" id="staffEditId" value="{{ old('_edit_id') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="staffEditTitle">ملازم میں ترمیم کریں</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        @if ($errors->any() && old('_form') === 'staff-edit')
+                            <div class="alert alert-danger">
+                                @foreach ($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                            </div>
+                        @endif
+                        <div class="form-group">
+                            <label for="staffEditName">ملازم کا نام</label>
+                            <input type="text" id="staffEditName" name="name" value="{{ old('_form') === 'staff-edit' ? old('name') : '' }}" class="form-control" maxlength="255" required>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label for="staffEditSalary">تنخواہ</label>
+                            <input type="number" id="staffEditSalary" name="salary" value="{{ old('_form') === 'staff-edit' ? old('salary') : '' }}" class="form-control" step="0.01" min="0" required dir="ltr">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
+                        <button type="submit" class="btn btn-blue">محفوظ کریں</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endsection
 
-<script>
-    $(document).ready(function($) {
-        $('input[name="date_range"]').daterangepicker({
-            opens: 'left',
-            autoUpdateInput: false,
-            locale: {
-                cancelLabel: 'Clear',
-            },
-            ranges: {
-                'پچھلا ہفتہ': [moment().subtract(7, 'days').startOf('day'), moment().subtract(1, 'days').endOf('day')],
-                'آج': [moment(), moment()],
-                'کل': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-                'اس مہینے': [moment().startOf('month'), moment().endOf('month')],
-                'پچھلے مہینے': [
-                    moment().subtract(1, 'month').startOf('month'),
-                    moment().subtract(1, 'month').endOf('month')
-                ],
-                'پورے سال': [moment().startOf('year'), moment().endOf('year')]
+@push('scripts')
+    @include('Expenses.partials.scripts')
+    <script>
+        jQuery(function ($) {
+            var failedForm = @json(old('_form'));
+            var failedEditId = @json(old('_edit_id'));
+            var params = new URLSearchParams(window.location.search);
+
+            // Rent / bill modal (shared by add and edit).
+            var billForm = $('#billForm');
+
+            function updateBillTotal() {
+                var total = 0;
+                billForm.find('[data-bill-amount]').each(function () { total += parseFloat(this.value) || 0; });
+                $('#billTotal').text(xpMoney(total));
             }
-        });
 
-        $('input[name="date_range"]').on('apply.daterangepicker', function(ev, picker) {
-            $(this).val(picker.startDate.format('YYYY-MM-DD') + " to " + picker.endDate.format(
-                'YYYY-MM-DD'));
-        });
+            function openBill(button, keepInput) {
+                var editing = !!button;
+                button = $(button);
+                billForm.attr('action', editing ? button.data('action') : billForm.data('store-action'));
+                $('#billFormMode').val(editing ? 'bill-edit' : 'bill-create');
+                $('#billEditId').val(editing ? button.data('id') : '');
+                $('#billModalTitle').text(editing ? 'کرایہ / بل میں ترمیم کریں' : 'کرایہ / بل شامل کریں');
+                if (!keepInput) {
+                    $('#billDate').val(editing ? (button.data('date') || '') : @json(now()->toDateString()));
+                    $('#billRent').val(editing ? button.data('rent') : '');
+                    $('#billBill').val(editing ? button.data('bill') : '');
+                    billForm.find('.alert-danger').remove();
+                }
+                updateBillTotal();
+                $('#billModal').modal('show');
+            }
 
-        $('input[name="date_range"]').on('cancel.daterangepicker', function() {
-            $(this).val('');
-        });
+            $('[data-xp-bill-create]').on('click', function () { openBill(null, false); });
+            $(document).on('click', '[data-bill-edit]', function () { openBill(this, false); });
+            billForm.on('input', '[data-bill-amount]', updateBillTotal);
 
-        //for date range
-        $("#date").submit(function(e) {
-            e.preventDefault();
-            var formData = $(this).serialize();
-            // console.log(formData);
-            submitform(formData);
-        });
+            // Staff create modal with repeatable rows; inputs are named on submit.
+            var staffRows = $('#staffRows');
 
-        function submitform(formData) {
-            $.ajax({
-                type: 'POST',
-                url: $("#date").attr('action'),
-                data: formData,
-                dataType: 'json',
-                success: function(response) {
-                    var expensesDetail = response.expenses_detail;
-                    var totalExpenses = response.total_expenses;
-                    var salariesDetail = response.salaries_detail;
-                    var totalSalaries = response.salaries;
-                    // console.log(salariesDetail);
+            function updateStaffTotal() {
+                var total = 0;
+                staffRows.find('[data-xp-amount]').each(function () { total += parseFloat(this.value) || 0; });
+                $('#staffCreateTotal').text(xpMoney(total));
+                staffRows.find('[data-xp-remove]').prop('disabled', staffRows.children().length === 1);
+            }
 
-                    // Build HTML for the modal content
-                    var modalContent = buildModalContent(expensesDetail,salariesDetail,totalExpenses,totalSalaries);
-                    // Display modal with the constructed content
-                    $('#modalContent').html(modalContent);
+            function nameStaffRows() {
+                staffRows.children().each(function (index) {
+                    $(this).find('[data-field]').each(function () {
+                        this.name = 'workers[' + index + '][' + $(this).data('field') + ']';
+                    });
+                });
+            }
 
-                    $('#myModal').modal('show'); //modal box is in the Expenses folder
-                },
-                error: function(error) {
-                    console.error('Error:', error);
+            $('#staffAddRow').on('click', function () {
+                var row = staffRows.children().first().clone();
+                row.find('input').val('');
+                staffRows.append(row);
+                nameStaffRows();
+                updateStaffTotal();
+                row.find('input').first().trigger('focus');
+            });
+
+            staffRows.on('click', '[data-xp-remove]', function () {
+                if (staffRows.children().length > 1) {
+                    $(this).closest('[data-xp-entry]').remove();
+                    nameStaffRows();
+                    updateStaffTotal();
                 }
             });
-        }
+            staffRows.on('input', '[data-xp-amount]', updateStaffTotal);
+            nameStaffRows();
+            updateStaffTotal();
 
-        function buildModalContent(expensesDetail,salariesDetail,totalSalaries,totalExpenses) {
-            var total = parseFloat(totalSalaries) + parseFloat(totalExpenses);
-            // console.log(salariesDetail);
-            var modalContent =
-                '<div class="table-responsive p-4"><div class="d-flex"><table class="table table-bordered mr-4" style="max-height: 70vh; overflow-y: auto;">';
-            modalContent += '<thead class="thead-dark"><tr>';
-            modalContent += '<th>تاریخ</th>';
-            modalContent += '<th>ماہانہ کرایہ</th>';
-            modalContent += '<th>ماہانہ بل</th>';
-            modalContent += '</tr></thead>';
-            modalContent += '<tbody>';
-
-
-            // Check if there is data
-            if (expensesDetail.length > 0) {
-                // Populate data for the second table
-                $.each(expensesDetail, function(index, expenses) {
-                modalContent += '<tr>';
-                modalContent += '<td>' + (expenses.expense_date !== undefined ? expenses.expense_date : 0) + '</td>';
-                modalContent += '<td>' + (expenses.Monthly_Rent !== null ? expenses.Monthly_Rent : 0) + '</td>';
-                modalContent += '<td>' + (expenses.Monthly_Bill !== null ? expenses.Monthly_Bill : 0) + '</td>';
-                modalContent += '</tr>';
+            $('#staffCreateModal').on('shown.bs.modal', function () {
+                staffRows.find('input').first().trigger('focus');
             });
-            } else {
-                // If no data, add a row with zeros or a message
-                modalContent += '<tr>';
-                modalContent += '<td>کوئی ریکارڈ دستیاب نہیں۔</td>';
-                modalContent += '<td>0</td>';
-                modalContent += '<td>0</td>';
-                modalContent += '</tr>';
+
+            // Staff edit modal.
+            function openStaffEdit(button, keepInput) {
+                button = $(button);
+                $('#staffEditForm').attr('action', button.data('action'));
+                $('#staffEditId').val(button.data('id'));
+                if (!keepInput) {
+                    $('#staffEditName').val(button.data('name'));
+                    $('#staffEditSalary').val(button.data('salary'));
+                    $('#staffEditModal .alert-danger').remove();
+                }
+                $('#staffEditModal').modal('show');
             }
 
-            modalContent += '</tbody></table>';
+            $(document).on('click', '[data-staff-edit]', function () { openStaffEdit(this, false); });
 
-            // Second Table
-            modalContent += '<table class="table table-bordered" style="max-height: 70vh; overflow-y: auto;">';
-            modalContent += '<thead class="thead-dark"><tr>';
-            modalContent += '<th>ملازم کا نام</th>';
-            modalContent += '<th>ملازم تنخواہ</th>';
-            modalContent += '</tr></thead>';
-            modalContent += '<tbody>';
+            // Reopen after a failed submit, or when arriving from the old create/edit URLs.
+            var billEditId = failedForm === 'bill-edit' ? failedEditId : params.get('edit_bill');
+            var staffEditId = failedForm === 'staff-edit' ? failedEditId : params.get('edit_staff');
 
-            // Check if there is data
-            if (salariesDetail.length > 0) {
-                // Populate data for the second table
-                $.each(salariesDetail, function(index, salary) {
-                    modalContent += '<tr>';
-                    modalContent += '<td>' + (salary.Worker_Name !== undefined ? salary.Worker_Name : '') + '</td>';
-                    modalContent += '<td>' + (salary.Worker_salary !== null ? salary.Worker_salary : 0) + '</td>';
-                    modalContent += '</tr>';
-                });
-            } else {
-                // If no data, add a row with zeros or a message
-                modalContent += '<tr>';
-                modalContent += '<td>کوئی ریکارڈ دستیاب نہیں۔</td>';
-                modalContent += '<td>0</td>';
-                modalContent += '</tr>';
+            if (billEditId) {
+                var billButton = $('[data-bill-edit][data-id="' + billEditId + '"]');
+                if (billButton.length) {
+                    openBill(billButton, failedForm === 'bill-edit');
+                }
+            } else if (staffEditId) {
+                var staffButton = $('[data-staff-edit][data-id="' + staffEditId + '"]');
+                if (staffButton.length) {
+                    openStaffEdit(staffButton, failedForm === 'staff-edit');
+                }
+            } else if (failedForm === 'bill-create' || params.get('modal') === 'bill') {
+                openBill(null, failedForm === 'bill-create');
+            } else if (failedForm === 'staff-create') {
+                $('#staffCreateModal').modal('show');
             }
-
-            modalContent += '</tbody></table></div></div>';
-            modalContent += '<div style="text-align: center;font-size:20px;"><span>  مکمل خرچہ : ' + total.toLocaleString('en-US') + '</span></div>';
-            return modalContent;
-        }
-
-
-    });
-</script>
-@endsection
+        });
+    </script>
+@endpush

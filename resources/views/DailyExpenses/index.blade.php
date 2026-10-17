@@ -1,207 +1,310 @@
 @extends('main')
+
+@push('styles')
+    @include('Expenses.partials.styles')
+@endpush
+
 @section('content')
-    <section class="main-content">
-        <div class="container">
-            <div class="card col-sm-10 mx-auto">
-                <div class="row">
-                    <div class="col-md-12">
-                        @include('inc.message')
+    @php
+        $filtered = ! empty($filters['from']) || ! empty($filters['to']);
+        $oldNames = old('_form') === 'daily-create' ? array_values((array) old('name', [''])) : [''];
+        $oldAmounts = old('_form') === 'daily-create' ? array_values((array) old('rupee', [''])) : [''];
+    @endphp
 
-                        <div class="bg-white px-3 py-4">
-                            <p class="text-right"><a href="{{ route('admin.dailyexpense.create') }}" class="btn btn-primary">
-                                    نئے
-                                    اخراجات شامل کریں۔ +</a>
-                            </p>
-                            <h1 class="h4 text-right">روزانہ اخراجات چیک کریں</h1>
+    <section class="main-content xp-page">
+        <div class="container-fluid px-3 px-lg-4">
+            @include('inc.message')
 
-                            <form class="form-inline reversed-flex-direction" method="POST"
-                                action="{{ route('admin.dailyexpense.specific') }}" id="date">
-                                @csrf
-                                <!-- Date range picker input field -->
-                                <div class="form-group mr-2">
-                                    <label class="sr-only" for="daily_expense_date_range">تاریخ کی حد</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" name="date_range" id="daily_expense_date_range"
-                                            placeholder="تاریخ کی حد منتخب کریں۔" autocomplete="off">
-                                        <div class="input-group-append">
-                                            <span class="input-group-text">
-                                                <i class="fa fa-calendar"></i>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group mr-2">
-                                    <button type="submit" class="btn btn-primary"> چیک کریں۔</button>
-                                </div>
-                            </form>
+            @if ($errors->any() && ! old('_form'))
+                <div class="alert alert-danger">
+                    @foreach ($errors->all() as $error)
+                        <div>{{ $error }}</div>
+                    @endforeach
+                </div>
+            @endif
 
-                            <div class="table-title  mb-4 mt-2">
-                                <h2 class="h5 text-right">روزانہ اخراجات کی فہرست</h2>
-                            </div>
+            <div class="xp-card">
+                <div class="xp-header">
+                    <div>
+                        <h1 class="xp-title">روزانہ اخراجات</h1>
+                        <p class="xp-subtitle">چائے، کرایہ گاڑی، مرمت جیسے روزمرہ کے خرچ یہاں درج کریں۔</p>
+                    </div>
+                    <div class="xp-header-actions">
+                        <button type="button" class="xp-add" data-toggle="modal" data-target="#dailyCreateModal">
+                            <i class="fas fa-plus" aria-hidden="true"></i>
+                            <span>نیا خرچ شامل کریں</span>
+                        </button>
+                    </div>
+                </div>
 
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="table-responsive">
-                                        <!-- First Table -->
-                                        <table class="table js-sortable-table cc-table-data-options-history"
-                                            id="cc-table-data-options-history1">
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col" class="no-sort"> تاریخ </th>
-                                                    <th scope="col" class="no-sort"> اخراجات کا عنوان </th>
-                                                    <th scope="col" class="no-sort">خرچ کی رقم</th>
-                                                    <th scope="col" class="no-sort" colspan="2"
-                                                        style="text-align: center;">عمل</th>
-                                                </tr>
-                                            </thead>
-                                            @php
-                                                $totalamount = 0;
-                                            @endphp
-                                            <tbody>
-                                                @foreach ($expense as $ex)
-                                                    <tr>
-                                                        <td>{{ $ex->created_at->format('Y-m-d') }}</td>
-                                                        <td>{{ $ex->Expense_name }}</td>
-                                                        <td>{{ $ex->Expense_payment }}</td>
-                                                        <td><a href="{{ route('admin.dailyexpense.edit', ['id' => $ex->id]) }}"
-                                                                class="btn btn-primary btn-sm">تبدیلی</a></td>
-                                                        <td><form action="{{ route('admin.dailyexpense.delete', ['id' => $ex->id]) }}" method="POST" data-confirm="کیا آپ واقعی یہ روزانہ خرچ حذف کرنا چاہتے ہیں؟">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-danger btn-sm">حذف کریں</button>
-                                                            </form></td>
-                                                    </tr>
-                                                    @php
-                                                        $totalamount += $ex->Expense_payment;
-                                                    @endphp
-                                                @endforeach
-                                                <tr class="table-info">
-                                                    <td colspan="5" class="text-center"><strong> کل
-                                                            اخراجات</strong>
-                                                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>{{ $totalamount }}</b> </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="xp-stats">
+                    <div class="xp-stat">
+                        <span class="xp-stat-icon blue"><i class="fas fa-calendar-day"></i></span>
+                        <div><small>آج کے اخراجات</small><strong dir="ltr">Rs. {{ number_format($todayTotal, 2) }}</strong></div>
+                    </div>
+                    <div class="xp-stat">
+                        <span class="xp-stat-icon orange"><i class="fas fa-calendar-alt"></i></span>
+                        <div><small>اس مہینے کے اخراجات</small><strong dir="ltr">Rs. {{ number_format($monthTotal, 2) }}</strong></div>
+                    </div>
+                    <div class="xp-stat">
+                        <span class="xp-stat-icon green"><i class="fas fa-list-ol"></i></span>
+                        <div>
+                            <small>{{ $filtered ? 'منتخب مدت کا کل' : 'کل درج شدہ اخراجات' }}</small>
+                            <strong dir="ltr">Rs. {{ number_format($listTotal, 2) }}</strong>
                         </div>
                     </div>
                 </div>
+
+                <div class="xp-toolbar">
+                    <form method="GET" action="{{ route('admin.dailyexpense.index') }}" class="xp-filter">
+                        <div>
+                            <label for="dailyFrom">سے</label>
+                            <input type="date" id="dailyFrom" name="from" value="{{ $filters['from'] ?? '' }}" class="form-control">
+                        </div>
+                        <div>
+                            <label for="dailyTo">تک</label>
+                            <input type="date" id="dailyTo" name="to" value="{{ $filters['to'] ?? '' }}" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-filter ml-1"></i> فلٹر کریں</button>
+                        @if ($filtered)
+                            <a href="{{ route('admin.dailyexpense.index') }}" class="btn btn-light">صاف کریں</a>
+                        @endif
+                    </form>
+
+                    <div class="xp-search">
+                        <label for="dailySearch" class="sr-only">خرچ تلاش کریں</label>
+                        <input type="search" id="dailySearch" class="form-control" placeholder="عنوان تلاش کریں۔۔۔" autocomplete="off" data-xp-search="#dailyTable">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                    </div>
+                </div>
+
+                <div class="xp-table-shell">
+                    <table class="xp-table" id="dailyTable">
+                        <thead>
+                            <tr>
+                                <th scope="col">تاریخ</th>
+                                <th scope="col">اخراجات کا عنوان</th>
+                                <th scope="col">رقم</th>
+                                <th scope="col">عمل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($expense as $ex)
+                                <tr data-xp-row>
+                                    <td class="xp-date">{{ $ex->created_at?->format('d-m-Y') }}</td>
+                                    <td data-xp-text>{{ $ex->Expense_name }}</td>
+                                    <td class="xp-amount" dir="ltr">Rs. {{ number_format((float) $ex->Expense_payment, 2) }}</td>
+                                    <td>
+                                        <div class="xp-actions">
+                                            <button type="button" class="xp-icon-btn" data-daily-edit
+                                                data-id="{{ $ex->id }}"
+                                                data-name="{{ $ex->Expense_name }}"
+                                                data-amount="{{ $ex->Expense_payment }}"
+                                                data-action="{{ route('admin.dailyexpense.update', ['id' => $ex->id]) }}"
+                                                aria-label="{{ $ex->Expense_name }} میں ترمیم کریں">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <form action="{{ route('admin.dailyexpense.delete', ['id' => $ex->id]) }}" method="POST" data-confirm="کیا آپ واقعی یہ روزانہ خرچ حذف کرنا چاہتے ہیں؟">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="xp-icon-btn is-danger" aria-label="{{ $ex->Expense_name }} حذف کریں">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="xp-empty">
+                                        <i class="fas fa-receipt"></i>
+                                        {{ $filtered ? 'اس مدت میں کوئی خرچ درج نہیں۔' : 'ابھی کوئی روزانہ خرچ درج نہیں کیا گیا۔' }}
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                        @if ($expense->isNotEmpty())
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2">کل اخراجات ({{ $expense->total() }} ریکارڈ)</td>
+                                    <td class="xp-amount" dir="ltr" colspan="2">Rs. {{ number_format($listTotal, 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        @endif
+                    </table>
+                </div>
+
+                @if ($expense->hasPages())
+                    <div class="xp-pagination">
+                        <small class="text-muted">
+                            کل {{ $expense->total() }} میں سے {{ $expense->firstItem() }} تا {{ $expense->lastItem() }}
+                        </small>
+                        {{ $expense->onEachSide(1)->links() }}
+                    </div>
+                @endif
             </div>
         </div>
     </section>
 
-    @include('DailyExpenses.modal'){{-- to show date range modal box --}}
+    {{-- Add one or more daily expenses --}}
+    <div class="modal fade xp-modal" id="dailyCreateModal" tabindex="-1" role="dialog" aria-labelledby="dailyCreateTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" dir="rtl">
+                <form method="POST" action="{{ route('admin.dailyexpense.insert') }}">
+                    @csrf
+                    <input type="hidden" name="_form" value="daily-create">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="dailyCreateTitle">روزانہ اخراجات شامل کریں</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        @if ($errors->any() && old('_form') === 'daily-create')
+                            <div class="alert alert-danger">
+                                @foreach ($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                            </div>
+                        @endif
 
-    <!-- Include jQuery (required) and daterangepicker JS files -->
-    <script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.css" />
+                        <div class="xp-rows" id="dailyRows">
+                            @foreach ($oldNames as $index => $oldName)
+                                <div class="xp-row" data-xp-entry>
+                                    <div class="form-group">
+                                        <label>اخراجات کا عنوان</label>
+                                        <input type="text" name="name[]" value="{{ $oldName }}" class="form-control" maxlength="255" required placeholder="مثلاً چائے">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>رقم</label>
+                                        <input type="number" name="rupee[]" value="{{ $oldAmounts[$index] ?? '' }}" class="form-control" step="0.01" min="0" required dir="ltr" data-xp-amount>
+                                    </div>
+                                    <button type="button" class="btn btn-light xp-row-remove" data-xp-remove aria-label="قطار ہٹائیں"><i class="fas fa-times"></i></button>
+                                </div>
+                            @endforeach
+                        </div>
 
+                        <button type="button" class="btn btn-link px-0 xp-add-row" id="dailyAddRow">
+                            <i class="fas fa-plus-circle ml-1"></i> مزید خرچ شامل کریں
+                        </button>
 
+                        <div class="xp-modal-total">
+                            <span>کل</span>
+                            <span dir="ltr" id="dailyCreateTotal">Rs. 0.00</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
+                        <button type="submit" class="btn btn-blue">محفوظ کریں</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Edit a single daily expense --}}
+    <div class="modal fade xp-modal" id="dailyEditModal" tabindex="-1" role="dialog" aria-labelledby="dailyEditTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" dir="rtl">
+                <form method="POST" id="dailyEditForm" action="">
+                    @csrf
+                    <input type="hidden" name="_form" value="daily-edit">
+                    <input type="hidden" name="_edit_id" id="dailyEditId" value="{{ old('_edit_id') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="dailyEditTitle">خرچ میں ترمیم کریں</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        @if ($errors->any() && old('_form') === 'daily-edit')
+                            <div class="alert alert-danger">
+                                @foreach ($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                            </div>
+                        @endif
+                        <div class="form-group">
+                            <label for="dailyEditName">اخراجات کا عنوان</label>
+                            <input type="text" id="dailyEditName" name="name" value="{{ old('_form') === 'daily-edit' ? old('name') : '' }}" class="form-control" maxlength="255" required>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label for="dailyEditAmount">رقم</label>
+                            <input type="number" id="dailyEditAmount" name="rupee" value="{{ old('_form') === 'daily-edit' ? old('rupee') : '' }}" class="form-control" step="0.01" min="0" required dir="ltr">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
+                        <button type="submit" class="btn btn-blue">محفوظ کریں</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endsection
+
+@push('scripts')
+    @include('Expenses.partials.scripts')
     <script>
-        $(document).ready(function($) {
-            $('input[name="date_range"]').daterangepicker({
-                opens: 'left',
-                autoUpdateInput: false,
-                locale: {
-                    cancelLabel: 'Clear',
-                },
-                ranges: {
-                    'پچھلا ہفتہ': [moment().subtract(7, 'days').startOf('day'), moment().subtract(1, 'days')
-                        .endOf('day')
-                    ],
-                    'آج': [moment(), moment()],
-                    'کل': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-                    'اس مہینے': [moment().startOf('month'), moment().endOf('month')],
-                    'پچھلے مہینے': [
-                        moment().subtract(1, 'month').startOf('month'),
-                        moment().subtract(1, 'month').endOf('month')
-                    ],
-                    'پورے سال': [moment().startOf('year'), moment().endOf('year')]
-                }
-            });
+        jQuery(function ($) {
+            var rows = $('#dailyRows');
 
-            $('input[name="date_range"]').on('apply.daterangepicker', function(ev, picker) {
-                $(this).val(picker.startDate.format('YYYY-MM-DD') + " to " + picker.endDate.format(
-                    'YYYY-MM-DD'));
-            });
-
-            $('input[name="date_range"]').on('cancel.daterangepicker', function() {
-                $(this).val('');
-            });
-
-            //for date range
-            $("#date").submit(function(e) {
-                e.preventDefault();
-                var formData = $(this).serialize();
-                // console.log(formData);
-                submitform(formData);
-            });
-
-            function submitform(formData) {
-                $.ajax({
-                    type: 'POST',
-                    url: $("#date").attr('action'),
-                    data: formData,
-                    dataType: 'json',
-                    success: function(response) {
-                        var expenses = response.expense;
-                        // console.log(expenses);
-
-                        // Build HTML for the modal content
-                        var modalContent = buildModalContent(expenses);
-                        // Display modal with the constructed content
-                        $('#modalContent').html(modalContent);
-
-                        $('#myModal').modal('show'); //modal box is in the Expenses folder
-                    },
-                    error: function(error) {
-                        console.error('Error:', error);
-                    }
-                });
-            }
-
-            function buildModalContent(expenses) {
-                // console.log(salariesDetail);
+            function updateCreateTotal() {
                 var total = 0;
-                var modalContent =
-                    '<div class="table-responsive p-4"><div class="d-flex"><table class="table table-bordered mr-4" style="max-height: 70vh; overflow-y: auto;">';
-                modalContent += '<thead class="thead-dark"><tr>';
-                modalContent += '<th>تاریخ</th>';
-                modalContent += '<th>اخراجات کا عنوان</th>';
-                modalContent += '<th>خرچ کی رقم</th>';
-                modalContent += '</tr></thead>';
-                modalContent += '<tbody>';
-
-
-                // Check if there is data
-                if (expenses.length > 0) {
-                    $.each(expenses, function(index, expense) {
-                        modalContent += '<tr>';
-                        var createdAtDate = expense.created_at !== undefined ? new Date(expense
-                            .created_at) : null;
-                        var formattedCreatedAt = createdAtDate ? createdAtDate.toISOString().slice(0, 10) :
-                            'N/A';
-                        modalContent += '<td>' + formattedCreatedAt + '</td>';
-                        modalContent += '<td>' + (expense.Expense_name !== undefined ? expense
-                            .Expense_name : 0) + '</td>';
-                        modalContent += '<td>' + (expense.Expense_payment !== undefined ? expense
-                            .Expense_payment : 0) + '</td>';
-                        total += expense.Expense_payment;
-                    });
-                } else {
-                    modalContent += '<td colspan="2">' + ' کوئی ریکارڈ دستیاب نہیں۔' + '</td>';
-                }
-
-                modalContent += '</tbody></table></div></div>';
-                modalContent += '<div style="text-align: center;font-size:20px;"><span>  مکمل خرچہ : '+total
-                    .toLocaleString('en-US') + '</span></div>';
-                return modalContent;
+                rows.find('[data-xp-amount]').each(function () { total += parseFloat(this.value) || 0; });
+                $('#dailyCreateTotal').text(xpMoney(total));
+                rows.find('[data-xp-remove]').prop('disabled', rows.children().length === 1);
             }
 
+            $('#dailyAddRow').on('click', function () {
+                var row = rows.children().first().clone();
+                row.find('input').val('');
+                rows.append(row);
+                updateCreateTotal();
+                row.find('input').first().trigger('focus');
+            });
 
+            rows.on('click', '[data-xp-remove]', function () {
+                if (rows.children().length > 1) {
+                    $(this).closest('[data-xp-entry]').remove();
+                    updateCreateTotal();
+                }
+            });
+            rows.on('input', '[data-xp-amount]', updateCreateTotal);
+            updateCreateTotal();
+
+            $('#dailyCreateModal').on('shown.bs.modal', function () {
+                rows.find('input').first().trigger('focus');
+            });
+
+            function openEdit(record, keepInput) {
+                $('#dailyEditForm').attr('action', record.action);
+                $('#dailyEditId').val(record.id);
+                if (!keepInput) {
+                    $('#dailyEditName').val(record.name);
+                    $('#dailyEditAmount').val(record.amount);
+                    $('#dailyEditModal .alert-danger').remove();
+                }
+                $('#dailyEditModal').modal('show');
+            }
+
+            $(document).on('click', '[data-daily-edit]', function () {
+                var button = $(this);
+                openEdit({
+                    id: button.data('id'),
+                    name: button.data('name'),
+                    amount: button.data('amount'),
+                    action: button.data('action')
+                }, false);
+            });
+
+            // Reopen after a failed submit, or when arriving from the old create/edit URLs.
+            // The record comes from the server because it may be on another page.
+            var failedForm = @json(old('_form'));
+            var params = new URLSearchParams(window.location.search);
+            var editTarget = @json($editTarget);
+
+            if (editTarget) {
+                openEdit(editTarget, failedForm === 'daily-edit');
+            } else if (failedForm === 'daily-create' || params.get('modal') === 'create') {
+                $('#dailyCreateModal').modal('show');
+            }
         });
     </script>
-@endsection
+@endpush
