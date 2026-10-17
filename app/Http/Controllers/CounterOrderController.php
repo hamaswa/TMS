@@ -860,7 +860,7 @@ class CounterOrderController extends Controller
     private function ensureClothStock(Cloth $cloth, ?string $color, float $length, int $quantity): void
     {
         $discrete = in_array($cloth->inventory_unit, ['piece', 'set'], true);
-        if ($discrete && ($length != floor($length) || $length != 1.0)) {
+        if ($discrete && $length != 1.0) {
             throw ValidationException::withMessages([
                 'length' => 'پیس یا سیٹ کے لیے فی آئٹم مقدار 1 ہونی چاہیے؛ تعداد الگ درج کریں۔',
             ]);
@@ -869,10 +869,11 @@ class CounterOrderController extends Controller
         $available = round($this->clothStock($cloth, $color), 2);
 
         if ($needed > $available) {
+            $unitLabel = $cloth->inventory_unit === 'piece' ? 'پیس' : ($cloth->inventory_unit === 'set' ? 'سیٹ' : 'میٹر');
             throw ValidationException::withMessages([
                 'length' => $available <= 0
                     ? 'اس کپڑے کا اسٹاک ختم ہے۔'
-                    : 'اسٹاک میں صرف '.number_format($available, 2).' میٹر دستیاب ہے؛ '.number_format($needed, 2).' میٹر درکار ہیں۔',
+                    : 'اسٹاک میں صرف '.number_format($available, $discrete ? 0 : 2).' '.$unitLabel.' دستیاب ہے؛ '.number_format($needed, $discrete ? 0 : 2).' '.$unitLabel.' درکار ہیں۔',
             ]);
         }
     }
