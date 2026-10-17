@@ -1159,10 +1159,15 @@
 
                 meta.textContent = (item.brand || 'برانڈ') + ' / ' + (item.type || 'قسم');
 
+                const discrete = item.inventory_unit === 'piece' || item.inventory_unit === 'set';
+                const unitLabel = item.inventory_unit === 'piece' ? 'پیس' : (item.inventory_unit === 'set' ? 'سیٹ' : 'میٹر');
+                const unitSuffix = discrete ? (item.inventory_unit === 'piece' ? ' pcs' : ' sets') : ' m';
+                const qtyStep = discrete ? '1' : '0.01';
+                const minQty = discrete ? '1' : '0.01';
                 if (item.tracks_colors) {
                     stock.innerHTML =
                         '<label>مقدار</label><button type="button" class="btn btn-outline-primary toggle-colors">' +
-                        item.colors.length + ' رنگ — میٹر درج کریں</button>';
+                        item.colors.length + ' رنگ — ' + unitLabel + ' درج کریں</button>';
 
                     const grid = document.createElement('div');
                     grid.className = 'purchase-color-grid purchase-existing-color-grid';
@@ -1173,9 +1178,9 @@
 
                         cell.innerHTML =
                             '<label>' + color.name + '<small>موجودہ ' + Number(color.stock).toFixed(2) +
-                            ' m</small></label><input type="number" step="0.01" min="0" class="form-control purchase-color-quantity" data-color-id="' +
+                            ' + unitSuffix + '</small></label><input type="number" step="' + qtyStep + '" min="0" class="form-control purchase-color-quantity" data-color-id="' +
                             color.id + '" aria-label="' + color.name +
-                            ' کی خریداری میٹر میں" placeholder="0.00">';
+                            ' کی خریداری" placeholder="0">';
 
                         grid.appendChild(cell);
                     });
@@ -1186,10 +1191,10 @@
                     const color = item.colors[0];
 
                     stock.innerHTML =
-                        '<label>خریدے گئے میٹر</label><input type="number" step="0.01" min="0.01" class="form-control purchase-color-quantity" data-color-id="' +
+                        '<label>خریدے گئے ' + unitLabel + '</label><input type="number" step="' + qtyStep + '" min="' + minQty + '" class="form-control purchase-color-quantity" data-color-id="' +
                         color.id +
-                        '" aria-label="خریداری کی مقدار میٹر میں" placeholder="0.00" required><small class="purchase-existing-meta">موجودہ ' +
-                        Number(color.stock).toFixed(2) + ' m</small>';
+                        '" aria-label="خریداری کی مقدار" placeholder="0" required><small class="purchase-existing-meta">موجودہ ' +
+                        Number(color.stock).toFixed(2) + ' + unitSuffix + '</small>';
                 }
 
                 updateTotals();
