@@ -846,6 +846,12 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="cloth-filter"><label for="cloth-category">مرکزی کیٹیگری</label><select id="cloth-category" name="category" class="form-control">
+                                    <option value="">تمام کیٹیگریز</option>
+                                    @foreach ($categories as $category)
+                                        <option value="{{ $category->id }}" @selected((string) ($filters['category'] ?? '') === (string) $category->id)>{{ $category->name }}</option>
+                                    @endforeach
+                                </select></div>
                             <div class="cloth-filter"><label for="cloth-type">کپڑے کی قسم</label><select id="cloth-type"
                                     name="type" class="form-control">
                                     <option value="">تمام اقسام</option>
