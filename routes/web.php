@@ -372,6 +372,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::resource('/OptionType', OptionTypeController::class);
         Route::resource('/Options', OptionsController::class);
         Route::resource('/measurement-fields', MeasurementFieldController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::patch('/measurement-templates/{template}/field-title', [MeasurementTemplateController::class, 'updateFieldTitle'])->name('measurement-templates.field-title');
         Route::resource('/measurement-templates', MeasurementTemplateController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::get('/measurement-templates/{template}/standard-profiles', [StandardMeasurementProfileController::class, 'index'])->name('standard-measurement-profiles.index');
         Route::post('/measurement-templates/{template}/standard-profiles', [StandardMeasurementProfileController::class, 'store'])->name('standard-measurement-profiles.store');
