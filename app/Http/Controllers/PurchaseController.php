@@ -205,6 +205,12 @@ class PurchaseController extends Controller
                 $color = ClothColor::where('user_id', $ownerId)->with('cloth')->findOrFail($colorId);
                 abort_unless((int) $color->cloth->user_id === (int) $ownerId, 404);
                 $quantity = round((float) $existingQuantities[$index], 2);
+                if (in_array($color->cloth->inventory_unit, ['piece', 'set'], true)
+                    && floor((float) $existingQuantities[$index]) !== (float) $existingQuantities[$index]) {
+                    throw ValidationException::withMessages([
+                        "quantity.{$index}" => 'پیس اور سیٹ کی خریداری میں مکمل عدد درج کریں۔',
+                    ]);
+                }
                 $lineTotal = isset($submittedLineTotals[$index])
                     ? round((float) $submittedLineTotals[$index], 2)
                     : round($quantity * (float) $submittedUnitCosts[$index], 2);
