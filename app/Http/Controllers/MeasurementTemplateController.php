@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MeasurementField;
+use App\Models\OptionType;
 use App\Models\MeasurementTemplate;
 use App\Services\MeasurementService;
 use App\Services\TailoringOptionDefaultsService;
@@ -168,9 +169,31 @@ class MeasurementTemplateController extends Controller
     {
         $ownerId = Auth::user()->businessOwnerId();
         $systemFields = MeasurementService::SYSTEM_FIELDS;
+        $systemOptionTypes = [];
+        if ($template) {
+            $keys = collect($systemFields)->filter(fn (array $field) => $field['unit'] === '')->keys();
+            $types = OptionType::where(function ($query) use ($ownerId) {
+                $query->whereNull('user_id')->orWhere('user_id', $ownerId);
+            })->whereIn('type', $keys->map(fn ($key) => $key === 'Daaman' ? 'daaman' : $key)->all())
+                ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)->orderBy('Name')])->get();
+            foreach ($types as $type) {
+                $key = $type->type === 'daaman' ? 'Daaman' : $type->type;
+                $systemOptionTypes[$key] = [
+                    'id' => $type->id,
+                    'updateBase' => route('admin.Options.update', ['Option' => '__ID__']),
+                    'deleteBase' => route('admin.Options.destroy', ['Option' => '__ID__']),
+                    'options' => $type->options->map(fn ($option) => [
+                        'id' => $option->id, 'name' => $option->Name,
+                        'update' => route('admin.Options.update', $option),
+                        'destroy' => route('admin.Options.destroy', $option),
+                    ])->values()->all(),
+                ];
+            }
+        }
 
         return [
             'template' => $template,
+            'systemOptionTypes' => $systemOptionTypes,
             'measurementFields' => collect($systemFields)->filter(fn(array $field) => $field['unit'] !== ''),
             'preferenceFields' => collect($systemFields)->filter(fn(array $field) => $field['unit'] === ''),
             'systemFields' => $systemFields,
