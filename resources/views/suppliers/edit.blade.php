@@ -39,7 +39,7 @@
         </form>
     </div></div>
 
-    <div class="card mb-3"><div class="card-header">عمومی ادائیگی · موجودہ بقایا روپے {{ number_format($outstanding,2) }}</div><div class="card-body">
+    <div id="supplier-payment" class="card mb-3"><div class="card-header">عمومی ادائیگی · موجودہ بقایا روپے {{ number_format($outstanding,2) }}</div><div class="card-body">
         <p class="text-muted">کسی مخصوص خریداری کی ادائیگی اس خریداری کے صفحے پر درج کریں۔ یہاں درج رقم پہلے مجموعی سپلائر بقایا سے کم ہو گی۔</p>
         @if($outstanding > 0)
             <form method="POST" action="{{ route('admin.suppliers.payment',$supplier) }}" data-confirm="کیا سپلائر کو یہ ادائیگی درج کرنا چاہتے ہیں؟" data-confirm-variant="success">@csrf
