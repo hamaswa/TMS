@@ -108,16 +108,15 @@ class SupplierController extends Controller
             $newPurchaseId = $this->validatedPurchaseId($validated['purchase_id'] ?? null, $supplier, $ownerId);
             $oldPurchaseId = $record->purchase_id;
 
-            if ($oldPurchaseId == $newPurchaseId) {
-                return;
-            }
-
+            // Reconcile even when the link is unchanged: older links may have stale totals.
             // Lock affected purchases in a consistent order to avoid deadlocks.
             $purchases = Purchase::where('user_id', $ownerId)->where('supplier_id', $supplier)
                 ->whereIn('id', array_filter([$oldPurchaseId, $newPurchaseId]))
                 ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
 
-            $record->update(['purchase_id' => $newPurchaseId]);
+            if ($oldPurchaseId != $newPurchaseId) {
+                $record->update(['purchase_id' => $newPurchaseId]);
+            }
 
             foreach ($purchases as $purchase) {
                 // The purchase's stored totals must match the payment ledger after reassignment.
