@@ -241,6 +241,9 @@
                 <a class="tms-side-link {{ request()->routeIs('admin.Customers.*', 'admin.customers.statement') ? 'is-active' : '' }}"
                     href="{{ route('admin.Customers.index') }}"><span class="tms-side-icon"><i
                             class="fas fa-user-friends"></i></span><span class="tms-side-label">گاہک</span></a>
+                @if ($canTailorCustomers)
+                    <a class="tms-side-link {{ request()->routeIs('admin.Customers.create') ? 'is-active' : '' }}" href="{{ route('admin.Customers.create') }}"><span class="tms-side-icon"><i class="fas fa-user-plus"></i></span><span class="tms-side-label">نیا گاہک شامل کریں</span></a>
+                @endif
             @endif
             <div class="tms-side-section"></div>
 
