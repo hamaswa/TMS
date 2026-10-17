@@ -200,6 +200,7 @@ class ClothController extends Controller
                 'suit_sale_price' => ['nullable', 'numeric', 'min:0'],
                 'default_sale_length' => ['nullable', 'numeric', 'gt:0'],
                 'sale_price_basis' => ['required', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
+                'inventory_unit' => ['nullable', Rule::in([Cloth::INVENTORY_UNIT_METER, Cloth::INVENTORY_UNIT_PIECE, Cloth::INVENTORY_UNIT_SET])],
                 'color_tracking_mode' => ['required', Rule::in([
                     Cloth::COLOR_TRACKING_NONE,
                     Cloth::COLOR_TRACKING_DISPLAY_ONLY,
@@ -370,6 +371,7 @@ class ClothController extends Controller
                     'suit_sale_price' => $validated['suit_sale_price'] ?? null,
                     'default_sale_length' => $validated['default_sale_length'] ?? null,
                     'sale_price_basis' => $validated['sale_price_basis'],
+                    'inventory_unit' => $validated['inventory_unit'] ?? Cloth::INVENTORY_UNIT_METER,
                     'color_tracking_mode' => $trackingMode,
                     'display_colors' => $displayColors,
                     'display_color_codes' => $trackingMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY
@@ -556,6 +558,7 @@ class ClothController extends Controller
                 'suit_sale_price' => ['nullable', 'numeric', 'min:0'],
                 'default_sale_length' => ['nullable', 'numeric', 'gt:0'],
                 'sale_price_basis' => ['required', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
+                'inventory_unit' => ['nullable', Rule::in([Cloth::INVENTORY_UNIT_METER, Cloth::INVENTORY_UNIT_PIECE, Cloth::INVENTORY_UNIT_SET])],
                 'colors' => ['required', 'string', 'max:100'],
                 'display_colors' => ['nullable', 'string', 'max:1000'],
                 'images' => ['nullable', 'array'],
@@ -609,6 +612,7 @@ class ClothController extends Controller
                     'suit_sale_price' => $validated['suit_sale_price'] ?? null,
                     'default_sale_length' => $validated['default_sale_length'] ?? null,
                     'sale_price_basis' => $validated['sale_price_basis'],
+                    'inventory_unit' => $validated['inventory_unit'] ?? $cloth->inventory_unit ?? Cloth::INVENTORY_UNIT_METER,
                     'display_colors' => $displayColors,
                 ]);
 
@@ -686,6 +690,7 @@ class ClothController extends Controller
             'suit_sale_price' => ['nullable', 'numeric', 'min:0'],
             'default_sale_length' => ['nullable', 'numeric', 'gt:0'],
             'sale_price_basis' => ['required', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
+                'inventory_unit' => ['nullable', Rule::in([Cloth::INVENTORY_UNIT_METER, Cloth::INVENTORY_UNIT_PIECE, Cloth::INVENTORY_UNIT_SET])],
             'color_tracking_mode' => ['required', Rule::in([
                 Cloth::COLOR_TRACKING_NONE,
                 Cloth::COLOR_TRACKING_DISPLAY_ONLY,
@@ -763,6 +768,7 @@ class ClothController extends Controller
                 'suit_sale_price' => $validated['suit_sale_price'] ?? null,
                 'default_sale_length' => $validated['default_sale_length'] ?? null,
                 'sale_price_basis' => $validated['sale_price_basis'],
+                    'inventory_unit' => $validated['inventory_unit'] ?? $cloth->inventory_unit ?? Cloth::INVENTORY_UNIT_METER,
                 'color_tracking_mode' => $newMode,
                 'display_colors' => $newMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY ? $names : [],
                 'display_color_codes' => $newMode === Cloth::COLOR_TRACKING_DISPLAY_ONLY ? array_filter($codeByName) : null,
