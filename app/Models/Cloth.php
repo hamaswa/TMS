@@ -22,6 +22,7 @@ class Cloth extends Model
         'suit_sale_price',
         'default_sale_length',
         'sale_price_basis',
+        'inventory_unit',
         'color_tracking_mode',
         'display_colors',
         'display_color_codes',
@@ -32,6 +33,10 @@ class Cloth extends Model
     public const COLOR_TRACKING_NONE = 'none';
     public const COLOR_TRACKING_DISPLAY_ONLY = 'display_only';
     public const COLOR_TRACKING_PER_COLOR = 'per_color';
+    public const INVENTORY_UNIT_METER = 'meter';
+    public const INVENTORY_UNIT_PIECE = 'piece';
+    public const INVENTORY_UNIT_SET = 'set';
+
     public const SALE_PRICE_PER_METER = 'per_meter';
     public const SALE_PRICE_PER_SUIT = 'per_suit';
 
