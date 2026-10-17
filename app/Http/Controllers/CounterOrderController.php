@@ -585,7 +585,7 @@ class CounterOrderController extends Controller
             return back()->withErrors(['color' => 'اس کپڑے کے لیے رنگ منتخب کریں۔'])->withInput();
         }
         $lineTotal = round((float) $validated['total_price'], 2);
-        $quantity = $cloth->sellsPerSuit() ? (int) ($validated['quantity'] ?? 1) : 1;
+        $quantity = ($cloth->sellsPerSuit() || in_array($cloth->inventory_unit, ['piece', 'set'], true)) ? (int) ($validated['quantity'] ?? 1) : 1;
         $this->ensureClothStock($cloth, $validated['color'] ?? null, (float) $validated['length'], $quantity);
         $unitPrice = $cloth->sellsPerSuit()
             ? round($lineTotal / $quantity, 2)
@@ -859,7 +859,13 @@ class CounterOrderController extends Controller
 
     private function ensureClothStock(Cloth $cloth, ?string $color, float $length, int $quantity): void
     {
-        $needed = round($cloth->sellsPerSuit() ? $length * $quantity : $length, 2);
+        $discrete = in_array($cloth->inventory_unit, ['piece', 'set'], true);
+        if ($discrete && ($length != floor($length) || $length != 1.0)) {
+            throw ValidationException::withMessages([
+                'length' => 'پیس یا سیٹ کے لیے فی آئٹم مقدار 1 ہونی چاہیے؛ تعداد الگ درج کریں۔',
+            ]);
+        }
+        $needed = round($discrete ? $quantity : ($cloth->sellsPerSuit() ? $length * $quantity : $length), 2);
         $available = round($this->clothStock($cloth, $color), 2);
 
         if ($needed > $available) {
