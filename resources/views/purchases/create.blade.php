@@ -362,6 +362,25 @@
             color: #138a53
         }
 
+        .purchase-payment-box {
+            margin: 16px 0;
+            padding: 14px;
+            border: 1px solid #e0e9f3;
+            border-radius: 12px;
+            background: #f9fbfe;
+        }
+
+        .purchase-payment-title {
+            margin-bottom: 12px;
+            color: #102a52;
+            font-size: 1rem;
+            font-weight: 800;
+        }
+
+        .purchase-payment-box .form-group {
+            margin-bottom: 10px;
+        }
+
         .purchase-choice {
             display: grid;
             gap: 5px;
@@ -513,6 +532,11 @@
             @if (session('success'))
                 <div class="alert alert-success">
                     {{ session('success') }}
+                    @if ($savedPurchase)
+                        <a href="{{ route('admin.purchases.show', $savedPurchase) }}" class="alert-link mr-2">
+                            {{ $savedPurchase->purchase_number }} دیکھیں
+                        </a>
+                    @endif
                 </div>
             @endif
 
@@ -686,6 +710,63 @@
                     <small class="text-muted d-block mb-2">کل خریداری</small>
                     <div class="total" id="purchase-grand-total">Rs. 0.00</div>
 
+                    {{-- Optional supplier payment, saved together with the purchase when it is received --}}
+                    <div class="purchase-payment-box">
+                        <h3 class="purchase-payment-title">
+                            <i class="fas fa-money-bill-wave ml-1"></i>
+                            سپلائر ادائیگی (اختیاری)
+                        </h3>
+
+                        <div class="form-group">
+                            <label for="purchase-paid-amount" class="d-flex justify-content-between align-items-center">
+                                <span>ادا شدہ رقم</span>
+                                <button type="button" class="btn btn-link btn-sm p-0" id="purchase-pay-full">پوری رقم</button>
+                            </label>
+                            <input id="purchase-paid-amount"
+                                form="purchase-create-form"
+                                type="number"
+                                name="paid_amount"
+                                step="0.01"
+                                min="0"
+                                value="{{ old('paid_amount') }}"
+                                class="form-control @error('paid_amount') is-invalid @enderror"
+                                dir="ltr"
+                                placeholder="0.00">
+                        </div>
+
+                        <div class="purchase-payment-fields">
+                            <div class="form-group">
+                                <label for="purchase-payment-method">ادائیگی کا طریقہ</label>
+                                <select id="purchase-payment-method"
+                                    form="purchase-create-form"
+                                    name="payment_method"
+                                    class="form-control">
+                                    @foreach (\App\Support\PaymentMethods::LABELS as $value => $label)
+                                        <option value="{{ $value }}" @selected(old('payment_method', 'cash') === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="purchase-payment-reference">حوالہ / ٹرانزیکشن نمبر</label>
+                                <input id="purchase-payment-reference"
+                                    form="purchase-create-form"
+                                    type="text"
+                                    name="payment_reference"
+                                    maxlength="255"
+                                    value="{{ old('payment_reference') }}"
+                                    class="form-control @error('payment_reference') is-invalid @enderror"
+                                    placeholder="نقد کے علاوہ طریقے کے لیے لازمی">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between text-muted">
+                            <span>بقایا رقم</span>
+                            <strong id="purchase-balance-preview" dir="ltr">Rs. 0.00</strong>
+                        </div>
+                        <small class="text-muted d-block mt-1">ادائیگی صرف "محفوظ اور انوینٹری میں شامل کریں" پر درج ہوگی۔</small>
+                    </div>
+
                     <div class="purchase-choice">
                         <button type="submit"
                             form="purchase-create-form"
@@ -712,144 +793,6 @@
                         </button>
                     </div>
 
-                    @if (isset($purchase) && $purchase && $purchase->status === 'received')
-                        <section class="purchase-panel purchase-form-panel mt-3" dir="rtl">
-                            <h2>سپلائر ادائیگی درج کریں</h2>
-
-                            <div class="mb-3">
-                                <small class="text-muted d-block">خریداری نمبر</small>
-                                <strong>{{ $purchase->purchase_number }}</strong>
-                            </div>
-
-                            <div class="mb-3">
-                                <small class="text-muted d-block">کل خریداری</small>
-                                <strong>
-                                    روپے {{ number_format($purchase->total_amount, 2) }}
-                                </strong>
-                            </div>
-
-                            <div class="mb-3">
-                                <small class="text-muted d-block">ادا شدہ رقم</small>
-                                <strong>
-                                    روپے {{ number_format($purchase->paid_amount, 2) }}
-                                </strong>
-                            </div>
-
-                            <div class="mb-3">
-                                <small class="text-muted d-block">بقایا رقم</small>
-                                <strong>
-                                    روپے {{ number_format($purchase->balance_amount, 2) }}
-                                </strong>
-                            </div>
-
-                            @if ((float) $purchase->balance_amount > 0)
-                                {{-- This is now an independent form --}}
-                                <form method="POST"
-                                    action="{{ route('admin.purchases.payment', $purchase) }}">
-                                    @csrf
-                                    <input type="hidden" name="return_to" value="create">
-
-                                    <div class="form-group">
-                                        <label for="purchase-payment-amount">
-                                            ادائیگی کی رقم
-                                        </label>
-                                        <input id="purchase-payment-amount"
-                                            type="number"
-                                            name="amount"
-                                            max="{{ max(0, (float) $purchase->balance_amount) }}"
-                                            value="{{ old('amount') }}"
-                                            class="form-control"
-                                            required>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="purchase-payment-date">تاریخ</label>
-                                        <input id="purchase-payment-date"
-                                            type="date"
-                                            name="payment_date"
-                                            value="{{ old('payment_date', now()->toDateString()) }}"
-                                            class="form-control"
-                                            required>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="purchase-payment-method">
-                                            ادائیگی کا طریقہ
-                                        </label>
-                                        <select id="purchase-payment-method"
-                                            name="payment_method"
-                                            class="form-control"
-                                            required>
-                                            @foreach (\App\Support\PaymentMethods::LABELS as $value => $label)
-                                                <option value="{{ $value }}"
-                                                    @selected(old('payment_method', 'cash') === $value)>
-                                                    {{ $label }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="purchase-payment-reference">
-                                            حوالہ / ٹرانزیکشن نمبر
-                                        </label>
-                                        <input id="purchase-payment-reference"
-                                            type="text"
-                                            name="reference"
-                                            maxlength="255"
-                                            value="{{ old('reference') }}"
-                                            class="form-control"
-                                            placeholder="حوالہ نمبر درج کریں">
-                                    </div>
-
-                                    <button type="submit" class="btn btn-success btn-block">
-                                        <i class="fas fa-check ml-1"></i>
-                                        ادائیگی جمع کریں
-                                    </button>
-                                </form>
-                            @else
-                                <div class="alert alert-success mb-0">
-                                    <i class="fas fa-check-circle ml-1"></i>
-                                    یہ خریداری مکمل طور پر ادا ہو چکی ہے۔
-                                </div>
-                            @endif
-
-                            <hr>
-
-                            <h3 class="h6 font-weight-bold mb-3">ادائیگیوں کی تاریخ</h3>
-
-                            <div class="table-responsive">
-                                <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>تاریخ</th>
-                                            <th>طریقہ</th>
-                                            <th>رقم</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($purchase->payments as $payment)
-                                            <tr>
-                                                <td>{{ $payment->payment_date->format('d-m-Y') }}</td>
-                                                <td>
-                                                    {{ \App\Support\PaymentMethods::LABELS[$payment->payment_method] ?? 'درج نہیں' }}
-                                                </td>
-                                                <td>
-                                                    روپے {{ number_format($payment->amount, 2) }}
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="3" class="text-center text-muted">
-                                                    ابھی کوئی ادائیگی درج نہیں ہوئی۔
-                                                </td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
-                    @endif
 
                     <div class="purchase-action-bar">
                         <a href="{{ route('admin.purchases.index') }}"
@@ -940,22 +883,24 @@
                 </div>
 
                 <div class="purchase-field">
-                    <label>فروختی قیمت فی میٹر</label>
-                    <input type="number"
-                        step="0.01"
-                        min="0"
-                        class="form-control new-sale-price"
-                        placeholder="0.00"
-                        required>
-                </div>
-
-                <div class="purchase-field">
                     <label>ڈیفالٹ سوٹ لمبائی</label>
                     <input type="number"
                         step="0.01"
                         min="0.01"
                         class="form-control new-default-length"
-                        placeholder="4.50">
+                        placeholder="4.50"
+                        required>
+                </div>
+
+                <div class="purchase-field">
+                    <label>فی سوٹ فروختی قیمت</label>
+                    <input type="number"
+                        step="0.01"
+                        min="0"
+                        class="form-control new-suit-price"
+                        placeholder="مثلاً 2200"
+                        required>
+                    <small class="text-muted new-sale-rate" dir="ltr"></small>
                 </div>
             </div>
 
@@ -1096,6 +1041,40 @@
             const money = value => 'Rs. ' + value.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
+            });
+
+            // Optional payment entered with the purchase.
+            const paidInput = document.getElementById('purchase-paid-amount'),
+                paymentMethod = document.getElementById('purchase-payment-method'),
+                paymentReference = document.getElementById('purchase-payment-reference');
+            let purchaseGrandTotal = 0;
+
+            const updatePaymentPreview = () => {
+                const paid = parseFloat(paidInput.value) || 0;
+                paidInput.max = purchaseGrandTotal.toFixed(2);
+                paidInput.setCustomValidity(
+                    paid > purchaseGrandTotal + 0.001 ? 'ادائیگی کی رقم کل خریداری سے زیادہ نہیں ہو سکتی۔' : ''
+                );
+                paymentReference.required = paid > 0 && !['cash', 'other'].includes(paymentMethod.value);
+                document.getElementById('purchase-balance-preview').textContent =
+                    money(Math.max(0, purchaseGrandTotal - paid));
+            };
+
+            paidInput.addEventListener('input', updatePaymentPreview);
+            paymentMethod.addEventListener('change', updatePaymentPreview);
+            document.getElementById('purchase-pay-full').addEventListener('click', () => {
+                paidInput.value = purchaseGrandTotal.toFixed(2);
+                updatePaymentPreview();
+            });
+
+            // A draft never posts a payment, so don't let payment checks block saving it.
+            document.querySelectorAll('[form="purchase-create-form"][name="submit_action"]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const draft = button.value === 'draft';
+                    paidInput.disabled = draft;
+                    paymentMethod.disabled = draft;
+                    paymentReference.disabled = draft;
+                });
             });
 
             const addColor = row => row.querySelector('.purchase-color-grid').appendChild(
@@ -1244,6 +1223,16 @@
                             maximumFractionDigits: 4
                         }) + ' / m';
 
+                    // New sets are priced per suit; show the per-meter rate it works out to.
+                    const saleRate = row.querySelector('.new-sale-rate');
+                    if (saleRate) {
+                        const suitPrice = parseFloat(row.querySelector('.new-suit-price').value) || 0,
+                            suitLength = parseFloat(row.querySelector('.new-default-length').value) || 0;
+                        saleRate.textContent = suitPrice && suitLength
+                            ? '= ' + money(suitPrice / suitLength) + ' / m'
+                            : '';
+                    }
+
                     meters += qty;
                     grand += total;
                 });
@@ -1251,6 +1240,8 @@
                 document.getElementById('purchase-item-count').textContent = selected;
                 document.getElementById('purchase-meter-count').textContent = meters.toFixed(2) + ' m';
                 document.getElementById('purchase-grand-total').textContent = money(grand);
+                purchaseGrandTotal = grand;
+                updatePaymentPreview();
             };
 
             document.getElementById('add-purchase-row').addEventListener('click', () => {
@@ -1443,7 +1434,7 @@
                             ['.new-name', 'name'],
                             ['.new-brand', 'cloth_brand_id'],
                             ['.new-type', 'cloth_type_id'],
-                            ['.new-sale-price', 'sale_price'],
+                            ['.new-suit-price', 'suit_sale_price'],
                             ['.new-default-length', 'default_sale_length'],
                             ['.new-tracking', 'tracking_mode'],
                             ['.new-total', 'total']

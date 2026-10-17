@@ -17,9 +17,17 @@ class OptionTypeController extends Controller
     public function index(Request $request)
     {
         $ownerId = Auth::user()->businessOwnerId();
+        $templates = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
+            ->orderByDesc('is_default')->orderBy('name')->get(['id', 'name']);
+
+        // Without a selected template (e.g. from the sidebar), open the first active one.
         if (! $request->filled('template')) {
-            return redirect()->route('admin.measurement-templates.index')
-                ->with('success', 'سلائی کے انتخاب اب متعلقہ لباس ٹیمپلیٹ کے اندر ترتیب دیے جاتے ہیں۔');
+            if ($templates->isEmpty()) {
+                return redirect()->route('admin.measurement-templates.index')
+                    ->with('success', 'سلائی کے انتخاب اب متعلقہ لباس ٹیمپلیٹ کے اندر ترتیب دیے جاتے ہیں۔');
+            }
+
+            return redirect()->route('admin.OptionType.index', ['template' => $templates->first()->id]);
         }
         $template = MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
             ->findOrFail($request->integer('template'));
@@ -34,7 +42,7 @@ class OptionTypeController extends Controller
             ->orderBy('id')
             ->get();
 
-        return view('OptionType.list', compact('OptionTypes', 'template'));
+        return view('OptionType.list', compact('OptionTypes', 'template', 'templates'));
     }
 
     /**

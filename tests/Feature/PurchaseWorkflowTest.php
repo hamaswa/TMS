@@ -83,6 +83,44 @@ class PurchaseWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_supplier_payment_can_be_entered_while_creating_a_received_purchase(): void
+    {
+        [$owner, $supplier, $color] = $this->draftPurchase();
+        Purchase::query()->delete();
+        $payload = [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => now()->toDateString(),
+            'cloth_color_id' => [$color->id],
+            'quantity' => [5],
+            'line_total' => [600],
+            'submit_action' => 'receive',
+        ];
+
+        $this->actingAs($owner)->from(route('admin.purchases.create'))
+            ->post(route('admin.purchases.store'), $payload + ['paid_amount' => 601])
+            ->assertSessionHasErrors('paid_amount');
+        $this->assertDatabaseCount('purchases', 0);
+
+        $this->actingAs($owner)->from(route('admin.purchases.create'))
+            ->post(route('admin.purchases.store'), $payload + ['paid_amount' => 250, 'payment_method' => 'bank_transfer'])
+            ->assertSessionHasErrors('payment_reference');
+
+        $this->actingAs($owner)->post(route('admin.purchases.store'), $payload + [
+            'paid_amount' => 250, 'payment_method' => 'bank_transfer', 'payment_reference' => 'BANK-9',
+        ])->assertRedirect(route('admin.purchases.create'));
+
+        $purchase = Purchase::where('user_id', $owner->id)->firstOrFail();
+        $this->assertSame('received', $purchase->status);
+        $this->assertEquals(250, (float) $purchase->paid_amount);
+        $this->assertEquals(350, (float) $purchase->balance_amount);
+        $this->assertDatabaseHas('supplier_payments', [
+            'purchase_id' => $purchase->id,
+            'amount' => 250,
+            'payment_method' => 'bank_transfer',
+            'reference' => 'BANK-9',
+        ]);
+    }
+
     public function test_purchase_can_create_a_new_color_tracked_set_and_receive_it_in_one_flow(): void
     {
         Storage::fake('public');
@@ -99,7 +137,7 @@ class PurchaseWorkflowTest extends TestCase
                 'name' => 'Fresh Arrival',
                 'cloth_brand_id' => $brand->id,
                 'cloth_type_id' => $type->id,
-                'sale_price' => 650,
+                'suit_sale_price' => 2250,
                 'default_sale_length' => 4.5,
                 'tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR,
                 'total' => 10000,
@@ -113,6 +151,9 @@ class PurchaseWorkflowTest extends TestCase
         $cloth = Cloth::where('user_id', $owner->id)->where('name', 'Fresh Arrival')->firstOrFail();
         $purchase = Purchase::where('user_id', $owner->id)->firstOrFail();
         $this->assertSame('received', $purchase->status);
+        $this->assertSame(Cloth::SALE_PRICE_PER_SUIT, $cloth->sale_price_basis);
+        $this->assertEquals(2250, (float) $cloth->suit_sale_price);
+        $this->assertEquals(500, (float) $cloth->sale_price);
         $this->assertEquals(10000, (float) $purchase->total_amount);
         $this->assertCount(2, $purchase->items);
         $this->assertEquals(20, (float) $cloth->colors()->sum('length'));

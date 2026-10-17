@@ -62,18 +62,10 @@ class PurchaseController extends Controller
 
     public function create()
     {
-        $purchase = null;
-
-        if (request()->filled('purchase_id')) {
-            $purchase = $this->ownedPurchase(
-                (int) request()->query('purchase_id')
-            )->load(['supplier', 'payments']);
-
-            // The payment panel is only for purchases whose stock was received.
-            if ($purchase->status !== 'received') {
-                $purchase = null;
-            }
-        }
+        // Link to the purchase that was just saved from this page, if any.
+        $savedPurchase = session('saved_purchase_id')
+            ? Purchase::where('user_id', Auth::user()->businessOwnerId())->find(session('saved_purchase_id'))
+            : null;
 
         $suppliers = Supplier::where('user_id', Auth::user()->businessOwnerId())->where('active', true)->orderBy('name')->get();
         $cloths = Cloth::where('user_id', Auth::user()->businessOwnerId())
@@ -102,7 +94,7 @@ class PurchaseController extends Controller
             ],
         ]);
 
-        return view('purchases.create', compact('suppliers', 'cloths', 'colors', 'catalog', 'brands', 'types','purchase'));
+        return view('purchases.create', compact('suppliers', 'cloths', 'colors', 'catalog', 'brands', 'types', 'savedPurchase'));
     }
 
     public function store(Request $request)
@@ -110,14 +102,20 @@ class PurchaseController extends Controller
         $validated = $request->validate([
             'supplier_id' => ['required', 'integer'],
             'purchase_date' => ['required', 'date'],
-            'reference' => [
-                Rule::requiredIf(fn() => PaymentMethods::requiresReference($request->input('payment_method'))),
+            'reference' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'submit_action' => ['nullable', Rule::in(['draft', 'receive'])],
+            // Optional supplier payment, posted only when the purchase is received.
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'payment_reference' => [
+                Rule::requiredIf(fn() => $request->input('submit_action') === 'receive'
+                    && (float) $request->input('paid_amount') > 0
+                    && PaymentMethods::requiresReference($request->input('payment_method'))),
                 'nullable',
                 'string',
                 'max:255',
             ],
-            'note' => ['nullable', 'string', 'max:1000'],
-            'submit_action' => ['nullable', Rule::in(['draft', 'receive'])],
             'cloth_color_id' => ['nullable', 'array'],
             'cloth_color_id.*' => ['required', 'integer', 'distinct'],
             'quantity' => ['nullable', 'array'],
@@ -130,8 +128,9 @@ class PurchaseController extends Controller
             'new_sets.*.name' => ['required', 'string', 'max:100'],
             'new_sets.*.cloth_brand_id' => ['required', 'integer'],
             'new_sets.*.cloth_type_id' => ['required', 'integer'],
-            'new_sets.*.sale_price' => ['required', 'numeric', 'min:0'],
-            'new_sets.*.default_sale_length' => ['nullable', 'numeric', 'gt:0'],
+            // New sets are priced per suit at the default suit length (e.g. 4.5 m for Rs 2200).
+            'new_sets.*.suit_sale_price' => ['required', 'numeric', 'min:0'],
+            'new_sets.*.default_sale_length' => ['required', 'numeric', 'gt:0'],
             'new_sets.*.tracking_mode' => ['required', Rule::in([Cloth::COLOR_TRACKING_NONE, Cloth::COLOR_TRACKING_PER_COLOR])],
             'new_sets.*.quantity' => ['nullable', 'numeric', 'gt:0'],
             'new_sets.*.total' => ['required', 'numeric', 'gt:0'],
@@ -237,9 +236,10 @@ class PurchaseController extends Controller
                     'cloth_type_id' => $set['cloth_type_id'],
                     'cloth_brand_id' => $set['cloth_brand_id'],
                     'price' => $unitCost,
-                    'sale_price' => round((float) $set['sale_price'], 2),
-                    'default_sale_length' => isset($set['default_sale_length']) ? round((float) $set['default_sale_length'], 2) : null,
-                    'sale_price_basis' => Cloth::SALE_PRICE_PER_METER,
+                    'sale_price' => round((float) $set['suit_sale_price'] / (float) $set['default_sale_length'], 2),
+                    'suit_sale_price' => round((float) $set['suit_sale_price'], 2),
+                    'default_sale_length' => round((float) $set['default_sale_length'], 2),
+                    'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
                     'color_tracking_mode' => $set['tracking_mode'],
                     'user_id' => $ownerId,
                 ]);
@@ -281,22 +281,55 @@ class PurchaseController extends Controller
                 'balance_amount' => $total,
             ]);
 
+            // Reject an overpayment before anything is committed.
+            if (($validated['submit_action'] ?? 'draft') === 'receive'
+                && round((float) ($validated['paid_amount'] ?? 0), 2) > round($total, 2)) {
+                throw ValidationException::withMessages(['paid_amount' => 'ادائیگی کی رقم کل خریداری سے زیادہ نہیں ہو سکتی۔']);
+            }
+
             return $purchase;
         });
 
         $receiveNow = ($validated['submit_action'] ?? 'draft') === 'receive';
 
         if ($receiveNow) {
-            $this->receivePurchase($purchase->id);
+            $paidAmount = round((float) ($validated['paid_amount'] ?? 0), 2);
+
+            DB::transaction(function () use ($purchase, $paidAmount, $validated) {
+                $this->receivePurchase($purchase->id);
+
+                if ($paidAmount <= 0) {
+                    return;
+                }
+
+                $purchase = Purchase::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($purchase->id);
+                if ($paidAmount > (float) $purchase->balance_amount) {
+                    throw ValidationException::withMessages(['paid_amount' => 'ادائیگی کی رقم کل خریداری سے زیادہ نہیں ہو سکتی۔']);
+                }
+                SupplierPayment::create([
+                    'user_id' => $purchase->user_id,
+                    'supplier_id' => $purchase->supplier_id,
+                    'purchase_id' => $purchase->id,
+                    'payment_date' => $validated['purchase_date'],
+                    'amount' => $paidAmount,
+                    'payment_method' => $validated['payment_method'] ?? 'cash',
+                    'reference' => $validated['payment_reference'] ?? null,
+                ]);
+                $purchase->update([
+                    'paid_amount' => (float) $purchase->paid_amount + $paidAmount,
+                    'balance_amount' => (float) $purchase->balance_amount - $paidAmount,
+                ]);
+            });
 
             return redirect()
-                ->route('admin.purchases.create', [
-                    'purchase_id' => $purchase->id,
-                ])
+                ->route('admin.purchases.create')
                 ->with(
                     'success',
-                    'خریداری محفوظ ہو گئی، مال انوینٹری میں شامل کر دیا گیا ہے۔'
-                );
+                    $paidAmount > 0
+                        ? 'خریداری محفوظ ہو گئی، مال انوینٹری میں شامل اور روپے '.number_format($paidAmount, 2).' کی ادائیگی درج کر دی گئی ہے۔'
+                        : 'خریداری محفوظ ہو گئی، مال انوینٹری میں شامل کر دیا گیا ہے۔'
+                )
+                ->with('saved_purchase_id', $purchase->id);
         }
 
         return redirect()
@@ -384,14 +417,6 @@ class PurchaseController extends Controller
             ]);
             $purchase->update(['paid_amount' => (float) $purchase->paid_amount + $amount, 'balance_amount' => (float) $purchase->balance_amount - $amount]);
         });
-
-        if (($validated['return_to'] ?? 'show') === 'create') {
-            return redirect()
-                ->route('admin.purchases.create', [
-                    'purchase_id' => $purchase->id,
-                ])
-                ->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');
-        }
 
         return redirect()
             ->route('admin.purchases.show', $purchase)

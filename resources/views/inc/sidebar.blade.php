@@ -264,6 +264,9 @@
                             href="{{ route('admin.clothbrand.index') }}"><i class="fas fa-copyright"></i>کپڑے کے
                             برانڈز</a>
 
+                        <a class="{{ request()->routeIs('admin.clothtype.*') ? 'is-active' : '' }}"
+                            href="{{ route('admin.clothtype.index') }}"><i class="fas fa-tags"></i>کپڑے کی اقسام</a>
+
                         <a class="{{ request()->routeIs('admin.purchases.create') ? 'is-active' : '' }}"
                             href="{{ route('admin.purchases.create') }}"><i class="fas fa-plus-circle"></i>نئی
                             خریداری</a>
@@ -283,14 +286,9 @@
                     <div id="inventory-submenu" class="tms-side-submenu">
                         <a class="{{ request()->routeIs('admin.cloth.index', 'admin.cloth.show') ? 'is-active' : '' }}"
                             href="{{ route('admin.cloth.index') }}"><i class="fas fa-th-list"></i>کپڑوں کی فہرست</a>
-                        <a class="{{ request()->routeIs('admin.cloth.create') ? 'is-active' : '' }}"
-                            href="{{ route('admin.cloth.create') }}"><i class="fas fa-plus-circle"></i>نیا کپڑا شامل
-                            کریں</a>
                         <a class="{{ request()->routeIs('admin.cloth.qr-labels') ? 'is-active' : '' }}"
                             href="{{ route('admin.cloth.qr-labels') }}" target="_blank" rel="noopener"><i
                                 class="fas fa-qrcode"></i>تمام سیٹ QR پرنٹ</a>
-                        <a class="{{ request()->routeIs('admin.clothtype.*') ? 'is-active' : '' }}"
-                            href="{{ route('admin.clothtype.index') }}"><i class="fas fa-tags"></i>کپڑے کی اقسام</a>
                         <a class="{{ request()->routeIs('admin.inventory-ledger.*') ? 'is-active' : '' }}"
                             href="{{ route('admin.inventory-ledger.index') }}"><i class="fas fa-exchange-alt"></i>اسٹاک
                             کھاتہ</a>
@@ -320,20 +318,26 @@
                                 class="fas fa-route"></i></span><span class="tms-side-label">ٹیلرنگ ورک فلو</span></a>
                 @endif
                 @if ($canTailorConfiguration)
-                    <a class="tms-side-link tms-dropdown-toggle  {{ request()->routeIs('admin.tailoring-workflow.*') ? 'is-active' : '' }}"
+                    @php
+                        $tailoringSettingsOpen = request()->routeIs('admin.tailoring-workflow.*', 'admin.measurement-templates.*', 'admin.measurement-fields.*', 'admin.OptionType.*', 'admin.Options.*', 'admin.options.*');
+                    @endphp
+                    <a class="tms-side-link tms-dropdown-toggle  {{ $tailoringSettingsOpen ? 'is-active' : '' }}"
                         href="#tailoring-submenu">
                         <span class="tms-side-icon"><i class="fas fa-sliders-h"></i></span>
                         <span class="tms-side-label">ٹیلرنگ ترتیب</span>
                         <i class="fas fa-chevron-down tms-side-caret"></i>
                     </a>
                     <div id="tailoring-submenu"
-                        class="tms-side-submenu {{ request()->routeIs('admin.tailoring-workflow.*') ? 'is-open' : '' }}">
+                        class="tms-side-submenu {{ $tailoringSettingsOpen ? 'is-open' : '' }}">
                         <a class="{{ request()->routeIs('admin.tailoring-workflow.*') ? 'is-active' : '' }}"
                             href="{{ route('admin.tailoring-workflow.edit') }}"><i
                                 class="fas fa-project-diagram"></i>کام کی حالتیں</a>
-                        <a class="{{ request()->routeIs('admin.measurement-templates.*', 'admin.OptionType.*', 'admin.Options.*', 'admin.options.*', 'admin.measurement-fields.*') ? 'is-active' : '' }}"
+                        <a class="{{ request()->routeIs('admin.measurement-templates.*', 'admin.measurement-fields.*') ? 'is-active' : '' }}"
                             href="{{ route('admin.measurement-templates.index') }}"><i
                                 class="fas fa-clipboard-list"></i>لباس اور پیمائش ٹیمپلیٹس</a>
+                        <a class="{{ request()->routeIs('admin.OptionType.*', 'admin.Options.*', 'admin.options.*') ? 'is-active' : '' }}"
+                            href="{{ route('admin.OptionType.index') }}"><i
+                                class="fas fa-list-ul"></i>سلائی کے انتخاب</a>
                     </div>
                 @endif
             @endif
