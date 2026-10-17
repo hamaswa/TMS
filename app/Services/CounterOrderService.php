@@ -25,7 +25,27 @@ class CounterOrderService
         private readonly MeasurementService $measurements,
         private readonly ProductionWorkforceService $workforce,
         private readonly CounterOrderNumberService $numbers,
+        private readonly CustomerLedgerService $ledger,
     ) {}
+
+    /**
+     * Unpaid balance of the order's already-confirmed items, capped by what the
+     * customer still owes in the ledger (it may have been paid elsewhere).
+     */
+    public function previousDue(CounterOrder $order): float
+    {
+        $draftTotal = (float) $order->items()->where('status', CounterOrderItem::STATUS_DRAFT)->sum('line_total');
+        $orderPrevious = max(0, round((float) $order->balance_amount - $draftTotal, 2));
+        if ($orderPrevious <= 0) {
+            return 0.0;
+        }
+
+        $ledgerBalance = (float) Transaction::where('userId', $order->user_id)
+            ->where('customerId', $order->customer_id)
+            ->sum('remainingBalance');
+
+        return max(0, min($orderPrevious, round($ledgerBalance, 2)));
+    }
 
     public function create(User $actor, Customers $customer, ?string $note = null): CounterOrder
     {
@@ -116,11 +136,18 @@ class CounterOrderService
                 throw ValidationException::withMessages(['order' => 'تصدیق کے لیے کوئی نیا آئٹم موجود نہیں ہے۔']);
             }
             $draftTotal = round((float) $draftItems->sum('line_total'), 2);
-            if ($payment < 0 || $payment > $draftTotal) {
-                throw ValidationException::withMessages(['payment' => 'وصول رقم نئے آئٹمز کی کل رقم سے زیادہ نہیں ہو سکتی۔']);
+            $order->recalculate();
+            $previousDue = $this->previousDue($order);
+            if ($payment < 0 || $payment > round($draftTotal + $previousDue, 2)) {
+                throw ValidationException::withMessages(['payment' => 'وصول رقم نئے آئٹمز اور پچھلے بقایا کی کل رقم سے زیادہ نہیں ہو سکتی۔']);
             }
+            // Items confirmed earlier, captured before this confirmation adds new ones.
+            $previousTailoringItems = $order->items()->where('status', CounterOrderItem::STATUS_CONFIRMED)
+                ->where('source_record_type', 'tailoring_order')->orderBy('id')->get();
 
-            $remainingPayment = round($payment, 2);
+            // New items are paid first; anything above that clears the previous balance.
+            $extraPayment = round(max(0, $payment - $draftTotal), 2);
+            $remainingPayment = round($payment - $extraPayment, 2);
             $clothItems = $draftItems->where('type', CounterOrderItem::TYPE_CLOTH)->values();
             if ($clothItems->isNotEmpty()) {
                 $clothTotal = round((float) $clothItems->sum('line_total'), 2);
@@ -161,6 +188,10 @@ class CounterOrderService
                     'source_record_id' => $legacyOrder->id,
                 ]);
                 $remainingPayment = round($remainingPayment - $paid, 2);
+            }
+
+            if ($extraPayment > 0) {
+                $this->payPreviousBalance($order, $previousTailoringItems, $extraPayment, $method, $reference);
             }
 
             $order->forceFill([
@@ -259,6 +290,55 @@ class CounterOrderService
         $this->workforce->syncOrder($order);
 
         return $order;
+    }
+
+    /**
+     * Records a payment against the order's earlier items: unpaid tailoring orders
+     * first (targeted by orderId), then a general payment that the customer ledger
+     * applies to the oldest remaining charges, such as earlier cloth receipts.
+     */
+    private function payPreviousBalance(
+        CounterOrder $order,
+        \Illuminate\Support\Collection $previousTailoringItems,
+        float $amount,
+        string $method,
+        ?string $reference,
+    ): void {
+        $remaining = round($amount, 2);
+        $entry = [
+            'customerId' => $order->customer_id,
+            'userId' => $order->user_id,
+            'Order_type' => 'Payment',
+            'payment_method' => $method,
+            'payment_reference' => $reference,
+            'paid_on' => now()->toDateString(),
+            'comment' => 'Counter order '.$order->displayNumber().' previous balance',
+        ];
+
+        foreach ($previousTailoringItems as $item) {
+            if ($remaining <= 0) {
+                break;
+            }
+            $legacyOrder = Order::where('userId', $order->user_id)->find($item->source_record_id);
+            $due = $legacyOrder ? $this->ledger->orderBalance($legacyOrder) : 0;
+            $paid = round(min($remaining, $due), 2);
+            if ($paid <= 0) {
+                continue;
+            }
+            Transaction::create($entry + [
+                'orderId' => $legacyOrder->id,
+                'recivedPayment' => $paid,
+                'remainingBalance' => -$paid,
+            ]);
+            $remaining = round($remaining - $paid, 2);
+        }
+
+        if ($remaining > 0) {
+            Transaction::create($entry + [
+                'recivedPayment' => $remaining,
+                'remainingBalance' => -$remaining,
+            ]);
+        }
     }
 
     private function customerForSession(SaleSession $session): Customers

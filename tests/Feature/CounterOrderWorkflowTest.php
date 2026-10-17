@@ -739,6 +739,78 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertDontSeeText('مشترکہ آرڈر رسید');
     }
 
+    public function test_cloth_picker_shows_stock_and_rejects_more_than_is_available(): void
+    {
+        [$owner, $customer, $cloth, $stock] = $this->fixture();
+        $order = CounterOrder::create([
+            'reference' => 'ORD-STOCK-CHECK', 'user_id' => $owner->id, 'customer_id' => $customer->id,
+            'created_by_user_id' => $owner->id, 'status' => CounterOrder::STATUS_DRAFT,
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()
+            ->assertSee('data-stock="10"', false)
+            ->assertSeeText('10.00 میٹر');
+
+        $this->actingAs($owner)->postJson(route('admin.counter-orders.cloth-items.store', $order), [
+            'cloth_id' => $cloth->id, 'color' => $stock->color, 'length' => 11, 'total_price' => 3300,
+        ])->assertStatus(422)->assertJsonValidationErrors('length');
+        $this->assertSame(0, $order->items()->count());
+
+        // A cloth with no stock is not offered at all.
+        $stock->update(['length' => 0]);
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()
+            ->assertDontSee('data-stock=', false);
+        $this->actingAs($owner)->postJson(route('admin.counter-orders.cloth-items.store', $order), [
+            'cloth_id' => $cloth->id, 'color' => $stock->color, 'length' => 1, 'total_price' => 300,
+        ])->assertStatus(422)->assertJsonValidationErrors('length');
+    }
+
+    public function test_confirming_new_items_can_also_clear_the_previous_balance(): void
+    {
+        [$owner, $customer, $cloth, $stock] = $this->fixture();
+        $order = CounterOrder::create([
+            'reference' => 'ORD-PREV-DUE', 'user_id' => $owner->id, 'customer_id' => $customer->id,
+            'created_by_user_id' => $owner->id, 'status' => CounterOrder::STATUS_DRAFT,
+        ]);
+        $addCloth = fn (float $length, float $total) => $this->actingAs($owner)
+            ->post(route('admin.counter-orders.cloth-items.store', $order), [
+                'cloth_id' => $cloth->id, 'color' => $stock->color, 'length' => $length, 'total_price' => $total,
+            ])->assertSessionHasNoErrors();
+
+        // First visit: Rs 1000 of cloth, only Rs 400 paid, so Rs 600 is left unpaid.
+        $addCloth(2, 1000);
+        $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $order), [
+            'payment' => 400, 'payment_method' => 'cash',
+        ])->assertSessionHasNoErrors();
+
+        // Second visit: Rs 500 of new cloth; the page shows the Rs 600 previous balance.
+        $addCloth(1, 500);
+        $this->assertEquals(600, app(\App\Services\CounterOrderService::class)->previousDue($order->fresh()));
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()
+            ->assertSeeText('پچھلا بقایا')
+            ->assertSee('max="1100"', false);
+
+        $this->actingAs($owner)->from(route('admin.counter-orders.edit', $order))
+            ->post(route('admin.counter-orders.confirm', $order), ['payment' => 1101, 'payment_method' => 'cash'])
+            ->assertSessionHasErrors('payment');
+
+        $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $order), [
+            'payment' => 1100, 'payment_method' => 'cash',
+        ])->assertSessionHasNoErrors();
+
+        $order->refresh();
+        $this->assertEquals(1500, (float) $order->paid_amount);
+        $this->assertEquals(0, (float) $order->balance_amount);
+        $this->assertEquals(0, (float) \App\Models\Transaction::where('userId', $owner->id)
+            ->where('customerId', $customer->id)->sum('remainingBalance'));
+        $this->assertDatabaseHas('transactions', [
+            'customerId' => $customer->id, 'Order_type' => 'Payment', 'recivedPayment' => 600,
+        ]);
+    }
+
     private function fixture(): array
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

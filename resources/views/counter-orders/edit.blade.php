@@ -938,13 +938,26 @@
                                         class="form-control" name="cloth_id" aria-label="کپڑے کا سیٹ" required>
                                         <option value="">کپڑا منتخب کریں</option>
                                         @foreach ($cloths as $cloth)
+                                            @php
+                                                // Same stock row the sale uses: per color, or the cloth's first row.
+                                                $colorStock = $cloth->tracksColors()
+                                                    ? $cloth->colors->mapWithKeys(fn ($c) => [$c->color => round((float) $c->length, 2)])
+                                                    : collect();
+                                                $clothStock = $cloth->tracksColors()
+                                                    ? (float) $colorStock->sum()
+                                                    : round((float) ($cloth->colors->sortBy('id')->first()?->length ?? 0), 2);
+                                            @endphp
+                                            {{-- Out-of-stock cloths are not offered (unless re-shown after a failed submit). --}}
+                                            @continue($clothStock <= 0 && (int) old('cloth_id') !== $cloth->id)
                                             <option value="{{ $cloth->id }}"
                                                 data-price="{{ $cloth->sellsPerSuit() ? $cloth->suit_sale_price : $cloth->sale_price }}"
                                                 data-length="{{ $cloth->default_sale_length ?: 4.5 }}"
                                                 data-basis="{{ $cloth->sale_price_basis }}"
+                                                data-stock="{{ $clothStock }}"
+                                                data-color-stock='@json($colorStock)'
                                                 data-colors='@json($cloth->selectableColorNames())' @selected((int) old('cloth_id') === $cloth->id)>
                                                 {{ $cloth->name }} · {{ $cloth->brand?->name }} ·
-                                                {{ $cloth->type?->name }}</option>
+                                                {{ $cloth->type?->name }} — {{ number_format($clothStock, 2) }} میٹر</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -991,17 +1004,29 @@
                                     id="co-confirmed-count">{{ $confirmedItems->count() }}</strong></div>
                             <div class="co-total-row"><span>نئے آئٹمز</span><strong
                                     id="co-draft-count">{{ $draftItems->count() }}</strong></div>
-                            <div class="co-total-row is-main"><span>نئی رقم</span><strong id="co-draft-total"
+                            <div class="co-total-row"><span>نئی رقم</span><strong id="co-draft-total"
                                     dir="ltr">Rs. {{ number_format($draftTotal, 2) }}</strong></div>
+                            <div class="co-total-row" id="co-previous-due-row" @if ($previousDue <= 0) hidden @endif>
+                                <span>پچھلا بقایا</span><strong id="co-previous-due" class="text-danger"
+                                    dir="ltr">Rs. {{ number_format($previousDue, 2) }}</strong></div>
+                            <div class="co-total-row is-main"><span>کل قابلِ وصول</span><strong id="co-payable-total"
+                                    dir="ltr">Rs. {{ number_format($draftTotal + $previousDue, 2) }}</strong></div>
                         </div>
                         @if (!$counterOrder->isClosed() && $canManageAllDrafts)
                             <form id="co-confirm-form" class="co-confirm" method="POST"
                                 action="{{ route('admin.counter-orders.confirm', $counterOrder) }}"
                                 @if ($draftItems->isEmpty()) hidden @endif>@csrf<p class="co-help">
                                     {{ $confirmationHint }}</p>
-                                <div class="form-group"><label>ابھی وصول رقم</label><input class="form-control"
-                                        type="number" name="payment" min="0" max="{{ $draftTotal }}"
-                                        step="0.01" value="{{ old('payment', 0) }}" required></div>
+                                <div class="form-group"><label class="d-flex justify-content-between align-items-center">
+                                        <span>ابھی وصول رقم</span>
+                                        <button type="button" class="btn btn-link btn-sm p-0" id="co-pay-full">پوری رقم</button>
+                                    </label><input class="form-control"
+                                        type="number" name="payment" min="0" max="{{ $draftTotal + $previousDue }}"
+                                        step="0.01" value="{{ old('payment', 0) }}" required
+                                        data-max-message="وصول رقم کل قابلِ وصول رقم سے زیادہ نہیں ہو سکتی۔">
+                                    <small class="text-muted d-block mt-1" id="co-payment-hint"
+                                        @if ($previousDue <= 0) hidden @endif>پہلے نئے آئٹمز ادا ہوں گے، اضافی رقم پچھلے بقایا میں جائے گی۔</small>
+                                </div>
                                 <div class="form-group"><label>ادائیگی کا طریقہ</label><select class="form-control"
                                         name="payment_method" required>
                                         @foreach ($paymentMethods as $value => $label)
@@ -1268,12 +1293,21 @@
                         try {
                             colors = JSON.parse(o.dataset.colors || '[]')
                         } catch (e) {}
+                        var colorStock = {};
+                        try {
+                            colorStock = JSON.parse(o.dataset.colorStock || '{}') || {}
+                        } catch (e) {}
                         color.innerHTML = '';
                         if (colors.length) {
+                            // Per-color stock: show meters and leave out colors with no stock.
+                            colors = colors.filter(function(c) {
+                                return !(c in colorStock) || Number(colorStock[c]) > 0 || oldColor === c;
+                            });
                             colors.forEach(function(c, index) {
-                                var x = document.createElement('option');
+                                var x = document.createElement('option'),
+                                    tracked = c in colorStock;
                                 x.value = c;
-                                x.textContent = c;
+                                x.textContent = tracked ? c + ' — ' + Number(colorStock[c]).toFixed(2) + ' میٹر' : c;
                                 x.selected = oldColor ? oldColor === c : index === 0;
                                 color.appendChild(x)
                             });
@@ -1404,13 +1438,38 @@
                     document.getElementById('co-confirmed-count').textContent = summary.confirmed_count;
                     document.getElementById('co-draft-count').textContent = summary.draft_count;
                     document.getElementById('co-draft-total').textContent = money(summary.draft_total);
+                    var previousDue = Number(summary.previous_due || 0),
+                        payable = Number(summary.draft_total) + previousDue;
+                    document.getElementById('co-previous-due').textContent = money(previousDue);
+                    document.getElementById('co-previous-due-row').hidden = previousDue <= 0;
+                    document.getElementById('co-payable-total').textContent = money(payable);
                     var confirmForm = document.getElementById('co-confirm-form');
                     if (confirmForm) {
                         confirmForm.hidden = summary.draft_count < 1;
                         var payment = confirmForm.querySelector('[name="payment"]');
-                        if (payment) payment.max = summary.draft_total;
+                        if (payment) payment.max = payable.toFixed(2);
+                        var hint = document.getElementById('co-payment-hint');
+                        if (hint) hint.hidden = previousDue <= 0;
                     }
                 }
+
+                // Payment: "pay full" fills the whole payable amount; over-limit shows an Urdu message.
+                (function() {
+                    var payment = document.querySelector('#co-confirm-form [name="payment"]');
+                    if (!payment) return;
+                    var check = function() {
+                        payment.setCustomValidity(
+                            payment.max !== '' && Number(payment.value) > Number(payment.max) + 0.001
+                                ? payment.dataset.maxMessage + ' (Rs. ' + Number(payment.max).toFixed(2) + ')'
+                                : ''
+                        );
+                    };
+                    payment.addEventListener('input', check);
+                    document.getElementById('co-pay-full').addEventListener('click', function() {
+                        payment.value = Number(payment.max || 0).toFixed(2);
+                        check();
+                    });
+                })();
 
                 function showLiveMessage(message, isError) {
                     var alert = document.getElementById('co-live-alert');

@@ -26,6 +26,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CounterOrderController extends Controller
@@ -182,6 +183,7 @@ class CounterOrderController extends Controller
         });
 
         $paymentMethods = PaymentMethods::LABELS;
+        $previousDue = app(CounterOrderService::class)->previousDue($counterOrder);
         $receiptLinks = CounterSaleReceipt::where('user_id', $ownerId)
             ->whereIn('id', $counterOrder->items->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id'))
             ->get()->keyBy('id');
@@ -199,7 +201,8 @@ class CounterOrderController extends Controller
             'canManageAllDrafts',
             'canManageAllItems',
             'profileTemplateIds',
-            'tailors'
+            'tailors',
+            'previousDue'
         ));
     }
 
@@ -229,10 +232,8 @@ class CounterOrderController extends Controller
             $counterOrder->reference,
         );
 
-       $printDocumentService = app(\App\Services\PrintDocumentService::class);
-        $printConfig = $printDocumentService->make($setting, request(), 'tailor-order-copy', $counterOrder->id);
-        $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $counterOrder->id]);
-        $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
+        $printConfig = $documents->make($setting, request(), 'tailor-order-copy', $counterOrder->id);
+        [$trackingUrl, $trackingQrSvg] = $this->trackingQr($counterOrder, $documents);
 
         return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
     }
@@ -289,13 +290,26 @@ class CounterOrderController extends Controller
             $item->item_serial ?: $counterOrder->reference . '-' . $item->id,
         );
         $singleItem = $item;
+        [$trackingUrl, $trackingQrSvg] = $this->trackingQr($counterOrder, $documents);
 
         return view('counter-orders.print', compact(
             'counterOrder',
             'setting',
             'printConfig',
-            'singleItem'
+            'singleItem',
+            'trackingUrl',
+            'trackingQrSvg'
         ));
+    }
+
+    /**
+     * Signed order-tracking link and its QR code, shown on printed receipts.
+     */
+    private function trackingQr(CounterOrder $counterOrder, PrintDocumentService $documents): array
+    {
+        $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $counterOrder->id]);
+
+        return [$trackingUrl, $documents->qrSvg($trackingUrl, 180)];
     }
 
     public function editMeasurements(
@@ -572,6 +586,7 @@ class CounterOrderController extends Controller
         }
         $lineTotal = round((float) $validated['total_price'], 2);
         $quantity = $cloth->sellsPerSuit() ? (int) ($validated['quantity'] ?? 1) : 1;
+        $this->ensureClothStock($cloth, $validated['color'] ?? null, (float) $validated['length'], $quantity);
         $unitPrice = $cloth->sellsPerSuit()
             ? round($lineTotal / $quantity, 2)
             : round($lineTotal / (float) $validated['length'], 2);
@@ -702,6 +717,7 @@ class CounterOrderController extends Controller
                 return back()->withErrors(['color' => 'منتخب رنگ اس کپڑے کے دستیاب رنگوں میں شامل نہیں ہے۔'])->withInput();
             }
             $quantity = $cloth->sellsPerSuit() ? (int) ($validated['quantity'] ?? 1) : 1;
+            $this->ensureClothStock($cloth, $validated['color'] ?? null, (float) $validated['length'], $quantity);
             $lineTotal = round((float) $validated['total_price'], 2);
             $item->update([
                 'quantity' => $quantity,
@@ -787,10 +803,14 @@ class CounterOrderController extends Controller
         $draftItems = $counterOrder->items()->where('status', CounterOrderItem::STATUS_DRAFT)->get();
         abort_unless($draftItems->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item)), 403);
         $draftTotal = (float) $counterOrder->items()->where('status', CounterOrderItem::STATUS_DRAFT)->sum('line_total');
+        // The customer may also clear the previous unpaid balance of this order.
+        $maxPayment = round($draftTotal + $service->previousDue($counterOrder), 2);
         $validated = $request->validate([
-            'payment' => ['required', 'numeric', 'min:0', 'max:' . $draftTotal],
+            'payment' => ['required', 'numeric', 'min:0', 'max:' . $maxPayment],
             'payment_method' => ['required', Rule::in(array_keys(PaymentMethods::LABELS))],
             'payment_reference' => ['nullable', 'string', 'max:255'],
+        ], [
+            'payment.max' => 'وصول رقم Rs. '.number_format($maxPayment, 2).' (نئے آئٹمز اور پچھلا بقایا) سے زیادہ نہیں ہو سکتی۔',
         ]);
         if (PaymentMethods::requiresReference($validated['payment_method']) && blank($validated['payment_reference'] ?? null)) {
             return back()->withErrors(['payment_reference' => 'اس ادائیگی کے طریقے کے لیے حوالہ نمبر درج کریں۔'])->withInput();
@@ -822,6 +842,33 @@ class CounterOrderController extends Controller
     {
         return Customers::where('user_id', $request->user()->businessOwnerId())
             ->whereNull('parent_id')->selectableForSales()->orderByDesc('updated_at')->orderByDesc('id')->limit(20)->get();
+    }
+
+    /**
+     * Stock on hand for a cloth, read from the same stock row the sale draws from
+     * at confirmation: the chosen color for per-color cloths, otherwise the first row.
+     */
+    private function clothStock(Cloth $cloth, ?string $color): float
+    {
+        $row = $cloth->tracksColors()
+            ? $cloth->colors->firstWhere('color', trim((string) $color))
+            : $cloth->colors->sortBy('id')->first();
+
+        return (float) ($row?->length ?? 0);
+    }
+
+    private function ensureClothStock(Cloth $cloth, ?string $color, float $length, int $quantity): void
+    {
+        $needed = round($cloth->sellsPerSuit() ? $length * $quantity : $length, 2);
+        $available = round($this->clothStock($cloth, $color), 2);
+
+        if ($needed > $available) {
+            throw ValidationException::withMessages([
+                'length' => $available <= 0
+                    ? 'اس کپڑے کا اسٹاک ختم ہے۔'
+                    : 'اسٹاک میں صرف '.number_format($available, 2).' میٹر دستیاب ہے؛ '.number_format($needed, 2).' میٹر درکار ہیں۔',
+            ]);
+        }
     }
 
     private function authorizeAnyOrderAccess(Request $request): void
@@ -919,6 +966,7 @@ class CounterOrderController extends Controller
                 'draft_count' => $draftItems->count(),
                 'confirmed_count' => $confirmedItems->count(),
                 'draft_total' => (float) $draftItems->sum('line_total'),
+                'previous_due' => app(CounterOrderService::class)->previousDue($counterOrder),
             ],
         ]);
     }

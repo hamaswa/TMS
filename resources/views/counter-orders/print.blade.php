@@ -439,11 +439,13 @@
                 </article>
             @endforeach
         </section>
-        <aside class="order-tracking-qr" data-tracking-url="{{ $trackingUrl }}"
-            aria-label="آرڈر کی صورتحال دیکھنے کا QR کوڈ">
-            {!! $trackingQrSvg !!}
-            <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
-        </aside>
+        @if (! empty($trackingQrSvg))
+            <aside class="order-tracking-qr" data-tracking-url="{{ $trackingUrl ?? '' }}"
+                aria-label="آرڈر کی صورتحال دیکھنے کا QR کوڈ">
+                {!! $trackingQrSvg !!}
+                <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
+            </aside>
+        @endif
         <section class="summary">
             <div class="summary-row total"><span>{{ isset($singleItem) ? 'آئٹم کی رقم' : 'کل آرڈر' }}</span><strong>Rs.
                     {{ number_format((float) (isset($singleItem) ? $singleItem->line_total : $counterOrder->subtotal), 2) }}</strong>
