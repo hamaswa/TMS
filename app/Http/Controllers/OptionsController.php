@@ -59,6 +59,9 @@ class OptionsController extends Controller
         $obj->user_id = Auth::user()->businessOwnerId();
         $obj->measurement_template_id = $template->id;
         $obj->save();
+        if ($request->expectsJson()) {
+            return response()->json(['id' => $obj->id, 'name' => $obj->Name, 'template_id' => $template->id], 201);
+        }
         return redirect()->route('admin.OptionType.index', ['template' => $template->id])
             ->with('success', 'نیا انتخاب شامل کر دیا گیا ہے۔')
             ->with('openChoiceModal', $validated['OptionTypeId']);
