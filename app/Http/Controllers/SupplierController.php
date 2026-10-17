@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
+use App\Models\Purchase;
 use App\Models\SupplierPayment;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
@@ -20,7 +21,8 @@ class SupplierController extends Controller
             ->withSum('payments as total_paid', 'amount')
             ->orderBy('name')->get();
 
-        return view('suppliers.index', compact('suppliers'));
+        $purchaseOptions = Purchase::where('user_id', Auth::user()->businessOwnerId())->where('status', 'received')->orderByDesc('purchase_date')->get(['id','supplier_id','purchase_number']);
+        return view('suppliers.index', compact('suppliers', 'purchaseOptions'));
     }
 
     public function create()
@@ -41,7 +43,8 @@ class SupplierController extends Controller
             ->loadSum('payments as total_paid', 'amount')
             ->load(['payments' => fn ($query) => $query->with('purchase')->latest('payment_date')->latest('id')]);
 
-        return view('suppliers.edit', compact('supplier'));
+        $purchaseOptions = $supplier->purchases()->where('status', 'received')->orderByDesc('purchase_date')->get(['id','purchase_number']);
+        return view('suppliers.edit', compact('supplier', 'purchaseOptions'));
     }
 
     public function update(Request $request, int $supplier)
@@ -63,6 +66,7 @@ class SupplierController extends Controller
     public function payment(Request $request, int $supplier)
     {
         $validated = $request->validate([
+            'purchase_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'payment_date' => ['required', 'date'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
@@ -78,10 +82,11 @@ class SupplierController extends Controller
         $ownerId = Auth::user()->businessOwnerId();
         DB::transaction(function () use ($validated, $ownerId, $supplier) {
             $lockedSupplier = Supplier::where('user_id', $ownerId)->lockForUpdate()->findOrFail($supplier);
+            $purchaseId = $this->validatedPurchaseId($validated['purchase_id'] ?? null, $lockedSupplier->id, $ownerId);
             // Supplier payments are account-level; purchase references are informational only.
             // Advance payments are permitted when no balance is due.
             SupplierPayment::create([
-                'user_id' => $ownerId, 'supplier_id' => $lockedSupplier->id, 'purchase_id' => null,
+                'user_id' => $ownerId, 'supplier_id' => $lockedSupplier->id, 'purchase_id' => $purchaseId,
                 'payment_date' => $validated['payment_date'], 'amount' => $validated['amount'],
                 'payment_method' => $validated['payment_method'] ?? 'cash',
                 'reference' => $validated['reference'] ?? null, 'note' => $validated['note'] ?? 'General supplier payment',
@@ -89,6 +94,24 @@ class SupplierController extends Controller
         });
 
         return back()->with('success', 'سپلائر کی ادائیگی درج کر دی گئی ہے۔');
+    }
+
+    public function linkPayment(Request $request, int $supplier, int $payment)
+    {
+        $validated = $request->validate(['purchase_id' => ['nullable', 'integer']]);
+        $ownerId = Auth::user()->businessOwnerId();
+        $this->owned($supplier);
+        $record = SupplierPayment::where('user_id', $ownerId)->where('supplier_id', $supplier)->findOrFail($payment);
+        $record->update(['purchase_id' => $this->validatedPurchaseId($validated['purchase_id'] ?? null, $supplier, $ownerId)]);
+
+        return back()->with('success', 'ادائیگی کا خریداری حوالہ محفوظ کر دیا گیا ہے۔');
+    }
+
+    private function validatedPurchaseId(?int $purchaseId, int $supplierId, int $ownerId): ?int
+    {
+        if ($purchaseId === null) return null;
+        return Purchase::where('user_id', $ownerId)->where('supplier_id', $supplierId)
+            ->where('status', 'received')->findOrFail($purchaseId)->id;
     }
 
     private function validated(Request $request, ?int $supplier = null): array
