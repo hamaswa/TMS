@@ -85,6 +85,7 @@ class PurchaseController extends Controller
                 'stock_code' => $cloth->stock_code,
                 'brand_code' => $cloth->brand?->bundle_code,
                 'tracks_colors' => $cloth->tracksColors(),
+                'inventory_unit' => $cloth->inventory_unit ?: 'meter',
                 'colors' => $cloth->colors->map(fn(ClothColor $color) => [
                     'id' => $color->id,
                     'name' => $color->color,
