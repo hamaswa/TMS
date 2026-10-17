@@ -41,6 +41,13 @@
         .cloth-type-table-shell .dataTables_paginate .paginate_button.current, .cloth-type-table-shell .dataTables_paginate .paginate_button.current:hover { border-color: #1769df !important; background: #1769df !important; color: #fff !important; }
         .cloth-type-table-shell .dataTables_paginate .paginate_button:hover { border-color: #bad2f3 !important; background: #edf5ff !important; color: #1769df !important; }
 
+        .cloth-type-form-modal .modal-content { border: 0; border-radius: 18px; text-align: right; }
+        .cloth-type-form-modal .modal-header { align-items: center; border-bottom-color: #e8eef5; }
+        .cloth-type-form-modal .modal-header .close { margin: -1rem auto -1rem -1rem; }
+        .cloth-type-form-modal .modal-title { color: #102a52; font-weight: 800; }
+        .cloth-type-form-modal label { color: #38516f; font-weight: 700; }
+        .cloth-type-form-modal .modal-footer { justify-content: flex-start; gap: 8px; border-top-color: #e8eef5; }
+
         @media (min-width: 768px) {
             .cloth-type-table-shell, .cloth-type-table-shell .dataTables_wrapper { overflow: visible; }
         }
@@ -77,10 +84,10 @@
                         <h1 class="cloth-type-title">کپڑے کی اقسام</h1>
                         <p class="cloth-type-subtitle">اپنی دکان میں دستیاب کپڑے کی تمام اقسام ایک جگہ منظم کریں۔</p>
                     </div>
-                    <a href="{{ route('admin.clothtype.create') }}" class="cloth-type-add">
+                    <button type="button" class="cloth-type-add" data-cloth-type-create>
                         <i class="fas fa-plus" aria-hidden="true"></i>
                         <span>نئی قسم شامل کریں</span>
-                    </a>
+                    </button>
                 </div>
 
                 <div class="cloth-type-toolbar">
@@ -120,10 +127,14 @@
                                                 <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-left" aria-labelledby="clothTypeActions{{ $cloth_type->id }}" dir="rtl">
-                                                <a href="{{ route('admin.clothtype.edit', $cloth_type->id) }}" class="dropdown-item">
+                                                <button type="button" class="dropdown-item" data-cloth-type-edit
+                                                    data-id="{{ $cloth_type->id }}"
+                                                    data-name-ur="{{ $cloth_type->name_ur ?? $cloth_type->name }}"
+                                                    data-name-en="{{ $cloth_type->name_en }}"
+                                                    data-action="{{ route('admin.clothtype.update', $cloth_type->id) }}">
                                                     <i class="fas fa-pen" aria-hidden="true"></i>
                                                     <span>قسم میں ترمیم کریں</span>
-                                                </a>
+                                                </button>
                                                 <div class="dropdown-divider"></div>
                                                 <form action="{{ route('admin.clothtype.destroy', $cloth_type->id) }}" method="POST" data-confirm="کیا آپ واقعی یہ کپڑے کی قسم حذف کرنا چاہتے ہیں؟">
                                                     @csrf
@@ -144,41 +155,144 @@
             </div>
         </div>
     </section>
+
+    <div class="modal fade cloth-type-form-modal" id="clothTypeFormModal" tabindex="-1" role="dialog" aria-labelledby="clothTypeFormModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" dir="rtl">
+                <form id="clothTypeForm" action="{{ route('admin.clothtype.store') }}" data-store-action="{{ route('admin.clothtype.store') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="_method" value="PUT" id="clothTypeFormMethod" disabled>
+                    <input type="hidden" name="_cloth_type_form" value="1">
+                    <input type="hidden" name="_cloth_type_id" id="clothTypeFormId" value="{{ old('_cloth_type_id') }}">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="clothTypeFormModalTitle">نئی قسم شامل کریں</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        @if ($errors->any() && old('_cloth_type_form'))
+                            <div class="alert alert-danger">
+                                @foreach ($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <div class="form-group">
+                            <label for="clothTypeFormNameUr">نام (اردو)</label>
+                            <input type="text" class="form-control" id="clothTypeFormNameUr" name="name_ur" value="{{ old('name_ur') }}" maxlength="255" required>
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label for="clothTypeFormNameEn">Name (English)</label>
+                            <input type="text" class="form-control" id="clothTypeFormNameEn" name="name_en" value="{{ old('name_en') }}" maxlength="255" dir="ltr" required>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
+                        <button type="submit" class="btn btn-blue">محفوظ کریں</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
     <script>
         jQuery(function ($) {
             var tableElement = $('#clothTypeDirectoryTable');
+            var clothTypeTable = null;
+            var modal = $('#clothTypeFormModal');
+            var form = $('#clothTypeForm');
 
-            if (!tableElement.length || !$.fn.DataTable) {
-                return;
+            function openClothTypeModal(clothType, keepInput) {
+                var editing = !!clothType;
+
+                form.attr('action', editing ? clothType.action : form.data('store-action'));
+                $('#clothTypeFormMethod').prop('disabled', !editing);
+                $('#clothTypeFormId').val(editing ? clothType.id : '');
+                $('#clothTypeFormModalTitle').text(editing ? 'قسم میں ترمیم کریں' : 'نئی قسم شامل کریں');
+                if (!keepInput) {
+                    $('#clothTypeFormNameUr').val(editing ? clothType.nameUr : '');
+                    $('#clothTypeFormNameEn').val(editing ? clothType.nameEn : '');
+                    form.find('.alert-danger').remove();
+                }
+                modal.modal('show');
             }
 
-            var clothTypeTable = tableElement.DataTable({
-                pageLength: 10,
-                lengthChange: false,
-                ordering: false,
-                autoWidth: false,
-                dom: 'rtip',
-                language: {
-                    emptyTable: 'ابھی کپڑے کی کوئی قسم شامل نہیں کی گئی۔',
-                    zeroRecords: 'اس نام کی کوئی قسم نہیں ملی۔',
-                    info: 'کل _TOTAL_ اقسام میں سے _START_ تا _END_ دکھائی جا رہی ہیں',
-                    infoEmpty: 'کوئی قسم موجود نہیں۔',
-                    paginate: {
-                        next: '<i class="fas fa-chevron-left" aria-hidden="true"></i>',
-                        previous: '<i class="fas fa-chevron-right" aria-hidden="true"></i>'
-                    }
-                },
-                columnDefs: [
-                    { targets: [0, 2], searchable: false }
-                ]
+            function clothTypeFromButton(button) {
+                button = $(button);
+                return {
+                    id: button.data('id'),
+                    nameUr: button.data('name-ur'),
+                    nameEn: button.data('name-en'),
+                    action: button.data('action')
+                };
+            }
+
+            function findEditButton(id) {
+                var rows = clothTypeTable ? $(clothTypeTable.rows().nodes()) : tableElement;
+                return rows.find('[data-cloth-type-edit][data-id="' + id + '"]').first();
+            }
+
+            $('[data-cloth-type-create]').on('click', function () {
+                openClothTypeModal(null, false);
             });
 
-            $('#clothTypeDirectorySearch').on('input', function () {
-                clothTypeTable.search(this.value).draw();
+            $(document).on('click', '[data-cloth-type-edit]', function () {
+                openClothTypeModal(clothTypeFromButton(this), false);
             });
+
+            modal.on('shown.bs.modal', function () {
+                $('#clothTypeFormNameUr').trigger('focus');
+            });
+
+            if (tableElement.length && $.fn.DataTable) {
+                clothTypeTable = tableElement.DataTable({
+                    pageLength: 10,
+                    lengthChange: false,
+                    ordering: false,
+                    autoWidth: false,
+                    dom: 'rtip',
+                    language: {
+                        emptyTable: 'ابھی کپڑے کی کوئی قسم شامل نہیں کی گئی۔',
+                        zeroRecords: 'اس نام کی کوئی قسم نہیں ملی۔',
+                        info: 'کل _TOTAL_ اقسام میں سے _START_ تا _END_ دکھائی جا رہی ہیں',
+                        infoEmpty: 'کوئی قسم موجود نہیں۔',
+                        paginate: {
+                            next: '<i class="fas fa-chevron-left" aria-hidden="true"></i>',
+                            previous: '<i class="fas fa-chevron-right" aria-hidden="true"></i>'
+                        }
+                    },
+                    columnDefs: [
+                        { targets: [0, 2], searchable: false }
+                    ]
+                });
+
+                $('#clothTypeDirectorySearch').on('input', function () {
+                    clothTypeTable.search(this.value).draw();
+                });
+            }
+
+            // Reopen after a failed submit, or when arriving from the legacy create/edit URLs.
+            var failedId = @json(old('_cloth_type_form') ? old('_cloth_type_id') : null);
+            var hasFailed = @json((bool) old('_cloth_type_form'));
+            var params = new URLSearchParams(window.location.search);
+            var editId = hasFailed ? failedId : params.get('edit');
+
+            if (editId) {
+                var button = findEditButton(editId);
+                if (button.length) {
+                    openClothTypeModal(clothTypeFromButton(button), hasFailed);
+                }
+            } else if (hasFailed || params.get('modal') === 'create') {
+                openClothTypeModal(null, hasFailed);
+            }
         });
     </script>
 @endpush

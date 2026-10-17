@@ -40,6 +40,15 @@
         .brand-table-shell .dataTables_paginate .paginate_button.current, .brand-table-shell .dataTables_paginate .paginate_button.current:hover { border-color: #1769df !important; background: #1769df !important; color: #fff !important; }
         .brand-table-shell .dataTables_paginate .paginate_button:hover { border-color: #bad2f3 !important; background: #edf5ff !important; color: #1769df !important; }
 
+        .brand-form-modal .modal-content { border: 0; border-radius: 18px; text-align: right; }
+        .brand-form-modal .modal-header { align-items: center; border-bottom-color: #e8eef5; }
+        .brand-form-modal .modal-header .close { margin: -1rem auto -1rem -1rem; }
+        .brand-form-modal .modal-title { color: #102a52; font-weight: 800; }
+        .brand-form-modal label { color: #38516f; font-weight: 700; }
+        .brand-form-modal .modal-footer { justify-content: flex-start; gap: 8px; border-top-color: #e8eef5; }
+        .brand-form-preview { display: flex; align-items: center; gap: 14px; }
+        .brand-form-preview img { flex: 0 0 64px; width: 64px; height: 64px; border: 1px solid #e2eaf3; border-radius: 13px; background: #f7faff; object-fit: cover; }
+
         @media (min-width: 768px) {
             .brand-table-shell, .brand-table-shell .dataTables_wrapper { overflow: visible; }
         }
@@ -76,10 +85,10 @@
                         <h1 class="brand-directory-title">برانڈز کی فہرست</h1>
                         <p class="brand-directory-subtitle">اپنے کپڑے کے برانڈز اور تصاویر ایک جگہ منظم کریں۔</p>
                     </div>
-                    <a href="{{ route('admin.clothbrand.create') }}" class="brand-add-button">
+                    <button type="button" class="brand-add-button" data-brand-create>
                         <i class="fas fa-plus" aria-hidden="true"></i>
                         <span>نیا برانڈ شامل کریں</span>
-                    </a>
+                    </button>
                 </div>
 
                 <div class="brand-directory-toolbar">
@@ -118,10 +127,14 @@
                                                 <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-left" aria-labelledby="brandActions{{ $cloth_brand->id }}" dir="rtl">
-                                                <a href="{{ route('admin.clothbrand.edit', $cloth_brand->id) }}" class="dropdown-item">
+                                                <button type="button" class="dropdown-item" data-brand-edit
+                                                    data-id="{{ $cloth_brand->id }}"
+                                                    data-name="{{ $cloth_brand->name }}"
+                                                    data-action="{{ route('admin.clothbrand.update', $cloth_brand->id) }}"
+                                                    data-logo="{{ $cloth_brand->brand_logo ? asset('storage/'.$cloth_brand->brand_logo) : '' }}">
                                                     <i class="fas fa-pen" aria-hidden="true"></i>
                                                     <span>برانڈ میں ترمیم کریں</span>
-                                                </a>
+                                                </button>
                                                 <div class="dropdown-divider"></div>
                                                 <form action="{{ route('admin.clothbrand.destroy', $cloth_brand->id) }}" method="POST" data-confirm="کیا آپ واقعی یہ برانڈ حذف کرنا چاہتے ہیں؟">
                                                     @csrf
@@ -142,41 +155,163 @@
             </div>
         </div>
     </section>
+
+    <div class="modal fade brand-form-modal" id="brandFormModal" tabindex="-1" role="dialog" aria-labelledby="brandFormModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" dir="rtl">
+                <form id="brandForm" action="{{ route('admin.clothbrand.store') }}" data-store-action="{{ route('admin.clothbrand.store') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="_method" value="PUT" id="brandFormMethod" disabled>
+                    <input type="hidden" name="_brand_form" value="1">
+                    <input type="hidden" name="_brand_id" id="brandFormId" value="{{ old('_brand_id') }}">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="brandFormModalTitle">نیا برانڈ شامل کریں</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        @if ($errors->any() && old('_brand_form'))
+                            <div class="alert alert-danger">
+                                @foreach ($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <div class="form-group">
+                            <label for="brandFormName">نام</label>
+                            <input type="text" class="form-control" id="brandFormName" name="name" value="{{ old('name') }}" maxlength="255" required>
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label for="brandFormFile">برانڈ کی تصویر</label>
+                            <div class="brand-form-preview">
+                                <img id="brandFormPreview" src="{{ asset('assets/images/logo.jpg') }}" data-placeholder="{{ asset('assets/images/logo.jpg') }}" alt="">
+                                <div class="flex-grow-1">
+                                    <input type="file" class="form-control" id="brandFormFile" name="file" accept="image/*">
+                                    <small class="form-text text-muted" id="brandFormFileHelp">تصویر اختیاری ہے؛ بعد میں بھی شامل کی جا سکتی ہے۔</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">منسوخ کریں</button>
+                        <button type="submit" class="btn btn-blue">محفوظ کریں</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
     <script>
         jQuery(function ($) {
             var tableElement = $('#brandDirectoryTable');
+            var brandTable = null;
+            var modal = $('#brandFormModal');
+            var form = $('#brandForm');
+            var preview = $('#brandFormPreview');
+            var placeholderLogo = preview.data('placeholder');
 
-            if (!tableElement.length || !$.fn.DataTable) {
-                return;
+            function openBrandModal(brand, keepInput) {
+                var editing = !!brand;
+
+                form.attr('action', editing ? brand.action : form.data('store-action'));
+                $('#brandFormMethod').prop('disabled', !editing);
+                $('#brandFormId').val(editing ? brand.id : '');
+                $('#brandFormModalTitle').text(editing ? 'برانڈ میں ترمیم کریں' : 'نیا برانڈ شامل کریں');
+                $('#brandFormFileHelp').text(editing
+                    ? 'نئی تصویر صرف تبدیل کرنے کے لیے منتخب کریں۔'
+                    : 'تصویر اختیاری ہے؛ بعد میں بھی شامل کی جا سکتی ہے۔');
+                if (!keepInput) {
+                    $('#brandFormName').val(editing ? brand.name : '');
+                    form.find('.alert-danger').remove();
+                }
+                $('#brandFormFile').val('');
+                preview.attr('src', (editing && brand.logo) ? brand.logo : placeholderLogo);
+                modal.modal('show');
             }
 
-            var brandTable = tableElement.DataTable({
-                pageLength: 10,
-                lengthChange: false,
-                ordering: false,
-                autoWidth: false,
-                dom: 'rtip',
-                language: {
-                    emptyTable: 'ابھی کوئی برانڈ شامل نہیں کیا گیا۔',
-                    zeroRecords: 'اس نام کا کوئی برانڈ نہیں ملا۔',
-                    info: 'کل _TOTAL_ برانڈز میں سے _START_ تا _END_ دکھائے جا رہے ہیں',
-                    infoEmpty: 'کوئی برانڈ موجود نہیں۔',
-                    paginate: {
-                        next: '<i class="fas fa-chevron-left" aria-hidden="true"></i>',
-                        previous: '<i class="fas fa-chevron-right" aria-hidden="true"></i>'
-                    }
-                },
-                columnDefs: [
-                    { targets: [0, 2, 3], searchable: false }
-                ]
+            function brandFromButton(button) {
+                button = $(button);
+                return {
+                    id: button.data('id'),
+                    name: button.data('name'),
+                    action: button.data('action'),
+                    logo: button.data('logo')
+                };
+            }
+
+            function findEditButton(id) {
+                var rows = brandTable ? $(brandTable.rows().nodes()) : tableElement;
+                return rows.find('[data-brand-edit][data-id="' + id + '"]').first();
+            }
+
+            $('[data-brand-create]').on('click', function () {
+                openBrandModal(null, false);
             });
 
-            $('#brandDirectorySearch').on('input', function () {
-                brandTable.search(this.value).draw();
+            $(document).on('click', '[data-brand-edit]', function () {
+                openBrandModal(brandFromButton(this), false);
             });
+
+            $('#brandFormFile').on('change', function () {
+                var file = this.files && this.files[0];
+                if (file) {
+                    preview.attr('src', URL.createObjectURL(file));
+                }
+            });
+
+            modal.on('shown.bs.modal', function () {
+                $('#brandFormName').trigger('focus');
+            });
+
+            if (tableElement.length && $.fn.DataTable) {
+                brandTable = tableElement.DataTable({
+                    pageLength: 10,
+                    lengthChange: false,
+                    ordering: false,
+                    autoWidth: false,
+                    dom: 'rtip',
+                    language: {
+                        emptyTable: 'ابھی کوئی برانڈ شامل نہیں کیا گیا۔',
+                        zeroRecords: 'اس نام کا کوئی برانڈ نہیں ملا۔',
+                        info: 'کل _TOTAL_ برانڈز میں سے _START_ تا _END_ دکھائے جا رہے ہیں',
+                        infoEmpty: 'کوئی برانڈ موجود نہیں۔',
+                        paginate: {
+                            next: '<i class="fas fa-chevron-left" aria-hidden="true"></i>',
+                            previous: '<i class="fas fa-chevron-right" aria-hidden="true"></i>'
+                        }
+                    },
+                    columnDefs: [
+                        { targets: [0, 2, 3], searchable: false }
+                    ]
+                });
+
+                $('#brandDirectorySearch').on('input', function () {
+                    brandTable.search(this.value).draw();
+                });
+            }
+
+            // Reopen after a failed submit, or when arriving from the legacy create/edit URLs.
+            var failedId = @json(old('_brand_form') ? old('_brand_id') : null);
+            var hasFailed = @json((bool) old('_brand_form'));
+            var params = new URLSearchParams(window.location.search);
+            var editId = hasFailed ? failedId : params.get('edit');
+
+            if (editId) {
+                var button = findEditButton(editId);
+                if (button.length) {
+                    openBrandModal(brandFromButton(button), hasFailed);
+                }
+            } else if (hasFailed || params.get('modal') === 'create') {
+                openBrandModal(null, hasFailed);
+            }
         });
     </script>
 @endpush

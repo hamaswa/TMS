@@ -32,11 +32,8 @@ class ClothTypeController extends Controller
      */
     public function create()
     {
-        try {
-            return view('clothtype.create');
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        // The form lives in a modal on the index page.
+        return redirect()->route('admin.clothtype.index', ['modal' => 'create']);
     }
 
     /**
@@ -87,12 +84,10 @@ class ClothTypeController extends Controller
      */
     public function edit($id)
     {
-        try {
-            $cloth_type = ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
-            return view('clothtype.edit', compact('cloth_type'));
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        $cloth_type = ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+
+        // The form lives in a modal on the index page.
+        return redirect()->route('admin.clothtype.index', ['edit' => $cloth_type->id]);
     }
 
     /**

@@ -32,12 +32,8 @@ class ClothBrandController extends Controller
      */
     public function create()
     {
-        try {
-
-            return view('clothbrand.create');
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        // The form lives in a modal on the index page.
+        return redirect()->route('admin.clothbrand.index', ['modal' => 'create']);
     }
 
     /**
@@ -113,12 +109,10 @@ class ClothBrandController extends Controller
      */
     public function edit($id)
     {
-        try {
-            $cloth_brand = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
-            return view('clothbrand.edit', compact('cloth_brand'));
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        $cloth_brand = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id);
+
+        // The form lives in a modal on the index page.
+        return redirect()->route('admin.clothbrand.index', ['edit' => $cloth_brand->id]);
     }
 
     /**
