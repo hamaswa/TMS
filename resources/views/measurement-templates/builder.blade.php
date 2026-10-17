@@ -86,6 +86,7 @@
                                 </div>
                                 <div class="field-options">
                                     @foreach ($measurementFields as $key => $meta)
+                                        <div class="template-system-field">
                                         @include('measurement-templates.partials.field-choice', [
                                             'kind' => 'system',
                                             'value' => $key,
@@ -95,6 +96,10 @@
                                             'defaultColumn' => 'right',
                                             'locked' => (bool) $template?->is_builtin,
                                         ])
+                                        @if($editing)
+                                            <button type="button" class="template-field-edit" data-toggle="modal" data-target="#systemTitleModal" data-system-key="{{ $key }}" data-system-label="{{ $meta['label'] }}" title="خانے کا نام تبدیل کریں" aria-label="{{ $meta['label'] }} کا نام تبدیل کریں"><i class="fas fa-pen"></i></button>
+                                        @endif
+                                        </div>
                                     @endforeach
                                 </div>
                             </div>
@@ -122,7 +127,7 @@
                                             'defaultColumn' => 'left',
                                             'locked' => (bool) $template?->is_builtin,
                                         ])
-                                            @if($editing && isset($systemOptionTypes[$key]))
+                                            @if($editing)
                                                 <button type="button" class="template-field-edit" data-toggle="modal" data-target="#systemChoiceModal" data-system-key="{{ $key }}" data-system-label="{{ $meta['label'] }}" title="انتخاب تبدیل کریں" aria-label="{{ $meta['label'] }} کے انتخاب تبدیل کریں"><i class="fas fa-pen"></i></button>
                                             @endif
                                         </div>
@@ -217,10 +222,21 @@
 
 
             @if($editing)
+            <div class="modal fade template-field-modal" id="systemTitleModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content" dir="rtl">
+                <div class="modal-header"><h5 class="modal-title">پیمائش کے خانے کا نام</h5><button type="button" class="close ml-0 mr-auto" data-dismiss="modal">&times;</button></div>
+                <form id="systemTitleOnlyForm" action="{{ route('admin.measurement-templates.field-title', $template) }}" method="POST">@csrf<input type="hidden" name="field_key"><div class="modal-body"><label for="systemTitleOnlyInput">خانے کا نام</label><input id="systemTitleOnlyInput" class="form-control" name="title" maxlength="100" required><p class="text-danger small mt-2" id="systemTitleOnlyError"></p></div><div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">منسوخ</button><button type="submit" class="btn btn-primary">محفوظ کریں</button></div></form>
+            </div></div></div>
+            <script>document.addEventListener('DOMContentLoaded',function(){if(!window.jQuery)return;const modal=document.getElementById('systemTitleModal'),form=document.getElementById('systemTitleOnlyForm'),error=document.getElementById('systemTitleOnlyError');window.jQuery(modal).on('show.bs.modal',function(e){form.elements.field_key.value=e.relatedTarget.dataset.systemKey;form.elements.title.value=e.relatedTarget.dataset.systemLabel;error.textContent=''});form.onsubmit=async function(e){e.preventDefault();const btn=form.querySelector('[type="submit"]');btn.disabled=true;error.textContent='';try{const data=new FormData(form);data.append('_method','PATCH');const response=await fetch(form.action,{method:'POST',body:data,credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});const result=await response.json();if(!response.ok)throw Error(result.message||Object.values(result.errors||{}).flat().join(' '));document.querySelectorAll('[data-source="system.'+result.field_key+'"]').forEach(input=>{input.dataset.label=result.title;const label=input.closest('.field-choice');if(label){const strong=label.querySelector('strong');if(strong)strong.textContent=result.title}});document.querySelectorAll('[data-system-key="'+result.field_key+'"]').forEach(edit=>edit.dataset.systemLabel=result.title);window.jQuery(modal).modal('hide')}catch(ex){error.textContent=ex.message||'نام محفوظ نہیں ہوا'}finally{btn.disabled=false}}});</script>
             <div class="modal fade template-field-modal" id="systemChoiceModal" tabindex="-1" role="dialog" aria-hidden="true">
                 <div class="modal-dialog modal-lg modal-dialog-centered" role="document"><div class="modal-content" dir="rtl">
                     <div class="modal-header"><h5 class="modal-title" id="systemChoiceTitle">سلائی کے انتخاب</h5><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں">&times;</button></div>
                     <div class="modal-body">
+                        <form id="systemChoiceTitleForm" action="{{ route('admin.measurement-templates.field-title', $template) }}" method="POST" class="mb-3">
+                            @csrf
+                            <input type="hidden" name="field_key">
+                            <label for="systemChoiceFieldTitle">خانے کا نام</label>
+                            <div class="input-group"><input id="systemChoiceFieldTitle" name="title" class="form-control" maxlength="100" required><div class="input-group-append"><button type="submit" class="btn btn-outline-primary">نام محفوظ کریں</button></div></div>
+                        </form>
                         <form id="systemChoiceAdd" method="POST" action="{{ route('admin.Options.store') }}">@csrf<input type="hidden" name="OptionTypeId"><input type="hidden" name="measurement_template_id" value="{{ $template->id }}">
                             <div class="form-group mb-0 template-field-options" data-option-editor>
                                 <label for="systemChoiceName">اس خانے کے انتخاب</label>
@@ -242,6 +258,7 @@
                 if(!window.jQuery)return;
                 const modal=document.getElementById('systemChoiceModal'),form=document.getElementById('systemChoiceAdd'),list=document.getElementById('systemChoiceList'),message=document.getElementById('systemChoiceMessage');
                 const types=@json($systemOptionTypes);let active=null;
+                const titleForm=document.getElementById('systemChoiceTitleForm');
                 function error(s){message.textContent=s||''}
                 async function request(url,method,name){
                     const data=new FormData();data.append('_token',form.querySelector('[name="_token"]').value);data.append('OptionTypeId',active.id);data.append('measurement_template_id',{{ (int)$template->id }});
@@ -276,9 +293,21 @@
                 window.jQuery(modal).on('show.bs.modal',event=>{
                     const button=event.relatedTarget;active=types[button.getAttribute('data-system-key')]||null;
                     document.getElementById('systemChoiceTitle').textContent=button.getAttribute('data-system-label')+' — انتخاب';
+                    titleForm.elements.field_key.value=button.getAttribute('data-system-key');titleForm.elements.title.value=button.getAttribute('data-system-label');
                     form.querySelector('[name="OptionTypeId"]').value=active?active.id:'';
                     form.querySelector('button[type="submit"]').disabled=!active;form.querySelector('[name="Name"]').value='';error('');render();
                 });
+                titleForm.onsubmit=async event=>{
+                    event.preventDefault();const button=titleForm.querySelector('button[type="submit"]');button.disabled=true;error('');
+                    try {
+                        const response=await fetch(titleForm.action,{method:'POST',body:(()=>{const data=new FormData(titleForm);data.append('_method','PATCH');return data})(),credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
+                        const result=await response.json();if(!response.ok)throw Error(result.message||Object.values(result.errors||{}).flat().join(' '));
+                        document.querySelectorAll('[data-source="system.'+result.field_key+'"]').forEach(input=>{input.dataset.label=result.title;const label=input.closest('.field-choice');if(label){const strong=label.querySelector('strong');if(strong)strong.textContent=result.title}});
+                        document.querySelectorAll('[data-system-key="'+result.field_key+'"]').forEach(edit=>{edit.dataset.systemLabel=result.title;edit.setAttribute('aria-label',result.title+' تبدیل کریں')});
+                        document.getElementById('systemChoiceTitle').textContent=result.title+' — انتخاب';
+                        window.jQuery(modal).modal('hide');
+                    }catch(e){error(e.message||'نام محفوظ نہیں ہوا')}finally{button.disabled=false}
+                };
                 form.onsubmit=async event=>{
                     event.preventDefault();if(!active)return;const button=form.querySelector('button[type="submit"]');button.disabled=true;error('');
                     try{const name=form.querySelector('[name="Name"]').value.trim();if(!name)return;
