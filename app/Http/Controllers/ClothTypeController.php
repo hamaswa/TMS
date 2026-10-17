@@ -17,7 +17,7 @@ class ClothTypeController extends Controller
     {
         try {
 
-            $cloth_types = ClothType::where('user_id',auth()->user()->businessOwnerId())->orderBy('id', 'DESC')->get();
+            $cloth_types = ClothType::where('user_id',auth()->user()->businessOwnerId())->with('parent')->orderBy('id', 'DESC')->get();
 
             return view('clothtype.index', compact('cloth_types'));
         } catch (\Throwable $th) {
@@ -49,12 +49,14 @@ class ClothTypeController extends Controller
             $validated = $request->validate([
                 'name_ur' => ['required', 'string', 'max:255'],
                 'name_en' => ['required', 'string', 'max:255'],
+                'parent_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('cloth_types', 'id')->where('user_id', Auth::user()->businessOwnerId())],
             ]);
             $user_id = Auth::user()->businessOwnerId();
             ClothType::create([
                 'name' => $validated['name_ur'],
                 'name_ur' => $validated['name_ur'],
                 'name_en' => $validated['name_en'],
+                'parent_id' => $validated['parent_id'] ?? null,
                 'user_id' => $user_id
             ]);
             return redirect()->route('admin.clothtype.index')->with('insert', 'کپڑے کی قسم کامیابی کے ساتھ شامل کی گئی۔');
@@ -106,6 +108,16 @@ class ClothTypeController extends Controller
                 'name_en' => ['required', 'string', 'max:255'],
             ]);
             $validated['name'] = $validated['name_ur'];
+            if ((int) ($validated['parent_id'] ?? 0) === (int) $id) {
+                return back()->withErrors(['parent_id' => 'قسم اپنی ذیلی قسم نہیں بن سکتی۔'])->withInput();
+            }
+            $parent = !empty($validated['parent_id']) ? ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['parent_id']) : null;
+            if ($parent && $parent->parent_id) {
+                return back()->withErrors(['parent_id' => 'صرف مرکزی قسم کے تحت ذیلی قسم شامل کریں۔'])->withInput();
+            }
+            if ($parent && ClothType::where('user_id', Auth::user()->businessOwnerId())->where('parent_id', $id)->exists()) {
+                return back()->withErrors(['parent_id' => 'ذیلی اقسام والی مرکزی قسم کو دوسری قسم کے تحت نہیں رکھ سکتے۔'])->withInput();
+            }
             ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($id)->update($validated);
             return redirect()->route('admin.clothtype.index')->with('insert', 'کپڑے کی قسم کامیابی کے ساتھ اپ ڈیٹ ہو گئی۔');
         } catch (\Throwable $th) {
