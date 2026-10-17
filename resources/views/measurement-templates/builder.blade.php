@@ -222,9 +222,18 @@
                     <div class="modal-header"><h5 class="modal-title" id="systemChoiceTitle">سلائی کے انتخاب</h5><button type="button" class="close ml-0 mr-auto" data-dismiss="modal" aria-label="بند کریں">&times;</button></div>
                     <div class="modal-body">
                         <form id="systemChoiceAdd" method="POST" action="{{ route('admin.Options.store') }}">@csrf<input type="hidden" name="OptionTypeId"><input type="hidden" name="measurement_template_id" value="{{ $template->id }}">
-                            <label for="systemChoiceName">نیا انتخاب شامل کریں</label><div class="input-group mb-2"><input id="systemChoiceName" class="form-control" name="Name" maxlength="255" required placeholder="انتخاب کا نام"><div class="input-group-append"><button class="btn btn-success" type="submit">شامل کریں</button></div></div>
+                            <div class="form-group mb-0 template-field-options" data-option-editor>
+                                <label for="systemChoiceName">اس خانے کے انتخاب</label>
+                                <div class="template-option-entry">
+                                    <input id="systemChoiceName" class="form-control template-option-draft" name="Name" maxlength="255" required placeholder="ایک انتخاب لکھیں، مثلاً مینڈرن">
+                                    <button class="btn btn-outline-primary template-option-add" type="submit"><i class="fas fa-plus ml-1"></i> شامل کریں</button>
+                                </div>
+                                <small class="text-muted d-block mt-2">ہر انتخاب الگ شامل کریں۔ Enter دبانے سے بھی شامل ہو جائے گا۔ انتخاب پر کلک کر کے اس کا نام تبدیل کریں۔</small>
+                            </div>
                         </form>
-                        <p id="systemChoiceMessage" class="small text-danger" role="alert"></p><strong>محفوظ انتخاب</strong><div id="systemChoiceList" class="list-group mt-2" style="max-height:55vh;overflow:auto"></div>
+                        <p id="systemChoiceMessage" class="small text-danger mt-2" role="alert"></p>
+                        <div id="systemChoiceList" class="template-option-list mt-3" aria-live="polite" style="max-height:50vh;overflow:auto"></div>
+                        <div id="systemChoiceEmpty" class="template-option-empty">ابھی کوئی انتخاب شامل نہیں کیا گیا۔</div>
                     </div><div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">بند کریں</button></div>
                 </div></div>
             </div>
@@ -243,15 +252,25 @@
                 }
                 function render(){
                     list.replaceChildren();
-                    if(!active||!active.options.length){const p=document.createElement('p');p.className='text-muted p-3';p.textContent='ابھی کوئی انتخاب محفوظ نہیں۔';list.append(p);return}
+                    document.getElementById('systemChoiceEmpty').hidden=!!(active&&active.options.length);
+                    if(!active)return;
                     active.options.forEach(choice=>{
-                        const row=document.createElement('div');row.className='list-group-item d-flex flex-wrap align-items-center';row.style.gap='8px';
-                        const input=document.createElement('input');input.className='form-control flex-grow-1';input.value=choice.name;input.setAttribute('aria-label','انتخاب');
-                        const save=document.createElement('button');save.type='button';save.className='btn btn-sm btn-outline-primary';save.textContent='محفوظ کریں';
-                        const del=document.createElement('button');del.type='button';del.className='btn btn-sm btn-outline-danger';del.textContent='حذف';
-                        save.onclick=async()=>{save.disabled=true;error('');try{await request(choice.update,'PUT',input.value);choice.name=input.value;render()}catch(e){error(e.message)}finally{save.disabled=false}};
+                        const chip=document.createElement('span');chip.className='template-option-chip';
+                        const edit=document.createElement('button');edit.type='button';edit.className='template-option-name';edit.textContent=choice.name;edit.title='انتخاب کا نام تبدیل کریں';edit.setAttribute('aria-label',choice.name+' تبدیل کریں');
+                        const del=document.createElement('button');del.type='button';del.textContent='×';del.title='انتخاب حذف کریں';del.setAttribute('aria-label',choice.name+' حذف کریں');
+                        edit.onclick=()=>{
+                            const input=document.createElement('input');input.className='form-control form-control-sm';input.style.width='150px';input.maxLength=255;input.value=choice.name;edit.replaceWith(input);input.focus();input.select();
+                            let saving=false;
+                            const save=async()=>{
+                                if(saving)return;saving=true;const value=input.value.trim();
+                                if(!value){error('انتخاب کا نام خالی نہیں ہو سکتا۔');saving=false;return}
+                                try{await request(choice.update,'PUT',value);choice.name=value;error('');render()}catch(e){error(e.message);saving=false}
+                            };
+                            input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save()}if(e.key==='Escape')render()});
+                            input.addEventListener('blur',save,{once:true});
+                        };
                         del.onclick=async()=>{if(!confirm('کیا انتخاب حذف کرنا چاہتے ہیں؟'))return;del.disabled=true;error('');try{await request(choice.destroy,'DELETE',null);active.options=active.options.filter(x=>x.id!==choice.id);render()}catch(e){error(e.message)}finally{del.disabled=false}};
-                        row.append(input,save,del);list.append(row);
+                        chip.append(edit,del);list.append(chip);
                     });
                 }
                 window.jQuery(modal).on('show.bs.modal',event=>{
