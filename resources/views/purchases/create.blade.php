@@ -855,6 +855,15 @@
                 </div>
 
                 <div class="purchase-field">
+                    <label>اسٹاک کی اکائی</label>
+                    <select class="form-control new-inventory-unit" aria-label="اسٹاک کی اکائی">
+                        <option value="meter">میٹر</option>
+                        <option value="piece">پیس</option>
+                        <option value="set">سیٹ</option>
+                    </select>
+                </div>
+
+                <div class="purchase-field">
                     <label>اسٹاک کا طریقہ</label>
                     <select class="form-control new-tracking">
                         <option value="none">مشترکہ میٹر</option>
@@ -1118,6 +1127,12 @@
                 const stock = row.querySelector('.purchase-stock-cell'),
                     details = row.querySelector('.purchase-row-details'),
                     tracked = row.querySelector('.new-tracking').value === 'per_color';
+                const unit = row.querySelector('.new-inventory-unit').value;
+                const label = unit === 'piece' ? 'پیس' : unit === 'set' ? 'سیٹ' : 'میٹر';
+                const step = unit === 'meter' ? '0.01' : '1';
+                const defaultLength = row.querySelector('.new-default-length');
+                defaultLength.required = unit === 'meter';
+                defaultLength.closest('.purchase-field').hidden = unit !== 'meter';
 
                 if (tracked) {
                     stock.innerHTML =
@@ -1130,7 +1145,7 @@
                     addColor(row);
                 } else {
                     stock.innerHTML =
-                        '<label>خریدے گئے میٹر</label><input type="number" step="0.01" min="0.01" class="form-control purchase-color-quantity new-shared-quantity" placeholder="0.00" required>';
+                        '<label>خریدے گئے ' + label + '</label><input type="number" step="' + step + '" min="' + step + '" class="form-control purchase-color-quantity new-shared-quantity" placeholder="0" required>';
 
                     details.innerHTML = '';
                     details.classList.remove('is-open');
@@ -1439,6 +1454,7 @@
                             ['.new-name', 'name'],
                             ['.new-brand', 'cloth_brand_id'],
                             ['.new-type', 'cloth_type_id'],
+                            ['.new-inventory-unit', 'inventory_unit'],
                             ['.new-suit-price', 'suit_sale_price'],
                             ['.new-default-length', 'default_sale_length'],
                             ['.new-tracking', 'tracking_mode'],
