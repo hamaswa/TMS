@@ -1086,9 +1086,16 @@
                 });
             });
 
-            const addColor = row => row.querySelector('.purchase-color-grid').appendChild(
-                colorTemplate.content.firstElementChild.cloneNode(true)
-            );
+            const addColor = row => {
+                const color = colorTemplate.content.firstElementChild.cloneNode(true);
+                const unit = row.querySelector('.new-inventory-unit')?.value;
+                if (unit === 'piece' || unit === 'set') {
+                    const quantity = color.querySelector('.new-color-quantity');
+                    quantity.step = '1';
+                    quantity.min = '1';
+                }
+                row.querySelector('.purchase-color-grid').appendChild(color);
+            };
 
             const addNewRow = (before = null) => {
                 const row = newTemplate.content.firstElementChild.cloneNode(true);
@@ -1143,6 +1150,7 @@
 
                     details.classList.add('is-open');
                     addColor(row);
+                    if (unit !== 'meter') details.querySelectorAll('.new-color-quantity').forEach(input => { input.step = '1'; input.min = '1'; });
                 } else {
                     stock.innerHTML =
                         '<label>خریدے گئے ' + label + '</label><input type="number" step="' + step + '" min="' + step + '" class="form-control purchase-color-quantity new-shared-quantity" placeholder="0" required>';
@@ -1278,7 +1286,7 @@
                     return;
                 }
 
-                if (event.target.matches('.new-tracking')) {
+                if (event.target.matches('.new-tracking, .new-inventory-unit')) {
                     renderNewStock(row);
                     return;
                 }
