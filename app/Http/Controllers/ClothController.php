@@ -32,6 +32,7 @@ class ClothController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
             'brand' => ['nullable', 'integer'],
             'type' => ['nullable', 'integer'],
+            'category' => ['nullable', 'integer'],
             'color' => ['nullable', 'string', 'max:100'],
             'stock' => ['nullable', Rule::in(['all', 'available', 'low', 'empty'])],
             'basis' => ['nullable', Rule::in(['all', Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
@@ -59,6 +60,11 @@ class ClothController extends Controller
         }
         if (! empty($filters['type'])) {
             $query->where('cloth_type_id', $filters['type']);
+        }
+        if (! empty($filters['category'])) {
+            $category = ClothType::where('user_id', $ownerId)->findOrFail($filters['category']);
+            $childIds = ClothType::where('user_id', $ownerId)->where('parent_id', $category->id)->pluck('id');
+            $query->whereIn('cloth_type_id', $childIds->push($category->id));
         }
         if (! empty($filters['color'])) {
             $color = $filters['color'];
@@ -116,7 +122,8 @@ class ClothController extends Controller
             ->paginate((int) ($filters['per_page'] ?? 25))
             ->withQueryString();
         $brands = ClothBrand::where('user_id', $ownerId)->orderBy('name')->get();
-        $types = ClothType::where('user_id', $ownerId)->orderBy('name')->get();
+        $types = ClothType::where('user_id', $ownerId)->with('parent')->orderBy('name')->get();
+        $categories = $types->whereNull('parent_id');
         $stockColors = ClothColor::where('user_id', $ownerId)->whereNotNull('color')
             ->distinct()->pluck('color');
         $displayColors = Cloth::where('user_id', $ownerId)->whereNotNull('display_colors')
@@ -130,7 +137,7 @@ class ClothController extends Controller
             'low_or_empty' => $lowOrEmptySets,
         ];
 
-        return view('cloths.index', compact('cloths', 'brands', 'types', 'colors', 'summary', 'filters'));
+        return view('cloths.index', compact('cloths', 'brands', 'types', 'categories', 'colors', 'summary', 'filters'));
     }
 
     public function qrLabels(PrintDocumentService $documents)
