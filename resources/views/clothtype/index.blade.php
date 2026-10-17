@@ -108,6 +108,7 @@
                             <tr>
                                 <th scope="col">#</th>
                                 <th scope="col">نام</th>
+                                <th scope="col">مرکزی قسم</th>
                                 <th scope="col">عملیات</th>
                             </tr>
                         </thead>
@@ -121,6 +122,7 @@
                                             <span class="cloth-type-name">{{ $cloth_type->name }}</span>
                                         </div>
                                     </td>
+                                    <td>{{ $cloth_type->parent ? $cloth_type->parent->name : "—" }}</td>
                                     <td>
                                         <div class="dropdown cloth-type-actions">
                                             <button class="btn cloth-type-actions-toggle" type="button" id="clothTypeActions{{ $cloth_type->id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="{{ $cloth_type->name }} کی کارروائیاں">
@@ -131,6 +133,7 @@
                                                     data-id="{{ $cloth_type->id }}"
                                                     data-name-ur="{{ $cloth_type->name_ur ?? $cloth_type->name }}"
                                                     data-name-en="{{ $cloth_type->name_en }}"
+                                                    data-parent-id="{{ $cloth_type->parent_id }}"
                                                     data-action="{{ route('admin.clothtype.update', $cloth_type->id) }}">
                                                     <i class="fas fa-pen" aria-hidden="true"></i>
                                                     <span>قسم میں ترمیم کریں</span>
@@ -186,9 +189,19 @@
                             <input type="text" class="form-control" id="clothTypeFormNameUr" name="name_ur" value="{{ old('name_ur') }}" maxlength="255" required>
                         </div>
 
-                        <div class="form-group mb-0">
+                        <div class="form-group">
                             <label for="clothTypeFormNameEn">Name (English)</label>
                             <input type="text" class="form-control" id="clothTypeFormNameEn" name="name_en" value="{{ old('name_en') }}" maxlength="255" dir="ltr" required>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label for="clothTypeFormParent">مرکزی قسم (اختیاری)</label>
+                            <select class="form-control" id="clothTypeFormParent" name="parent_id">
+                                <option value="">مرکزی قسم</option>
+                                @foreach ($cloth_types->whereNull('parent_id') as $rootType)
+                                    <option value="{{ $rootType->id }}">{{ $rootType->name }}</option>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">مثلاً خواتین کے کپڑے ← عبایا۔ صرف دو سطحیں دستیاب ہیں۔</small>
                         </div>
                     </div>
 
@@ -220,6 +233,9 @@
                 if (!keepInput) {
                     $('#clothTypeFormNameUr').val(editing ? clothType.nameUr : '');
                     $('#clothTypeFormNameEn').val(editing ? clothType.nameEn : '');
+                    $('#clothTypeFormParent').val(editing ? (clothType.parentId || '') : '');
+                    $('#clothTypeFormParent option').prop('disabled', false);
+                    if (editing) $('#clothTypeFormParent option[value="' + clothType.id + '"]').prop('disabled', true);
                     form.find('.alert-danger').remove();
                 }
                 modal.modal('show');
@@ -231,6 +247,7 @@
                     id: button.data('id'),
                     nameUr: button.data('name-ur'),
                     nameEn: button.data('name-en'),
+                    parentId: button.attr('data-parent-id'),
                     action: button.data('action')
                 };
             }
@@ -270,7 +287,7 @@
                         }
                     },
                     columnDefs: [
-                        { targets: [0, 2], searchable: false }
+                        { targets: [0, 3], searchable: false }
                     ]
                 });
 
