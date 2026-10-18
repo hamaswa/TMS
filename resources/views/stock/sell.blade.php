@@ -171,7 +171,8 @@
                         <div class="counter-item-summary"><small>آئٹم کا خلاصہ</small><div class="counter-item-actions"><span class="counter-line-total">Rs. {{ number_format((float) ($saleItem['item_total'] ?? 0), 2) }}</span>@if($itemIndex > 0)<button type="button" class="counter-remove-item" aria-label="یہ آئٹم ہٹائیں"><i class="fas fa-trash"></i></button>@endif</div></div>
                         <div class="counter-item-identity"><span class="counter-item-number">{{ $itemIndex + 1 }}</span></div>
                         <input type="hidden" class="js-cloth-id" name="cloth_id[]" value="{{ $colorCloth?->id }}">
-                        <input type="hidden" class="js-sale-price-basis" value="{{ $saleItem['sale_price_basis'] ?? ($colorCloth?->sale_price_basis ?: 'per_meter') }}">
+                        <input type="hidden" class="js-sale-price-basis" name="sale_price_basis[]" value="{{ $saleItem['sale_price_basis'] ?? ($colorCloth?->sale_price_basis ?: 'per_suit') }}">
+                        <input type="hidden" class="js-suit-quantity" name="suit_quantity[]" value="1">
                         <div class="form-group counter-field-brand"><label>برانڈ <span class="required">*</span></label><select class="form-control js-brand" name="brand_name[]" required><option value="" disabled @selected($selectedBrand === '')>برانڈ منتخب کریں</option>@foreach($cloths->unique('cloth_brand_id') as $cloth)<option value="{{ $cloth->cloth_brand_id }}" @selected($selectedBrand === (string) $cloth->cloth_brand_id)>{{ $cloth->brand->name }}</option>@endforeach</select></div>
                         <div class="form-group counter-field-type"><label>کپڑے کی قسم <span class="required">*</span></label><select class="form-control js-cloth-type" name="cloth_type[]" required><option value="" disabled @selected($selectedType === '')>پہلے برانڈ منتخب کریں</option>@foreach($typeCloths as $cloth)<option value="{{ $cloth->cloth_type_id }}" @selected($selectedType === (string) $cloth->cloth_type_id)>{{ $cloth->type->name }}</option>@endforeach</select></div>
                         <div class="form-group js-color-group counter-field-color" @if(!$colorCloth?->hasSelectableColors()) hidden @endif><label>رنگ @if($colorCloth?->hasSelectableColors())<span class="required">*</span>@endif</label><select class="form-control js-color" name="color[]" @required($colorCloth?->hasSelectableColors())><option value="" disabled @selected($selectedColor === '')>رنگ منتخب کریں</option>@foreach($availableColors as $color)<option value="{{ $color }}" @selected($selectedColor === (string) $color)>{{ $color }}@if($colorCloth?->tracksColors()) ({{ (float) ($colorCloth->colors->firstWhere('color',$color)?->length ?? 0) }} میٹر)@endif</option>@endforeach</select></div>
@@ -336,8 +337,9 @@ document.addEventListener('DOMContentLoaded', function () {
         item.querySelectorAll('select').forEach(select => { select.selectedIndex = 0; });
         item.querySelector('.js-cloth-type').innerHTML = '<option value="" disabled selected>پہلے برانڈ منتخب کریں</option>';
         item.querySelector('.js-cloth-id').value = '';
-        item.querySelector('.js-sale-price-basis').value = 'per_meter';
-        item.querySelector('.js-rate-label').textContent = 'ریٹ فی میٹر';
+        item.querySelector('.js-sale-price-basis').value = 'per_suit';
+        item.querySelector('.js-suit-quantity').value = '1';
+        item.querySelector('.js-rate-label').textContent = 'ریٹ فی سوٹ';
         item.querySelector('.js-color-group').hidden = true;
         item.querySelector('.js-color').required = false;
         item.querySelector('.js-color').innerHTML = '<option value="" selected>رنگ لاگو نہیں</option>';

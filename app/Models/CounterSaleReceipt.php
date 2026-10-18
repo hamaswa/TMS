@@ -33,4 +33,15 @@ class CounterSaleReceipt extends Model
     {
         return $this->belongsTo(Customers::class, 'customer_id');
     }
+
+    public function transaction()
+    {
+        return $this->hasOne(Transaction::class, 'counter_sale_receipt_id')
+            ->where('Order_type', 'Sale');
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(CounterSaleReturn::class);
+    }
 }

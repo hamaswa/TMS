@@ -13,6 +13,8 @@ class TailorSecurityDepositTransaction extends Model
 
     public const TYPE_REFUNDED = 'refunded';
 
+    public const TYPE_DEDUCTED = 'deducted';
+
     protected $fillable = [
         'tailor_id',
         'user_id',

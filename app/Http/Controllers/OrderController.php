@@ -34,6 +34,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\ProductionWorkforceService;
 use App\Services\CustomerLedgerService;
+use App\Services\TailoringComplaintService;
 use App\Support\PaymentMethods;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -1125,7 +1126,7 @@ class OrderController extends Controller
         if ($refund + $compensation <= 0 || $refund > (float) $order->totalPayment) {
             throw ValidationException::withMessages(['requested_tailoring_refund' => 'درست سلائی واپسی یا نقصان کی رقم درج کریں۔']);
         }
-        CounterOrderComplaint::create([
+        $claim = CounterOrderComplaint::create([
             'order_id' => $order->id,
             'user_id' => $order->userId,
             'created_by_user_id' => $request->user()->id,
@@ -1134,12 +1135,14 @@ class OrderController extends Controller
             'requested_cloth_compensation' => $compensation,
             'status' => 'pending',
         ]);
+        app(TailoringComplaintService::class)->notify($claim, 'opened');
         return back()->with('success', 'شکایت درج ہو گئی ہے۔ ابھی کوئی رقم ادا یا کھاتے میں تبدیل نہیں ہوئی۔');
     }
 
     public function settleTailoringComplaint(Request $request, int $id, CounterOrderComplaint $complaint)
     {
         abort_unless($request->user()?->hasBusinessPermission(BusinessRole::TAILORING_ORDERS), 403);
+        abort_unless($request->user()->isBusinessOwner(), 403);
         $order = $this->ownedOrder($id);
         $data = $request->validate([
             'approved_tailoring_refund' => ['required', 'numeric', 'min:0'],
@@ -1185,6 +1188,7 @@ class OrderController extends Controller
             ]);
             $claim->update([
                 'status' => 'settled',
+                'resolution' => ($refund > 0 && $compensation > 0) ? 'refund_and_compensation' : ($refund > 0 ? 'refund' : 'compensation'),
                 'approved_tailoring_refund' => $refund,
                 'approved_cloth_compensation' => $compensation,
                 'actual_cash_payout' => $payout,
@@ -1192,8 +1196,12 @@ class OrderController extends Controller
                 'payment_reference' => $data['payment_reference'] ?? null,
                 'settled_by_user_id' => $request->user()->id,
                 'settled_at' => now(),
+                'approved_by_user_id' => $request->user()->id,
+                'approved_at' => now(),
+                'closed_at' => now(),
             ]);
         });
+        app(TailoringComplaintService::class)->notify($complaint->fresh(), 'settled');
         return back()->with('success', 'شکایت کا تصفیہ اور کھاتے کی انٹری محفوظ ہو گئی ہے۔');
     }
 

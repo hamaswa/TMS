@@ -20,7 +20,7 @@ use Illuminate\Validation\Rule;
 
 class OfflineWorkspaceController extends Controller
 {
-    private const WORKSPACE_VERSION = '20261006a';
+    private const WORKSPACE_VERSION = '20261018a';
 
     public function fallback()
     {
@@ -117,6 +117,9 @@ class OfflineWorkspaceController extends Controller
             if ($actor['type'] === 'tailor' && $target === 'delivered') {
                 return $this->recordConflict($command, $actor, $order, 'tailor_cannot_deliver', 'صرف دکان کا مالک آرڈر گاہک کے حوالے کر سکتا ہے۔');
             }
+            if ($target === 'cancelled' && ($actor['type'] !== 'user' || blank($command['payload']['note'] ?? null))) {
+                return $this->recordConflict($command, $actor, $order, 'cancellation_requires_owner_reason', 'آف لائن منسوخی کے لیے دکان کے مالک کی مکمل وجہ ضروری ہے۔ مالی واپسی آن لائن تصفیہ میں درج کریں۔');
+            }
 
             if ($current === $target) {
                 return $this->recordResult($command, $actor, OfflineOperation::STATUS_APPLIED, [
@@ -176,6 +179,12 @@ class OfflineWorkspaceController extends Controller
             }
             if ($target === 'delivered') {
                 $updates['delivered_at'] = now();
+            }
+            if ($target === 'cancelled') {
+                $updates['cancelled_at'] = now();
+                $updates['cancelled_by_user_id'] = $actor['id'];
+                $updates['cancellation_reason'] = $command['payload']['note'];
+                $updates['rack_no'] = null;
             }
 
             $order->update($updates);
@@ -415,13 +424,15 @@ class OfflineWorkspaceController extends Controller
     private function canApplyStatusTransition(Order $order, string $target, int $ownerId): bool
     {
         if (Business::tailoringStatusModeForOwner($ownerId) === Business::TAILORING_STATUS_DETAILED) {
-            return in_array($target, $order->nextStatuses(), true);
+            return $target === 'cancelled' && ! in_array($order->status, ['delivered', 'cancelled'], true)
+                ?: in_array($target, $order->nextStatuses(), true);
         }
 
         return match ($target) {
             'cutting' => in_array($order->status, ['assigned', 'ready'], true),
             'ready' => in_array($order->status, ['assigned', 'cutting', 'stitching', 'trial'], true),
             'delivered' => $order->status === 'ready',
+            'cancelled' => ! in_array($order->status, ['delivered', 'cancelled'], true),
             default => false,
         };
     }

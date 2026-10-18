@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\PrintDocumentService;
+use App\Services\OrderCancellationSettlementService;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -143,6 +144,10 @@ class SaleController extends Controller
     {
         $validated = $request->validate([
             'cancellation_reason' => ['required', 'string', 'min:5', 'max:1000'],
+            'cancellation_charge' => ['nullable', 'numeric', 'min:0'],
+            'applied_to_other_balance' => ['nullable', 'numeric', 'min:0'],
+            'cash_refund' => ['nullable', 'numeric', 'min:0'],
+            'retained_credit' => ['nullable', 'numeric', 'min:0'],
             'refund_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'refund_reference' => ['nullable', 'string', 'max:255'],
         ]);
@@ -161,32 +166,19 @@ class SaleController extends Controller
                 ->where('Order_type', 'Sale')
                 ->lockForUpdate()
                 ->first();
-            $received = (float) ($original?->recivedPayment ?? 0);
             $balance = (float) ($original?->remainingBalance ?? 0);
-            $refundMethod = $validated['refund_method'] ?? null;
-
-            if ($received > 0 && blank($refundMethod)) {
-                throw ValidationException::withMessages([
-                    'refund_method' => 'وصول شدہ رقم واپس کرنے کا طریقہ منتخب کریں۔',
-                ]);
-            }
-            if ($received > 0 && PaymentMethods::requiresReference($refundMethod) && blank($validated['refund_reference'] ?? null)) {
-                throw ValidationException::withMessages([
-                    'refund_reference' => 'منتخب رقم واپسی کے طریقے کا حوالہ نمبر درج کریں۔',
-                ]);
-            }
-
-            Transaction::create([
-                'remainingBalance' => -$balance,
-                'recivedPayment' => -$received,
-                'Order_type' => 'Sale Cancellation',
-                'sale_id' => $sale->id,
-                'customerId' => $sale->customer_id ?? $original?->customerId,
-                'userId' => $ownerId,
-                'payment_method' => $refundMethod ?? $original?->payment_method ?? 'cash',
-                'payment_reference' => $validated['refund_reference'] ?? null,
-                'paid_on' => now()->toDateString(),
-                'comment' => 'فروخت منسوخی: '.$validated['cancellation_reason'],
+            app(OrderCancellationSettlementService::class)->settle([
+                'user_id' => $ownerId, 'customer_id' => $sale->customer_id ?? $original?->customerId,
+                'source_type' => 'legacy_sale', 'source_id' => $sale->id,
+                'order_total' => $sale->detail()->get()->sum(fn ($item) => (float) $item->price * (float) $item->quantity),
+                'outstanding' => $balance, 'transaction_type' => 'Sale Cancellation', 'sale_id' => $sale->id,
+                'payment_method_field' => 'refund_method', 'payment_reference_field' => 'refund_reference',
+                'comment_prefix' => 'فروخت منسوخی: ',
+            ], Auth::user(), [
+                'reason' => $validated['cancellation_reason'], 'cancellation_charge' => $validated['cancellation_charge'] ?? 0,
+                'compensation' => 0, 'applied_to_other_balance' => $validated['applied_to_other_balance'] ?? 0,
+                'cash_refund' => $validated['cash_refund'] ?? null, 'retained_credit' => $validated['retained_credit'] ?? 0,
+                'payment_method' => $validated['refund_method'] ?? null, 'payment_reference' => $validated['refund_reference'] ?? null,
             ]);
 
             $sale->update([

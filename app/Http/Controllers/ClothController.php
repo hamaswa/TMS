@@ -175,10 +175,11 @@ class ClothController extends Controller
     {
         try {
             $this->normalizeInventoryGridInput($request);
+            $this->normalizeSuitSalePricing($request);
             $request->mergeIfMissing([
                 'color_tracking_mode' => Cloth::COLOR_TRACKING_NONE,
                 'online_availability' => 'pos_only',
-                'sale_price_basis' => Cloth::SALE_PRICE_PER_METER,
+                'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
             ]);
             $validated = $request->validate([
                 'name' => ['nullable', 'string', 'max:100'],
@@ -527,6 +528,7 @@ class ClothController extends Controller
             if ($request->boolean('inventory_grid')) {
                 return $this->updateFromInventoryGrid($request, $cloth);
             }
+            $this->normalizeSuitSalePricing($request);
             [$storefront, $canConfigureOnline] = $this->storefrontContext();
             $currentOnlineAvailability = $this->onlineAvailability($cloth, $storefront);
             if ($canConfigureOnline) {
@@ -536,9 +538,7 @@ class ClothController extends Controller
                 // change whether the item is offered to online customers.
                 $request->merge(['online_availability' => $currentOnlineAvailability]);
             }
-            $request->mergeIfMissing([
-                'sale_price_basis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
-            ]);
+            $request->merge(['sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT]);
             $validated = $request->validate([
                 'name' => ['nullable', 'string', 'max:100'],
                 'cloth_type_id' => ['required', 'integer'],
@@ -660,15 +660,14 @@ class ClothController extends Controller
     private function updateFromInventoryGrid(Request $request, Cloth $cloth)
     {
         $this->normalizeInventoryGridInput($request);
+        $this->normalizeSuitSalePricing($request);
         [$storefront, $canConfigureOnline] = $this->storefrontContext();
         $currentOnlineAvailability = $this->onlineAvailability($cloth, $storefront);
         if (! $canConfigureOnline) {
             $request->merge(['online_availability' => $currentOnlineAvailability]);
         }
-        $request->mergeIfMissing([
-            'online_availability' => $currentOnlineAvailability,
-            'sale_price_basis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
-        ]);
+        $request->mergeIfMissing(['online_availability' => $currentOnlineAvailability]);
+        $request->merge(['sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT]);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
@@ -959,6 +958,26 @@ class ClothController extends Controller
             'is_available' => $online,
             'online_order_enabled' => $online,
         ])->save();
+    }
+
+    private function normalizeSuitSalePricing(Request $request): void
+    {
+        $typeName = (string) ClothType::where('user_id', Auth::user()->businessOwnerId())
+            ->whereKey($request->integer('cloth_type_id'))
+            ->value('name');
+        $normalizedType = mb_strtolower(trim($typeName));
+        $isCotton = str_contains($normalizedType, 'cotton')
+            || str_contains($normalizedType, 'کاٹن')
+            || str_contains($normalizedType, 'کپاس');
+        $defaultLength = $isCotton ? 4.5 : 4.0;
+        $suitPrice = round((float) $request->input('suit_sale_price', 0), 2);
+
+        $request->merge([
+            'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
+            'default_sale_length' => $defaultLength,
+            // Internal compatibility value; users sell and see the price per suit.
+            'sale_price' => round($suitPrice / $defaultLength, 2),
+        ]);
     }
 
 
