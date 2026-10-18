@@ -379,17 +379,13 @@
                                     ])
                                     <div class="measurement-grid" data-template-column="right">
                                         @foreach (['length' => 'لمبائی', 'arms' => 'بازو', 'teraa' => 'تیرا', 'senaChorai' => 'سینہ چوڑائی', 'damanchorai' => 'دامن چوڑائی', 'shalwar' => 'شلوار', 'pancha' => 'پائنچہ', 'shalwarGheer' => 'شلوار گھیر', 'monda' => 'مونڈھا', 'chuta' => 'چوٹا'] as $name => $label)
-                                            @php
-                                                $templateKey = $name === 'monda' ? 'shoulder' : $name;
-                                            @endphp
-                                            <div class="form-group measurement-field"
-                                                data-template-field="system.{{ $templateKey }}"
-                                                data-default-column="right"><label
-                                                    for="measurement-{{ $name }}">{{ $label }} <span
-                                                        class="text-danger">*</span></label><input
-                                                    id="measurement-{{ $name }}" type="number" step="0.01"
-                                                    min="0" class="form-control" name="{{ $name }}"
-                                                    value="{{ old($name) }}"></div>
+                                            @include('customer.partials.system-measurement-field', [
+                                                'fieldKey' => $name === 'monda' ? 'shoulder' : $name,
+                                                'inputId' => 'measurement-'.$name,
+                                                'inputName' => $name,
+                                                'value' => null,
+                                                'required' => false,
+                                            ])
                                         @endforeach
                                         @include('customer.partials.custom-measurements', [
                                             'embedded' => true,
