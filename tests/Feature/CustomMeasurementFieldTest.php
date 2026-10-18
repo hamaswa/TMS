@@ -59,7 +59,12 @@ class CustomMeasurementFieldTest extends TestCase
             'is_required' => true,
             'is_active' => true,
         ]);
-        $payload = ['name' => 'Custom Customer', 'contact' => '03001112222'];
+        // Customer measurements are saved per template, so the field must belong to the selected one.
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id, 'name' => 'کالر', 'system_fields' => [],
+            'custom_field_ids' => [$field->id], 'is_default' => true, 'is_active' => true,
+        ]);
+        $payload = ['name' => 'Custom Customer', 'contact' => '03001112222', 'measurement_template_id' => $template->id];
 
         $this->actingAs($owner)->post(route('admin.Customers.store'), $payload)
             ->assertSessionHasErrors('custom_measurements.'.$field->id);

@@ -717,7 +717,7 @@
                                     @if(!$isTailor && !$isDelivered && (float)$order->tailor_paid_amount <= 0)
                                         <details class="mb-3">
                                             <summary class="tj-button"><i class="fas fa-user-edit"></i> درزی / شرح تبدیل کریں</summary>
-                                            <form method="POST" action="{{ route('admin.tailor-jobs.assign', $order) }}" class="tj-assignment-form mt-2" onsubmit="return confirm('کیا آپ واقعی اس آرڈر کا درزی یا شرح تبدیل کرنا چاہتے ہیں؟ یہ تبدیلی تاریخ میں محفوظ ہوگی۔')">
+                                            <form method="POST" action="{{ route('admin.tailor-jobs.assign', $order) }}" class="tj-assignment-form mt-2" data-confirm="کیا آپ واقعی اس آرڈر کا درزی یا شرح تبدیل کرنا چاہتے ہیں؟ یہ تبدیلی تاریخ میں محفوظ ہوگی۔">
                                                 @csrf @method('PATCH')
                                                 <input type="hidden" name="confirm_reassign" value="1">
                                                 <div class="tj-progress-form">

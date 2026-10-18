@@ -424,8 +424,7 @@
                                             class="form-control" name="recivedPayment" id="recivedPayment" required>
                                     </div>
                                     <div class="order-field is-money is-balance">
-                                        <label for="orderBalance"><i class="fas fa-file-invoice-dollar"></i> اس آرڈر کا
-                                            بقایا</label>
+                                        <label for="orderBalance"><i class="fas fa-file-invoice-dollar"></i> اس آرڈر کا بقایا</label>
                                         <input type="number" class="form-control" id="orderBalance" readonly
                                             value="{{ $orderBalance }}">
                                     </div>
@@ -442,10 +441,8 @@
                                     @if ($missingTailor)
                                         <div class="order-field order-field-full">
                                             <div class="alert alert-warning mb-0" role="alert">
-                                                <strong><i class="fas fa-exclamation-triangle"></i> اس آرڈر کا پرانا درزی
-                                                    حذف ہو چکا ہے۔</strong>
-                                                <div class="small mt-1">نیچے نیا درزی اور اس کی اجرت منتخب کر کے آرڈر محفوظ
-                                                    کریں۔</div>
+                                                <strong><i class="fas fa-exclamation-triangle"></i> اس آرڈر کا پرانا درزی حذف ہو چکا ہے۔</strong>
+                                                <div class="small mt-1">نیچے نیا درزی اور اس کی اجرت منتخب کر کے آرڈر محفوظ کریں۔</div>
                                             </div>
                                         </div>
                                     @endif
@@ -468,8 +465,7 @@
                                                 <option value="">درزی کی رقم منتخب کریں</option>
                                                 @foreach ($tailorRates as $rate)
                                                     <option value="{{ $rate->id }}-{{ $rate->price }}"
-                                                        @selected((int) $rate->id === (int) $data->rateId)>{{ $rate->price }} --
-                                                        {{ $rate->options?->Name ?: ($rate->type ?: 'سلائی') }}</option>
+                                                        @selected((int) $rate->id === (int) $data->rateId)>{{ $rate->price }} -- {{ $rate->options?->Name ?: ($rate->type ?: 'سلائی') }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -638,8 +634,7 @@
                                                                     <input
                                                                         id="order-system-measurement-{{ $key }}"
                                                                         class="form-control"
-                                                                        name="system_measurements[{{ $key }}]"
-                                                                        value="{{ $value }}" type="number"
+                                                                        name="system_measurements[{{ $key }}]" value="{{ $value }}" type="number"
                                                                         step="0.01" min="0">
                                                                 </div>
                                                             @elseif ($item['type'] === 'preference')
@@ -676,11 +671,9 @@
                                                                         id="order-system-preference-{{ $key }}"
                                                                         class="form-control"
                                                                         name="system_measurements[{{ $key }}]">
-                                                                        <option value="">{{ $meta['label'] }} منتخب
-                                                                            کریں</option>
+                                                                        <option value="">{{ $meta['label'] }} منتخب کریں</option>
                                                                         @if ($value !== '' && !$hasSavedOption)
-                                                                            <option value="{{ $value }}" selected>
-                                                                                {{ $value }}</option>
+                                                                            <option value="{{ $value }}" selected>{{ $value }}</option>
                                                                         @endif
                                                                         @foreach ($options as $option)
                                                                             @php
@@ -688,9 +681,7 @@
                                                                                     (string) $option->Name,
                                                                                 );
                                                                             @endphp
-                                                                            <option value="{{ $optionName }}"
-                                                                                @selected($optionName === $value)>
-                                                                                {{ $optionName }}</option>
+                                                                            <option value="{{ $optionName }}" @selected($optionName === $value)>{{ $optionName }}</option>
                                                                         @endforeach
                                                                     </select>
                                                                 </div>

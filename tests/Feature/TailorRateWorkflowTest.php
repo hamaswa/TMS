@@ -64,11 +64,12 @@ class TailorRateWorkflowTest extends TestCase
         // which was removed before order detachment was introduced.
         $deletedTailor->delete();
 
-        foreach (['admin.order-print', 'admin.order-prints'] as $route) {
+        // The two-copy receipt uses a compact header, so it shows the short label.
+        foreach (['admin.order-print' => 'بعد میں مقرر ہوگا', 'admin.order-prints' => 'بعد میں'] as $route => $label) {
             $this->actingAs($owner)
                 ->get(route($route, $order))
                 ->assertOk()
-                ->assertSeeText('بعد میں مقرر ہوگا');
+                ->assertSeeText($label);
         }
 
         $this->actingAs($owner)
@@ -809,8 +810,9 @@ class TailorRateWorkflowTest extends TestCase
             ->assertSee('value="1700"', false)
             ->assertSee('value="700"', false)
             ->assertSee('900 -- Mens suit')
-            ->assertSeeText('لباس کی پیمائش')
-            ->assertSeeText('سلائی کی پسند')
+            // Measurement panels follow the template builder's right/left columns.
+            ->assertSeeText('دائیں کالم')
+            ->assertSeeText('بائیں کالم')
             ->assertSee('name="system_measurements[length]"', false)
             ->assertSee('name="system_measurements[necktype]"', false)
             ->assertSee('<option value="Round neck" selected>Round neck</option>', false)

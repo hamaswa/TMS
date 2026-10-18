@@ -165,7 +165,7 @@
                                                 <div class="dropdown-divider"></div>
                                                 <form action="{{ route('admin.purchases.destroy', $purchase) }}"
                                                     method="POST"
-                                                    onsubmit="return confirm('کیا آپ واقعی اس خریداری ({{ $purchase->purchase_number }}) کو حذف کرنا چاہتے ہیں؟');">
+                                                    data-confirm="کیا آپ واقعی اس خریداری ({{ $purchase->purchase_number }}) کو حذف کرنا چاہتے ہیں؟">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="dropdown-item text-danger">

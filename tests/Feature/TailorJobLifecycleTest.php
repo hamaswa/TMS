@@ -50,7 +50,7 @@ class TailorJobLifecycleTest extends TestCase
             ->assertSee('js-tailor-picker', false)
             ->assertSee('id="wo-worker-filter"', false)
             ->assertSee(route('admin.tailor-jobs.assign', $activeOrder), false)
-            ->assertSee('href="'.route('admin.order-print', $activeOrder).'" target="_blank" rel="noopener"', false)
+            ->assertSee('href="'.route('admin.order-prints', $activeOrder).'" target="_blank" rel="noopener"', false)
             ->assertDontSee('title="مرحلہ محفوظ کریں"', false)
             ->assertDontSeeText('فہرست')
             ->assertDontSeeText('رقم / بقایا')

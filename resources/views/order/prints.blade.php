@@ -682,13 +682,13 @@
                         {{ $orderDetail->measurementTemplate->name }}
                     </div>
                 @endif
-                @if ($orderDetail->measurementTemplate)
+                @if ($orderDetail->measurementTemplate || $printMeasurements->isNotEmpty())
 
-                    {{-- ============ TEMPLATE ORDER: print ONLY this template's fields ============ --}}
+                    {{-- ============ TEMPLATE ORDER (or saved rows without a template): print ONLY these fields ============ --}}
                     @php
                         $tpl = $orderDetail->measurementTemplate;
-                        $layoutMap = collect($tpl->field_layout ?? [])->keyBy('source');
-                        $oneColumn = (int) ($tpl->layout_columns ?? 2) === 1;
+                        $layoutMap = collect($tpl?->field_layout ?? [])->keyBy('source');
+                        $oneColumn = (int) ($tpl?->layout_columns ?? 2) === 1;
 
                         // Preference fields go left by default, measurements go right
                         $preferenceKeys = [

@@ -975,19 +975,16 @@
                                     @if ($canAddCloth)
                                         <button id="co-add-cloth-button" class="co-btn is-primary co-add-row-button"
                                             type="button" aria-expanded="{{ old('cloth_id') ? 'true' : 'false' }}"
-                                            aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> کپڑا شامل
-                                            کریں</button>
+                                            aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> کپڑا شامل کریں</button>
                                         @endif @if ($canAddTailoring)
                                             <button class="co-btn is-tailor" data-toggle="modal"
-                                                data-target="#tailoringItemModal"><i class="fas fa-plus"></i> سلائی شامل
-                                                کریں</button>
+                                                data-target="#tailoringItemModal"><i class="fas fa-plus"></i> سلائی شامل کریں</button>
                                         @endif
                                     @endif
                         </div>
                     </div>
                     <div class="co-list">
-                        <div class="co-grid-head" aria-hidden="true"><span>آئٹم</span><span>رنگ / تفصیل</span><span>میٹر /
-                                تعداد</span><span>کل قیمت</span><span>نوٹ</span><span>رسید / عمل</span></div>
+                        <div class="co-grid-head" aria-hidden="true"><span>آئٹم</span><span>رنگ / تفصیل</span><span>میٹر / تعداد</span><span>کل قیمت</span><span>نوٹ</span><span>رسید / عمل</span></div>
                         @if ($canAddCloth && !$counterOrder->isClosed())
                             <form id="co-new-cloth-row" class="co-grid-row co-cloth-form co-ajax-row-form is-new"
                                 method="POST"
@@ -1127,12 +1124,10 @@
                             <div class="co-modal-grid">
                                 <div><label class="co-field-label" for="co-profile"><span>ناپ کس کا ہے؟</span><button
                                             id="co-measurement-link" class="co-measurement-link" type="button"><i
-                                                class="fas fa-ruler-combined ml-1"></i> ناپ دیکھیں / تبدیل
-                                            کریں</button></label><select id="co-profile" class="form-control"
+                                                class="fas fa-ruler-combined ml-1"></i> ناپ دیکھیں / تبدیل کریں</button></label><select id="co-profile" class="form-control"
                                         name="measurement_profile_id" required>
                                         @foreach ($profiles as $profile)
-                                            <option value="{{ $profile->id }}"
-                                                data-measurement-url="{{ route('admin.counter-orders.measurements.edit', [$counterOrder, $profile]) }}"
+                                            <option value="{{ $profile->id }}" data-measurement-url="{{ route('admin.counter-orders.measurements.edit', [$counterOrder, $profile]) }}"
                                                 data-template-ids="{{ implode(',', $profileTemplateIds->get($profile->id, [])) }}"
                                                 @selected((int) $selectedProfileId === $profile->id)>{{ $profile->name }}</option>
                                         @endforeach
@@ -1229,12 +1224,10 @@
                                 <div class="co-modal-grid">
                                     <div><label class="co-field-label" for="edit-profile-{{ $item->id }}"><span>ناپ
                                                 کس کا ہے؟</span><button class="co-measurement-link" type="button"><i
-                                                    class="fas fa-ruler-combined ml-1"></i> ناپ دیکھیں / تبدیل
-                                                کریں</button></label><select id="edit-profile-{{ $item->id }}"
+                                                    class="fas fa-ruler-combined ml-1"></i> ناپ دیکھیں / تبدیل کریں</button></label><select id="edit-profile-{{ $item->id }}"
                                             class="form-control co-profile" name="measurement_profile_id" required>
                                             @foreach ($profiles as $profile)
-                                                <option value="{{ $profile->id }}"
-                                                    data-measurement-url="{{ route('admin.counter-orders.measurements.edit', [$counterOrder, $profile]) }}"
+                                                <option value="{{ $profile->id }}" data-measurement-url="{{ route('admin.counter-orders.measurements.edit', [$counterOrder, $profile]) }}"
                                                     data-template-ids="{{ implode(',', $profileTemplateIds->get($profile->id, [])) }}"
                                                     @selected($item->measurement_profile_id === $profile->id)>{{ $profile->name }}</option>
                                             @endforeach
