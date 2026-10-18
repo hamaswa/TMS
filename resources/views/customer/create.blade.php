@@ -394,6 +394,12 @@
                                         @foreach (['length' => 'لمبائی', 'arms' => 'بازو', 'teraa' => 'تیرا', 'senaChorai' => 'سینہ چوڑائی', 'damanchorai' => 'دامن چوڑائی', 'shalwar' => 'شلوار', 'pancha' => 'پائنچہ', 'shalwarGheer' => 'شلوار گھیر', 'monda' => 'مونڈھا', 'chuta' => 'چوٹا'] as $name => $label)
                                             @include('customer.partials.system-measurement-field', [
                                                 'fieldKey' => $name === 'monda' ? 'shoulder' : $name,
+                                                'name' => $name,
+                                                'label' => $label,
+                                                'unit' => 'inch',
+                                                'choices' => collect(),
+                                                'optionTypeId' => null,
+                                                'optionTemplateId' => null,
                                                 'inputId' => 'measurement-'.$name,
                                                 'inputName' => $name,
                                                 'value' => null,
