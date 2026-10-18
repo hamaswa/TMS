@@ -204,12 +204,47 @@ class CustomerController extends Controller
         $totalReceived = $canViewBalances ? (float) (clone $baseTransactions)->sum('recivedPayment') : null;
         $visibleTypes = array_values(array_filter([
             $canViewTailoring ? 'Tailor' : null,
+            $canViewTailoring ? 'Tailor Complaint Settlement' : null,
             $canViewShop ? 'Sale' : null,
             $canViewShop ? 'Sale Cancellation' : null,
             $canViewBalances ? 'Payment' : null,
         ]));
+        $ledgerTypes = [
+            'all' => 'تمام اندراجات',
+            'tailoring' => 'سلائی',
+            'shop' => 'دکان',
+            'adjustments' => 'واپسی / ہرجانہ',
+            'payments' => 'ادائیگیاں',
+        ];
+        $ledgerFilter = request()->query('ledger_type', 'all');
+        if (! array_key_exists($ledgerFilter, $ledgerTypes)) {
+            $ledgerFilter = 'all';
+        }
+        $ledgerQuery = (clone $baseTransactions)->whereIn('Order_type', $visibleTypes);
+        $ledgerTotals = $canViewBalances ? [
+            'charges' => (float) (clone $ledgerQuery)->whereIn('Order_type', ['Tailor', 'Sale'])->sum('remainingBalance')
+                + (float) (clone $ledgerQuery)->whereIn('Order_type', ['Tailor', 'Sale'])->sum('recivedPayment'),
+            'payments' => (float) (clone $ledgerQuery)->where('recivedPayment', '>', 0)->sum('recivedPayment'),
+            'refunds_paid' => abs((float) (clone $ledgerQuery)->where('recivedPayment', '<', 0)->sum('recivedPayment')),
+            'adjustments' => (float) (clone $ledgerQuery)->whereIn('Order_type', ['Sale Cancellation', 'Tailor Complaint Settlement'])->sum('remainingBalance'),
+        ] : null;
+        if ($ledgerFilter === 'tailoring') {
+            $ledgerQuery->whereIn('Order_type', ['Tailor', 'Tailor Complaint Settlement']);
+        } elseif ($ledgerFilter === 'shop') {
+            $ledgerQuery->whereIn('Order_type', ['Sale', 'Sale Cancellation']);
+        } elseif ($ledgerFilter === 'adjustments') {
+            $ledgerQuery->whereIn('Order_type', ['Sale Cancellation', 'Tailor Complaint Settlement']);
+        } elseif ($ledgerFilter === 'payments') {
+            $ledgerQuery->where('Order_type', 'Payment');
+        }
+        if (request()->filled('ledger_from')) {
+            $ledgerQuery->whereDate('created_at', '>=', request()->date('ledger_from')->format('Y-m-d'));
+        }
+        if (request()->filled('ledger_to')) {
+            $ledgerQuery->whereDate('created_at', '<=', request()->date('ledger_to')->format('Y-m-d'));
+        }
         $transactions = $canViewBalances && $visibleTypes
-            ? (clone $baseTransactions)->whereIn('Order_type', $visibleTypes)->latest()->paginate(20, ['*'], 'ledger_page')->withQueryString()
+            ? $ledgerQuery->latest()->paginate(20, ['*'], 'ledger_page')->withQueryString()
             : null;
         $orders = $canViewTailoring
             ? $customer->orders()->where('userId', $ownerId)
@@ -360,6 +395,9 @@ class CustomerController extends Controller
             'customer',
             'totalBalance',
             'transactions',
+            'ledgerTypes',
+            'ledgerFilter',
+            'ledgerTotals',
             'orders',
             'sales',
             'canViewBalances',
