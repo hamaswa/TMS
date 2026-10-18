@@ -338,6 +338,7 @@ class TailorJobController extends Controller
             'trial' => 'کارخانے میں ہے',
             'ready' => 'تیار ہے',
             'delivered' => 'حوالہ شدہ',
+                'cancelled' => 'منسوخ',
         ];
         $nextActions = $detailed
             ? $job->nextStatusOptions()
@@ -346,7 +347,7 @@ class TailorJobController extends Controller
                     ['value' => 'start', 'label' => 'کارخانے میں ہے'],
                     ['value' => 'deliver', 'label' => 'حوالہ کریں'],
                 ],
-                'delivered', 'unassigned' => [],
+                'delivered', 'cancelled', 'unassigned' => [],
                 default => [['value' => 'complete', 'label' => 'تیار ہے']],
             };
         $history = $job->statusHistory()->latest('id')->first();

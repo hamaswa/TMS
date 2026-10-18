@@ -247,6 +247,8 @@
                         @forelse ($saleStocks as $saleStock)
                             @php
                                 $itemTotal = $saleStock->length * $saleStock->selling_price;
+                                $isSuitSale = $saleStock->sale_price_basis === \App\Models\Cloth::SALE_PRICE_PER_SUIT
+                                    && $saleStock->suit_quantity !== null;
                                 $totalAmount += $itemTotal;
                             @endphp
                             <div class="stock-item-card">
@@ -255,7 +257,7 @@
                                 @if(filled($saleStock->color))
                                     <div class="stock-order-row"><span class="stock-order-label">رنگ:</span><strong class="stock-order-value">{{ $saleStock->color }}</strong></div>
                                 @endif
-                                <div class="stock-order-row"><span class="stock-order-label">میٹر:</span><strong class="stock-order-value">{{ $saleStock->length }}</strong></div>
+                                @if($isSuitSale)<div class="stock-order-row"><span class="stock-order-label">سوٹ:</span><strong class="stock-order-value">{{ number_format((float) $saleStock->suit_quantity, 0) }} × Rs. {{ number_format((float) $saleStock->suit_unit_price, 2) }}</strong></div><div class="stock-order-row"><span class="stock-order-label">استعمال شدہ میٹر:</span><strong class="stock-order-value">{{ number_format((float) $saleStock->length, 2) }}</strong></div>@else<div class="stock-order-row"><span class="stock-order-label">میٹر:</span><strong class="stock-order-value">{{ $saleStock->length }}</strong></div>@endif
                                 <div class="stock-order-row"><span class="stock-order-label">ٹوٹل:</span><strong class="stock-order-value">{{ number_format($itemTotal, 2) }}</strong></div>
                             </div>
                         @empty

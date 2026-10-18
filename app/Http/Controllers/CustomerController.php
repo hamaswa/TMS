@@ -262,8 +262,9 @@ class CustomerController extends Controller
         $standaloneClaims = $orders->isNotEmpty()
             ? CounterOrderComplaint::where('user_id', $ownerId)
                 ->whereIn('order_id', $orders->pluck('id'))
-                ->latest()->get()->groupBy('order_id')
+                ->with(['evidence', 'recoveries'])->latest()->get()->groupBy('order_id')
             : collect();
+        $tailors = $canViewTailoring ? Tailor::where('user_id', $ownerId)->orderBy('name')->get(['id', 'name']) : collect();
         $sales = collect();
         if ($canViewShop) {
             $legacySales = $customer->sales()
@@ -413,6 +414,7 @@ class CustomerController extends Controller
             'orders',
             'tailoringCounterLinks',
             'standaloneClaims',
+            'tailors',
             'sales',
             'canViewBalances',
             'canViewTailoring',

@@ -390,6 +390,31 @@
             overscroll-behavior: contain
         }
 
+        #orderRecoveryModal .modal-dialog {
+            height: calc(100vh - 32px);
+            margin-top: 16px;
+            margin-bottom: 16px
+        }
+
+        #orderRecoveryModal .modal-content {
+            display: flex;
+            height: 100%;
+            max-height: 100%;
+            flex-direction: column
+        }
+
+        #orderRecoveryModal .modal-header {
+            flex: 0 0 auto
+        }
+
+        #orderRecoveryModal .modal-body {
+            min-height: 0;
+            flex: 1 1 auto;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch
+        }
+
         .co-field-label {
             display: flex !important;
             align-items: center;
@@ -899,9 +924,29 @@
                 <div><small>بقایا</small><strong id="co-summary-balance" dir="ltr">Rs.
                         {{ number_format((float) $counterOrder->balance_amount, 2) }}</strong></div>
             </div>
-            @if($counterOrder->items->contains(fn($item) => $item->type === 'tailoring' && $item->status === 'confirmed') && $canAddTailoring)
-                <button type="button" class="btn btn-outline-danger mb-3" data-toggle="modal" data-target="#tailoringComplaintModal">سلائی شکایت / واپسی / ہرجانہ</button>
-                <div class="modal fade" id="tailoringComplaintModal" tabindex="-1" role="dialog" aria-labelledby="tailoringComplaintTitle" aria-hidden="true"><div class="modal-dialog modal-lg" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title" id="tailoringComplaintTitle">سلائی شکایت / واپسی / ہرجانہ</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body">
+            @php
+                $hasConfirmedTailoring = $counterOrder->items->contains(
+                    fn ($item) => $item->type === 'tailoring' && $item->status === 'confirmed'
+                );
+                $activeReceipts = $receiptLinks->where('status', '!=', 'cancelled');
+            @endphp
+            @if(($hasConfirmedTailoring && $canAddTailoring) || ($activeReceipts->isNotEmpty() && $canAddCloth))
+                <button id="order-recovery" type="button" class="btn btn-outline-danger mb-3" data-toggle="modal" data-target="#orderRecoveryModal">واپسی / منسوخی</button>
+                <div class="modal fade" id="orderRecoveryModal" tabindex="-1" role="dialog" aria-labelledby="orderRecoveryTitle" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title" id="orderRecoveryTitle">آرڈر واپسی، منسوخی یا شکایت</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body">
+                @if($activeReceipts->isNotEmpty() && $canAddCloth)
+                    <div class="card mb-3"><div class="card-header"><strong>کپڑے کی فروخت منسوخ / واپس کریں</strong></div><div class="card-body">
+                        <p class="text-muted">اس کارروائی سے متعلقہ مکمل رسید کا کپڑا اسٹاک میں واپس اور گاہک کا کھاتا الٹ جائے گا۔</p>
+                        @foreach($activeReceipts as $receipt)
+                            <form method="POST" action="{{ route('admin.counter-sales.cancel', $receipt->first_sale_stock_id) }}" class="border rounded p-3 mb-2" data-confirm="کیا آپ یہ مکمل کپڑے کی رسید منسوخ کر کے اسٹاک اور کھاتا واپس کرنا چاہتے ہیں؟">@csrf @method('PATCH')
+                                <strong>{{ $receipt->receipt_number }}</strong>
+                                <div class="form-group mt-2"><label>واپسی / منسوخی کی وجہ</label><textarea name="cancellation_reason" class="form-control" minlength="5" maxlength="1000" required></textarea></div>
+                                @include('customer.partials.cancellation-settlement-fields', ['paidAmount' => (float) ($receipt->transaction?->recivedPayment ?? 0), 'allowCompensation' => false, 'methodName' => 'refund_method', 'referenceName' => 'refund_reference'])
+                                <button class="btn btn-danger">مکمل رسید منسوخ کریں</button>
+                            </form>
+                        @endforeach
+                    </div></div>
+                @endif
+                @if($hasConfirmedTailoring && $canAddTailoring)
                 <div class="card mb-3" dir="rtl">
                     <div class="card-header"><strong>سلائی کی شکایت / واپسی اور کپڑے کا نقصان</strong></div>
                     <div class="card-body">
@@ -925,7 +970,7 @@
                         @php
                             $complaints = \App\Models\CounterOrderComplaint::where('counter_order_id', $counterOrder->id)
                                 ->where('user_id', auth()->user()->businessOwnerId())
-                                ->with('item')->latest()->get();
+                                ->with(['item', 'evidence', 'recoveries'])->latest()->get();
                         @endphp
                         @if($complaints->isNotEmpty())
                             <hr><h3 class="h6">پچھلی شکایات</h3>
@@ -951,12 +996,15 @@
                                     @else
                                         <div class="text-success">تصفیہ مکمل · منظور شدہ سلائی Rs {{ number_format($complaint->approved_tailoring_refund, 2) }} · ہرجانہ Rs {{ number_format($complaint->approved_cloth_compensation, 2) }} · ادا شدہ Rs {{ number_format($complaint->actual_cash_payout, 2) }}</div>
                                     @endif
+                                    @include('tailoring-complaints.management', ['claim' => $complaint, 'tailors' => $tailors])
                                 </div>
                             @endforeach
                         @endif
                     </div>
                 </div>
+                @endif
                 </div></div></div></div>
+                <script>document.addEventListener('DOMContentLoaded',function(){if(window.location.hash==='#order-recovery'&&window.jQuery){window.jQuery('#orderRecoveryModal').modal('show');}});</script>
             @endif
             <div class="co-main">
                 <section class="co-panel">

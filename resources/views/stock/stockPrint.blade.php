@@ -344,15 +344,7 @@
                                     <textarea id="cancellation_reason" name="cancellation_reason" class="form-control" minlength="5"
                                         maxlength="1000" required>{{ old('cancellation_reason') }}</textarea>
                                 </div>
-                                <div class="form-group mb-0">
-                                    <label for="refund_method">رقم واپسی کا طریقہ</label>
-                                    <select id="refund_method" name="refund_method" class="form-control">
-                                        <option value="">کوئی رقم واپس نہیں کرنی</option>
-                                        @foreach (\App\Support\PaymentMethods::LABELS as $method => $label)
-                                            <option value="{{ $method }}" @selected(old('refund_method') === $method)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                                @include('customer.partials.cancellation-settlement-fields', ['paidAmount' => (float) $payment, 'allowCompensation' => false, 'methodName' => 'refund_method', 'referenceName' => 'refund_reference'])
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">واپس جائیں</button>
@@ -387,6 +379,8 @@
                         @foreach ($sellStock as $sellstock)
                             @php
                                 $itemTotal = $sellstock->length * $sellstock->selling_price;
+                                $isSuitSale = $sellstock->sale_price_basis === \App\Models\Cloth::SALE_PRICE_PER_SUIT
+                                    && $sellstock->suit_quantity !== null;
                                 $totalAmount += $itemTotal;
                             @endphp
                             <div class="stock-item-card">
@@ -394,7 +388,7 @@
                                 @if(filled($sellstock->color))
                                     <div class="stock-item-meta"><span>رنگ: <strong>{{ $sellstock->color }}</strong></span></div>
                                 @endif
-                                <div class="stock-item-calculation"><span>{{ number_format((float) $sellstock->length, 2) }} m</span><span>×</span><span>Rs. {{ number_format((float) $sellstock->selling_price, 2) }}</span><span>=</span><strong>Rs. {{ number_format($itemTotal, 2) }}</strong></div>
+                                <div class="stock-item-calculation">@if($isSuitSale)<span>{{ number_format((float) $sellstock->suit_quantity, 0) }} سوٹ</span><span>×</span><span>Rs. {{ number_format((float) $sellstock->suit_unit_price, 2) }} فی سوٹ</span>@else<span>{{ number_format((float) $sellstock->length, 2) }} m</span><span>×</span><span>Rs. {{ number_format((float) $sellstock->selling_price, 2) }}</span>@endif<span>=</span><strong>Rs. {{ number_format($itemTotal, 2) }}</strong></div>
                             </div>
                         @endforeach
                     </div>

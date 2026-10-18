@@ -22,6 +22,7 @@ use App\Services\CounterOrderService;
 use App\Services\CounterOrderNumberService;
 use App\Services\MeasurementService;
 use App\Services\PrintDocumentService;
+use App\Services\TailoringComplaintService;
 use App\Support\PaymentMethods;
 use App\Rules\PakistanMobileNumber;
 use App\Rules\UniqueCustomerPhone;
@@ -189,6 +190,7 @@ class CounterOrderController extends Controller
         $previousDue = app(CounterOrderService::class)->previousDue($counterOrder);
         $receiptLinks = CounterSaleReceipt::where('user_id', $ownerId)
             ->whereIn('id', $counterOrder->items->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id'))
+            ->with('transaction')
             ->get()->keyBy('id');
 
         return view('counter-orders.edit', compact(
@@ -849,7 +851,7 @@ class CounterOrderController extends Controller
         if ((float) $validated['requested_tailoring_refund'] + (float) $validated['requested_cloth_compensation'] <= 0) {
             throw ValidationException::withMessages(['requested_tailoring_refund' => 'واپسی یا کپڑے کے نقصان کی رقم درج کریں۔']);
         }
-        CounterOrderComplaint::create([
+        $claim = CounterOrderComplaint::create([
             'counter_order_id' => $counterOrder->id,
             'counter_order_item_id' => $item->id,
             'user_id' => $request->user()->businessOwnerId(),
@@ -859,6 +861,7 @@ class CounterOrderController extends Controller
             'requested_cloth_compensation' => $validated['requested_cloth_compensation'],
             'status' => 'pending',
         ]);
+        app(TailoringComplaintService::class)->notify($claim, 'opened');
         return back()->with('success', 'شکایت اور مجوزہ رقم محفوظ ہو گئی ہے۔ ابھی کوئی ادائیگی یا کھاتے میں تبدیلی نہیں ہوئی۔');
     }
 
@@ -867,6 +870,7 @@ class CounterOrderController extends Controller
     {
         $this->authorizeOrder($request, $counterOrder);
         abort_unless($this->canManageTailoring($request), 403);
+        abort_unless($request->user()->isBusinessOwner(), 403);
         $validated = $request->validate([
             'approved_tailoring_refund' => ['required', 'numeric', 'min:0'],
             'approved_cloth_compensation' => ['required', 'numeric', 'min:0'],
@@ -917,6 +921,7 @@ class CounterOrderController extends Controller
             ]);
             $locked->update([
                 'status' => 'settled',
+                'resolution' => ($refund > 0 && $compensation > 0) ? 'refund_and_compensation' : ($refund > 0 ? 'refund' : 'compensation'),
                 'approved_tailoring_refund' => $refund,
                 'approved_cloth_compensation' => $compensation,
                 'actual_cash_payout' => $payout,
@@ -924,8 +929,12 @@ class CounterOrderController extends Controller
                 'payment_reference' => $validated['payment_reference'] ?? null,
                 'settled_by_user_id' => $request->user()->id,
                 'settled_at' => now(),
+                'approved_by_user_id' => $request->user()->id,
+                'approved_at' => now(),
+                'closed_at' => now(),
             ]);
         });
+        app(TailoringComplaintService::class)->notify($complaint->fresh(), 'settled');
         return back()->with('success', 'شکایت کا تصفیہ اور کھاتے کی انٹری محفوظ ہو گئی ہے۔');
     }
 

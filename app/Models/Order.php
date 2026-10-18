@@ -9,7 +9,7 @@ class Order extends Model
 {
     use HasFactory;
 
-    public const STATUSES = ['unassigned', 'assigned', 'cutting', 'stitching', 'trial', 'ready', 'delivered'];
+    public const STATUSES = ['unassigned', 'assigned', 'cutting', 'stitching', 'trial', 'ready', 'delivered', 'cancelled'];
 
     public const STATUS_LABELS = [
         'unassigned' => 'درزی مقرر ہونا باقی',
@@ -19,15 +19,17 @@ class Order extends Model
         'trial' => 'ٹرائل',
         'ready' => 'تیار',
         'delivered' => 'حوالہ شدہ',
+        'cancelled' => 'منسوخ',
     ];
 
-    protected $fillable = ['name', 'sub_customer', 'measurement_template_id', 'suitNum', 'designPrice', 'design','customerId', 'suitQuantity', 'totalPayment', 'userId', 'returnDate', 'tailorId', 'rateId', 'remarks', 'tailor_price', 'rack_no', 'status', 'status_changed_at', 'started_at', 'ready_at', 'delivered_at', 'tailor_paid_amount', 'tailor_payment_status'];
+    protected $fillable = ['name', 'sub_customer', 'measurement_template_id', 'suitNum', 'designPrice', 'design','customerId', 'suitQuantity', 'totalPayment', 'userId', 'returnDate', 'tailorId', 'rateId', 'remarks', 'tailor_price', 'rack_no', 'status', 'cancellation_reason', 'status_changed_at', 'started_at', 'ready_at', 'delivered_at', 'cancelled_at', 'cancelled_by_user_id', 'tailor_paid_amount', 'tailor_payment_status'];
 
     protected $casts = [
         'status_changed_at' => 'datetime',
         'started_at' => 'datetime',
         'ready_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'cancelled_at' => 'datetime',
         'tailor_paid_amount' => 'decimal:2',
         'tailor_price' => 'decimal:2',
     ];

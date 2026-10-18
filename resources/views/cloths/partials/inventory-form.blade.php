@@ -67,9 +67,9 @@
                 <div class="cloth-field"><label for="cloth_type_id">کپڑے کی قسم <span class="cloth-required">*</span></label><select id="cloth_type_id" name="cloth_type_id" class="form-control" required><option value="">قسم منتخب کریں</option>@foreach($cloth_types as $type)<option value="{{ $type->id }}" @selected(old('cloth_type_id', $cloth?->cloth_type_id) == $type->id)>{{ $type->name }}</option>@endforeach</select></div>
                 <div class="cloth-field"><label for="cloth_brand_id">برانڈ / کمپنی <span class="cloth-required">*</span></label><select id="cloth_brand_id" name="cloth_brand_id" class="form-control" required><option value="">برانڈ منتخب کریں</option>@foreach($cloth_brands as $brand)<option value="{{ $brand->id }}" @selected(old('cloth_brand_id', $cloth?->cloth_brand_id) == $brand->id)>{{ $brand->name }}</option>@endforeach</select></div>
                 <div class="cloth-field"><label for="price">فی میٹر قیمت خرید <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="price" type="number" name="price" class="form-control" value="{{ old('price', $cloth?->price) }}" min="0" step="0.01" required></div></div>
-                <div class="cloth-field"><label for="sale_price_basis">فروخت کے ریٹ کی بنیاد <span class="cloth-required">*</span></label><select id="sale_price_basis" name="sale_price_basis" class="form-control" required><option value="per_meter" @selected(old('sale_price_basis', $cloth?->sale_price_basis ?? 'per_meter') === 'per_meter')>فی میٹر</option><option value="per_suit" @selected(old('sale_price_basis', $cloth?->sale_price_basis) === 'per_suit')>فی سوٹ</option></select></div>
-                <div class="cloth-field"><label for="default_sale_length">ڈیفالٹ سوٹ لمبائی (میٹر)</label><input id="default_sale_length" type="number" name="default_sale_length" class="form-control" value="{{ old('default_sale_length', $cloth?->default_sale_length) }}" min="0.01" step="0.01" placeholder="مثلاً 4 یا 4.5"><small>اسکین یا فروخت پر خود بھرے گی اور بعد میں تبدیل کی جا سکتی ہے۔</small></div>
-                <div class="cloth-field"><label for="sale_price">فی میٹر قیمت فروخت <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="sale_price" type="number" name="sale_price" class="form-control" value="{{ old('sale_price', $cloth?->sale_price) }}" min="0" step="0.01" required></div></div>
+                <input id="sale_price_basis" type="hidden" name="sale_price_basis" value="per_suit">
+                <div class="cloth-field"><label for="default_sale_length">ڈیفالٹ سوٹ لمبائی (میٹر)</label><input id="default_sale_length" type="number" name="default_sale_length" class="form-control" value="{{ old('default_sale_length', $cloth?->default_sale_length) }}" readonly><small>کاٹن / کپاس 4.5 میٹر، باقی تمام کپڑا 4 میٹر۔</small></div>
+                <input id="sale_price" type="hidden" name="sale_price" value="{{ old('sale_price', $cloth?->sale_price) }}">
                 <div id="suitSalePriceField" class="cloth-field"><label for="suit_sale_price">فی سوٹ قیمت فروخت <span class="cloth-required">*</span></label><div class="cloth-price-wrap"><span class="cloth-price-prefix">Rs.</span><input id="suit_sale_price" type="number" name="suit_sale_price" class="form-control" value="{{ old('suit_sale_price', $cloth?->suit_sale_price) }}" min="0" step="0.01"></div></div>
             </div>
         </section>
@@ -104,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const rows = document.getElementById('colorRows');
     const sharedField = document.getElementById('sharedStockField');
     const basis = document.getElementById('sale_price_basis');
+    const clothType = document.getElementById('cloth_type_id');
     const suitField = document.getElementById('suitSalePriceField');
     const suitPrice = document.getElementById('suit_sale_price');
     const defaultLength = document.getElementById('default_sale_length');
@@ -120,11 +121,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function addRow(item = {}){rows.querySelector('.cloth-empty-row')?.remove();rows.insertAdjacentHTML('beforeend',rowMarkup(item));bindRow(rows.lastElementChild);syncMode()}
     function renumber(){rows.querySelectorAll('tr[data-color-row]').forEach((row,index)=>{row.querySelector('.cloth-color-number').textContent=index+1;row.querySelector('input[type=file]').name=`color_images[${index}]`});if(!rows.querySelector('tr[data-color-row]'))rows.innerHTML=emptyRow()}
     function syncMode(){const separate=stockMode()==='per_color';sharedField.hidden=separate;document.querySelectorAll('.per-color-column').forEach(el=>el.hidden=!separate);document.querySelectorAll('.color-length').forEach(el=>el.required=separate)}
-    function syncPricing(){const perSuit=basis.value==='per_suit';suitField.hidden=!perSuit;suitPrice.required=perSuit;defaultLength.required=perSuit}
+    function syncPricing(){const type=(clothType.options[clothType.selectedIndex]?.text||'').toLocaleLowerCase();const cotton=type.includes('cotton')||type.includes('کاٹن')||type.includes('کپاس');basis.value='per_suit';suitField.hidden=false;suitPrice.required=true;defaultLength.required=true;defaultLength.value=cotton?'4.5':'4.0'}
     initialRows.forEach(addRow);renumber();syncMode();syncPricing();
     document.getElementById('addColorRow').addEventListener('click',()=>addRow({hex:'#808080',length:0}));
     document.querySelectorAll('[name="stock_mode"]').forEach(input=>input.addEventListener('change',syncMode));
-    basis.addEventListener('change',syncPricing);
+    clothType.addEventListener('change',syncPricing);
 });
 </script>
 @endpush

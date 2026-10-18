@@ -14,10 +14,12 @@ use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\TailorRecord;
 use App\Models\TailorSecurityDepositTransaction;
+use App\Models\TailoringRecovery;
 use App\Models\Transaction;
 use App\Models\Workers;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class FinancialReportService
 {
@@ -132,6 +134,14 @@ class FinancialReportService
                 ])
                 ->value('balance')
             : 0;
+        $tailoringRecoveries = $tailoringEnabled && Schema::hasTable('tailoring_recoveries')
+            ? (float) TailoringRecovery::where('user_id', $userId)->where('status', 'recovered')
+                ->whereBetween('created_at', [$start, $end])->where('method', '!=', 'shop_absorbed')->sum('amount')
+            : 0;
+        $tailoringLossAbsorbed = $tailoringEnabled && Schema::hasTable('tailoring_recoveries')
+            ? (float) TailoringRecovery::where('user_id', $userId)->where('method', 'shop_absorbed')
+                ->whereBetween('created_at', [$start, $end])->sum('amount')
+            : 0;
         $supplierPayments = $clothingEnabled ? (float) SupplierPayment::where('user_id', $userId)->whereBetween('payment_date', [$start->toDateString(), $end->toDateString()])->sum('amount') : 0;
         $tailorPayments = $tailoringEnabled ? (float) TailorRecord::whereHas('tailor', fn ($query) => $query->where('user_id', $userId))
             ->whereBetween('created_at', [$from, $to])->sum('amount') : 0;
@@ -181,6 +191,8 @@ class FinancialReportService
                 'receivables' => $receivablesTotal,
                 'payables' => $payablesTotal,
                 'security_deposits_held' => $securityDepositsHeld,
+                'tailoring_recoveries' => $tailoringRecoveries,
+                'tailoring_loss_absorbed' => $tailoringLossAbsorbed,
                 'security_deposits_received' => $securityDepositsReceived,
                 'security_deposits_refunded' => $securityDepositsRefunded,
                 'inventory_value' => $inventoryValue,

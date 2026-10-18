@@ -38,6 +38,12 @@ class CounterSaleService
             'clothes_rack.*' => ['nullable', 'string', 'max:100'],
             'length' => ['required', 'array'],
             'length.*' => ['required', 'numeric', 'gt:0'],
+            'sale_price_basis' => ['nullable', 'array'],
+            'sale_price_basis.*' => ['nullable', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
+            'suit_quantity' => ['nullable', 'array'],
+            'suit_quantity.*' => ['nullable', 'numeric', 'gt:0'],
+            'suit_unit_price' => ['nullable', 'array'],
+            'suit_unit_price.*' => ['nullable', 'numeric', 'min:0'],
             'customer_mode' => ['nullable', Rule::in(['regular', 'new', 'walk_in', 'random'])],
             'existing_customer_id' => ['nullable', 'integer'],
             'random_customer_name' => ['nullable', 'string', 'max:255'],
@@ -122,7 +128,7 @@ class CounterSaleService
             throw ValidationException::withMessages(['random_customer_phone' => 'یہ فون نمبر پہلے سے موجود ہے۔ موجودہ گاہک منتخب کریں۔']);
         }
 
-        return DB::transaction(function () use ($validated, $existingCustomer, $customerMode, $itemCount, $remainingBalance, $ownerId, $perMeters) {
+        return DB::transaction(function () use ($validated, $existingCustomer, $customerMode, $itemCount, $remainingBalance, $ownerId, $perMeters, $itemTotals) {
             $firstSale = null;
             $soldAt = now();
             $customer = $existingCustomer;
@@ -193,6 +199,13 @@ class CounterSaleService
 
                 $costPrice = (float) $clothColor->average_unit_cost ?: (float) $cloth->price;
                 $salePrice = $perMeters[$i];
+                $basis = $validated['sale_price_basis'][$i] ?? $cloth->sale_price_basis;
+                $suitQuantity = $basis === Cloth::SALE_PRICE_PER_SUIT
+                    ? (float) ($validated['suit_quantity'][$i] ?? 1)
+                    : null;
+                $suitUnitPrice = $basis === Cloth::SALE_PRICE_PER_SUIT
+                    ? round((float) ($validated['suit_unit_price'][$i] ?? ($itemTotals[$i] / max(1, $suitQuantity))), 2)
+                    : null;
                 $sale = SaleStock::create([
                     'counter_sale_receipt_id' => $receipt->id,
                     'cloth_type_id' => $validated['cloth_type'][$i],
@@ -205,6 +218,10 @@ class CounterSaleService
                     'sellDate' => $soldAt,
                     'clothes_rack' => $validated['clothes_rack'][$i] ?? null,
                     'selling_price' => $salePrice,
+                    'sale_price_basis' => $basis,
+                    'suit_quantity' => $suitQuantity,
+                    'suit_unit_price' => $suitUnitPrice,
+                    'suit_length' => $suitQuantity ? round((float) $validated['length'][$i] / $suitQuantity, 2) : null,
                     'profit' => max(0, $salePrice - $costPrice),
                     'loss' => max(0, $costPrice - $salePrice),
                     'user_id' => $ownerId,
