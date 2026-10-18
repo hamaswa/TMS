@@ -417,8 +417,17 @@
                                             <div class="form-group"
                                                 data-template-field="system.{{ $templateSystemField }}"
                                                 data-default-column="left">
-                                                <label>{{ $type->otn }}</label>
-                                                <select class="form-control" name="{{ $type->slug }}"
+                                                <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
+                                                @if(Auth::user()->hasBusinessPermission('tailoring.configuration'))
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mb-2 ml-2"
+                                                        data-toggle="modal" data-target="#quickOptionModal"
+                                                        data-option-type="{{ $type->option_id }}"
+                                                        data-option-label="{{ $type->otn }}"
+                                                        data-option-select="preference-{{ $type->slug }}">
+                                                        <i class="fas fa-plus"></i> نیا انتخاب
+                                                    </button>
+                                                @endif
+                                                <select id="preference-{{ $type->slug }}" class="form-control" name="{{ $type->slug }}"
                                                     data-template-system-field="{{ $templateSystemField }}">
                                                     <option value="">{{ $type->otn }} منتخب کریں</option>
 
@@ -513,4 +522,7 @@
 
         });
     </script>
+    @if(Auth::user()->hasBusinessPermission('tailoring.configuration'))
+        @include('customer.partials.quick-option-modal')
+    @endif
 @endsection
