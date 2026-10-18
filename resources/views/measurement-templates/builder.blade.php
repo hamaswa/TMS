@@ -179,7 +179,7 @@
                                                     type="button" class="template-field-edit" data-toggle="modal"
                                                     data-target="#editTemplateField{{ $field->id }}"
                                                     aria-label="{{ $field->label }} تبدیل کریں"><i
-                                                        class="fas fa-pen"></i></button><button type="submit" form="removeTemplateField{{ $field->id }}" class="btn btn-sm btn-outline-danger ml-1" title="خانہ فارم سے ہٹائیں" aria-label="{{ $field->label }} ہٹائیں" onclick="return confirm('کیا یہ خانہ فارم سے ہٹانا چاہتے ہیں؟ پرانی پیمائش محفوظ رہے گی۔')"><i class="fas fa-times"></i></button></div>
+                                                        class="fas fa-pen"></i></button><button type="submit" form="removeTemplateField{{ $field->id }}" class="btn btn-sm btn-outline-danger ml-1" title="خانہ فارم سے ہٹائیں" aria-label="{{ $field->label }} ہٹائیں" data-confirm="کیا یہ خانہ فارم سے ہٹانا چاہتے ہیں؟ پرانی پیمائش محفوظ رہے گی۔"><i class="fas fa-times"></i></button></div>
                                         @endforeach
                                     </div>
                                 @endif
@@ -196,8 +196,7 @@
                                     دوسرے کالم میں بھیجیں۔</p>
                                 <div class="column-mode" role="radiogroup" aria-label="فارم کے کالم"><label><input
                                             type="radio" name="layout_columns" value="1"
-                                            @checked($selectedColumns === 1)><span><i class="fas fa-bars"></i> ایک
-                                            کالم</span></label><label><input type="radio" name="layout_columns"
+                                            @checked($selectedColumns === 1)><span><i class="fas fa-bars"></i> ایک کالم</span></label><label><input type="radio" name="layout_columns"
                                             value="2" @checked($selectedColumns !== 1)><span><i class="fas fa-columns"></i>
                                             دو کالم</span></label></div>
                                 <div id="templatePreview" class="layout-preview">
@@ -286,7 +285,7 @@
                             input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();save()}if(e.key==='Escape')render()});
                             input.addEventListener('blur',save,{once:true});
                         };
-                        del.onclick=async()=>{if(!confirm('کیا انتخاب حذف کرنا چاہتے ہیں؟'))return;del.disabled=true;error('');try{await request(choice.destroy,'DELETE',null);active.options=active.options.filter(x=>x.id!==choice.id);render()}catch(e){error(e.message)}finally{del.disabled=false}};
+                        del.onclick=async()=>{if(!(await window.TmsConfirm.ask('کیا انتخاب حذف کرنا چاہتے ہیں؟')))return;del.disabled=true;error('');try{await request(choice.destroy,'DELETE',null);active.options=active.options.filter(x=>x.id!==choice.id);render()}catch(e){error(e.message)}finally{del.disabled=false}};
                         chip.append(edit,del);list.append(chip);
                     });
                 }

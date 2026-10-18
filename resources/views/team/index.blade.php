@@ -819,8 +819,7 @@
                                 <div class="form-group"><label for="personTailorPhone">فون نمبر</label><input
                                         id="personTailorPhone" class="form-control" name="contact" dir="ltr"
                                         value="{{ $oldPersonType === 'tailor' ? old('contact') : '' }}" required></div>
-                                <div class="form-group is-wide"><label for="personTailorPassword">درزی پورٹل پاس
-                                        ورڈ</label><input id="personTailorPassword" type="password" class="form-control"
+                                <div class="form-group is-wide"><label for="personTailorPassword">درزی پورٹل پاس ورڈ</label><input id="personTailorPassword" type="password" class="form-control"
                                         name="password" minlength="6" autocomplete="new-password" required><small
                                         class="form-text text-muted">درزی اسی فون اور پاس ورڈ سے اپنے تفویض شدہ کام دیکھ
                                         سکے گا۔</small></div>

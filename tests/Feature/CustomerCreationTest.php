@@ -44,7 +44,7 @@ class CustomerCreationTest extends TestCase
 
         $this->actingAs($owner)->get(route('admin.customer.orders', $customer))
             ->assertOk()
-            ->assertSeeText($customer->name.' کے حالیہ آرڈرز')
+            ->assertSeeText($customer->name.' اور خاندان کے آرڈرز')
             ->assertSee('id="cc-table-data-order-history"', false)
             ->assertSee('data-return-orders="'.$customer->id.'"', false)
             ->assertSee('id="loadCustomerOrders"', false);
@@ -194,10 +194,10 @@ class CustomerCreationTest extends TestCase
             ->assertOk()
             ->assertSeeText('بنیادی معلومات')
             ->assertSeeText('پیمائش اور سلائی کی پسند')
-            ->assertSee('class="customer-details-grid"', false)
+            ->assertSee('class="customer-details-grid customer-tailoring-layout"', false)
             ->assertSee('class="combined-panel measurement-panel"', false)
             ->assertSee('class="combined-panel preference-panel"', false)
-            ->assertSee('id="measurement-length" type="number"', false)
+            ->assertSee('id="measurement-length" name="length"', false)
             ->assertDontSee('data-step="3"', false)
             ->assertSeeText('گاہک اکاؤنٹ');
 
@@ -290,7 +290,7 @@ class CustomerCreationTest extends TestCase
         $this->assertSame($existing->id, Customers::findByPhoneForOwner($owner->id, '+92 300 1234567')?->id);
     }
 
-    public function test_family_profiles_only_show_their_own_orders(): void
+    public function test_family_profile_orders_are_listed_with_the_parent_account(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true]);
@@ -340,7 +340,8 @@ class CustomerCreationTest extends TestCase
         $this->assertStringContainsString('Rs. 1,200.00', $directoryHtml);
         $this->assertStringContainsString('بقایا والے کھاتے', $directoryHtml);
         $this->assertStringContainsString('data-family-profile="'.$family->id.'"', $directoryHtml);
-        $this->assertStringContainsString('href="'.route('admin.customer.orders', $family).'"', $directoryHtml);
+        // Family rows no longer link to a per-profile orders page; the parent's orders page lists the whole family.
+        $this->assertStringNotContainsString('href="'.route('admin.customer.orders', $family).'"', $directoryHtml);
         $this->assertStringContainsString('Rs. 2,400.00', $directoryHtml);
         $this->assertStringContainsString('1 آرڈر کی کل رقم · بقایا نہیں', $directoryHtml);
         $this->assertStringContainsString('customer-account-row has-family', $directoryHtml);
@@ -356,14 +357,18 @@ class CustomerCreationTest extends TestCase
             'id' => $customer->id,
             'profile_id' => $family->id,
         ]));
-        $familyOrders->assertOk()->assertJsonCount(1)->assertJsonPath('0.orderId', $familyOrder->id);
-        $this->assertNotSame($mainOrder->id, $familyOrders->json('0.orderId'));
+        // Tailoring orders for the parent and all family profiles are listed together, newest first.
+        $familyOrders->assertOk()->assertJsonCount(2)
+            ->assertJsonPath('0.orderId', $familyOrder->id)
+            ->assertJsonPath('1.orderId', $mainOrder->id);
 
         $mainOrders = $this->actingAs($owner)->getJson(route('admin.getCustomer', [
             'id' => $customer->id,
             'profile_id' => $customer->id,
         ]));
-        $mainOrders->assertOk()->assertJsonCount(1)->assertJsonPath('0.orderId', $mainOrder->id);
+        $mainOrders->assertOk()->assertJsonCount(2)
+            ->assertJsonPath('0.orderId', $familyOrder->id)
+            ->assertJsonPath('1.orderId', $mainOrder->id);
     }
 
     public function test_owner_can_manage_family_measurement_profiles_from_the_primary_customer(): void
@@ -384,7 +389,8 @@ class CustomerCreationTest extends TestCase
             ->assertOk()
             ->assertSeeText('خاندان کا نیا ناپ شامل کریں')
             ->assertSee('name="parent_customer_id" value="'.$customer->id.'"', false)
-            ->assertSee('value="03007771111" required dir="ltr" autocomplete="tel"', false)
+            // The create form relies on server-side validation, so the phone input has no HTML "required".
+            ->assertSee('value="03007771111"', false)
             ->assertSee('readonly', false)
             ->assertDontSee('name="mobile_pin"', false);
 
@@ -423,7 +429,8 @@ class CustomerCreationTest extends TestCase
         $this->assertStringContainsString('Ali Aslam', $directoryHtml);
         $this->assertStringContainsString('خاندانی افراد', $directoryHtml);
         $this->assertStringContainsString('data-family-profile="'.$profile->id.'"', $directoryHtml);
-        $this->assertStringContainsString('href="'.route('admin.customer.orders', $profile).'"', $directoryHtml);
+        // Family rows no longer link to a per-profile orders page; the parent's orders page lists the whole family.
+        $this->assertStringNotContainsString('href="'.route('admin.customer.orders', $profile).'"', $directoryHtml);
         $this->assertStringContainsString(e(route('admin.customers.statement', [
             'id' => $customer->id,
             'tab' => 'measurements',
@@ -449,15 +456,20 @@ class CustomerCreationTest extends TestCase
         $this->actingAs($owner)->get(route('admin.Customers.edit', $profile))
             ->assertOk()
             ->assertSeeText('خاندانی پیمائش پروفائل')
-            ->assertSeeText('حالیہ آرڈرز')
+            ->assertSeeText('حالیہ آرڈر دیکھیں')
             ->assertSee('href="'.route('admin.customer.orders', $profile).'"', false)
             ->assertSee('name="contact" value="03007771111"', false)
             ->assertSee('readonly', false)
             ->assertDontSee('name="mobile_pin"', false);
 
+        $template = \App\Models\MeasurementTemplate::create([
+            'user_id' => $owner->id, 'name' => 'کرتا', 'system_fields' => ['length', 'arms'],
+            'custom_field_ids' => [], 'is_default' => true, 'is_active' => true,
+        ]);
         $this->actingAs($owner)->put(route('admin.Customers.update', $profile), [
             'name' => 'Ali Aslam',
             'contact' => '03009999999',
+            'measurement_template_id' => $template->id,
             'length' => 42,
             'arms' => 24,
             'return_customer' => $profile->id,
@@ -466,13 +478,17 @@ class CustomerCreationTest extends TestCase
             ->assertRedirect(route('admin.Customers.edit', $profile).'?'.http_build_query([
                 'return_customer' => $profile->id,
                 'return_search' => '03007771111',
+                'measurement_template_id' => $template->id,
             ]))
             ->assertSessionHas('insert');
 
         $profile->refresh();
         $this->assertSame($customer->phone_number1, $profile->phone_number1);
-        $this->assertEquals(42, $profile->length);
-        $this->assertEquals(24, $profile->arms);
+        // Edited measurements are saved in the profile's template history.
+        $savedRows = app(\App\Services\MeasurementService::class)
+            ->savedMeasurementRows($profile, $owner->id, $template)->pluck('value', 'source_key');
+        $this->assertEquals(42, $savedRows->get('system.length'));
+        $this->assertEquals(24, $savedRows->get('system.arms'));
 
         $this->actingAs($owner)
             ->withSession(['insert' => 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔'])
@@ -481,7 +497,7 @@ class CustomerCreationTest extends TestCase
             ->assertSeeText('گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
     }
 
-    public function test_updating_customer_measurements_refreshes_all_open_profile_orders_but_not_delivered_history(): void
+    public function test_updating_customer_measurements_saves_template_history_without_changing_existing_order_snapshots(): void
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);
         $owner = User::factory()->create(['tailoring_access' => true]);
@@ -544,21 +560,32 @@ class CustomerCreationTest extends TestCase
             'sort_order' => 0,
         ]);
 
+        $template = \App\Models\MeasurementTemplate::create([
+            'user_id' => $owner->id, 'name' => 'شلوار قمیض', 'system_fields' => ['length'],
+            'custom_field_ids' => [], 'is_default' => true, 'is_active' => true,
+        ]);
+
         $this->actingAs($owner)->put(route('admin.Customers.update', $customer), [
             'name' => $customer->name,
             'contact' => $customer->phone_number1,
+            'measurement_template_id' => $template->id,
             'length' => 44,
         ])->assertSessionHasNoErrors();
 
+        // New measurements are kept in the customer's template history for future orders...
+        $this->assertSame('44', (string) app(\App\Services\MeasurementService::class)
+            ->savedMeasurementRows($customer->fresh(), $owner->id, $template)
+            ->firstWhere('source_key', 'system.length')['value']);
+        // ...while every existing order keeps the measurement snapshot it was created with.
         $this->assertDatabaseHas('order_measurement_values', [
             'order_id' => $firstOpenOrder->id,
             'source_key' => 'system.length',
-            'value' => '44',
+            'value' => '41',
         ]);
         $this->assertDatabaseHas('order_measurement_values', [
             'order_id' => $secondOpenOrder->id,
             'source_key' => 'system.length',
-            'value' => '44',
+            'value' => '43',
         ]);
         $this->assertDatabaseHas('order_measurement_values', [
             'order_id' => $deliveredOrder->id,

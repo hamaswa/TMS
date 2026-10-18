@@ -1023,8 +1023,7 @@
                     </table>
                 </div>
                 @if ($cloths->total())
-                    <div class="cloth-pagination"><span>{{ $cloths->firstItem() }} سے {{ $cloths->lastItem() }} — کل
-                            {{ number_format($cloths->total()) }} سیٹ</span>
+                    <div class="cloth-pagination"><span>{{ $cloths->firstItem() }} سے {{ $cloths->lastItem() }} — کل {{ number_format($cloths->total()) }} سیٹ</span>
                         @if ($cloths->hasPages())
                             {{ $cloths->links() }}
                         @endif

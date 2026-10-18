@@ -661,14 +661,6 @@ class CustomerController extends Controller
                 Auth::id(),
                 'customer_created',
             );
-
-            $this->measurements->recordHistory(
-                $obj,
-                $ownerId,
-                $measurementTemplate,
-                Auth::id(),
-                'customer_created',
-            );
         });
 
         

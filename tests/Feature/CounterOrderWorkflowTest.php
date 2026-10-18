@@ -109,7 +109,7 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertSee(route('admin.counter-orders.measurements.edit', [$counterOrder, $customer]), false)
             ->assertDontSee('return_counter_order='.$counterOrder->id, false)
             ->assertDontSee('name="linked_item_id"', false)
-            ->assertDontSee('name="tailor_id"', false)
+            ->assertSee('name="tailor_id"', false)
             ->assertDontSee('name="rate_id"', false)
             ->assertSee('name="total_price"', false)
             ->assertDontSee('name="unit_price" id="co-cloth-price"', false)
@@ -137,7 +137,11 @@ class CounterOrderWorkflowTest extends TestCase
             'measurement_template_id' => $template->id,
             'system_measurements' => ['length' => 41, 'necktype' => 'Band collar'],
         ])->assertOk()->assertJson(['profile_name' => $customer->name]);
-        $this->assertSame(41.0, (float) $customer->fresh()->length);
+        // Order-side edits are saved as template measurement history, not into the shared customer columns.
+        $this->assertSame(99.0, (float) $customer->fresh()->length);
+        $this->assertSame('41', (string) app(\App\Services\MeasurementService::class)
+            ->savedMeasurementRows($customer->fresh(), $owner->id, $template)
+            ->firstWhere('source_key', 'system.length')['value']);
         $this->assertSame('41', (string) collect($tailoringItem->fresh()->details['measurement_snapshot'])
             ->firstWhere('source_key', 'system.length')['value']);
 
@@ -387,12 +391,15 @@ class CounterOrderWorkflowTest extends TestCase
             'status' => CounterOrder::STATUS_DRAFT,
         ]);
 
+        // Every active template is offered for each family member so new measurements can be
+        // taken from the order; saving still requires that member's measurements for the template.
+        $allTemplateIds = MeasurementTemplate::where('user_id', $owner->id)->where('is_active', true)
+            ->orderByDesc('is_default')->orderBy('name')->pluck('id')->implode(',');
         $page = $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order));
         $page->assertOk()
             ->assertSee('value="'.$customer->id.'" data-measurement-url=', false)
-            ->assertSee('data-template-ids="'.$shalwarTemplate->id.','.$waistcoatTemplate->id.'"', false)
             ->assertSee('value="'.$child->id.'" data-measurement-url=', false)
-            ->assertSee('data-template-ids="'.$schoolTemplate->id.'"', false)
+            ->assertSee('data-template-ids="'.$allTemplateIds.'"', false)
             ->assertSee('صرف اس فرد کی محفوظ پیمائش دکھائی گئی ہے۔', false);
 
         $this->actingAs($owner)->post(route('admin.counter-orders.tailoring-items.store', $order), [
@@ -400,7 +407,8 @@ class CounterOrderWorkflowTest extends TestCase
             'measurement_template_id' => $waistcoatTemplate->id,
             'quantity' => 1, 'unit_price' => 1000,
             'due_date' => now()->addWeek()->toDateString(),
-        ])->assertStatus(422);
+        ])->assertRedirect()->assertSessionHasErrors('measurement_profile_id');
+        $this->assertSame(0, $order->items()->count());
 
         $this->actingAs($owner)->post(route('admin.counter-orders.tailoring-items.store', $order), [
             'measurement_profile_id' => $customer->id,

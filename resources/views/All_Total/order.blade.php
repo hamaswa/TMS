@@ -1028,9 +1028,7 @@
                         </div>
 
                         @if ($dayOrders->isNotEmpty())
-                            <div class="wo-table-head" aria-hidden="true"><span>آرڈر / گاہک</span><span>لباس /
-                                    ٹیمپلیٹ</span><span>درزی</span><span>واپسی</span><span>کام کا
-                                    مرحلہ</span><span>کاریگر</span><span>کارروائی</span></div>
+                            <div class="wo-table-head" aria-hidden="true"><span>آرڈر / گاہک</span><span>لباس / ٹیمپلیٹ</span><span>درزی</span><span>واپسی</span><span>کام کا مرحلہ</span><span>کاریگر</span><span>کارروائی</span></div>
                             <div class="wo-orders" data-order-list>
                                 @foreach ($dayOrders as $order)
                                     @php
@@ -1165,8 +1163,7 @@
                                         </div>
                                         <div class="wo-actions">
                                             @if ($canManageOrders)
-                                                <a class="wo-action" href="{{ route('admin.order-prints', $order->id) }}"
-                                                    target="_blank" rel="noopener" title="رسید"><i
+                                                <a class="wo-action" href="{{ route('admin.order-prints', $order->id) }}" target="_blank" rel="noopener" title="رسید"><i
                                                         class="fas fa-print"></i></a><a class="wo-action is-edit"
                                                     href="{{ route('admin.order.edit', $order->id) }}" title="ترمیم"><i
                                                         class="fas fa-pen"></i></a>
@@ -1256,8 +1253,7 @@
                                 <select name="tailor_id" class="form-control js-modal-tailor" required>
                                     @foreach ($tailors as $tailor)
                                         <option value="{{ $tailor->id }}" @disabled($tailor->tailorsalary->isEmpty())>
-                                            {{ $tailor->name }} · {{ (int) ($tailorWorkloads[$tailor->id] ?? 0) }} جاری
-                                            کام</option>
+                                            {{ $tailor->name }} · {{ (int) ($tailorWorkloads[$tailor->id] ?? 0) }} جاری کام</option>
                                     @endforeach
                                 </select>
                             </div>

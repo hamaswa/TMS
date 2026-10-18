@@ -54,7 +54,9 @@ class PurchaseWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('<h1 class="h3 mb-1">', false)
             ->assertSee('purchase-list-table', false)
-            ->assertSee('data-label="بقایا"', false)
+            // Payment columns were removed from the purchase list; it shows the bill total.
+            ->assertSee('data-label="کل رقم"', false)
+            ->assertDontSee('data-label="بقایا"', false)
             ->assertSee('purchase-list-action', false);
     }
 
@@ -317,21 +319,25 @@ class PurchaseWorkflowTest extends TestCase
             ->assertSeeText('OPEN-1')
             ->assertSeeText('چیک')
             ->assertSeeText('روپے 200.00')
-            ->assertSee('data-confirm="کیا سپلائر کو یہ ادائیگی درج کرنا چاہتے ہیں؟"', false);
+            ->assertSee('data-confirm="کیا آپ یہ ادائیگی درج کرنا چاہتے ہیں؟"', false);
         $this->actingAs($owner)->get(route('admin.suppliers.index'))
             ->assertOk()
             ->assertSee('300.00')
             ->assertSee('<h1 class="h3 mb-1">', false)
             ->assertSee('supplier-table', false)
-            ->assertSee('data-label="خریداری بقایا"', false)
+            ->assertSee('data-label="کل واجب الادا"', false)
             ->assertSee('supplier-actions', false);
 
         $this->actingAs($owner)->from(route('admin.suppliers.edit', $supplier))
             ->post(route('admin.suppliers.payment', $supplier), [
                 'amount' => 301, 'payment_date' => now()->toDateString(),
             ])->assertRedirect(route('admin.suppliers.edit', $supplier))
-            ->assertSessionHasErrors(['amount' => 'ادائیگی سپلائر کی موجودہ بقایا رقم سے زیادہ نہیں ہو سکتی۔']);
-        $this->assertDatabaseCount('supplier_payments', 1);
+            ->assertSessionHasNoErrors();
+        // Supplier payments are account-level, so paying more than is due is kept as an advance.
+        $this->assertDatabaseCount('supplier_payments', 2);
+        $this->assertDatabaseHas('supplier_payments', [
+            'supplier_id' => $supplier->id, 'purchase_id' => null, 'amount' => 301,
+        ]);
     }
 
     private function draftPurchase(): array

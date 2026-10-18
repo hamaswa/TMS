@@ -74,10 +74,18 @@ class MeasurementService
             return $values->sortBy('sort_order')->values();
         }
 
+        // Current preferences live in the customer's template history; the legacy columns are the fallback.
+        $currentRows = null;
+
         foreach (self::PREFERENCE_SYSTEM_KEYS as $key) {
             $sourceKey = 'system.' . $key;
             $snapshotValue = trim((string) optional($values->get($sourceKey))->value);
-            $currentValue = trim((string) $customer->{$key});
+            if ($snapshotValue !== '' && $snapshotValue !== '0') {
+                continue;
+            }
+            $currentRows ??= $this->savedMeasurementRows($customer, (int) $order->userId, $order->measurementTemplate)
+                ->pluck('value', 'source_key');
+            $currentValue = trim((string) ($currentRows->get($sourceKey) ?: $customer->{$key}));
             if (($snapshotValue === '' || $snapshotValue === '0') && $currentValue !== '' && $currentValue !== '0') {
                 $values->put($sourceKey, new OrderMeasurementValue([
                     'order_id' => $order->id,
@@ -466,6 +474,31 @@ class MeasurementService
 
         // Save current custom measurements for the customer edit form.
         $this->syncCustomer($customer, $templateFields, $customValues);
+
+        // Add history only when this template's measurements actually changed.
+        $latestHistory = CustomerMeasurementHistory::query()
+            ->where('user_id', $ownerId)
+            ->where('customer_id', $customer->id)
+            ->where('measurement_template_id', $template->id)
+            ->with('values')
+            ->latest('id')
+            ->first();
+
+        if ($latestHistory) {
+            $previousRows = $latestHistory->values->map(fn($value) => [
+                'source_key' => $value->source_key,
+                'value' => $value->value,
+                'unit' => $value->unit,
+                'sort_order' => $value->sort_order,
+            ])->sortBy('sort_order')->values();
+
+            if (hash_equals(
+                $this->measurementFingerprint($previousRows, $template),
+                $this->measurementFingerprint($rows->sortBy('sort_order')->values(), $template),
+            )) {
+                return $latestHistory;
+            }
+        }
 
         $history = $customer->measurementHistories()->create([
             'user_id' => $ownerId,

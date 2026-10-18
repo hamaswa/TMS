@@ -200,7 +200,8 @@
                     </a>
                 @endif
 
-                @if ($canManageMeasurements)
+                {{-- Cloth-only customers stay shop focused until they have tailoring activity. --}}
+                @if ($canManageMeasurements && ! ($isClothOnlyCustomer ?? false))
                     <a href="{{ route('admin.Customers.create', ['parent' => $customer->id]) }}" class="dropdown-item">
                         <i class="fas fa-user-plus"></i>
                         <span>خاندان کا نیا ناپ شامل کریں</span>

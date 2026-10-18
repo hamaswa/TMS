@@ -61,7 +61,7 @@
             grid-template-columns: minmax(0, 56%) minmax(0, 44%);
         }
 
-        .measurement-row>.measurement-column-empty {
+        .measurement-row > .measurement-column-empty {
             min-height: 1px;
         }
 
@@ -651,8 +651,7 @@
                         <p>{{ $setting->note }}</p>
                         <p class="receipt-builder-credit">Built by IT Linked</p>
                         @if ($printConfig['show_qr'])
-                            <p class="receipt-reference">{{ $receiptSerial ? 'TECHNICAL REF' : 'ORDER REF' }}:
-                                {{ $orderDetail->id }}</p>
+                            <p class="receipt-reference">{{ $receiptSerial ? 'TECHNICAL REF' : 'ORDER REF' }}: {{ $orderDetail->id }}</p>
                         @endif
                     </div>
                 </div>
@@ -670,8 +669,7 @@
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
                     <hr style="margin-top:4px;">
-                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آئٹم
-                            سیریل</span><strong
+                    <div class="measurement-meta-row"><span class="measurement-meta-cell measurement-meta-label">آئٹم سیریل</span><strong
                             class="measurement-meta-cell measurement-meta-value measurement-serial">{{ $displaySerial }}</strong>
                     </div>
                     <div class="measurement-meta-row"><span

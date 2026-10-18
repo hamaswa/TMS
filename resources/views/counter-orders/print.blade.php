@@ -422,8 +422,7 @@
                             <h2 dir="auto">{{ $item->cloth?->name }} — {{ $item->cloth?->brand?->name }} —
                                 {{ $item->cloth?->type?->name }}</h2>
                             <p>{{ data_get($item->details, 'color') ?: 'رنگ لاگو نہیں' }} ·
-                                {{ number_format((float) $item->length, 2) }} میٹر · Rs.
-                                {{ number_format((float) $item->unit_price, 2) }} فی میٹر</p>
+                                {{ number_format((float) $item->length, 2) }} میٹر · Rs. {{ number_format((float) $item->unit_price, 2) }} فی میٹر</p>
                         @else
                             <div class="item-kind">سلائی کا آرڈر</div>
                             <h2 dir="auto">{{ $item->measurementProfile?->name }}</h2>
@@ -447,14 +446,11 @@
             </aside>
         @endif
         <section class="summary">
-            <div class="summary-row total"><span>{{ isset($singleItem) ? 'آئٹم کی رقم' : 'کل آرڈر' }}</span><strong>Rs.
-                    {{ number_format((float) (isset($singleItem) ? $singleItem->line_total : $counterOrder->subtotal), 2) }}</strong>
+            <div class="summary-row total"><span>{{ isset($singleItem) ? 'آئٹم کی رقم' : 'کل آرڈر' }}</span><strong>Rs. {{ number_format((float) (isset($singleItem) ? $singleItem->line_total : $counterOrder->subtotal), 2) }}</strong>
             </div>
             @unless (isset($singleItem))
-                <div class="summary-row"><span>وصول شدہ</span><strong>Rs.
-                        {{ number_format((float) $counterOrder->paid_amount, 2) }}</strong></div>
-                <div class="summary-row balance"><span>اس آرڈر کا بقایا</span><strong>Rs.
-                        {{ number_format((float) $counterOrder->balance_amount, 2) }}</strong></div>
+                <div class="summary-row"><span>وصول شدہ</span><strong>Rs. {{ number_format((float) $counterOrder->paid_amount, 2) }}</strong></div>
+                <div class="summary-row balance"><span>اس آرڈر کا بقایا</span><strong>Rs. {{ number_format((float) $counterOrder->balance_amount, 2) }}</strong></div>
             @endunless
         </section>
         <footer class="footer">
@@ -470,8 +466,7 @@
             @if ($printConfig['show_qr'] && $printConfig['qr_svg'])
                 <div class="qr">{!! $printConfig['qr_svg'] !!}<span>رسید کی شناخت کے لیے تصدیقی حوالہ</span></div>
             @endif
-            <p class="reference">{{ $counterOrder->serial_number ? 'TECHNICAL REF' : 'ORDER REF' }}:
-                {{ $counterOrder->reference }}</p>
+            <p class="reference">{{ $counterOrder->serial_number ? 'TECHNICAL REF' : 'ORDER REF' }}: {{ $counterOrder->reference }}</p>
         </footer>
     </main>
 </body>
