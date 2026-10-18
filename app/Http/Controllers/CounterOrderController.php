@@ -883,7 +883,7 @@ class CounterOrderController extends Controller
             }
             $item = $counterOrder->items()->whereKey($locked->counter_order_item_id)
                 ->where('type', CounterOrderItem::TYPE_TAILORING)
-                ->where('status', CounterOrderItem::STATUS_CONFIRMED)->firstOrFail();
+                ->where('status', CounterOrderItem::STATUS_CONFIRMED)->lockForUpdate()->firstOrFail();
             $refund = round((float) $validated['approved_tailoring_refund'], 2);
             $compensation = round((float) $validated['approved_cloth_compensation'], 2);
             $payout = round((float) $validated['actual_cash_payout'], 2);
