@@ -56,6 +56,11 @@ class SaleStock extends Model
         return $this->belongsTo(CounterSaleReceipt::class, 'counter_sale_receipt_id');
     }
 
+    public function returnItems()
+    {
+        return $this->hasMany(CounterSaleReturnItem::class);
+    }
+
     public function clothColor()
     {
         return $this->belongsTo(ClothColor::class, 'cloth_color_id');

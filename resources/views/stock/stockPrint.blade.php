@@ -310,6 +310,9 @@
                 </button>
             </div>
 
+            @if(request()->boolean('cancel'))
+                <script>document.addEventListener('DOMContentLoaded', function () { if (window.jQuery && window.jQuery.fn.modal) window.jQuery('#stockCancelModal').modal('show'); });</script>
+            @endif
             <div class="modal fade stock-cancel-modal no-print" id="stockCancelModal" tabindex="-1" role="dialog"
                 aria-labelledby="stockCancelModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered" role="document">
@@ -341,15 +344,7 @@
                                     <textarea id="cancellation_reason" name="cancellation_reason" class="form-control" minlength="5"
                                         maxlength="1000" required>{{ old('cancellation_reason') }}</textarea>
                                 </div>
-                                <div class="form-group mb-0">
-                                    <label for="refund_method">رقم واپسی کا طریقہ</label>
-                                    <select id="refund_method" name="refund_method" class="form-control">
-                                        <option value="">کوئی رقم واپس نہیں کرنی</option>
-                                        @foreach (\App\Support\PaymentMethods::LABELS as $method => $label)
-                                            <option value="{{ $method }}" @selected(old('refund_method') === $method)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                                @include('customer.partials.cancellation-settlement-fields', ['paidAmount' => (float) $payment, 'allowCompensation' => false, 'methodName' => 'refund_method', 'referenceName' => 'refund_reference'])
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">واپس جائیں</button>

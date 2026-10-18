@@ -30,6 +30,7 @@ use App\Http\Controllers\MeasurementFieldController;
 use App\Http\Controllers\MeasurementTemplateController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfflineWorkspaceController;
+use App\Http\Controllers\TailoringComplaintController;
 use App\Http\Controllers\OptionsController;
 use App\Http\Controllers\OptionTypeController;
 use App\Http\Controllers\OrderController;
@@ -74,6 +75,7 @@ use Illuminate\Support\Facades\Route;
 Auth::routes(['register' => false, 'verify' => true]);
 
 Route::get('/offline', [OfflineWorkspaceController::class, 'fallback'])->name('offline.fallback');
+Route::get('/tailoring-complaints/{complaint}/acknowledge', [TailoringComplaintController::class, 'acknowledge'])->middleware('signed')->name('tailoring-complaints.acknowledge');
 
 // Business accounts are provisioned by the super administrator and public
 // customers register inside a specific storefront. Keep the old URL useful
@@ -232,6 +234,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::delete('/counter-orders/{counterOrder}/items/{item}', [CounterOrderController::class, 'removeItem'])->name('counter-orders.items.destroy');
         Route::post('/counter-orders/{counterOrder}/confirm', [CounterOrderController::class, 'confirm'])->name('counter-orders.confirm');
         Route::post('/counter-orders/{counterOrder}/close', [CounterOrderController::class, 'close'])->name('counter-orders.close');
+        Route::post('/counter-orders/{counterOrder}/complaints', [CounterOrderController::class, 'storeComplaint'])->name('counter-orders.complaints.store');
+        Route::post('/counter-orders/{counterOrder}/complaints/{complaint}/settle', [CounterOrderController::class, 'settleComplaint'])->name('counter-orders.complaints.settle');
         Route::get('/counter-orders/from-sale-session/{saleSession}', [CounterOrderController::class, 'importSaleSession'])->name('counter-orders.sale-session');
 
         Route::get(
@@ -446,6 +450,14 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::middleware('business.permission:tailoring.orders')->group(function () {
         Route::get('/customers/{customer}/orders', [OrderController::class, 'customerOrders'])->name('customer.orders');
         Route::get('/order/edit/{id}', [OrderController::class, 'edit'])->name('order.edit');
+Route::post('/order/{id}/complaints', [OrderController::class, 'storeTailoringComplaint'])->name('order.complaints.store');
+Route::post('/order/{id}/complaints/{complaint}/settle', [OrderController::class, 'settleTailoringComplaint'])->name('order.complaints.settle');
+        Route::post('/orders/{order}/cancel', [TailoringComplaintController::class, 'cancelOrder'])->name('orders.cancel');
+        Route::post('/tailoring-complaints/{complaint}/decision', [TailoringComplaintController::class, 'decide'])->name('tailoring-complaints.decision');
+        Route::post('/tailoring-complaints/{complaint}/recovery', [TailoringComplaintController::class, 'recover'])->name('tailoring-complaints.recovery');
+        Route::post('/tailoring-complaints/{complaint}/evidence', [TailoringComplaintController::class, 'evidence'])->name('tailoring-complaints.evidence');
+        Route::get('/tailoring-complaints/{complaint}/evidence/{evidence}', [TailoringComplaintController::class, 'download'])->name('tailoring-complaints.evidence.download');
+        Route::post('/tailoring-complaints/{complaint}/complete-rework', [TailoringComplaintController::class, 'completeRework'])->name('tailoring-complaints.complete-rework');
         Route::put('/order/update/{id}', [OrderController::class, 'update'])->name('order.update');
         Route::get('/order/{id}', [CounterOrderController::class, 'legacyTailoringCreate'])->name('order.create');
         Route::post('/order/insert', [OrderController::class, 'insert'])->name('order.insert');

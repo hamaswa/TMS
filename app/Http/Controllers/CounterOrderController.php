@@ -6,6 +6,9 @@ use App\Models\BusinessRole;
 use App\Models\Cloth;
 use App\Models\CounterOrder;
 use App\Models\CounterOrderItem;
+use App\Models\CounterOrderComplaint;
+use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
 use App\Models\CounterSaleReceipt;
 use App\Models\CustomerMeasurementHistory;
 use App\Models\Customers;
@@ -19,6 +22,7 @@ use App\Services\CounterOrderService;
 use App\Services\CounterOrderNumberService;
 use App\Services\MeasurementService;
 use App\Services\PrintDocumentService;
+use App\Services\TailoringComplaintService;
 use App\Support\PaymentMethods;
 use App\Rules\PakistanMobileNumber;
 use App\Rules\UniqueCustomerPhone;
@@ -186,6 +190,7 @@ class CounterOrderController extends Controller
         $previousDue = app(CounterOrderService::class)->previousDue($counterOrder);
         $receiptLinks = CounterSaleReceipt::where('user_id', $ownerId)
             ->whereIn('id', $counterOrder->items->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id'))
+            ->with('transaction')
             ->get()->keyBy('id');
 
         return view('counter-orders.edit', compact(
@@ -824,6 +829,113 @@ class CounterOrderController extends Controller
         );
 
         return back()->with('success', 'نئے آئٹمز تصدیق ہو گئے ہیں۔ کپڑا اسٹاک سے کم اور سلائی ورکشاپ میں شامل ہو گئی ہے۔');
+    }
+
+
+    public function storeComplaint(Request $request, CounterOrder $counterOrder): RedirectResponse
+    {
+        $this->authorizeOrder($request, $counterOrder);
+        abort_unless($this->canManageTailoring($request), 403);
+        $validated = $request->validate([
+            'counter_order_item_id' => ['required', 'integer'],
+            'reason' => ['required', 'string', 'min:10', 'max:3000'],
+            'requested_tailoring_refund' => ['required', 'numeric', 'min:0'],
+            'requested_cloth_compensation' => ['required', 'numeric', 'min:0'],
+        ]);
+        $item = $counterOrder->items()->whereKey($validated['counter_order_item_id'])
+            ->where('type', CounterOrderItem::TYPE_TAILORING)
+            ->where('status', CounterOrderItem::STATUS_CONFIRMED)->firstOrFail();
+        if ((float) $validated['requested_tailoring_refund'] > (float) $item->line_total) {
+            throw ValidationException::withMessages(['requested_tailoring_refund' => 'سلائی کی واپسی اصل سلائی قیمت سے زیادہ نہیں ہو سکتی۔']);
+        }
+        if ((float) $validated['requested_tailoring_refund'] + (float) $validated['requested_cloth_compensation'] <= 0) {
+            throw ValidationException::withMessages(['requested_tailoring_refund' => 'واپسی یا کپڑے کے نقصان کی رقم درج کریں۔']);
+        }
+        $claim = CounterOrderComplaint::create([
+            'counter_order_id' => $counterOrder->id,
+            'counter_order_item_id' => $item->id,
+            'user_id' => $request->user()->businessOwnerId(),
+            'created_by_user_id' => $request->user()->id,
+            'reason' => $validated['reason'],
+            'requested_tailoring_refund' => $validated['requested_tailoring_refund'],
+            'requested_cloth_compensation' => $validated['requested_cloth_compensation'],
+            'status' => 'pending',
+        ]);
+        app(TailoringComplaintService::class)->notify($claim, 'opened');
+        return back()->with('success', 'شکایت اور مجوزہ رقم محفوظ ہو گئی ہے۔ ابھی کوئی ادائیگی یا کھاتے میں تبدیلی نہیں ہوئی۔');
+    }
+
+
+    public function settleComplaint(Request $request, CounterOrder $counterOrder, CounterOrderComplaint $complaint): RedirectResponse
+    {
+        $this->authorizeOrder($request, $counterOrder);
+        abort_unless($this->canManageTailoring($request), 403);
+        abort_unless($request->user()->isBusinessOwner(), 403);
+        $validated = $request->validate([
+            'approved_tailoring_refund' => ['required', 'numeric', 'min:0'],
+            'approved_cloth_compensation' => ['required', 'numeric', 'min:0'],
+            'actual_cash_payout' => ['required', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
+            'payment_reference' => ['nullable', 'string', 'max:255'],
+        ]);
+        DB::transaction(function () use ($request, $counterOrder, $complaint, $validated) {
+            $locked = CounterOrderComplaint::where('user_id', $request->user()->businessOwnerId())
+                ->where('counter_order_id', $counterOrder->id)
+                ->lockForUpdate()->findOrFail($complaint->id);
+            if ($locked->status !== 'pending') {
+                throw ValidationException::withMessages(['complaint' => 'یہ شکایت پہلے ہی نمٹائی جا چکی ہے۔']);
+            }
+            $item = $counterOrder->items()->whereKey($locked->counter_order_item_id)
+                ->where('type', CounterOrderItem::TYPE_TAILORING)
+                ->where('status', CounterOrderItem::STATUS_CONFIRMED)->lockForUpdate()->firstOrFail();
+            $refund = round((float) $validated['approved_tailoring_refund'], 2);
+            $compensation = round((float) $validated['approved_cloth_compensation'], 2);
+            $payout = round((float) $validated['actual_cash_payout'], 2);
+            $alreadyRefunded = (float) CounterOrderComplaint::where('user_id', $locked->user_id)
+                ->where('counter_order_item_id', $item->id)
+                ->where('status', 'settled')->sum('approved_tailoring_refund');
+            if ($refund > round((float) $item->line_total - $alreadyRefunded, 2)) {
+                throw ValidationException::withMessages(['approved_tailoring_refund' => 'اس آئٹم کی اصل سلائی قیمت سے زیادہ رقم واپس نہیں کی جا سکتی۔']);
+            }
+            $total = round($refund + $compensation, 2);
+            if ($total <= 0 || $payout > $total) {
+                throw ValidationException::withMessages(['actual_cash_payout' => 'ادا کی گئی رقم منظور شدہ رقم سے زیادہ نہیں ہو سکتی۔']);
+            }
+            if ($payout > 0 && blank($validated['payment_method'] ?? null)) {
+                throw ValidationException::withMessages(['payment_method' => 'رقم واپسی کا طریقہ منتخب کریں۔']);
+            }
+            if ($payout > 0 && PaymentMethods::requiresReference($validated['payment_method']) && blank($validated['payment_reference'] ?? null)) {
+                throw ValidationException::withMessages(['payment_reference' => 'ادائیگی کا حوالہ درج کریں۔']);
+            }
+            Transaction::create([
+                'userId' => $locked->user_id,
+                'customerId' => $counterOrder->customer_id,
+                'orderId' => $item->source_record_type === 'tailoring_order' ? $item->source_record_id : null,
+                'Order_type' => 'Tailor Complaint Settlement',
+                'remainingBalance' => round(-$total + $payout, 2),
+                'recivedPayment' => -$payout,
+                'payment_method' => $validated['payment_method'] ?? 'cash',
+                'payment_reference' => $validated['payment_reference'] ?? null,
+                'paid_on' => now()->toDateString(),
+                'comment' => 'سلائی شکایت #'.$locked->id.' · سلائی واپسی '.$refund.' · کپڑے کا ہرجانہ '.$compensation.' · ادا '.$payout.' · باقی واجب الادا '.round($total - $payout, 2),
+            ]);
+            $locked->update([
+                'status' => 'settled',
+                'resolution' => ($refund > 0 && $compensation > 0) ? 'refund_and_compensation' : ($refund > 0 ? 'refund' : 'compensation'),
+                'approved_tailoring_refund' => $refund,
+                'approved_cloth_compensation' => $compensation,
+                'actual_cash_payout' => $payout,
+                'payment_method' => $validated['payment_method'] ?? null,
+                'payment_reference' => $validated['payment_reference'] ?? null,
+                'settled_by_user_id' => $request->user()->id,
+                'settled_at' => now(),
+                'approved_by_user_id' => $request->user()->id,
+                'approved_at' => now(),
+                'closed_at' => now(),
+            ]);
+        });
+        app(TailoringComplaintService::class)->notify($complaint->fresh(), 'settled');
+        return back()->with('success', 'شکایت کا تصفیہ اور کھاتے کی انٹری محفوظ ہو گئی ہے۔');
     }
 
     public function close(Request $request, CounterOrder $counterOrder): RedirectResponse
