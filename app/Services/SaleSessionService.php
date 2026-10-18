@@ -203,6 +203,9 @@ class SaleSessionService
             'clothes_rack' => $items->pluck('rack')->all(),
             'length' => $items->map(fn ($item) => $item['length'] ?: ($item['quantity'] ?? null))->all(),
             'per_meter' => $items->map(fn ($item) => (float) ($item['unitPrice'] ?? 0))->all(),
+            'sale_price_basis' => $items->map(fn ($item) => $item['salePriceBasis'] ?? Cloth::SALE_PRICE_PER_SUIT)->all(),
+            'suit_quantity' => $items->map(fn ($item) => (float) ($item['quantity'] ?? 1))->all(),
+            'suit_unit_price' => $items->map(fn ($item) => (float) ($item['unitPrice'] ?? 0))->all(),
             'item_total' => $items->map(function ($item) {
                 $basis = $item['salePriceBasis'] ?? Cloth::SALE_PRICE_PER_METER;
                 $units = $basis === Cloth::SALE_PRICE_PER_SUIT

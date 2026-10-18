@@ -25,6 +25,10 @@ class SaleStock extends Model
         'sellDate',
         'clothes_rack',
         'selling_price',
+        'sale_price_basis',
+        'suit_quantity',
+        'suit_unit_price',
+        'suit_length',
         'cloth_id',
         'cloth_color_id',
         'cost_per_meter',
@@ -32,6 +36,12 @@ class SaleStock extends Model
     ];
 
     protected $table = 'sale_stocks';
+
+    protected $casts = [
+        'suit_quantity' => 'decimal:2',
+        'suit_unit_price' => 'decimal:2',
+        'suit_length' => 'decimal:2',
+    ];
 
     public function scopeFinanciallyActive($query)
     {

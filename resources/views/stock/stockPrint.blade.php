@@ -384,6 +384,8 @@
                         @foreach ($sellStock as $sellstock)
                             @php
                                 $itemTotal = $sellstock->length * $sellstock->selling_price;
+                                $isSuitSale = $sellstock->sale_price_basis === \App\Models\Cloth::SALE_PRICE_PER_SUIT
+                                    && $sellstock->suit_quantity !== null;
                                 $totalAmount += $itemTotal;
                             @endphp
                             <div class="stock-item-card">
@@ -391,7 +393,7 @@
                                 @if(filled($sellstock->color))
                                     <div class="stock-item-meta"><span>رنگ: <strong>{{ $sellstock->color }}</strong></span></div>
                                 @endif
-                                <div class="stock-item-calculation"><span>{{ number_format((float) $sellstock->length, 2) }} m</span><span>×</span><span>Rs. {{ number_format((float) $sellstock->selling_price, 2) }}</span><span>=</span><strong>Rs. {{ number_format($itemTotal, 2) }}</strong></div>
+                                <div class="stock-item-calculation">@if($isSuitSale)<span>{{ number_format((float) $sellstock->suit_quantity, 0) }} سوٹ</span><span>×</span><span>Rs. {{ number_format((float) $sellstock->suit_unit_price, 2) }} فی سوٹ</span>@else<span>{{ number_format((float) $sellstock->length, 2) }} m</span><span>×</span><span>Rs. {{ number_format((float) $sellstock->selling_price, 2) }}</span>@endif<span>=</span><strong>Rs. {{ number_format($itemTotal, 2) }}</strong></div>
                             </div>
                         @endforeach
                     </div>

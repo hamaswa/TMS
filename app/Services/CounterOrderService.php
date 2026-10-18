@@ -164,6 +164,11 @@ class CounterOrderService
                             ? (float) $item->length * (float) $item->quantity
                             : (float) $item->length
                     )->all(),
+                    'sale_price_basis' => $clothItems->map(fn ($item) =>
+                        data_get($item->details, 'sale_price_basis', Cloth::SALE_PRICE_PER_SUIT)
+                    )->all(),
+                    'suit_quantity' => $clothItems->map(fn ($item) => (float) $item->quantity)->all(),
+                    'suit_unit_price' => $clothItems->map(fn ($item) => (float) $item->unit_price)->all(),
                     'customer_mode' => 'regular',
                     'existing_customer_id' => $order->customer_id,
                     'payment' => $clothPayment,
