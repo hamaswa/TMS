@@ -1644,6 +1644,37 @@
                         }
                     });
                 }
+                document.addEventListener('click', async function(event) {
+                    var button = event.target.closest('.co-inline-option button[data-option-type]');
+                    if (!button) return;
+                    var group = button.closest('.co-inline-option');
+                    var input = group.querySelector('input');
+                    var error = group.querySelector('[role="alert"]');
+                    var target = document.getElementById(group.dataset.target);
+                    var name = input.value.trim();
+                    error.hidden = true;
+                    if (!name) { error.textContent = 'نئے انتخاب کا نام لکھیں۔'; error.hidden = false; return; }
+                    button.disabled = true;
+                    try {
+                        var data = new FormData();
+                        data.append('Name', name);
+                        data.append('OptionTypeId', button.dataset.optionType);
+                        data.append('measurement_template_id', button.dataset.templateId);
+                        data.append('_token', group.closest('form').querySelector('[name="_token"]').value);
+                        var response = await fetch(button.dataset.url, {
+                            method: 'POST', body: data, credentials: 'same-origin',
+                            headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
+                        });
+                        var result = await response.json();
+                        if (!response.ok) throw new Error(result.message || Object.values(result.errors || {}).flat().join(' '));
+                        if (target && target.tagName === 'SELECT') {
+                            target.add(new Option(result.name, result.name, true, true));
+                            target.dispatchEvent(new Event('change', {bubbles: true}));
+                        } else if (target) { target.value = result.name; }
+                        input.value = '';
+                    } catch (e) { error.textContent = e.message || 'انتخاب محفوظ نہیں ہوا۔'; error.hidden = false; }
+                    finally { button.disabled = false; }
+                });
                 document.addEventListener('submit', async function(event) {
                     var form = event.target.closest('#co-measurement-editor-form');
                     if (!form) return;
