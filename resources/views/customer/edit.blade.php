@@ -1,17 +1,7 @@
 @extends('main')
 @section('content')
-    <style>
-        /* Consistent compact RTL measurement and preference controls. */
-        .measurement-grid, .preference-grid { align-items: start; }
-        .measurement-grid .form-group, .preference-grid .form-group { min-width: 0; margin-bottom: 12px; }
-        .measurement-grid label, .preference-grid label { display: block; margin-bottom: 6px; }
-        .measurement-grid .form-control, .preference-grid .form-control { width: 100%; min-width: 0; }
-        .measurement-grid .input-group { flex-wrap: nowrap; }
-        .measurement-grid .input-group .form-control { min-width: 0; }
-        @media(max-width: 767px) {
-            .measurement-grid, .preference-grid, .template-layout-grid, .customer-details-grid { grid-template-columns: minmax(0, 1fr) !important; }
-        }
-    </style>
+    @include('customer.partials.measurement-form-layout')
+
 
     @php
         $statementUrl = $parentCustomer
@@ -30,7 +20,7 @@
         }
 
         .customer-edit-shell {
-            max-width: 1180px;
+            max-width: 1420px;
             margin: 0 auto
         }
 
@@ -230,56 +220,10 @@
     </style>
 
     
-    <style>
-        /* The outer panels and the fields inside each panel have separate grids. */
-        .customer-details-grid, .template-layout-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            align-items: stretch;
-            width: 100%;
-            min-width: 0;
-        }
-        .customer-details-grid > *, .template-layout-grid > * { min-width: 0; }
-        .customer-details-grid .measurement-grid,
-        .customer-details-grid .preference-grid,
-        .template-layout-grid .measurement-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px 14px;
-            align-content: start;
-            min-width: 0;
-        }
-        .customer-details-grid .measurement-grid > *,
-        .customer-details-grid .preference-grid > *,
-        .template-layout-grid .measurement-grid > * {
-            min-width: 0;
-            width: 100%;
-            margin: 0;
-        }
-        .customer-details-grid .form-control,
-        .template-layout-grid .form-control { min-width: 0; max-width: 100%; }
-        .customer-details-grid .input-group,
-        .template-layout-grid .input-group { min-width: 0; flex-wrap: nowrap; }
-        .customer-details-grid .input-group > .form-control,
-        .template-layout-grid .input-group > .form-control { min-width: 0; }
-        .customer-details-grid.template-one-column,
-        .template-layout-grid.template-one-column { grid-template-columns: minmax(0, 1fr); }
-        @media (max-width: 1100px) {
-            .customer-details-grid:not(.template-one-column),
-            .template-layout-grid:not(.template-one-column) {
-                grid-template-columns: minmax(0, 1fr);
-            }
-        }
-        @media (max-width: 580px) {
-            .customer-details-grid .measurement-grid,
-            .customer-details-grid .preference-grid,
-            .template-layout-grid .measurement-grid {
-                grid-template-columns: minmax(0, 1fr);
-            }
-        }
-    </style>
+
 <section class="main-content customer-edit-page" dir="rtl">
         <div class="container-fluid px-3 px-lg-5 py-4">
-            <div class="customer-edit-shell">
+            <div class="customer-edit-shell customer-tailoring-shell">
                 <div class="customer-edit-hero mb-4">
                     <div class="d-flex flex-wrap justify-content-between align-items-center">
                         <div>
@@ -366,7 +310,7 @@
                         </div>
                     </section>
 
-                    <div class="template-layout-grid">
+                    <div class="template-layout-grid customer-tailoring-layout">
                         <section class="edit-section">
                             <div class="edit-section-heading">
                                 <div>
