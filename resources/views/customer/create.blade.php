@@ -1,6 +1,19 @@
 @extends('main')
 @section('content')
     <style>
+        /* Consistent compact RTL measurement and preference controls. */
+        .measurement-grid, .preference-grid { align-items: start; }
+        .measurement-grid .form-group, .preference-grid .form-group { min-width: 0; margin-bottom: 12px; }
+        .measurement-grid label, .preference-grid label { display: block; margin-bottom: 6px; }
+        .measurement-grid .form-control, .preference-grid .form-control { width: 100%; min-width: 0; }
+        .measurement-grid .input-group { flex-wrap: nowrap; }
+        .measurement-grid .input-group .form-control { min-width: 0; }
+        @media(max-width: 767px) {
+            .measurement-grid, .preference-grid, .template-layout-grid, .customer-details-grid { grid-template-columns: minmax(0, 1fr) !important; }
+        }
+    </style>
+
+    <style>
         .customer-create-page {
             background: #f5f7fa;
             min-height: calc(100vh - 70px)
