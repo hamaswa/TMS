@@ -220,6 +220,38 @@
                 display: none
             }
         }
+
+        /* English (left-to-right): mirror the sidebar to the left edge. */
+        html[dir="ltr"] .tms-sidebar {
+            right: auto;
+            left: 0;
+            box-shadow: 8px 0 30px rgba(13, 42, 79, .16)
+        }
+
+        html[dir="ltr"] .tms-sidebar-brand-text,
+        html[dir="ltr"] .tms-side-label {
+            transform: translateX(-8px)
+        }
+
+        html[dir="ltr"] .tms-side-caret {
+            margin-right: 0;
+            margin-left: auto
+        }
+
+        html[dir="ltr"] .tms-side-submenu {
+            margin: 2px 0 8px 43px;
+            padding-right: 0;
+            padding-left: 10px;
+            border-right: 0;
+            border-left: 1px solid rgba(124, 180, 255, .45)
+        }
+
+        @media (min-width:1200px) {
+            html[dir="ltr"] body {
+                padding-right: 0;
+                padding-left: var(--tms-sidebar-rail)
+            }
+        }
     </style>
 
     <aside class="tms-sidebar" aria-label="مرکزی نیویگیشن">

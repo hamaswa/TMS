@@ -17,6 +17,11 @@
 ================================================== -->
 @php($isSuperAdminFooter = request()->is('administrator') || request()->is('administrator/*') || (Auth::check() && Auth::user()->hasRole('administrative')))
 @include('components.confirmation-modal')
+@if (($uiLocale ?? 'ur') === 'en' && ! $isSuperAdminFooter)
+    {{-- English mode: translate text that scripts add after the page loads. --}}
+    <script type="application/json" id="tms-ui-dictionary">{!! json_encode(app(\App\Support\UiTranslator::class)->scriptDictionary()) !!}</script>
+    <script src="{{ asset('assets/js/ui-translate.js') }}?v=20261018"></script>
+@endif
 <script src="{{ asset('assets/js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ asset('assets/owlcarousel/owl.carousel.min.js') }}"></script>
 <script src="{{ asset('assets/js/main.js') }}"></script>
