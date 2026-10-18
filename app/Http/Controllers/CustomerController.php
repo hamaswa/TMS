@@ -252,6 +252,12 @@ class CustomerController extends Controller
             ->withSum(['transactions as outstanding_amount' => fn($query) => $query->where('userId', $ownerId)], 'remainingBalance')
             ->latest()->limit(50)->get()
             : collect();
+        $tailoringCounterLinks = $orders->isNotEmpty()
+            ? CounterOrderItem::where('source_record_type', 'tailoring_order')
+                ->whereIn('source_record_id', $orders->pluck('id'))
+                ->whereHas('counterOrder', fn ($query) => $query->where('user_id', $ownerId))
+                ->get(['source_record_id', 'counter_order_id'])->keyBy('source_record_id')
+            : collect();
         $sales = collect();
         if ($canViewShop) {
             $legacySales = $customer->sales()
@@ -399,6 +405,7 @@ class CustomerController extends Controller
             'ledgerFilter',
             'ledgerTotals',
             'orders',
+            'tailoringCounterLinks',
             'sales',
             'canViewBalances',
             'canViewTailoring',
