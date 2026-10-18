@@ -1644,36 +1644,41 @@
                         }
                     });
                 }
-                document.addEventListener('click', async function(event) {
-                    var button = event.target.closest('.co-inline-option button[data-option-type]');
-                    if (!button) return;
-                    var group = button.closest('.co-inline-option');
-                    var input = group.querySelector('input');
-                    var error = group.querySelector('[role="alert"]');
-                    var target = document.getElementById(group.dataset.target);
-                    var name = input.value.trim();
-                    error.hidden = true;
-                    if (!name) { error.textContent = 'نئے انتخاب کا نام لکھیں۔'; error.hidden = false; return; }
-                    button.disabled = true;
+                document.addEventListener('focusin', function(event) {
+                    var select = event.target.closest('#co-measurement-editor-form select[data-inline-option-type]');
+                    if (select) select.dataset.previousValue = select.value;
+                });
+                document.addEventListener('change', async function(event) {
+                    var select = event.target.closest('#co-measurement-editor-form select[data-inline-option-type]');
+                    if (!select) return;
+                    if (select.value !== '__add_new__') {
+                        select.dataset.previousValue = select.value;
+                        return;
+                    }
+                    select.value = select.dataset.previousValue || '';
+                    var name = window.prompt('نئے انتخاب کا نام لکھیں:');
+                    if (!name || !name.trim()) return;
+                    var form = select.closest('form');
+                    var data = new FormData();
+                    data.append('Name', name.trim());
+                    data.append('OptionTypeId', select.dataset.inlineOptionType);
+                    data.append('measurement_template_id', select.dataset.inlineOptionTemplate);
+                    data.append('_token', form.querySelector('[name="_token"]').value);
+                    select.disabled = true;
                     try {
-                        var data = new FormData();
-                        data.append('Name', name);
-                        data.append('OptionTypeId', button.dataset.optionType);
-                        data.append('measurement_template_id', button.dataset.templateId);
-                        data.append('_token', group.closest('form').querySelector('[name="_token"]').value);
-                        var response = await fetch(button.dataset.url, {
+                        var response = await fetch(select.dataset.inlineOptionUrl, {
                             method: 'POST', body: data, credentials: 'same-origin',
                             headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
                         });
                         var result = await response.json();
                         if (!response.ok) throw new Error(result.message || Object.values(result.errors || {}).flat().join(' '));
-                        if (target && target.tagName === 'SELECT') {
-                            target.add(new Option(result.name, result.name, true, true));
-                            target.dispatchEvent(new Event('change', {bubbles: true}));
-                        } else if (target) { target.value = result.name; }
-                        input.value = '';
-                    } catch (e) { error.textContent = e.message || 'انتخاب محفوظ نہیں ہوا۔'; error.hidden = false; }
-                    finally { button.disabled = false; }
+                        select.add(new Option(result.name, result.name, true, true));
+                        select.dataset.previousValue = result.name;
+                    } catch (error) {
+                        window.alert(error.message || 'انتخاب محفوظ نہیں ہوا۔');
+                    } finally {
+                        select.disabled = false;
+                    }
                 });
                 document.addEventListener('submit', async function(event) {
                     var form = event.target.closest('#co-measurement-editor-form');
