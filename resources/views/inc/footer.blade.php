@@ -17,6 +17,9 @@
 ================================================== -->
 @php($isSuperAdminFooter = request()->is('administrator') || request()->is('administrator/*') || (Auth::check() && Auth::user()->hasRole('administrative')))
 @include('components.confirmation-modal')
+@if (($uiLocale ?? 'ur') === 'ur' && ! $isSuperAdminFooter)
+    @include('inc.urdu-keyboard')
+@endif
 @if (($uiLocale ?? 'ur') === 'en' && ! $isSuperAdminFooter)
     {{-- English mode: translate text that scripts add after the page loads. --}}
     <script type="application/json" id="tms-ui-dictionary">{!! json_encode(app(\App\Support\UiTranslator::class)->scriptDictionary()) !!}</script>

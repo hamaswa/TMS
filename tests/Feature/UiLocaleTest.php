@@ -20,7 +20,10 @@ class UiLocaleTest extends TestCase
             ->assertOk()
             ->assertSee('<html lang="ur" dir="rtl">', false)
             ->assertSee('tms-lang-switch', false)
-            ->assertSeeText('روزانہ اخراجات');
+            ->assertSeeText('روزانہ اخراجات')
+            // Urdu keyboard toggle and panel are offered in Urdu mode.
+            ->assertSee('id="tmsUrduKeyboardToggle"', false)
+            ->assertSee('urdu-keyboard.js', false);
 
         $this->actingAs($owner)->from(route('admin.dailyexpense.index'))
             ->get(route('ui.locale', 'en'))
@@ -36,7 +39,9 @@ class UiLocaleTest extends TestCase
             ->assertSee('>اردو</a>', false)
             // Script-inserted text is translated in the browser.
             ->assertSee('id="tms-ui-dictionary"', false)
-            ->assertSee('ui-translate.js', false);
+            ->assertSee('ui-translate.js', false)
+            ->assertDontSee('id="tmsUrduKeyboardToggle"', false)
+            ->assertDontSee('urdu-keyboard.js', false);
 
         $this->actingAs($owner)->get(route('ui.locale', 'ur'));
         $this->actingAs($owner)->get(route('admin.dailyexpense.index'))
