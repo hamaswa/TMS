@@ -49,7 +49,7 @@
                                             <td data-label="گاہک کا نام">{{ $sale->customer?->name ?? $sale->customer_name }}</td>
                                             <td data-label="فروخت کی رقم">Rs {{ number_format($sale->detail->sum(fn ($detail) => (float) $detail->price * (int) $detail->quantity), 2) }}</td>
                                             <td data-label="حالت"><span class="badge badge-{{ $sale->status === 'cancelled' ? 'danger' : 'success' }}">{{ $sale->status === 'cancelled' ? 'منسوخ' : 'مکمل' }}</span></td>
-                                            <td data-label="مزید تفصیلات"><a href="{{ route('admin.sale.show', $sale) }}" class="btn btn-sm btn-outline-primary">دیکھیں</a></td>
+                                            <td data-label="مزید تفصیلات"><a href="{{ route('admin.sale.show', $sale) }}" class="btn btn-sm btn-outline-primary">{{ $sale->status === 'cancelled' ? 'منسوخی کی تفصیل' : 'تفصیل / منسوخی' }}</a></td>
                                             <td class="sale-record-actions" data-label="عمل">
                                                 @if($sale->status !== 'cancelled')
                                                 <a href="{{ url('admin/sale/'.$sale->id.'/edit')}}"

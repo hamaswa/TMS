@@ -310,6 +310,9 @@
                 </button>
             </div>
 
+            @if(request()->boolean('cancel'))
+                <script>document.addEventListener('DOMContentLoaded', function () { if (window.jQuery && window.jQuery.fn.modal) window.jQuery('#stockCancelModal').modal('show'); });</script>
+            @endif
             <div class="modal fade stock-cancel-modal no-print" id="stockCancelModal" tabindex="-1" role="dialog"
                 aria-labelledby="stockCancelModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered" role="document">

@@ -452,7 +452,7 @@
         <div class="customer-orders-shell">
             <header class="customer-orders-hero">
                 <div>
-                    <h1>{{ $selectedCustomer->name }} کے حالیہ آرڈرز</h1>
+                    <h1>{{ $customer->name }} اور خاندان کے آرڈرز</h1>
                     <p>آرڈر، ادائیگی، بقایا، مرحلہ، درزی اور ریک نمبر ایک الگ صفحے پر دیکھیں اور تبدیل کریں۔</p>
 
                     <div class="customer-orders-hero__meta">
@@ -503,7 +503,7 @@
                 <div class="customer-orders-panel__head">
                     <div>
                         <h2>آرڈر ریکارڈ</h2>
-                        <p>{{ $selectedCustomer->name }} کے تمام ٹیلرنگ آرڈرز تازہ ترین ترتیب میں۔</p>
+                        <p>{{ $customer->name }} اور تمام خاندانی پروفائلز کے سلائی آرڈرز، تازہ ترین پہلے۔ خریداری اور مالی لین دین مکمل کھاتے میں دیکھیں۔</p>
                     </div>
                     <span class="customer-orders-panel__icon"><i class="fas fa-receipt"></i></span>
                 </div>

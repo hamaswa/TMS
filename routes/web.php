@@ -232,6 +232,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::delete('/counter-orders/{counterOrder}/items/{item}', [CounterOrderController::class, 'removeItem'])->name('counter-orders.items.destroy');
         Route::post('/counter-orders/{counterOrder}/confirm', [CounterOrderController::class, 'confirm'])->name('counter-orders.confirm');
         Route::post('/counter-orders/{counterOrder}/close', [CounterOrderController::class, 'close'])->name('counter-orders.close');
+        Route::post('/counter-orders/{counterOrder}/complaints', [CounterOrderController::class, 'storeComplaint'])->name('counter-orders.complaints.store');
+        Route::post('/counter-orders/{counterOrder}/complaints/{complaint}/settle', [CounterOrderController::class, 'settleComplaint'])->name('counter-orders.complaints.settle');
         Route::get('/counter-orders/from-sale-session/{saleSession}', [CounterOrderController::class, 'importSaleSession'])->name('counter-orders.sale-session');
 
         Route::get(
@@ -446,6 +448,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::middleware('business.permission:tailoring.orders')->group(function () {
         Route::get('/customers/{customer}/orders', [OrderController::class, 'customerOrders'])->name('customer.orders');
         Route::get('/order/edit/{id}', [OrderController::class, 'edit'])->name('order.edit');
+Route::post('/order/{id}/complaints', [OrderController::class, 'storeTailoringComplaint'])->name('order.complaints.store');
+Route::post('/order/{id}/complaints/{complaint}/settle', [OrderController::class, 'settleTailoringComplaint'])->name('order.complaints.settle');
         Route::put('/order/update/{id}', [OrderController::class, 'update'])->name('order.update');
         Route::get('/order/{id}', [CounterOrderController::class, 'legacyTailoringCreate'])->name('order.create');
         Route::post('/order/insert', [OrderController::class, 'insert'])->name('order.insert');

@@ -51,12 +51,16 @@ class ClothTypeController extends Controller
                 'name_en' => ['required', 'string', 'max:255'],
             ]);
             $user_id = Auth::user()->businessOwnerId();
-            ClothType::create([
-                'name' => $validated['name_ur'],
-                'name_ur' => $validated['name_ur'],
-                'name_en' => $validated['name_en'],
-                'user_id' => $user_id
-            ]);
+            $type = ClothType::firstOrCreate(
+                ['user_id' => $user_id, 'name_ur' => $validated['name_ur']],
+                ['name' => $validated['name_ur'], 'name_en' => $validated['name_en']]
+            );
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'id' => $type->id,
+                    'name' => $type->localizedName(),
+                ], $type->wasRecentlyCreated ? 201 : 200);
+            }
             return redirect()->route('admin.clothtype.index')->with('insert', 'کپڑے کی قسم کامیابی کے ساتھ شامل کی گئی۔');
         } catch (\Throwable $th) {
             throw $th;
