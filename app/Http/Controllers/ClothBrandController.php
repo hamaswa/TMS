@@ -54,22 +54,13 @@ class ClothBrandController extends Controller
             $fileName = $file?->store('BrandImages', 'public');
             $user_id = Auth::user()->businessOwnerId();
 
-            // Check if the brand name already exists
-            $existingBrand = ClothBrand::where('user_id', $user_id)->where('name', $name)->first();
-
-            if ($existingBrand) {
-                // If the brand name exists, use the existing slug
-                $brand_slug = $existingBrand->brand_slug;
-            } else {
-                // If the brand name does not exist, generate a new slug
-                $brand_slug = Str::slug($name);
+            $brand = ClothBrand::firstOrCreate(
+                ['user_id' => $user_id, 'name' => $name],
+                ['brand_logo' => $fileName, 'brand_slug' => Str::slug($name)]
+            );
+            if ($request->expectsJson()) {
+                return response()->json(['id' => $brand->id, 'name' => $brand->name], $brand->wasRecentlyCreated ? 201 : 200);
             }
-            ClothBrand::create([
-                'name' => $name,
-                'brand_logo' => $fileName,
-                'user_id' => $user_id,
-                'brand_slug' => $brand_slug
-            ]);
             return redirect()->route('admin.clothbrand.index')->with('insert', 'کپڑے کی کمپنی کامیابی کے ساتھ شامل کی گئی۔');
         } catch (\Throwable $th) {
             throw $th;
