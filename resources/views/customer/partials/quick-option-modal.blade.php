@@ -4,8 +4,26 @@
         var modal = document.getElementById('quickOptionModal'), form = document.getElementById('quickOptionForm');
         if (!modal || !form || !window.jQuery) return;
         var target = null;
+        document.querySelectorAll('select[data-inline-option-type]').forEach(function(select) {
+            if (select.querySelector('option[value="__add_new__"]')) return;
+            select.add(new Option('＋ نیا انتخاب شامل کریں', '__add_new__'));
+            select.addEventListener('focus', function() { select.dataset.previousValue = select.value; });
+            select.addEventListener('change', function() {
+                if (select.value !== '__add_new__') { select.dataset.previousValue = select.value; return; }
+                select.value = select.dataset.previousValue || '';
+                target = select;
+                form.elements.OptionTypeId.value = select.dataset.inlineOptionType;
+                var templateInput = document.querySelector('[name="measurement_template_id"]');
+                form.elements.measurement_template_id.value = templateInput ? templateInput.value : '';
+                modal.querySelector('.modal-title').textContent = select.dataset.inlineOptionLabel + ' — نیا انتخاب';
+                form.elements.Name.value = '';
+                document.getElementById('quickOptionError').textContent = '';
+                window.jQuery(modal).modal('show');
+            });
+        });
         window.jQuery(modal).on('show.bs.modal', function (event) {
             var trigger = event.relatedTarget;
+            if (!trigger) return;
             target = document.getElementById(trigger.getAttribute('data-option-select'));
             form.elements.OptionTypeId.value = trigger.getAttribute('data-option-type');
             var templateInput = document.querySelector('[name="measurement_template_id"]');
