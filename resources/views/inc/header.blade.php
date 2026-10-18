@@ -81,7 +81,7 @@
     @else
         <a class="navbar-brand" href="{{ $isSuperAdmin ? route('administrator.index') : route('admin.home') }}"><i class="fas fa-cut mr-2"></i>BuyNStitch</a>
     @endif
-    @unless($isSuperAdmin)<span class="ml-auto mr-xl-3 order-xl-last">@include('inc.language-switch', ['variant' => 'nav'])</span>@endunless
+    @unless($isSuperAdmin)<span class="ml-auto mr-xl-3 order-xl-last d-inline-flex align-items-center">@unless($isEnglishUi)<button type="button" id="tmsUrduKeyboardToggle" class="tms-ukb-toggle" aria-pressed="false" title="اردو کی بورڈ"><i class="fas fa-keyboard"></i><span class="d-none d-sm-inline">اردو کی بورڈ</span> <span data-state>بند</span></button>@endunless @include('inc.language-switch', ['variant' => 'nav'])</span>@endunless
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#tmsNavigation" aria-controls="tmsNavigation" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="tmsNavigation"><ul class="navbar-nav mr-auto align-items-xl-center">
         @if(Session::get('tailor'))
