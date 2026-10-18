@@ -376,8 +376,9 @@
                                             data-template-field="system.{{ $templateSystemField }}"
                                             data-default-column="left">
                                             <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
-                                            @if(Auth::user()->hasBusinessPermission('tailoring.configuration'))<button type="button" class="btn btn-sm btn-outline-primary mb-2 ml-2" data-toggle="modal" data-target="#quickOptionModal" data-option-type="{{ $type->option_id }}" data-option-label="{{ $type->otn }}" data-option-select="preference-{{ $type->slug }}"><i class="fas fa-plus"></i> نیا انتخاب</button>@endif
+
                                             <select id="preference-{{ $type->slug }}" class="form-control"
+                                                @if(Auth::user()->hasBusinessPermission('tailoring.configuration')) data-inline-option-type="{{ $type->option_id }}" data-inline-option-label="{{ $type->otn }}" @endif
                                                 name="{{ $type->slug }}"
                                                 data-measure-key="system.{{ $templateSystemField }}"
                                                 data-template-system-field="{{ $templateSystemField }}">
