@@ -59,16 +59,11 @@
                                 'unit' => $row['unit'],
                                 'value' => $row['value'],
                                 'choices' => $row['choices'],
+                                'optionTypeId' => $row['option_type_id'],
+                                'optionTemplateId' => $template->id,
                                 'required' => true,
                                 'wrapperClass' => 'co-measurement-field form-group',
                             ])
-                            @if($row['unit'] !== 'inch' && $row['option_type_id'] && Auth::user()->hasBusinessPermission('tailoring.configuration'))
-                                <div class="co-inline-option mb-2" data-target="co-measurement-system-{{ $row['key'] }}">
-                                    <input class="form-control form-control-sm" type="text" maxlength="255" placeholder="نیا انتخاب لکھیں" aria-label="نیا {{ $row['label'] }} انتخاب">
-                                    <button type="button" class="btn btn-sm btn-outline-primary mt-1" data-option-type="{{ $row['option_type_id'] }}" data-template-id="{{ $template->id }}" data-url="{{ route('admin.Options.store') }}">+ نیا انتخاب محفوظ کریں</button>
-                                    <div class="text-danger small" role="alert" hidden></div>
-                                </div>
-                            @endif
                         @else
                             @php($field = $row['field'])
                             <div class="co-measurement-field">
