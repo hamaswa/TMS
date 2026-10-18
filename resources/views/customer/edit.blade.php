@@ -448,7 +448,8 @@
 
 
     @if(Auth::user()->hasBusinessPermission('tailoring.configuration'))
-    @include('customer.partials.quick-option-modal')
+        @include('customer.partials.quick-option-modal')
+    @endif
     <script>
         (function() {
             const all = @json($allTemplateValues);
