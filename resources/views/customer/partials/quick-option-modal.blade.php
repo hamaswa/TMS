@@ -8,7 +8,8 @@
             var trigger = event.relatedTarget;
             target = document.getElementById(trigger.getAttribute('data-option-select'));
             form.elements.OptionTypeId.value = trigger.getAttribute('data-option-type');
-            form.elements.measurement_template_id.value = document.querySelector('[name="measurement_template_id"]').value;
+            var templateInput = document.querySelector('[name="measurement_template_id"]');
+            form.elements.measurement_template_id.value = templateInput ? templateInput.value : (trigger.getAttribute('data-option-template') || '');
             modal.querySelector('.modal-title').textContent = trigger.getAttribute('data-option-label') + ' — نیا انتخاب';
             form.elements.Name.value = '';
             document.getElementById('quickOptionError').textContent = '';
@@ -27,4 +28,3 @@
         });
     });
     </script>
-    @endif
