@@ -47,24 +47,18 @@
                 <div class="co-measurement-stack">
                     @forelse($columns->get($column) as $row)
                         @if($row['kind'] === 'system')
-                            @php($inputId = 'co-measurement-system-'.$row['key'])
-                            <div class="co-measurement-field">
-                                <label for="{{ $inputId }}">{{ $row['label'] }} @if($row['unit'] === 'inch')<small>(انچ)</small>@endif</label>
-                                @if($row['unit'] === 'inch')
-                                    <input id="{{ $inputId }}" class="form-control" type="number" step="0.01" min="0"
-                                        name="system_measurements[{{ $row['key'] }}]" value="{{ $row['value'] }}" required dir="ltr">
-                                @elseif($row['choices']->isNotEmpty())
-                                    <select id="{{ $inputId }}" class="form-control" name="system_measurements[{{ $row['key'] }}]" required>
-                                        <option value="">{{ $row['label'] }} منتخب کریں</option>
-                                        @foreach($row['choices'] as $choice)
-                                            <option value="{{ $choice }}" @selected((string) $row['value'] === (string) $choice)>{{ $choice }}</option>
-                                        @endforeach
-                                    </select>
-                                @else
-                                    <input id="{{ $inputId }}" class="form-control" type="text" maxlength="255"
-                                        name="system_measurements[{{ $row['key'] }}]" value="{{ $row['value'] }}" required>
-                                @endif
-                            </div>
+                            @include('customer.partials.system-measurement-field', [
+                                'name' => $row['key'],
+                                'fieldKey' => $row['key'],
+                                'inputId' => 'co-measurement-system-'.$row['key'],
+                                'inputName' => 'system_measurements['.$row['key'].']',
+                                'label' => $row['label'],
+                                'unit' => $row['unit'],
+                                'value' => $row['value'],
+                                'choices' => $row['choices'],
+                                'required' => true,
+                                'wrapperClass' => 'co-measurement-field form-group',
+                            ])
                         @else
                             @php($field = $row['field'])
                             <div class="co-measurement-field">
