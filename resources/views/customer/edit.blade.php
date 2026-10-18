@@ -356,6 +356,12 @@
                                 @foreach ($systemMeasurements as $name => [$label, $value])
                                     @include('customer.partials.system-measurement-field', [
                                         'fieldKey' => $name === 'monda' ? 'shoulder' : $name,
+                                                'name' => $name,
+                                                'label' => $label,
+                                                'unit' => 'inch',
+                                                'choices' => collect(),
+                                                'optionTypeId' => null,
+                                                'optionTemplateId' => null,
                                         'inputId' => 'measurement-'.$name,
                                         'inputName' => $name,
                                         'value' => $value,
