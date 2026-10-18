@@ -485,6 +485,31 @@ class CustomerController extends Controller
         $existingCustomer = $parentCustomer
             ?: $this->existingRootCustomerByPhone($validated['contact']);
 
+        // Names within the same phone-linked family are compared without case
+        // or spacing differences. Do not silently create another profile.
+        if ($existingCustomer) {
+            $normalizeName = static function (string $name): string {
+                $name = mb_strtolower(trim($name), 'UTF-8');
+
+                return preg_replace('/[\\s\\x{00A0}]+/u', '', $name) ?? $name;
+            };
+            $requestedName = $normalizeName($validated['name']);
+            $matchingProfile = Customers::query()
+                ->where('user_id', $ownerId)
+                ->where(function ($query) use ($existingCustomer) {
+                    $query->whereKey($existingCustomer->id)
+                        ->orWhere('parent_id', $existingCustomer->id);
+                })
+                ->get()
+                ->first(fn(Customers $profile) => $normalizeName($profile->name) === $requestedName);
+
+            if ($matchingProfile) {
+                return redirect()
+                    ->route('admin.Customers.edit', $matchingProfile->id)
+                    ->with('warning', 'اس فون نمبر پر اس نام کا گاہک پہلے سے موجود ہے۔ موجودہ پروفائل استعمال کریں۔');
+            }
+        }
+
         $obj = new Customers;
 
         $obj->name = $validated['name'];
