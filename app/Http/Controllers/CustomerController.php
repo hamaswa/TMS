@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BusinessRole;
 use App\Models\CounterOrder;
 use App\Models\CounterOrderItem;
+use App\Models\CounterOrderComplaint;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
@@ -258,6 +259,11 @@ class CustomerController extends Controller
                 ->whereHas('counterOrder', fn ($query) => $query->where('user_id', $ownerId))
                 ->get(['source_record_id', 'counter_order_id'])->keyBy('source_record_id')
             : collect();
+        $standaloneClaims = $orders->isNotEmpty()
+            ? CounterOrderComplaint::where('user_id', $ownerId)
+                ->whereIn('order_id', $orders->pluck('id'))
+                ->latest()->get()->groupBy('order_id')
+            : collect();
         $sales = collect();
         if ($canViewShop) {
             $legacySales = $customer->sales()
@@ -406,6 +412,7 @@ class CustomerController extends Controller
             'ledgerTotals',
             'orders',
             'tailoringCounterLinks',
+            'standaloneClaims',
             'sales',
             'canViewBalances',
             'canViewTailoring',
