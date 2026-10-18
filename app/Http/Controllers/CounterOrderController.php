@@ -6,6 +6,7 @@ use App\Models\BusinessRole;
 use App\Models\Cloth;
 use App\Models\CounterOrder;
 use App\Models\CounterOrderItem;
+use App\Models\CounterOrderComplaint;
 use App\Models\CounterSaleReceipt;
 use App\Models\CustomerMeasurementHistory;
 use App\Models\Customers;
@@ -824,6 +825,39 @@ class CounterOrderController extends Controller
         );
 
         return back()->with('success', 'نئے آئٹمز تصدیق ہو گئے ہیں۔ کپڑا اسٹاک سے کم اور سلائی ورکشاپ میں شامل ہو گئی ہے۔');
+    }
+
+
+    public function storeComplaint(Request $request, CounterOrder $counterOrder): RedirectResponse
+    {
+        $this->authorizeOrder($request, $counterOrder);
+        abort_unless($this->canManageTailoring($request), 403);
+        $validated = $request->validate([
+            'counter_order_item_id' => ['required', 'integer'],
+            'reason' => ['required', 'string', 'min:10', 'max:3000'],
+            'requested_tailoring_refund' => ['required', 'numeric', 'min:0'],
+            'requested_cloth_compensation' => ['required', 'numeric', 'min:0'],
+        ]);
+        $item = $counterOrder->items()->whereKey($validated['counter_order_item_id'])
+            ->where('type', CounterOrderItem::TYPE_TAILORING)
+            ->where('status', CounterOrderItem::STATUS_CONFIRMED)->firstOrFail();
+        if ((float) $validated['requested_tailoring_refund'] > (float) $item->line_total) {
+            throw ValidationException::withMessages(['requested_tailoring_refund' => 'سلائی کی واپسی اصل سلائی قیمت سے زیادہ نہیں ہو سکتی۔']);
+        }
+        if ((float) $validated['requested_tailoring_refund'] + (float) $validated['requested_cloth_compensation'] <= 0) {
+            throw ValidationException::withMessages(['requested_tailoring_refund' => 'واپسی یا کپڑے کے نقصان کی رقم درج کریں۔']);
+        }
+        CounterOrderComplaint::create([
+            'counter_order_id' => $counterOrder->id,
+            'counter_order_item_id' => $item->id,
+            'user_id' => $request->user()->businessOwnerId(),
+            'created_by_user_id' => $request->user()->id,
+            'reason' => $validated['reason'],
+            'requested_tailoring_refund' => $validated['requested_tailoring_refund'],
+            'requested_cloth_compensation' => $validated['requested_cloth_compensation'],
+            'status' => 'pending',
+        ]);
+        return back()->with('success', 'شکایت اور مجوزہ رقم محفوظ ہو گئی ہے۔ ابھی کوئی ادائیگی یا کھاتے میں تبدیلی نہیں ہوئی۔');
     }
 
     public function close(Request $request, CounterOrder $counterOrder): RedirectResponse
