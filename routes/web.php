@@ -229,6 +229,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::delete('/counter-orders/{counterOrder}/items/{item}', [CounterOrderController::class, 'removeItem'])->name('counter-orders.items.destroy');
         Route::post('/counter-orders/{counterOrder}/confirm', [CounterOrderController::class, 'confirm'])->name('counter-orders.confirm');
         Route::post('/counter-orders/{counterOrder}/close', [CounterOrderController::class, 'close'])->name('counter-orders.close');
+        Route::post('/counter-orders/{counterOrder}/complaints', [CounterOrderController::class, 'storeComplaint'])->name('counter-orders.complaints.store');
         Route::get('/counter-orders/from-sale-session/{saleSession}', [CounterOrderController::class, 'importSaleSession'])->name('counter-orders.sale-session');
 
         Route::get(
