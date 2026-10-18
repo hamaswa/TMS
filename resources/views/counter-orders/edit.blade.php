@@ -900,6 +900,8 @@
                         {{ number_format((float) $counterOrder->balance_amount, 2) }}</strong></div>
             </div>
             @if($counterOrder->items->contains(fn($item) => $item->type === 'tailoring' && $item->status === 'confirmed') && $canAddTailoring)
+                <button type="button" class="btn btn-outline-danger mb-3" data-toggle="modal" data-target="#tailoringComplaintModal">سلائی شکایت / واپسی / ہرجانہ</button>
+                <div class="modal fade" id="tailoringComplaintModal" tabindex="-1" role="dialog" aria-labelledby="tailoringComplaintTitle" aria-hidden="true"><div class="modal-dialog modal-lg" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title" id="tailoringComplaintTitle">سلائی شکایت / واپسی / ہرجانہ</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body">
                 <div class="card mb-3" dir="rtl">
                     <div class="card-header"><strong>سلائی کی شکایت / واپسی اور کپڑے کا نقصان</strong></div>
                     <div class="card-body">
@@ -908,7 +910,7 @@
                             @csrf
                             <div class="form-group"><label>متعلقہ سلائی</label>
                                 <select name="counter_order_item_id" class="form-control" required>
-                                    @foreach($counterOrder->items->where('type', 'tailoring')->where('status', 'confirmed') as $item)
+                                    @foreach($counterOrder->items->filter(fn ($item) => $item->type === 'tailoring' && $item->status === 'confirmed') as $item)
                                         <option value="{{ $item->id }}" @selected(old('counter_order_item_id') == $item->id)>{{ $item->item_serial ?: '#'.$item->id }} — Rs {{ number_format((float)$item->line_total, 2) }}</option>
                                     @endforeach
                                 </select>
@@ -920,7 +922,11 @@
                             </div>
                             <button type="submit" class="btn btn-outline-danger">شکایت اور مجوزہ رقم محفوظ کریں</button>
                         </form>
-                        @php($complaints = \App\Models\CounterOrderComplaint::where('counter_order_id', $counterOrder->id)->where('user_id', auth()->user()->businessOwnerId())->with('item')->latest()->get())
+                        @php
+                            $complaints = \App\Models\CounterOrderComplaint::where('counter_order_id', $counterOrder->id)
+                                ->where('user_id', auth()->user()->businessOwnerId())
+                                ->with('item')->latest()->get();
+                        @endphp
                         @if($complaints->isNotEmpty())
                             <hr><h3 class="h6">پچھلی شکایات</h3>
                             @foreach($complaints as $complaint)
@@ -950,6 +956,7 @@
                         @endif
                     </div>
                 </div>
+                </div></div></div></div>
             @endif
             <div class="co-main">
                 <section class="co-panel">
