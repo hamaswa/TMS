@@ -1,13 +1,14 @@
 <!doctype html>
-<html lang="ur" dir="rtl">
+@php($tailorLoginEnglish = ($uiLocale ?? 'ur') === 'en')
+<html lang="{{ $tailorLoginEnglish ? 'en' : 'ur' }}" dir="{{ $tailorLoginEnglish ? 'ltr' : 'rtl' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>درزی لاگ اِن — BuyNStitch</title>
     <link href="{{ asset('assets/css/bootstrap.min.css') }}" rel="stylesheet">
-    <style>
+    <style data-ltr-ready>
         :root{--navy:#102a43;--blue:#1769e0;--cyan:#20b8cd}
-        *{box-sizing:border-box}body{min-height:100vh;margin:0;background:radial-gradient(circle at 80% 10%,#dff5fb 0,transparent 32%),#f4f7fb;color:#243b53;direction:rtl;text-align:right;font-family:"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif}
+        *{box-sizing:border-box}body{min-height:100vh;margin:0;background:radial-gradient(circle at 80% 10%,#dff5fb 0,transparent 32%),#f4f7fb;color:#243b53;direction:{{ $tailorLoginEnglish ? 'ltr' : 'rtl' }};text-align:{{ $tailorLoginEnglish ? 'left' : 'right' }};font-family:"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif}
         .login-shell{min-height:100vh;display:grid;grid-template-columns:minmax(340px,.9fr) minmax(0,1.1fr)}
         .login-panel{display:flex;align-items:center;justify-content:center;padding:2rem}.login-card{width:100%;max-width:460px;padding:2.5rem;background:#fff;border:1px solid #e3eaf2;border-radius:24px;box-shadow:0 24px 70px rgba(31,61,93,.14)}
         .brand{display:flex;align-items:center;gap:.75rem;margin-bottom:2rem;color:var(--navy);font-weight:800}.brand-mark{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(135deg,var(--cyan),#eaffff);color:#0b4778;font-size:1.25rem}.brand small{display:block;color:#67809a;font-size:.7rem}
@@ -17,6 +18,7 @@
     </style>
 </head>
 <body>
+@include('inc.language-switch', ['variant' => 'floating'])
 <main class="login-shell">
     <section class="login-panel">
         <div class="login-card">

@@ -82,6 +82,9 @@ Route::redirect('/register', '/', 301);
 
 Route::get('/language/{locale}', [PublicLocaleController::class, 'update'])
     ->whereIn('locale', ['ur', 'en'])->name('public.locale.update');
+// Urdu/English switch for the business, tailor and login pages.
+Route::get('/ui-language/{locale}', \App\Http\Controllers\UiLocaleController::class)
+    ->whereIn('locale', ['ur', 'en'])->name('ui.locale');
 Route::get('/', [PublicStorefrontController::class, 'index'])->middleware('public.locale')->name('storefront.index');
 Route::get('/about', [PublicStorefrontController::class, 'about'])->middleware('public.locale')->name('storefront.about');
 Route::get('/for-business', [PublicStorefrontController::class, 'business'])->middleware('public.locale')->name('storefront.business');
