@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="@yield('html_lang', str_replace('_', '-', app()->getLocale()))" dir="@yield('html_dir', 'ltr')">
+@php($forceEnglishUi = ($uiLocale ?? 'ur') === 'en')
+<html lang="{{ $forceEnglishUi ? 'en' : $__env->yieldContent('html_lang', str_replace('_', '-', app()->getLocale())) }}" dir="{{ $forceEnglishUi ? 'ltr' : $__env->yieldContent('html_dir', 'ltr') }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,6 +26,7 @@
     </style>
 </head>
 <body class="@yield('body_class')">
+    @include('inc.language-switch', ['variant' => 'floating'])
     <div id="app">
         <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm app-navbar">
             <div class="container">

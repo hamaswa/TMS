@@ -1,5 +1,6 @@
 @php($isSuperAdminSurface = request()->is('administrator') || request()->is('administrator/*'))
 @php($isSuperAdmin = $isSuperAdminSurface || (Auth::check() && Auth::user()->hasRole('administrative')))
+@php($isEnglishUi = $isSuperAdmin || ($uiLocale ?? 'ur') === 'en')
 @php($enabledWorkspaces = Auth::check() && Auth::user()->isBusinessMember() ? Auth::user()->enabledModules() : [])
 @php($hasMultipleWorkspaces = count($enabledWorkspaces) > 1)
 @php($canShopSales = Auth::check() && Auth::user()->hasModule('clothing') && Auth::user()->hasBusinessPermission('clothing.sales'))
@@ -24,7 +25,7 @@
 @php($isLocalShopHub = config('shop_hub.mode') === 'hub')
 @php($pendingHubEvents = $isLocalShopHub && Auth::check() && Auth::user()->isBusinessMember() && \Illuminate\Support\Facades\Schema::hasTable('shop_hub_events') ? \App\Models\ShopHubEvent::where('business_owner_user_id', Auth::user()->businessOwnerId())->where('status', 'pending')->count() : 0)
 <!doctype html>
-<html lang="{{ $isSuperAdmin ? 'en' : 'ur' }}" dir="{{ $isSuperAdmin ? 'ltr' : 'rtl' }}">
+<html lang="{{ $isEnglishUi ? 'en' : 'ur' }}" dir="{{ $isEnglishUi ? 'ltr' : 'rtl' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -47,9 +48,9 @@
     <link href="{{ asset('assets/css/main.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/css/responsive.css') }}" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
-    <style>
-        body{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};background:#f5f7fa;color:#243b53;font-family:{{ $isSuperAdmin ? 'Arial,sans-serif' : '"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif' }}}.tms-nav{background:linear-gradient(90deg,#102a43,#174f78);box-shadow:0 5px 18px rgba(15,42,67,.18)}.tms-nav .navbar-brand{font-weight:800;letter-spacing:.04em}.tms-nav .nav-link{color:rgba(255,255,255,.82)!important;font-weight:600;padding:.8rem .72rem!important}.tms-nav .nav-link:hover{color:#fff!important}.tms-nav .dropdown-menu{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};border:0;border-radius:12px;box-shadow:0 14px 35px rgba(31,45,61,.18);padding:.5rem}.tms-nav .dropdown-item{border-radius:8px;padding:.55rem .8rem}.module-pill{font-size:.65rem;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:.25rem .5rem;color:#bfe8f3}.main-content{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};text-align:{{ $isSuperAdmin ? 'left' : 'right' }};min-height:calc(100vh - 70px)}body{top:0!important}
-        .flatpickr-calendar{direction:{{ $isSuperAdmin ? 'ltr' : 'rtl' }};border:1px solid #dfe7f1;border-radius:12px;box-shadow:0 14px 35px rgba(31,45,61,.18);font-family:{{ $isSuperAdmin ? 'Arial,sans-serif' : '"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif' }}}
+    <style data-ltr-ready>
+        body{direction:{{ $isEnglishUi ? 'ltr' : 'rtl' }};text-align:{{ $isEnglishUi ? 'left' : 'right' }};background:#f5f7fa;color:#243b53;font-family:{{ $isEnglishUi ? 'Arial,sans-serif' : '"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif' }}}.tms-nav{background:linear-gradient(90deg,#102a43,#174f78);box-shadow:0 5px 18px rgba(15,42,67,.18)}.tms-nav .navbar-brand{font-weight:800;letter-spacing:.04em}.tms-nav .nav-link{color:rgba(255,255,255,.82)!important;font-weight:600;padding:.8rem .72rem!important}.tms-nav .nav-link:hover{color:#fff!important}.tms-nav .dropdown-menu{direction:{{ $isEnglishUi ? 'ltr' : 'rtl' }};text-align:{{ $isEnglishUi ? 'left' : 'right' }};border:0;border-radius:12px;box-shadow:0 14px 35px rgba(31,45,61,.18);padding:.5rem}.tms-nav .dropdown-item{border-radius:8px;padding:.55rem .8rem}.module-pill{font-size:.65rem;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:.25rem .5rem;color:#bfe8f3}.main-content{direction:{{ $isEnglishUi ? 'ltr' : 'rtl' }};text-align:{{ $isEnglishUi ? 'left' : 'right' }};min-height:calc(100vh - 70px)}body{top:0!important}
+        .flatpickr-calendar{direction:{{ $isEnglishUi ? 'ltr' : 'rtl' }};border:1px solid #dfe7f1;border-radius:12px;box-shadow:0 14px 35px rgba(31,45,61,.18);font-family:{{ $isEnglishUi ? 'Arial,sans-serif' : '"Noto Nastaliq Urdu","Noto Sans Arabic",Tahoma,Arial,sans-serif' }}}
         .flatpickr-calendar.arrowTop:before,.flatpickr-calendar.arrowTop:after{border-bottom-color:#fff}.flatpickr-months{padding:6px 4px 2px}.flatpickr-months .flatpickr-month{height:42px;color:#14213d}.flatpickr-current-month{padding-top:5px;font-size:1rem}.flatpickr-current-month .flatpickr-monthDropdown-months,.flatpickr-current-month input.cur-year{font-weight:700}.flatpickr-weekday{color:#718096!important;font-weight:700!important}.flatpickr-day{border-radius:8px}.flatpickr-day.today{border-color:#1769ef;color:#1769ef}.flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange,.flatpickr-day.selected:hover{border-color:#1769ef;background:#1769ef;color:#fff}.flatpickr-day:hover{border-color:#e7efff;background:#e7efff}.flatpickr-input[readonly]:not([type=hidden]){cursor:pointer;background-color:#fff}.flatpickr-input.form-control:not([type=hidden]){padding-left:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2356677f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:left 12px center}
         html[lang="ur"] body{line-height:1.9}
         html[lang="ur"] h1,html[lang="ur"] h2,html[lang="ur"] h3,html[lang="ur"] h4,html[lang="ur"] h5,html[lang="ur"] h6{line-height:1.65}
@@ -80,6 +81,7 @@
     @else
         <a class="navbar-brand" href="{{ $isSuperAdmin ? route('administrator.index') : route('admin.home') }}"><i class="fas fa-cut mr-2"></i>BuyNStitch</a>
     @endif
+    @unless($isSuperAdmin)<span class="ml-auto mr-xl-3 order-xl-last d-inline-flex align-items-center">@unless($isEnglishUi)<button type="button" id="tmsUrduKeyboardToggle" class="tms-ukb-toggle" aria-pressed="false" title="اردو کی بورڈ"><i class="fas fa-keyboard"></i><span class="d-none d-sm-inline">اردو کی بورڈ</span> <span data-state>بند</span></button>@endunless @include('inc.language-switch', ['variant' => 'nav'])</span>@endunless
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#tmsNavigation" aria-controls="tmsNavigation" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="tmsNavigation"><ul class="navbar-nav mr-auto align-items-xl-center">
         @if(Session::get('tailor'))

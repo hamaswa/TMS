@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\ProtectDemoAccount::class,
+            \App\Http\Middleware\ApplyUiLocale::class,
         ]);
 
         $middleware->group('api', [
