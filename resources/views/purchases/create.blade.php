@@ -841,6 +841,7 @@
                         @foreach ($brands as $brand)
                             <option value="{{ $brand->id }}">{{ $brand->name }}</option>
                         @endforeach
+                        <option value="__quick_add__">＋ نیا برانڈ شامل کریں</option>
                     </select>
                 </div>
 
@@ -851,6 +852,7 @@
                         @foreach ($types as $type)
                             <option value="{{ $type->id }}">{{ $type->localizedName() }}</option>
                         @endforeach
+                        <option value="__quick_add__">＋ نئی قسم شامل کریں</option>
                     </select>
                 </div>
 
@@ -1288,7 +1290,55 @@
                     row.remove();
 
                     if (!sets.children.length) {
-                        addNewRow();
+                        // One select handles existing values and inline creation for every purchase row.
+            document.addEventListener('focusin', function(event) {
+                if (event.target.matches('.new-brand, .new-type')) {
+                    event.target.dataset.previousValue = event.target.value;
+                }
+            });
+            document.addEventListener('change', async function(event) {
+                const select = event.target;
+                if (!select.matches('.new-brand, .new-type')) return;
+                if (select.value !== '__quick_add__') {
+                    select.dataset.previousValue = select.value;
+                    return;
+                }
+                select.value = select.dataset.previousValue || '';
+                const isBrand = select.classList.contains('new-brand');
+                const name = window.prompt(isBrand ? 'نئے برانڈ کا نام لکھیں:' : 'کپڑے کی نئی قسم کا اردو نام لکھیں:');
+                if (!name || !name.trim()) return;
+                const data = new FormData();
+                if (isBrand) {
+                    data.append('name', name.trim());
+                } else {
+                    data.append('name_ur', name.trim());
+                    const english = window.prompt('کپڑے کی قسم کا انگریزی نام لکھیں:');
+                    if (!english || !english.trim()) return;
+                    data.append('name_en', english.trim());
+                }
+                data.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]').value);
+                select.disabled = true;
+                try {
+                    const response = await fetch(isBrand ? @json(route('admin.clothbrand.store')) : @json(route('admin.clothtype.store')), {
+                        method: 'POST', body: data, credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || Object.values(result.errors || {}).flat().join(' ') || 'محفوظ نہیں ہوا');
+                    const cls = isBrand ? '.new-brand' : '.new-type';
+                    document.querySelectorAll(cls).forEach(function(other) {
+                        if (![...other.options].some(option => option.value === String(result.id))) {
+                            other.add(new Option(result.name, result.id, false, false), other.querySelector('option[value="__quick_add__"]'));
+                        }
+                    });
+                    select.value = String(result.id);
+                    select.dataset.previousValue = select.value;
+                } catch (error) {
+                    window.alert(error.message || 'نیا انتخاب محفوظ نہیں ہوا۔');
+                } finally { select.disabled = false; }
+            });
+
+            addNewRow();
                     }
 
                     updateTotals();
