@@ -1087,8 +1087,24 @@
                 colorTemplate.content.firstElementChild.cloneNode(true)
             );
 
+            // Keep options added during this purchase available to rows created later.
+            const quickAddedOptions = { brand: new Map(), type: new Map() };
+            const insertQuickOption = (select, id, name) => {
+                if (!Array.from(select.options).some(option => option.value === String(id))) {
+                    const option = new Option(name, String(id));
+                    const addChoice = select.querySelector('option[value="__quick_add__"]');
+                    select.add(option, addChoice || null);
+                }
+            };
+            const populateQuickOptions = row => {
+                [['brand', '.new-brand'], ['type', '.new-type']].forEach(([kind, selector]) => {
+                    const select = row.querySelector(selector);
+                    if (select) quickAddedOptions[kind].forEach((name, id) => insertQuickOption(select, id, name));
+                });
+            };
             const addNewRow = (before = null) => {
                 const row = newTemplate.content.firstElementChild.cloneNode(true);
+                populateQuickOptions(row);
                 before ? sets.insertBefore(row, before) : sets.appendChild(row);
                 return row;
             };
@@ -1511,12 +1527,10 @@
                     });
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.message || Object.values(result.errors || {}).flat().join(' ') || 'محفوظ نہیں ہوا');
+                    const kind = isBrand ? 'brand' : 'type';
+                    quickAddedOptions[kind].set(String(result.id), result.name);
                     const cls = isBrand ? '.new-brand' : '.new-type';
-                    document.querySelectorAll(cls).forEach(function(other) {
-                        if (![...other.options].some(option => option.value === String(result.id))) {
-                            other.add(new Option(result.name, result.id, false, false), other.querySelector('option[value="__quick_add__"]'));
-                        }
-                    });
+                    document.querySelectorAll(cls).forEach(other => insertQuickOption(other, result.id, result.name));
                     select.value = String(result.id);
                     select.dataset.previousValue = select.value;
                 } catch (error) {
