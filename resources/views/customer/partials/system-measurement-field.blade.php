@@ -23,15 +23,20 @@
                 value="{{ $inputValue }}" dir="ltr" @required($required)>
             <div class="input-group-append"><span class="input-group-text">انچ</span></div>
         </div>
-    @elseif($choices->isNotEmpty())
+    @elseif($choices->isNotEmpty() || !empty($optionTypeId))
         <select id="{{ $inputId }}" name="{{ $inputName }}" class="form-control"
-            data-measure-key="system.{{ $fieldKey }}" @required($required)>
+            data-measure-key="system.{{ $fieldKey }}"
+            @if(!empty($optionTypeId)) data-inline-option-type="{{ $optionTypeId }}" data-inline-option-template="{{ $optionTemplateId ?? '' }}" data-inline-option-url="{{ route('admin.Options.store') }}" @endif
+            @required($required)>
             <option value="">منتخب کریں</option>
             @foreach($choices as $choice)
                 <option value="{{ $choice }}" @selected((string)$inputValue === (string)$choice)>{{ $choice }}</option>
             @endforeach
             @if(filled($inputValue) && !$choices->contains((string)$inputValue))
                 <option value="{{ $inputValue }}" selected>{{ $inputValue }}</option>
+            @endif
+            @if(!empty($optionTypeId) && Auth::user()->hasBusinessPermission('tailoring.configuration'))
+                <option value="__add_new__" data-add-new="1">＋ نیا انتخاب شامل کریں</option>
             @endif
         </select>
     @else
