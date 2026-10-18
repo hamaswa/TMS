@@ -87,7 +87,7 @@
                 @endif
 
                 @if($sale->status !== 'cancelled')
-                    <div class="card border-danger mt-4">
+                    <div id="sale-cancellation" class="card border-danger mt-4">
                         <div class="card-header text-danger">فروخت منسوخ کریں</div>
                         <div class="card-body">
                             <p class="text-muted">منسوخی سے رسید حذف نہیں ہو گی۔ اس فروخت کا بقایا اور وصول شدہ رقم کھاتے میں الگ واپسی کے ذریعے صفر کی جائے گی۔</p>
