@@ -928,6 +928,23 @@
                                     <strong>{{ $complaint->item?->item_serial ?: '#'.$complaint->counter_order_item_id }}</strong> · زیرِ جائزہ
                                     <div>{{ $complaint->reason }}</div>
                                     <small>سلائی: Rs {{ number_format($complaint->requested_tailoring_refund, 2) }} · کپڑے کا ہرجانہ: Rs {{ number_format($complaint->requested_cloth_compensation, 2) }}</small>
+                                    @if($complaint->status === 'pending')
+                                        <form class="mt-2" method="POST" action="{{ route('admin.counter-orders.complaints.settle', [$counterOrder, $complaint]) }}" data-confirm="کیا آپ اس تصفیے کو منظور کر کے گاہک کے کھاتے میں درج کرنا چاہتے ہیں؟">
+                                            @csrf
+                                            <div class="row">
+                                                <div class="col-md-4 form-group"><label>منظور شدہ سلائی واپسی</label><input class="form-control" type="number" step="0.01" min="0" name="approved_tailoring_refund" value="{{ $complaint->requested_tailoring_refund }}" required></div>
+                                                <div class="col-md-4 form-group"><label>منظور شدہ کپڑے کا ہرجانہ</label><input class="form-control" type="number" step="0.01" min="0" name="approved_cloth_compensation" value="{{ $complaint->requested_cloth_compensation }}" required></div>
+                                                <div class="col-md-4 form-group"><label>اب ادا کی گئی رقم</label><input class="form-control" type="number" step="0.01" min="0" name="actual_cash_payout" value="0" required></div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6 form-group"><label>ادائیگی کا طریقہ</label><select name="payment_method" class="form-control"><option value="">منتخب کریں</option>@foreach($paymentMethods as $method => $label)<option value="{{ $method }}">{{ $label }}</option>@endforeach</select></div>
+                                                <div class="col-md-6 form-group"><label>ادائیگی کا حوالہ (اگر ضروری ہو)</label><input class="form-control" name="payment_reference" maxlength="255"></div>
+                                            </div>
+                                            <button class="btn btn-danger" type="submit">تصفیہ منظور کریں اور کھاتے میں درج کریں</button>
+                                        </form>
+                                    @else
+                                        <div class="text-success">تصفیہ مکمل · منظور شدہ سلائی Rs {{ number_format($complaint->approved_tailoring_refund, 2) }} · ہرجانہ Rs {{ number_format($complaint->approved_cloth_compensation, 2) }} · ادا شدہ Rs {{ number_format($complaint->actual_cash_payout, 2) }}</div>
+                                    @endif
                                 </div>
                             @endforeach
                         @endif
