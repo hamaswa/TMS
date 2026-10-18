@@ -899,6 +899,41 @@
                 <div><small>بقایا</small><strong id="co-summary-balance" dir="ltr">Rs.
                         {{ number_format((float) $counterOrder->balance_amount, 2) }}</strong></div>
             </div>
+            @if($counterOrder->items->contains(fn($item) => $item->type === 'tailoring' && $item->status === 'confirmed') && $canAddTailoring)
+                <div class="card mb-3" dir="rtl">
+                    <div class="card-header"><strong>سلائی کی شکایت / واپسی اور کپڑے کا نقصان</strong></div>
+                    <div class="card-body">
+                        <p class="text-muted">خراب سلائی یا گاہک کے کپڑے کے نقصان کی شکایت درج کریں۔ یہ رقم تجویز ہے، ادائیگی نہیں۔ منظوری اور ادائیگی کا حساب الگ ہوگا۔</p>
+                        <form method="POST" action="{{ route('admin.counter-orders.complaints.store', $counterOrder) }}">
+                            @csrf
+                            <div class="form-group"><label>متعلقہ سلائی</label>
+                                <select name="counter_order_item_id" class="form-control" required>
+                                    @foreach($counterOrder->items->where('type', 'tailoring')->where('status', 'confirmed') as $item)
+                                        <option value="{{ $item->id }}" @selected(old('counter_order_item_id') == $item->id)>{{ $item->item_serial ?: '#'.$item->id }} — Rs {{ number_format((float)$item->line_total, 2) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group"><label>شکایت / خرابی کی تفصیل</label><textarea name="reason" class="form-control" rows="2" minlength="10" maxlength="3000" required>{{ old('reason') }}</textarea></div>
+                            <div class="row">
+                                <div class="col-md-6 form-group"><label>سلائی کی مجوزہ رقم واپسی (Rs)</label><input class="form-control" type="number" name="requested_tailoring_refund" min="0" step="0.01" value="{{ old('requested_tailoring_refund', 0) }}" required></div>
+                                <div class="col-md-6 form-group"><label>گاہک کے کپڑے کا مجوزہ ہرجانہ (Rs)</label><input class="form-control" type="number" name="requested_cloth_compensation" min="0" step="0.01" value="{{ old('requested_cloth_compensation', 0) }}" required></div>
+                            </div>
+                            <button type="submit" class="btn btn-outline-danger">شکایت اور مجوزہ رقم محفوظ کریں</button>
+                        </form>
+                        @php($complaints = \App\Models\CounterOrderComplaint::where('counter_order_id', $counterOrder->id)->where('user_id', auth()->user()->businessOwnerId())->with('item')->latest()->get())
+                        @if($complaints->isNotEmpty())
+                            <hr><h3 class="h6">پچھلی شکایات</h3>
+                            @foreach($complaints as $complaint)
+                                <div class="border rounded p-2 mb-2">
+                                    <strong>{{ $complaint->item?->item_serial ?: '#'.$complaint->counter_order_item_id }}</strong> · زیرِ جائزہ
+                                    <div>{{ $complaint->reason }}</div>
+                                    <small>سلائی: Rs {{ number_format($complaint->requested_tailoring_refund, 2) }} · کپڑے کا ہرجانہ: Rs {{ number_format($complaint->requested_cloth_compensation, 2) }}</small>
+                                </div>
+                            @endforeach
+                        @endif
+                    </div>
+                </div>
+            @endif
             <div class="co-main">
                 <section class="co-panel">
                     <div class="co-panel-head">
