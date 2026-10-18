@@ -908,12 +908,12 @@ class CounterOrderController extends Controller
                 'customerId' => $counterOrder->customer_id,
                 'orderId' => $item->source_record_type === 'tailoring_order' ? $item->source_record_id : null,
                 'Order_type' => 'Tailor Complaint Settlement',
-                'remainingBalance' => -$total,
+                'remainingBalance' => round(-$total + $payout, 2),
                 'recivedPayment' => -$payout,
                 'payment_method' => $validated['payment_method'] ?? 'cash',
                 'payment_reference' => $validated['payment_reference'] ?? null,
                 'paid_on' => now()->toDateString(),
-                'comment' => 'سلائی شکایت #'.$locked->id.' · سلائی واپسی '.$refund.' · کپڑے کا ہرجانہ '.$compensation.' · ادا '.$payout,
+                'comment' => 'سلائی شکایت #'.$locked->id.' · سلائی واپسی '.$refund.' · کپڑے کا ہرجانہ '.$compensation.' · ادا '.$payout.' · باقی واجب الادا '.round($total - $payout, 2),
             ]);
             $locked->update([
                 'status' => 'settled',
