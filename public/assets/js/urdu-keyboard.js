@@ -54,6 +54,11 @@
         return !el.closest('[dir="ltr"],[data-no-urdu-keyboard]');
     }
 
+    // A field marked data-urdu-keyboard="on" always types Urdu, even with the toggle off.
+    function isOn(el) {
+        return enabled || !!(el && el.closest && el.closest('[data-urdu-keyboard="on"]'));
+    }
+
     function insert(el, text) {
         var start = el.selectionStart, end = el.selectionEnd;
         if (typeof start !== 'number') { el.value += text; }
@@ -73,7 +78,7 @@
         toggle.classList.toggle('is-on', enabled);
         toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
         toggle.querySelector('[data-state]').textContent = enabled ? 'آن' : 'بند';
-        var active = enabled && target && eligible(target);
+        var active = target && eligible(target) && isOn(target);
         var show = active && panelOpen;
         panel.hidden = !show;
         if (mini) mini.hidden = !(active && !panelOpen);
@@ -124,7 +129,7 @@
 
     // Phonetic typing on the physical keyboard.
     document.addEventListener('keydown', function (event) {
-        if (!enabled || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+        if (!isOn(event.target) || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
         if (!eligible(event.target) || !Object.prototype.hasOwnProperty.call(PHONETIC, event.key)) return;
         event.preventDefault();
         insert(event.target, PHONETIC[event.key]);

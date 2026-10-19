@@ -4,6 +4,7 @@
     .ss-panel.open { display: block; }
     .ss-search { border: 0; border-bottom: 1px solid #e3e9f0; border-radius: .5rem .5rem 0 0; }
     .ss-search:focus { box-shadow: none; }
+    .ss-search { height: auto; line-height: 2.4; padding-top: .25rem; padding-bottom: .25rem; }
     .ss-list { max-height: 260px; overflow-y: auto; margin: 0; padding: .25rem 0; list-style: none; text-align: right; }
     .ss-item { padding: .45rem .9rem; cursor: pointer; }
     .ss-item.active, .ss-item:hover { background: #eef4ff; }

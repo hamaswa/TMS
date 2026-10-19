@@ -37,4 +37,4 @@
         .tms-ukb-head small { display: none; }
     }
 </style>
-<script src="{{ asset('assets/js/urdu-keyboard.js') }}?v=20261019"></script>
+<script src="{{ asset('assets/js/urdu-keyboard.js') }}?v=20261019b"></script>

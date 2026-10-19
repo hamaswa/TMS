@@ -385,10 +385,9 @@
                                         <div class="form-group edit-field mb-0"
                                             data-template-field="system.{{ $templateSystemField }}"
                                             data-default-column="left">
-                                            <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
+                                            <div class="d-flex justify-content-between align-items-center"><label for="preference-{{ $type->slug }}" class="mb-1">{{ $type->otn }}</label>@if(Auth::user()->hasBusinessPermission('tailoring.configuration'))<button type="button" class="btn btn-link btn-sm p-0 mb-1 text-decoration-none" data-toggle="modal" data-target="#quickOptionModal" data-option-select="preference-{{ $type->slug }}" data-option-type="{{ $type->option_id }}" data-option-label="{{ $type->otn }}">＋ نیا انتخاب</button>@endif</div>
 
                                             <select id="preference-{{ $type->slug }}" class="form-control"
-                                                @if(Auth::user()->hasBusinessPermission('tailoring.configuration')) data-inline-option-type="{{ $type->option_id }}" data-inline-option-label="{{ $type->otn }}" @endif
                                                 name="{{ $type->slug }}"
                                                 data-measure-key="system.{{ $templateSystemField }}"
                                                 data-template-system-field="{{ $templateSystemField }}">
