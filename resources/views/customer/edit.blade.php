@@ -465,6 +465,9 @@
     <script>
         (function() {
             const all = @json($allTemplateValues);
+            document.querySelectorAll('[data-measure-key]').forEach(el => {
+                el.dataset.initialSavedValue = el.value;
+            });
             const select = document.querySelector('[name="measurement_template_id"]');
             if (!select) return;
 
@@ -472,7 +475,12 @@
                 const vals = all[id] || {};
 
                 document.querySelectorAll('[data-measure-key]').forEach(el => {
-                    const v = vals[el.dataset.measureKey] ?? '';
+                    // Preserve the server-rendered saved selection when a legacy profile has
+                    // no measurement-history row for this preference yet.
+                    const key = el.dataset.measureKey;
+                    const v = Object.prototype.hasOwnProperty.call(vals, key)
+                        ? (vals[key] ?? '')
+                        : (String(id) === String(@json($selectedTemplateId)) ? (el.dataset.initialSavedValue ?? el.value) : '');
                     if (el.tagName === 'SELECT' && v && ![...el.options].some(o => o.value === v)) {
                         el.add(new Option(v, v));
                     }
