@@ -460,6 +460,7 @@
 
     @if(Auth::user()->hasBusinessPermission('tailoring.configuration'))
         @include('customer.partials.quick-option-modal')
+        @include('customer.partials.searchable-option-select')
     @endif
     <script>
         (function() {

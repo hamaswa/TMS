@@ -22,6 +22,8 @@
         P: 'ُ', Q: 'ْ', R: 'ڑ', S: 'ص', T: 'ٹ', U: 'ئ', V: 'ظ', W: 'ؤ', X: 'ژ', Y: 'ۓ', Z: 'ذ',
         ',': '،', '.': '۔', '?': '؟', ';': '؛'
     };
+    // Shared so search boxes can match English-typed text against Urdu names.
+    window.TMS_URDU_PHONETIC = PHONETIC;
 
     var ROWS = [
         ['ا', 'آ', 'ب', 'پ', 'ت', 'ٹ', 'ث', 'ج', 'چ', 'ح', 'خ'],

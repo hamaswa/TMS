@@ -39,7 +39,7 @@
                 var response = await fetch(form.action, {method:'POST', headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, body:new FormData(form), credentials:'same-origin'});
                 var data = await response.json();
                 if (!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(' '));
-                if (target) { var option = new Option(data.name, data.name, true, true); option.dataset.template = data.template_id; target.add(option); target.dispatchEvent(new Event('change', {bubbles:true})); }
+                if (target) { var option = new Option(data.name, data.name, true, true); option.dataset.template = data.template_id == null ? '' : data.template_id; target.add(option); target.dispatchEvent(new Event('change', {bubbles:true})); }
                 window.jQuery(modal).modal('hide');
             } catch (error) { document.getElementById('quickOptionError').textContent = error.message || 'انتخاب محفوظ نہیں ہوا۔'; }
             finally { button.disabled = false; }

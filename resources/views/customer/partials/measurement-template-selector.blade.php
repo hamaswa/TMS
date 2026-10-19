@@ -60,6 +60,38 @@ document.addEventListener('DOMContentLoaded', function () {
         input.required = visible && input.dataset.templateRequired === '1';
     }
 
+    // Each choice exists once per template plus a legacy copy (no template); show only the
+    // selected template's set, falling back to legacy when the template has none for this type.
+    function filterChoices(input, templateId) {
+        var choices = Array.prototype.filter.call(input.options, function (choice) {
+            return choice.dataset.template !== undefined;
+        });
+        var hasTemplateChoices = choices.some(function (choice) { return choice.dataset.template === templateId; });
+        var wanted = hasTemplateChoices ? templateId : '';
+        var selectedName = input.value;
+        var seen = {};
+        choices.forEach(function (choice) {
+            var visible = choice.dataset.template === wanted && !seen[choice.value];
+            if (visible) seen[choice.value] = true;
+            choice.hidden = !visible;
+            choice.disabled = !visible;
+        });
+        if (selectedName && !seen[selectedName]) {
+            var fallback = Array.prototype.find.call(input.options, function (choice) {
+                return choice.value === selectedName && choice.dataset.template === undefined;
+            });
+            if (!fallback) {
+                fallback = new Option(selectedName, selectedName);
+                input.add(fallback, input.options[1] || null);
+            }
+            fallback.selected = true;
+        } else if (selectedName) {
+            Array.prototype.find.call(input.options, function (choice) {
+                return choice.value === selectedName && !choice.disabled;
+            }).selected = true;
+        }
+    }
+
     function applyTemplate() {
         var option = select.options[select.selectedIndex];
         var selectedSystem = JSON.parse(option.dataset.system || '[]');
@@ -77,6 +109,9 @@ document.addEventListener('DOMContentLoaded', function () {
        document.querySelectorAll('[data-template-system-field]').forEach(function (input) {
     toggleControl(input, selectedSystem.indexOf(input.dataset.templateSystemField) !== -1);
 });
+        document.querySelectorAll('select[data-template-system-field]').forEach(function (input) {
+            filterChoices(input, option.value);
+        });
         var layout = {};
         selectedLayout.forEach(function (item) { layout[item.source] = item; });
         document.querySelectorAll('[data-template-field]').forEach(function (field, index) {

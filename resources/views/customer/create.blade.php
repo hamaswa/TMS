@@ -442,7 +442,7 @@
 
                                                     @foreach ($choices as $choice)
                                                         @php $choiceName = trim((string) $choice->Name); @endphp
-                                                        <option value="{{ $choiceName }}" @selected($choiceName === $selectedValue)>
+                                                        <option value="{{ $choiceName }}" data-template="{{ $choice->measurement_template_id }}" @selected($choiceName === $selectedValue)>
                                                             {{ $choiceName }}
                                                         </option>
                                                     @endforeach
@@ -528,5 +528,6 @@
     </script>
     @if(Auth::user()->hasBusinessPermission('tailoring.configuration'))
         @include('customer.partials.quick-option-modal')
+        @include('customer.partials.searchable-option-select')
     @endif
 @endsection
