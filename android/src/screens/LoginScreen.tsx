@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, connectionProfileFrom, login as apiLogin } from '../services/api';
-import { setToken } from '../storage/authStorage';
+import { getToken, getUserId, setToken } from '../storage/authStorage';
 import { setConnectionProfile } from '../storage/connectionStorage';
 
 const BLUE = '#123b5d';
@@ -26,6 +27,29 @@ export function LoginScreen() {
   const [showShopServer, setShowShopServer] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [checkingSavedLogin, setCheckingSavedLogin] = useState(true);
+
+  useEffect(() => {
+    // Android may close the app in the background; reopen straight into the sale
+    // screen when this phone is still signed in instead of asking to log in again.
+    let active = true;
+    Promise.all([getToken(), getUserId()])
+      .then(([token, userId]) => {
+        if (!active) return;
+        if (token && userId) {
+          router.replace('/sale');
+          return;
+        }
+        setCheckingSavedLogin(false);
+      })
+      .catch(() => {
+        if (active) setCheckingSavedLogin(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const signIn = async () => {
     if (!login.trim() || !password) {
@@ -46,6 +70,14 @@ export function LoginScreen() {
       setSubmitting(false);
     }
   };
+
+  if (checkingSavedLogin) {
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.savedLoginCheck]}>
+        <ActivityIndicator color={BLUE} size="large" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -144,6 +176,10 @@ export function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  savedLoginCheck: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   safeArea: { flex: 1, backgroundColor: '#f4f7f9' },
   keyboardArea: { flex: 1 },
   page: {

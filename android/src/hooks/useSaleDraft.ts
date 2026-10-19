@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  addScannedUnit,
   createSaleDraft,
   createSaleLine,
   CustomerMode,
+  isSameStockItem,
   LocalSaveState,
   SaleDraft,
   SaleLine,
@@ -95,6 +97,15 @@ export function useSaleDraft() {
   const addScannedLine = useCallback(
     (patch: Partial<SaleLine>) => {
       mutate((current) => {
+        const existing = current.lines.find((line) => isSameStockItem(line, patch));
+        if (existing) {
+          return {
+            ...current,
+            lines: current.lines.map((line) =>
+              line.localId === existing.localId ? addScannedUnit(line, patch) : line,
+            ),
+          };
+        }
         return { ...current, lines: [...current.lines, { ...createSaleLine(), ...patch }] };
       });
     },

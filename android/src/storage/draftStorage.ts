@@ -32,7 +32,11 @@ export async function loadDraft(userId: number): Promise<SaleDraft | null> {
         || line.length
         || line.unitPrice,
       ),
-    ).map((line) => ({ ...line, salePriceBasis: line.salePriceBasis || 'per_meter' })),
+    ).map((line) => ({
+      ...line,
+      salePriceBasis: line.salePriceBasis || 'per_meter',
+      suitLength: line.suitLength ?? '',
+    })),
   } as SaleDraft;
 }
 

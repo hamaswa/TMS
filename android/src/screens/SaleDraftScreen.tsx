@@ -22,6 +22,7 @@ import {
   remainingAmount,
   SaleLine,
   saleTotal,
+  suitTotalLength,
 } from '../domain/sale';
 import { useSaleDraft } from '../hooks/useSaleDraft';
 import {
@@ -29,6 +30,7 @@ import {
   CustomerResult,
   getShopContext,
   InventoryListItem,
+  InventorySet,
   listInventory,
   logout,
   lookupInventorySet,
@@ -41,6 +43,19 @@ import { clearToken, getToken, getUserId } from '../storage/authStorage';
 const BLUE = '#123b5d';
 const GREEN = '#147a5a';
 const BACKGROUND = '#f4f7f9';
+// Price fields for a newly added line, matching how the shop sells this set (per suit or per metre).
+const stockPricing = (stock: Pick<InventorySet, 'salePrice' | 'defaultSaleLength' | 'salePriceBasis'>): Partial<SaleLine> => {
+  const salePriceBasis = stock.salePriceBasis || 'per_meter';
+  const defaultLength = stock.defaultSaleLength || '';
+  return {
+    unitPrice: stock.salePrice,
+    salePriceBasis,
+    quantity: '1',
+    suitLength: salePriceBasis === 'per_suit' ? defaultLength : '',
+    length: defaultLength,
+  };
+};
+
 const PAYMENT_METHODS = ['Cash', 'Easypaisa', 'JazzCash', 'Bank transfer', 'Raast', 'Cheque', 'Other'] as const;
 
 export function SaleDraftScreen() {
@@ -97,6 +112,33 @@ export function SaleDraftScreen() {
         setSyncState('offline');
       });
   }), []);
+
+  const pricesRefreshed = useRef(false);
+  useEffect(() => {
+    // Lines saved before the shop changed a set from per-metre to per-suit (or back)
+    // still carry the old price; bring them up to date once the draft has loaded.
+    if (saveState === 'loading' || pricesRefreshed.current) return;
+    pricesRefreshed.current = true;
+    const setCodes = [...new Set(draft.lines.map((line: SaleLine) => line.setCode).filter(Boolean))] as string[];
+    setCodes.forEach((setCode) => {
+      lookupInventorySet(setCode)
+        .then(({ data }) => {
+          draft.lines
+            .filter((line: SaleLine) => line.setCode === setCode && line.salePriceBasis !== data.salePriceBasis)
+            .forEach((line: SaleLine) => {
+              const pricing = stockPricing(data);
+              updateLine(line.localId, {
+                ...pricing,
+                quantity: line.quantity || '1',
+                length: pricing.salePriceBasis === 'per_suit'
+                  ? suitTotalLength(line.quantity || '1', pricing.suitLength ?? '') || pricing.length
+                  : pricing.length,
+              });
+            });
+        })
+        .catch(() => {});
+    });
+  }, [saveState, draft.lines, updateLine]);
 
   useEffect(() => {
     Promise.all([getToken(), getUserId()]).then(([token, userId]) => {
@@ -183,9 +225,7 @@ export function SaleDraftScreen() {
         brand: result.data.brand,
         clothTypeId: result.data.clothTypeId,
         clothType: result.data.clothType,
-        unitPrice: result.data.salePrice,
-        length: result.data.defaultSaleLength || '',
-        salePriceBasis: result.data.salePriceBasis || 'per_meter',
+        ...stockPricing(result.data),
         availableColors: colors,
         requiresColor,
         color: defaultColor(colors, requiresColor),
@@ -234,9 +274,7 @@ export function SaleDraftScreen() {
       brand: item.brand,
       clothTypeId: item.clothTypeId,
       clothType: item.clothType,
-      unitPrice: item.salePrice,
-      length: item.defaultSaleLength || '',
-      salePriceBasis: item.salePriceBasis || 'per_meter',
+      ...stockPricing(item),
       availableColors: colors,
       requiresColor,
       color: defaultColor(colors, requiresColor),
@@ -694,6 +732,7 @@ function SaleLineCard({
   onChooseStock: () => void;
 }) {
   const hasStockItem = Boolean(line.brandId && line.clothTypeId);
+  const perSuit = line.salePriceBasis === 'per_suit';
 
   return (
     <Section title={`Item ${number}`}>
@@ -727,17 +766,34 @@ function SaleLineCard({
       ) : null}
       {hasStockItem ? (
         <>
+          {perSuit ? (
+            <>
+              <View style={styles.twoColumns}>
+                <View style={styles.column}>
+                  <Field
+                    label="Suits"
+                    value={line.quantity}
+                    onChangeText={(quantity) => onChange({ quantity, length: suitTotalLength(quantity, line.suitLength) || line.length })}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={styles.column}>
+                  <Field
+                    label="Metres per suit"
+                    value={line.suitLength}
+                    onChangeText={(suitLength) => onChange({ suitLength, length: suitTotalLength(line.quantity, suitLength) || line.length })}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+              {line.length ? <Text style={styles.help}>Total cloth: {line.length} m</Text> : null}
+            </>
+          ) : (
+            <Field label="Metres" value={line.length} onChangeText={(value) => onChange({ length: value })} keyboardType="decimal-pad" />
+          )}
           <View style={styles.twoColumns}>
             <View style={styles.column}>
-              <Field label="Quantity" value={line.quantity} onChangeText={(value) => onChange({ quantity: value })} keyboardType="decimal-pad" />
-            </View>
-            <View style={styles.column}>
-              <Field label="Length" value={line.length} onChangeText={(value) => onChange({ length: value })} keyboardType="decimal-pad" />
-            </View>
-          </View>
-          <View style={styles.twoColumns}>
-            <View style={styles.column}>
-              <Field label={line.salePriceBasis === 'per_suit' ? 'Price per suit' : 'Price per metre'} value={line.unitPrice} onChangeText={(value) => onChange({ unitPrice: value })} keyboardType="decimal-pad" />
+              <Field label={perSuit ? 'Price per suit' : 'Price per metre'} value={line.unitPrice} onChangeText={(value) => onChange({ unitPrice: value })} keyboardType="decimal-pad" />
             </View>
             <View style={styles.column}>
               <Text style={styles.itemTotal}>Item total: {money(lineTotal(line))}</Text>

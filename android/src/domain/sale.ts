@@ -18,6 +18,8 @@ export type SaleLine = {
   length: string;
   unitPrice: string;
   salePriceBasis: SalePriceBasis;
+  /** Metres in one suit; only used when the cloth is sold per suit. */
+  suitLength: string;
 };
 
 export type SaleDraft = {
@@ -54,6 +56,7 @@ export const createSaleLine = (): SaleLine => ({
   length: '',
   unitPrice: '',
   salePriceBasis: 'per_meter',
+  suitLength: '',
 });
 
 export const createSaleDraft = (): SaleDraft => ({
@@ -76,6 +79,43 @@ export const createSaleDraft = (): SaleDraft => ({
 const numberValue = (value: string) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const decimalText = (value: number) => String(Math.round(value * 100) / 100);
+
+// Per-suit cloth sends the total metres cut so the shop stock is reduced correctly.
+export const suitTotalLength = (quantity: string, suitLength: string) => {
+  const metres = numberValue(quantity) * numberValue(suitLength);
+  return metres > 0 ? decimalText(metres) : '';
+};
+
+const sameText = (left: string, right: string) =>
+  left.trim().toLowerCase() === right.trim().toLowerCase();
+
+// A rescan of the same set (and the same chosen colour) is one more unit of an existing line.
+export const isSameStockItem = (line: SaleLine, scanned: Partial<SaleLine>) =>
+  Boolean(scanned.setCode)
+  && sameText(line.setCode, scanned.setCode ?? '')
+  && line.brandId === (scanned.brandId ?? null)
+  && line.clothTypeId === (scanned.clothTypeId ?? null)
+  && sameText(line.color, scanned.color ?? '');
+
+export const addScannedUnit = (line: SaleLine, scanned: Partial<SaleLine>): SaleLine => {
+  // Prices and basis come fresh from the server so an old line picks up price changes.
+  const fresh = { ...line, ...scanned, color: line.color, localId: line.localId };
+  const quantity = decimalText(numberValue(line.quantity || '1') + 1);
+
+  if (fresh.salePriceBasis === 'per_suit') {
+    const suitLength = fresh.suitLength || scanned.length || '';
+    return { ...fresh, quantity, suitLength, length: suitTotalLength(quantity, suitLength) };
+  }
+
+  const scannedLength = numberValue(scanned.length ?? '');
+  return {
+    ...fresh,
+    quantity,
+    length: scannedLength > 0 ? decimalText(numberValue(line.length) + scannedLength) : line.length,
+  };
 };
 
 export const lineTotal = (line: SaleLine) =>
