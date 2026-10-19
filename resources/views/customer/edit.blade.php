@@ -480,7 +480,7 @@
                     const key = el.dataset.measureKey;
                     const v = Object.prototype.hasOwnProperty.call(vals, key)
                         ? (vals[key] ?? '')
-                        : (String(id) === String(@json($selectedTemplateId)) ? (el.dataset.initialSavedValue ?? el.value) : '');
+                        : (String(id) === String(@json($selectedTemplateId ?? null)) ? (el.dataset.initialSavedValue ?? el.value) : '');
                     if (el.tagName === 'SELECT' && v && ![...el.options].some(o => o.value === v)) {
                         el.add(new Option(v, v));
                     }
