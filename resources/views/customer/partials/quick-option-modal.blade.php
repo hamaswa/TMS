@@ -9,8 +9,9 @@
         if (!modal || !form || !window.jQuery) return;
         var target = null;
         document.querySelectorAll('select[data-inline-option-type]').forEach(function(select) {
-            if (select.querySelector('option[value="__add_new__"]')) return;
-            select.add(new Option('＋ نیا انتخاب شامل کریں', '__add_new__'));
+            if (!select.querySelector('option[value="__add_new__"]')) {
+                select.add(new Option('＋ نیا انتخاب شامل کریں', '__add_new__'));
+            }
             select.addEventListener('focus', function() { select.dataset.previousValue = select.value; });
             select.addEventListener('change', function() {
                 if (select.value !== '__add_new__') { select.dataset.previousValue = select.value; return; }
