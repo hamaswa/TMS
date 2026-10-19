@@ -51,7 +51,11 @@
         if (node.nodeType !== 1 || skipped(node)) return;
         ['placeholder', 'title', 'aria-label'].forEach(function (name) {
             var value = node.getAttribute(name);
-            if (value && HAS_URDU.test(value)) node.setAttribute(name, translate(value));
+            if (!value || !HAS_URDU.test(value)) return;
+            // Only write real changes: setting an attribute (even to the same value) fires the observer
+            // again, so text with untranslatable Urdu would otherwise loop forever and freeze the page.
+            var translated = translate(value);
+            if (translated !== value) node.setAttribute(name, translated);
         });
         for (var child = node.firstChild; child; child = child.nextSibling) translateNode(child);
     }
