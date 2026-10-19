@@ -162,17 +162,24 @@
 (function () {
     let knownOpen = {{ (int) $salesOpenCount }};
     const showUrl = @json(route('admin.sales-sessions.show', '__UUID__'));
-    const seenStorageKey = @json('tms-sales-attention-seen-'.Auth::user()->businessOwnerId());
+    // Shared by every tab and kept across restarts, so each mobile sale pops up only once per browser.
+    const seenStorageKey = @json('tms-sales-attention-seen-'.Auth::id());
     let seenAttention = new Set();
+    seenAttention = loadSeenAttention();
 
-    try {
-        seenAttention = new Set(JSON.parse(window.sessionStorage.getItem(seenStorageKey) || '[]'));
-    } catch (_) {}
+    function loadSeenAttention() {
+        try {
+            return new Set(JSON.parse(window.localStorage.getItem(seenStorageKey) || '[]'));
+        } catch (_) {
+            return seenAttention;
+        }
+    }
 
     function rememberAttention(sessions) {
+        seenAttention = loadSeenAttention();
         sessions.forEach(function (session) { seenAttention.add(session.uuid); });
         try {
-            window.sessionStorage.setItem(seenStorageKey, JSON.stringify(Array.from(seenAttention).slice(-100)));
+            window.localStorage.setItem(seenStorageKey, JSON.stringify(Array.from(seenAttention).slice(-200)));
         } catch (_) {}
     }
 
@@ -202,6 +209,7 @@
                 badge.textContent = Math.min(feed.openCount, 99);
                 badge.style.display = feed.openCount ? '' : 'none';
             }
+            seenAttention = loadSeenAttention();
             const newAttention = (feed.data || []).filter(function (session) {
                 return session.status === 'needs_attention' && !seenAttention.has(session.uuid);
             });
