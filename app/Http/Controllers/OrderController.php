@@ -34,6 +34,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\ProductionWorkforceService;
 use App\Services\CustomerLedgerService;
+use App\Services\CustomerSalesHistoryService;
 use App\Services\TailoringComplaintService;
 use App\Support\PaymentMethods;
 use Illuminate\Support\Carbon;
@@ -648,12 +649,22 @@ class OrderController extends Controller
         $detailedWorkflow = Business::tailoringStatusModeForOwner(Auth::user()->businessOwnerId())
             === Business::TAILORING_STATUS_DETAILED;
         $canViewBalances = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
+        $user = Auth::user();
+        $canViewShop = (bool) ($user->business?->clothing_enabled ?? $user->clothing_access)
+            && $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
+        $sales = $canViewShop
+            ? app(CustomerSalesHistoryService::class)->forCustomer($customer, $user->businessOwnerId())
+            : collect();
+        $activeTab = $canViewShop && request()->query('tab') === 'sales' ? 'sales' : 'tailoring';
 
         return view('order.orders', compact(
             'customer',
             'selectedCustomer',
             'detailedWorkflow',
-            'canViewBalances'
+            'canViewBalances',
+            'canViewShop',
+            'sales',
+            'activeTab'
         ));
     }
 

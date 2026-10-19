@@ -57,11 +57,12 @@ class CounterSaleReturnService
 
             $original = Transaction::where('userId', $ownerId)->where('counter_sale_receipt_id', $lockedReceipt->id)
                 ->where('Order_type', 'Sale')->lockForUpdate()->first();
+            $laterPayments = (float) $lockedReceipt->payments()->sum('recivedPayment');
             $originalOutstanding = max(0, (float) ($original?->remainingBalance ?? 0));
             $previousReturns = $lockedReceipt->returns()->lockForUpdate()->get();
-            $currentOutstanding = max(0, round($originalOutstanding - (float) $previousReturns->sum('balance_reduction'), 2));
+            $currentOutstanding = max(0, round($originalOutstanding - (float) $previousReturns->sum('balance_reduction') - $laterPayments, 2));
             // What the customer has actually paid on this receipt, less what earlier returns already gave back.
-            $netPaid = max(0, round((float) ($original?->recivedPayment ?? 0)
+            $netPaid = max(0, round((float) ($original?->recivedPayment ?? 0) + $laterPayments
                 - (float) $previousReturns->sum(fn ($previous) => (float) $previous->refund_amount + (float) $previous->credit_amount), 2));
             // By default the return clears this receipt's balance first. If the customer keeps the balance,
             // they get the full value back — but never more than they paid; any excess still clears the balance.

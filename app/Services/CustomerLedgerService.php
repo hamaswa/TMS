@@ -16,6 +16,22 @@ class CustomerLedgerService
             ->map(fn (int $cents) => round($cents / 100, 2));
     }
 
+    /**
+     * What each cloth sale receipt still owes after the customer's payments and credits are
+     * allocated: a credit linked to a receipt pays that receipt first, unlinked ones pay the oldest dues.
+     */
+    public function receiptBalances(int $ownerId, int $customerId): Collection
+    {
+        $balances = [];
+        foreach ($this->allocate($ownerId, $customerId)['charges'] as $charge) {
+            if ($charge['receipt_id']) {
+                $balances[$charge['receipt_id']] = ($balances[$charge['receipt_id']] ?? 0) + $charge['remaining'];
+            }
+        }
+
+        return collect($balances)->map(fn (int $cents) => round(max(0, $cents) / 100, 2));
+    }
+
     public function orderBalance(Order $order): float
     {
         $balances = $this->orderBalances((int) $order->userId, (int) $order->customerId);
@@ -83,7 +99,7 @@ class CustomerLedgerService
         $transactions = Transaction::where('userId', $ownerId)
             ->where('customerId', $customerId)
             ->orderBy('id')
-            ->get(['id', 'orderId', 'Order_type', 'remainingBalance']);
+            ->get(['id', 'orderId', 'counter_sale_receipt_id', 'Order_type', 'remainingBalance']);
 
         $charges = [];
         $sharedCredit = 0;
@@ -93,6 +109,7 @@ class CustomerLedgerService
 
         foreach ($transactions as $transaction) {
             $orderId = filled($transaction->orderId) ? (int) $transaction->orderId : null;
+            $receiptId = filled($transaction->counter_sale_receipt_id) ? (int) $transaction->counter_sale_receipt_id : null;
             $amount = (int) round((float) $transaction->remainingBalance * 100);
             $ledgerBalance += $amount;
 
@@ -116,6 +133,7 @@ class CustomerLedgerService
                 $charges[] = [
                     'transaction_id' => (int) $transaction->id,
                     'order_id' => $orderId,
+                    'receipt_id' => $receiptId,
                     'remaining' => $amount,
                 ];
 
@@ -127,6 +145,10 @@ class CustomerLedgerService
             }
 
             $credit = abs($amount);
+            if (! $orderId && $receiptId) {
+                // A receipt payment / return / cancellation settles that receipt first; any excess is shared.
+                $credit = $this->applyCredit($charges, $credit, null, $receiptId);
+            }
             $credit = $this->applyCredit($charges, $credit, $orderId);
 
             if ($credit > 0) {
@@ -153,7 +175,7 @@ class CustomerLedgerService
         ];
     }
 
-    private function applyCredit(array &$charges, int $credit, ?int $orderId): int
+    private function applyCredit(array &$charges, int $credit, ?int $orderId, ?int $receiptId = null): int
     {
         foreach ($charges as &$charge) {
             if ($credit <= 0) {
@@ -161,6 +183,10 @@ class CustomerLedgerService
             }
 
             if ($orderId && $charge['order_id'] !== $orderId) {
+                continue;
+            }
+
+            if ($receiptId && $charge['receipt_id'] !== $receiptId) {
                 continue;
             }
 

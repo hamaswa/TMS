@@ -938,9 +938,10 @@
                         <p class="text-muted">ایک یا زیادہ آئٹم واپس کریں، یا پوری رسید منسوخ کریں۔</p>
                         @foreach($activeReceipts as $receipt)
                             @php
-                                $receiptPaid = (float) ($receipt->transaction?->recivedPayment ?? 0)
+                                $receiptLaterPaid = (float) $receipt->payments->sum('recivedPayment');
+                                $receiptPaid = (float) ($receipt->transaction?->recivedPayment ?? 0) + $receiptLaterPaid
                                     - (float) $receipt->returns->sum(fn ($return) => (float) $return->refund_amount + (float) $return->credit_amount);
-                                $receiptOutstanding = max(0, (float) ($receipt->transaction?->remainingBalance ?? 0) - (float) $receipt->returns->sum('balance_reduction'));
+                                $receiptOutstanding = max(0, (float) ($receipt->transaction?->remainingBalance ?? 0) - (float) $receipt->returns->sum('balance_reduction') - $receiptLaterPaid);
                             @endphp
                             <div class="border rounded p-3 mb-2">
                                 <h6 class="font-weight-bold mb-2">{{ $receipt->receipt_number }} · آئٹم واپسی</h6>

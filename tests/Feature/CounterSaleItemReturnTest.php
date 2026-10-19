@@ -55,6 +55,17 @@ class CounterSaleItemReturnTest extends TestCase
             ->assertSee('name="items['.$navyItem->id.']"', false)
             ->assertSee('Rs 480.00', false);
 
+        // The customer orders page lists the cloth sale next to tailoring, with the same return popup.
+        $this->actingAs($owner)->get(route('admin.customer.orders', $customer->id))
+            ->assertOk()
+            ->assertSeeText('کپڑے کی خریداری')
+            ->assertSeeText('کون سا آئٹم واپس آیا؟')
+            ->assertSee('name="items['.$navyItem->id.']"', false)
+            ->assertSee('class="tab-pane fade show active" id="tailoringTab"', false);
+        $this->actingAs($owner)->get(route('admin.customer.orders', ['customer' => $customer->id, 'tab' => 'sales']))
+            ->assertOk()
+            ->assertSee('class="tab-pane fade show active" id="salesTab"', false);
+
         // Return only the navy cloth: 480 clears the 180 still owed, 300 goes back as cash.
         $this->actingAs($owner)->from(route('admin.customers.statement', $customer->id))
             ->post(route('admin.counter-sales.returns.store', $receipt), [
@@ -154,6 +165,113 @@ class CounterSaleItemReturnTest extends TestCase
         $this->assertEquals(180, (float) $second->balance_reduction);
         $this->assertEquals(120, (float) $second->refund_amount);
         $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+    }
+
+    public function test_payment_can_be_taken_against_a_sale_receipt_from_the_orders_page(): void
+    {
+        $owner = $this->userWithRole('shop_owner');
+        $type = ClothType::create(['name' => 'Lawn', 'user_id' => $owner->id]);
+        $brand = ClothBrand::create(['name' => 'Alkaram', 'user_id' => $owner->id]);
+        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => 100, 'sale_price' => 150, 'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR, 'user_id' => $owner->id]);
+        ClothColor::create(['cloth_id' => $cloth->id, 'color' => 'White', 'length' => 10, 'average_unit_cost' => 100, 'user_id' => $owner->id]);
+        ClothColor::create(['cloth_id' => $cloth->id, 'color' => 'Navy', 'length' => 12, 'average_unit_cost' => 90, 'user_id' => $owner->id]);
+        $customer = Customers::create(['name' => 'Junaid', 'phone_number1' => '03001234567', 'user_id' => $owner->id]);
+
+        // 2m @150 + 3m @160 = 780, customer pays 600 and owes 180.
+        $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$brand->id, $brand->id],
+            'cloth_type' => [$type->id, $type->id],
+            'color' => ['White', 'Navy'],
+            'per_meter' => [150, 160],
+            'clothes_rack' => ['A-1', 'A-2'],
+            'length' => [2, 3],
+            'c_name' => $customer->name.'|'.$customer->id,
+            'payment' => 600,
+            'remain' => 180,
+            'payment_method' => 'cash',
+            'paid_on' => now()->toDateString(),
+        ]);
+        $receipt = CounterSaleReceipt::where('user_id', $owner->id)->firstOrFail();
+        [$whiteItem, $navyItem] = SaleStock::where('counter_sale_receipt_id', $receipt->id)->orderBy('id')->get()->all();
+
+        $this->actingAs($owner)->get(route('admin.customer.orders', $customer->id))
+            ->assertOk()
+            ->assertSee('data-receiptid="'.$receipt->id.'"', false);
+
+        // More than the receipt still owes is refused.
+        $this->actingAs($owner)->postJson(route('admin.DirectPayment'), [
+            'customer_id' => $customer->id, 'counter_sale_receipt_id' => $receipt->id, 'DirectPayment' => 200,
+        ])->assertStatus(422);
+
+        $this->actingAs($owner)->postJson(route('admin.DirectPayment'), [
+            'customer_id' => $customer->id, 'counter_sale_receipt_id' => $receipt->id, 'DirectPayment' => 100,
+        ])->assertOk();
+
+        $payment = Transaction::where('Order_type', 'Payment')->sole();
+        $this->assertSame($receipt->id, (int) $payment->counter_sale_receipt_id);
+        $this->assertEquals(80, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+        $this->actingAs($owner)->get(route('admin.customer.orders', ['customer' => $customer->id, 'tab' => 'sales']))
+            ->assertSee('Rs 700.00', false)
+            ->assertSee('data-remaining="80"', false);
+
+        // A return after that payment only clears the 80 still owed; the other 400 is paid back.
+        $this->actingAs($owner)->post(route('admin.counter-sales.returns.store', $receipt), [
+            'items' => [$navyItem->id => 3],
+            'reason' => 'Navy colour did not suit',
+            'restock' => 1,
+            'settlement_type' => 'refund',
+            'payment_method' => 'cash',
+        ])->assertSessionHasNoErrors();
+        $return = CounterSaleReturn::where('counter_sale_receipt_id', $receipt->id)->sole();
+        $this->assertEquals(80, (float) $return->balance_reduction);
+        $this->assertEquals(400, (float) $return->refund_amount);
+        $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+
+        // Cancelling the rest finds nothing left owed on the receipt.
+        $this->actingAs($owner)->patch(route('admin.counter-sales.cancel', $whiteItem), [
+            'cancellation_reason' => 'Customer returned the rest',
+            'refund_method' => 'cash',
+        ])->assertSessionHasNoErrors();
+        $settlement = OrderCancellationSettlement::where('source_id', $receipt->id)->sole();
+        $this->assertEquals(0, (float) $settlement->cancelled_unpaid_balance);
+        $this->assertEquals(300, (float) $settlement->paid_on_order);
+    }
+
+    public function test_a_general_payment_pays_the_oldest_sale_and_caps_receipt_payments(): void
+    {
+        $owner = $this->userWithRole('shop_owner');
+        $type = ClothType::create(['name' => 'Lawn', 'user_id' => $owner->id]);
+        $brand = ClothBrand::create(['name' => 'Alkaram', 'user_id' => $owner->id]);
+        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => 100, 'sale_price' => 150, 'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR, 'user_id' => $owner->id]);
+        ClothColor::create(['cloth_id' => $cloth->id, 'color' => 'White', 'length' => 20, 'average_unit_cost' => 100, 'user_id' => $owner->id]);
+        $customer = Customers::create(['name' => 'Umar', 'phone_number1' => '03001234567', 'user_id' => $owner->id]);
+        $sell = fn (int $paid, int $owed) => $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$brand->id], 'cloth_type' => [$type->id], 'color' => ['White'], 'per_meter' => [150],
+            'clothes_rack' => ['A-1'], 'length' => [2], 'c_name' => $customer->name.'|'.$customer->id,
+            'payment' => $paid, 'remain' => $owed, 'payment_method' => 'cash', 'paid_on' => now()->toDateString(),
+        ]);
+
+        // Two 300 sales, each owing 200.
+        $sell(100, 200);
+        $sell(100, 200);
+        [$older, $newer] = CounterSaleReceipt::where('user_id', $owner->id)->orderBy('id')->get()->all();
+
+        // A general payment (not tied to a sale) pays the oldest sale first.
+        $this->actingAs($owner)->postJson(route('admin.DirectPayment'), [
+            'customer_id' => $customer->id, 'DirectPayment' => 150,
+        ])->assertOk();
+
+        $this->actingAs($owner)->get(route('admin.customer.orders', ['customer' => $customer->id, 'tab' => 'sales']))
+            ->assertSee('data-remaining="50"', false)
+            ->assertSee('data-remaining="200"', false);
+
+        $this->actingAs($owner)->postJson(route('admin.DirectPayment'), [
+            'customer_id' => $customer->id, 'counter_sale_receipt_id' => $older->id, 'DirectPayment' => 60,
+        ])->assertStatus(422);
+        $this->actingAs($owner)->postJson(route('admin.DirectPayment'), [
+            'customer_id' => $customer->id, 'counter_sale_receipt_id' => $older->id, 'DirectPayment' => 50,
+        ])->assertOk();
+        $this->assertEquals(200, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
     }
 
     private function userWithRole(string $name): User

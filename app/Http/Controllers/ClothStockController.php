@@ -699,7 +699,8 @@ class ClothStockController extends Controller
             $returnedInventory = CounterSaleReturnItem::whereIn('counter_sale_return_id', $previousReturns->pluck('id'))
                 ->selectRaw('sale_stock_id, SUM(inventory_quantity) as quantity')
                 ->groupBy('sale_stock_id')->pluck('quantity', 'sale_stock_id');
-            $balance = max(0, round((float) ($original?->remainingBalance ?? 0) - (float) $previousReturns->sum('balance_reduction'), 2));
+            $balance = max(0, round((float) ($original?->remainingBalance ?? 0) - (float) $previousReturns->sum('balance_reduction')
+                - (float) $receipt->payments()->sum('recivedPayment'), 2));
 
             $inventory = app(InventoryService::class);
             foreach ($items as $item) {

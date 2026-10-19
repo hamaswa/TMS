@@ -206,6 +206,92 @@
             width: 4%
         }
 
+        .customer-orders-tabs {
+            gap: 8px;
+            padding: 12px 22px 0;
+            border-bottom: 1px solid #e3eaf2;
+            background: #fff
+        }
+
+        .customer-orders-tabs .nav-link {
+            margin-bottom: -1px;
+            padding: 10px 18px;
+            color: #53647b;
+            border: 1px solid transparent;
+            border-radius: 12px 12px 0 0;
+            font-weight: 800
+        }
+
+        .customer-orders-tabs .nav-link:hover {
+            color: #1769aa
+        }
+
+        .customer-orders-tabs .nav-link.active {
+            color: #1769aa;
+            background: #f5f8fc;
+            border-color: #dde5ef #dde5ef #f5f8fc
+        }
+
+        .customer-order-table.customer-sales-table {
+            table-layout: auto
+        }
+
+        .sale-actions-toggle {
+            width: 36px;
+            height: 36px;
+            color: #53647b;
+            border: 1px solid #dde5ef;
+            border-radius: 10px
+        }
+
+        .sale-actions-menu {
+            position: fixed;
+            z-index: 1060;
+            display: none;
+            min-width: 210px;
+            padding: 6px;
+            background: #fff;
+            border: 1px solid #dde5ef;
+            border-radius: 12px;
+            box-shadow: 0 14px 35px rgba(31, 45, 61, .18)
+        }
+
+        .sale-actions-menu.is-open {
+            display: block
+        }
+
+        .sale-action {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 9px 12px;
+            color: #243b53;
+            background: transparent;
+            border: 0;
+            border-radius: 8px;
+            font-size: .9rem;
+            font-weight: 700;
+            text-align: right
+        }
+
+        .sale-action:hover {
+            text-decoration: none;
+            background: #f5f8fc
+        }
+
+        .sale-action.sale-payment-button {
+            color: #146c43
+        }
+
+        .sale-action--return {
+            color: #c0392b
+        }
+
+        .customer-order-table.customer-sales-table th {
+            width: auto
+        }
+
         .order-money {
             direction: ltr;
             display: inline-block;
@@ -418,6 +504,10 @@
                 table-layout: auto
             }
 
+            .customer-order-table.customer-sales-table {
+                min-width: 900px
+            }
+
             .customer-order-table thead th {
                 white-space: nowrap
             }
@@ -503,32 +593,96 @@
                 <div class="customer-orders-panel__head">
                     <div>
                         <h2>آرڈر ریکارڈ</h2>
-                        <p>{{ $customer->name }} اور تمام خاندانی پروفائلز کے سلائی آرڈرز، تازہ ترین پہلے۔ خریداری اور مالی لین دین مکمل کھاتے میں دیکھیں۔</p>
+                        <p>{{ $customer->name }} اور تمام خاندانی پروفائلز کے سلائی آرڈرز اور کپڑے کی خریداری، تازہ ترین پہلے۔</p>
                     </div>
                     <span class="customer-orders-panel__icon"><i class="fas fa-receipt"></i></span>
                 </div>
-                <div class="customer-orders-table-wrap">
-                    <table class="table js-sortable-table customer-order-table" id="cc-table-data-order-history"
-                        data-return-orders="{{ $selectedCustomer->id }}">
-                        <thead>
-                            <tr>
-                                <th>نمبر</th>
-                                <th>کل رقم</th>
-                                <th>ادا شدہ</th>
-                                <th>بقایا</th>
-                                <th>ادائیگی</th>
-                                <th>آرڈر کی تاریخ</th>
-                                <th>واپسی کی تاریخ</th>
-                                <th>کپڑوں کی تعداد</th>
-                                <th>درزی</th>
-                                <th>مرحلہ</th>
-                                <th>ریک نمبر</th>
-                                <th>تبدیلی</th>
-                                <th>پرنٹ</th>
-                            </tr>
-                        </thead>
-                        <tbody class="tbody"></tbody>
-                    </table>
+                @if ($canViewShop)
+                    <ul class="nav customer-orders-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link {{ $activeTab === 'tailoring' ? 'active' : '' }}" id="tailoringTabLink" data-toggle="tab"
+                                href="#tailoringTab" role="tab" aria-controls="tailoringTab" data-tab="tailoring"
+                                aria-selected="{{ $activeTab === 'tailoring' ? 'true' : 'false' }}"><i class="fas fa-cut ml-1"></i> سلائی</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ $activeTab === 'sales' ? 'active' : '' }}" id="salesTabLink" data-toggle="tab"
+                                href="#salesTab" role="tab" aria-controls="salesTab" data-tab="sales"
+                                aria-selected="{{ $activeTab === 'sales' ? 'true' : 'false' }}"><i class="fas fa-shopping-bag ml-1"></i> فروخت
+                                <span class="badge badge-light">{{ $sales->count() }}</span></a>
+                        </li>
+                    </ul>
+                @endif
+                <div class="tab-content">
+                    <div class="tab-pane fade {{ $activeTab === 'tailoring' ? 'show active' : '' }}" id="tailoringTab" role="tabpanel" aria-labelledby="tailoringTabLink">
+                        <div class="customer-orders-table-wrap">
+                            <table class="table js-sortable-table customer-order-table" id="cc-table-data-order-history"
+                                data-return-orders="{{ $selectedCustomer->id }}">
+                                <thead>
+                                    <tr>
+                                        <th>نمبر</th>
+                                        <th>کل رقم</th>
+                                        <th>ادا شدہ</th>
+                                        <th>بقایا</th>
+                                        <th>ادائیگی</th>
+                                        <th>آرڈر کی تاریخ</th>
+                                        <th>واپسی کی تاریخ</th>
+                                        <th>کپڑوں کی تعداد</th>
+                                        <th>درزی</th>
+                                        <th>مرحلہ</th>
+                                        <th>ریک نمبر</th>
+                                        <th>تبدیلی</th>
+                                        <th>پرنٹ</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @if ($canViewShop)
+                        <div class="tab-pane fade {{ $activeTab === 'sales' ? 'show active' : '' }}" id="salesTab" role="tabpanel" aria-labelledby="salesTabLink">
+                            <div class="customer-orders-table-wrap">
+                                <table class="table customer-order-table customer-sales-table text-right mb-0" id="customerSalesTable">
+                                    <thead>
+                                        <tr>
+                                            <th>رسید نمبر</th>
+                                            <th>تاریخ</th>
+                                            <th>تفصیل</th>
+                                            <th>اشیاء</th>
+                                            <th>کل رقم</th>
+                                            <th>وصول شدہ</th>
+                                            <th>بقایا</th>
+                                            <th class="text-center">اختیارات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($sales as $sale)
+                                            <tr class="{{ $sale->status === 'cancelled' ? 'text-muted' : '' }}">
+                                                <td><span dir="ltr">{{ $sale->display_number }}</span>
+                                                    @if ($sale->status === 'cancelled')
+                                                        <span class="badge badge-danger">منسوخ</span>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $sale->created_at?->format('d-m-Y') }}</td>
+                                                <td>{{ $sale->summary ?: 'کپڑے کی فروخت' }}
+                                                    @if ($sale->cancellation_reason)
+                                                        <br><small>وجہ: {{ $sale->cancellation_reason }}</small>
+                                                    @endif
+                                                    @if (($sale->returned_total ?? 0) > 0)
+                                                        <br><small class="text-danger">آئٹم واپسی: Rs {{ number_format($sale->returned_total, 2) }}</small>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $sale->items_count }}</td>
+                                                <td>Rs {{ number_format($sale->amount, 2) }}</td>
+                                                <td>Rs {{ number_format($sale->status === 'cancelled' ? 0 : $sale->received, 2) }}</td>
+                                                <td>Rs {{ number_format($sale->status === 'cancelled' ? 0 : $sale->balance, 2) }}</td>
+                                                <td class="text-center">@include('customer.partials.sale-actions', ['sale' => $sale, 'customer' => $customer, 'asMenu' => true, 'canPay' => $canViewBalances])</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </section>
 
@@ -600,7 +754,7 @@
                     <div class="modal-content">
                         <form action="{{ route('admin.DirectPayment') }}" method="post">@csrf
                             <input type="hidden" id="customer_id" name="customer_id"><input type="hidden"
-                                id="payment_order_id" name="order_id">
+                                id="payment_order_id" name="order_id"><input type="hidden" id="payment_receipt_id" name="counter_sale_receipt_id">
                             <div class="modal-header">
                                 <h4 class="modal-title" id="paymentModalTitle">آرڈر کی ادائیگی</h4><button type="button"
                                     class="close mr-auto ml-0" data-dismiss="modal"><span>&times;</span></button>
@@ -637,6 +791,91 @@
                 $('#loadCustomerOrders').trigger('click');
             }, 100);
 
+            try {
+                var notice = sessionStorage.getItem('customerOrdersNotice');
+                if (notice) {
+                    sessionStorage.removeItem('customerOrdersNotice');
+                    $('#customerOrdersAjaxAlert').show().find('span').text(notice);
+                }
+            } catch (e) {}
+
+            // Same search + paging as the tailoring table; server order (newest first) is kept.
+            if ($.fn.DataTable && $('#customerSalesTable').length) {
+                $('#customerSalesTable').DataTable({
+                    order: [],
+                    columnDefs: [{ targets: -1, orderable: false, searchable: false }],
+                    language: { emptyTable: 'ابھی کوئی کپڑے کی خریداری موجود نہیں۔' }
+                });
+            }
+
+            // Sale ⋮ menus: fixed-positioned so the table's scroll box doesn't clip them.
+            function closeSaleMenus() {
+                $('.sale-actions-menu.is-open').removeClass('is-open');
+                $('.sale-actions-toggle[aria-expanded="true"]').attr('aria-expanded', 'false');
+            }
+            $(document).on('click', '.sale-actions-toggle', function(event) {
+                event.stopPropagation();
+                var toggle = $(this),
+                    menu = toggle.siblings('.sale-actions-menu'),
+                    wasOpen = menu.hasClass('is-open');
+                closeSaleMenus();
+                if (wasOpen) {
+                    return;
+                }
+                menu.addClass('is-open');
+                toggle.attr('aria-expanded', 'true');
+                var rect = this.getBoundingClientRect(),
+                    menuWidth = menu.outerWidth(),
+                    menuHeight = menu.outerHeight(),
+                    top = rect.bottom + 6,
+                    left = rect.right - menuWidth;
+                if (top + menuHeight > window.innerHeight - 8) {
+                    top = Math.max(8, rect.top - menuHeight - 6);
+                }
+                left = Math.min(Math.max(8, left), window.innerWidth - menuWidth - 8);
+                menu.css({ top: top, left: left });
+            });
+            $(document).on('click', '.sale-actions-menu .sale-action', closeSaleMenus);
+            $(document).on('click', function(event) {
+                if (!$(event.target).closest('.sale-actions-menu').length) {
+                    closeSaleMenus();
+                }
+            });
+            $(document).on('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeSaleMenus();
+                }
+            });
+            $(window).on('resize', closeSaleMenus);
+            window.addEventListener('scroll', closeSaleMenus, true);
+
+            // Sale rows reuse the payment modal but pay against the sale receipt (own class, so custom.js's
+            // tailoring .order-payment-button handler never touches these fields).
+            $(document).on('click', '.customer_payment_paid, .order-payment-button', function() {
+                $('#payment_receipt_id').val('');
+            });
+            $(document).on('click', '.sale-payment-button', function() {
+                var button = $(this),
+                    remaining = Number(button.data('remaining') || 0).toFixed(2);
+                $('#customer_id').val(button.data('customerid'));
+                $('#payment_order_id').val('');
+                $('#payment_receipt_id').val(button.data('receiptid'));
+                $('#directPaymentAmount').attr('max', remaining).val('');
+                $('#paymentAjaxFeedback').hide().text('');
+                $('#paymentModalTitle').html('<i class="fas fa-wallet text-success ml-2"></i> فروخت ' + $('<span>').text(button.data('number')).html() + ' کی ادائیگی');
+                $('#orderPaymentContext').text('اس فروخت کا موجودہ بقایا: Rs. ' + remaining).show();
+            });
+
+            // Keep the open tab in the URL so a return/cancel that redirects back reopens it.
+            $('.customer-orders-tabs a[data-toggle="tab"]').on('shown.bs.tab', function() {
+                var url = new URL(window.location.href);
+                url.searchParams.set('tab', $(this).data('tab'));
+                window.history.replaceState(null, '', url);
+                if ($.fn.dataTable) {
+                    $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+                }
+            });
+
             $('#myModalpayment form').on('submit', function(event) {
                 event.preventDefault();
                 var form = $(this),
@@ -653,6 +892,12 @@
                         Accept: 'application/json'
                     },
                     success: function(response) {
+                        if ($('#payment_receipt_id').val()) {
+                            // The sales table is server-rendered: reload so its balance updates (the open tab is in the URL).
+                            try { sessionStorage.setItem('customerOrdersNotice', response.message); } catch (e) {}
+                            window.location.reload();
+                            return;
+                        }
                         $('#myModalpayment').modal('hide');
                         $('#customerOrdersAjaxAlert').show().find('span').text(response
                             .message);

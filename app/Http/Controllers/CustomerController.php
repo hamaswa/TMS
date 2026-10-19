@@ -6,13 +6,13 @@ use App\Models\BusinessRole;
 use App\Models\CounterOrder;
 use App\Models\CounterOrderItem;
 use App\Models\CounterOrderComplaint;
+use App\Models\CounterSaleReceipt;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
 use App\Models\Order;
 use App\Models\Options;
 use App\Models\OptionType;
 use App\Models\rack;
-use App\Models\SaleStock;
 use App\Models\Tailor;
 use App\Models\Transaction;
 use App\Models\User;
@@ -20,6 +20,7 @@ use App\Rules\PakistanMobileNumber;
 use App\Rules\UniqueCustomerPhone;
 use App\Services\MeasurementService;
 use App\Services\CustomerLedgerService;
+use App\Services\CustomerSalesHistoryService;
 use App\Support\PakistanPhoneNumber;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
@@ -267,77 +268,7 @@ class CustomerController extends Controller
         $tailors = $canViewTailoring ? Tailor::where('user_id', $ownerId)->orderBy('name')->get(['id', 'name']) : collect();
         $sales = collect();
         if ($canViewShop) {
-            $legacySales = $customer->sales()
-                ->where('user_id', $ownerId)
-                ->with(['detail:id,sale_id,product_name,quantity,price', 'transaction:id,sale_id,recivedPayment,remainingBalance'])
-                ->latest()
-                ->limit(50)
-                ->get()
-                ->map(fn($sale) => (object) [
-                    'id' => $sale->id,
-                    'source' => 'legacy',
-                    'display_number' => '#' . $sale->id,
-                    'counter_order_id' => null,
-                    'created_at' => $sale->created_at,
-                    'items_count' => $sale->detail->sum('quantity'),
-                    'summary' => $sale->detail->pluck('product_name')->filter()->take(3)->implode('، '),
-                    'amount' => $sale->detail->sum(fn($detail) => (float) $detail->price * (int) $detail->quantity),
-                    'received' => (float) ($sale->transaction?->recivedPayment ?? 0),
-                    'balance' => (float) ($sale->transaction?->remainingBalance ?? 0),
-                    'status' => $sale->status,
-                    'cancellation_reason' => $sale->cancellation_reason,
-                ]);
-            $stockGroups = SaleStock::where('user_id', $ownerId)
-                ->where('c_id', $customer->id)
-                ->with(['type:id,name', 'brand:id,name', 'receipt.returns'])
-                ->withSum('returnItems as returned_quantity', 'quantity')
-                ->latest()
-                ->limit(200)
-                ->get()
-                ->groupBy(fn($sale) => $sale->counter_sale_receipt_id
-                    ? 'receipt-' . $sale->counter_sale_receipt_id
-                    : 'legacy-' . $sale->created_at?->format('Y-m-d H:i:s'));
-            $stockTransactions = Transaction::where('userId', $ownerId)
-                ->where('Order_type', 'Sale')
-                ->whereIn('sale_id', $stockGroups->map(fn($items) => $items->first()->id))
-                ->get()->keyBy('sale_id');
-            $counterOrderLinks = CounterOrderItem::query()
-                ->where('source_record_type', 'counter_sale_receipt')
-                ->whereIn('source_record_id', $stockGroups->map(fn($items) => $items->first()->counter_sale_receipt_id)->filter())
-                ->whereHas('counterOrder', fn($query) => $query->where('user_id', $ownerId))
-                ->with('counterOrder:id,reference,serial_number')
-                ->get()
-                ->keyBy('source_record_id');
-            $stockSales = $stockGroups
-                ->map(function ($items) use ($stockTransactions, $counterOrderLinks) {
-                    $first = $items->first();
-                    $transaction = $stockTransactions->get($first->id);
-                    $counterOrder = $counterOrderLinks->get($first->counter_sale_receipt_id)?->counterOrder;
-                    $returns = $first->receipt?->returns ?? collect();
-
-                    return (object) [
-                        'id' => $first->id,
-                        'source' => 'stock',
-                        'display_number' => $counterOrder?->displayNumber()
-                            ?: ($first->receipt?->receipt_number ?: '#' . $first->id),
-                        'counter_order_id' => $counterOrder?->id,
-                        'created_at' => $first->created_at,
-                        'items_count' => $items->count(),
-                        'summary' => $items->map(fn($item) => collect([$item->brand?->name, $item->type?->name, $item->color])->filter()->implode(' '))->filter()->take(3)->implode('، '),
-                        'amount' => $items->sum(fn($item) => (float) $item->selling_price * (float) $item->length)
-                            - (float) $returns->sum('return_total'),
-                        'received' => (float) ($transaction?->recivedPayment ?? 0)
-                            - (float) $returns->sum(fn($return) => (float) $return->refund_amount + (float) $return->credit_amount),
-                        'balance' => max(0, (float) ($transaction?->remainingBalance ?? 0) - (float) $returns->sum('balance_reduction')),
-                        'returned_total' => (float) $returns->sum('return_total'),
-                        'receipt' => $first->receipt,
-                        'items' => $items->sortBy('id')->values(),
-                        'status' => $first->receipt?->status ?? 'completed',
-                        'cancellation_reason' => $first->receipt?->cancellation_reason,
-                    ];
-                })
-                ->values();
-            $sales = $legacySales->concat($stockSales)->sortByDesc('created_at')->take(50)->values();
+            $sales = app(CustomerSalesHistoryService::class)->forCustomer($customer, $ownerId);
         }
         if ($transactions) {
             $saleDisplayNumbers = $sales->keyBy(fn($sale) => (string) $sale->id);
@@ -1011,6 +942,7 @@ class CustomerController extends Controller
         $validated = $req->validate([
             'customer_id' => ['required', 'integer'],
             'order_id' => ['nullable', 'integer'],
+            'counter_sale_receipt_id' => ['nullable', 'integer'],
             'DirectPayment' => ['required', 'numeric', 'gt:0'],
             'comment' => ['nullable', 'string', 'max:1000'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
@@ -1050,6 +982,28 @@ class CustomerController extends Controller
             }
         }
 
+        $saleReceipt = null;
+        if (! empty($validated['counter_sale_receipt_id']) && empty($validated['order_id'])) {
+            $saleReceipt = CounterSaleReceipt::where('user_id', Auth::user()->businessOwnerId())
+                ->where('customer_id', $customer->id)
+                ->where('status', '!=', 'cancelled')
+                ->findOrFail($validated['counter_sale_receipt_id']);
+            $receiptBalance = (float) $this->customerLedger
+                ->receiptBalances(Auth::user()->businessOwnerId(), $customer->id)
+                ->get($saleReceipt->id, 0);
+
+            if ((float) $validated['DirectPayment'] > $receiptBalance) {
+                $message = "رسید {$saleReceipt->receipt_number} کا موجودہ بقایا Rs: {$receiptBalance} ہے۔ درج کی گئی رقم اس سے زیادہ نہیں ہو سکتی۔";
+                if ($req->expectsJson()) {
+                    return response()->json(['message' => $message, 'errors' => ['DirectPayment' => [$message]]], 422);
+                }
+
+                return redirect()->back()->with([
+                    'balanceError' => $message,
+                ]);
+            }
+        }
+
         // Retrieve the customer's name
         $customerName = $customer->name;
 
@@ -1073,6 +1027,7 @@ class CustomerController extends Controller
         $transaction->recivedPayment = $validated['DirectPayment'];
         $transaction->Order_type = 'Payment';
         $transaction->orderId = $order?->id;
+        $transaction->counter_sale_receipt_id = $saleReceipt?->id;
         $transaction->comment = $validated['comment'] ?? null;
         $transaction->payment_method = $paymentMethod;
         $transaction->payment_reference = $validated['payment_reference'] ?? null;

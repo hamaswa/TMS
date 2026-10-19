@@ -192,7 +192,7 @@ class CounterOrderController extends Controller
         $previousDue = app(CounterOrderService::class)->previousDue($counterOrder);
         $receiptLinks = CounterSaleReceipt::where('user_id', $ownerId)
             ->whereIn('id', $counterOrder->items->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id'))
-            ->with(['transaction', 'returns', 'items' => fn ($query) => $query->with(['type:id,name', 'brand:id,name'])
+            ->with(['transaction', 'returns', 'payments', 'items' => fn ($query) => $query->with(['type:id,name', 'brand:id,name'])
                 ->withSum('returnItems as returned_quantity', 'quantity')->orderBy('id')])
             ->get()->keyBy('id');
 

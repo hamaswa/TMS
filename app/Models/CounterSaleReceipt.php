@@ -40,6 +40,13 @@ class CounterSaleReceipt extends Model
             ->where('Order_type', 'Sale');
     }
 
+    /** Customer payments recorded against this receipt after the sale. */
+    public function payments()
+    {
+        return $this->hasMany(Transaction::class, 'counter_sale_receipt_id')
+            ->where('Order_type', 'Payment');
+    }
+
     public function returns()
     {
         return $this->hasMany(CounterSaleReturn::class);
