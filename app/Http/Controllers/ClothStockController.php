@@ -8,6 +8,7 @@ use App\Models\ClothBrand;
 use App\Models\ClothColor;
 use App\Models\ClothType;
 use App\Models\CounterSaleReceipt;
+use App\Models\CounterSaleReturnItem;
 use App\Models\Customers;
 use App\Models\DaliyExpenses;
 use App\Models\Expenses;
@@ -693,14 +694,23 @@ class ClothStockController extends Controller
                 ->lockForUpdate()
                 ->latest('id')
                 ->first();
-            $balance = (float) ($original?->remainingBalance ?? 0);
+            // Item returns already took back part of this receipt: only the rest is cancelled here.
+            $previousReturns = $receipt->returns()->lockForUpdate()->get();
+            $returnedInventory = CounterSaleReturnItem::whereIn('counter_sale_return_id', $previousReturns->pluck('id'))
+                ->selectRaw('sale_stock_id, SUM(inventory_quantity) as quantity')
+                ->groupBy('sale_stock_id')->pluck('quantity', 'sale_stock_id');
+            $balance = max(0, round((float) ($original?->remainingBalance ?? 0) - (float) $previousReturns->sum('balance_reduction'), 2));
 
             $inventory = app(InventoryService::class);
             foreach ($items as $item) {
+                $remainingLength = round((float) $item->length - (float) ($returnedInventory[$item->id] ?? 0), 2);
+                if ($remainingLength <= 0) {
+                    continue;
+                }
                 $color = ClothColor::where('user_id', $ownerId)->lockForUpdate()->findOrFail($item->cloth_color_id);
                 $inventory->restore(
                     $color,
-                    (float) $item->length,
+                    $remainingLength,
                     'counter_sale_cancellation',
                     $receipt,
                     $receipt->receipt_number.' منسوخی'
@@ -710,7 +720,8 @@ class ClothStockController extends Controller
             app(OrderCancellationSettlementService::class)->settle([
                 'user_id' => $ownerId, 'customer_id' => $receipt->customer_id ?? $original?->customerId,
                 'source_type' => 'counter_sale_receipt', 'source_id' => $receipt->id,
-                'order_total' => $items->sum(fn (SaleStock $item) => (float) $item->selling_price * (float) $item->length),
+                'order_total' => $items->sum(fn (SaleStock $item) => (float) $item->selling_price * (float) $item->length)
+                    - (float) $previousReturns->sum('return_total'),
                 'outstanding' => $balance, 'transaction_type' => 'Sale Cancellation',
                 'sale_id' => $receipt->first_sale_stock_id, 'counter_sale_receipt_id' => $receipt->id,
                 'payment_method_field' => 'refund_method', 'payment_reference_field' => 'refund_reference',

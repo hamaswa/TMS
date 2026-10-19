@@ -289,7 +289,8 @@ class CustomerController extends Controller
                 ]);
             $stockGroups = SaleStock::where('user_id', $ownerId)
                 ->where('c_id', $customer->id)
-                ->with(['type:id,name', 'brand:id,name', 'receipt'])
+                ->with(['type:id,name', 'brand:id,name', 'receipt.returns'])
+                ->withSum('returnItems as returned_quantity', 'quantity')
                 ->latest()
                 ->limit(200)
                 ->get()
@@ -312,6 +313,7 @@ class CustomerController extends Controller
                     $first = $items->first();
                     $transaction = $stockTransactions->get($first->id);
                     $counterOrder = $counterOrderLinks->get($first->counter_sale_receipt_id)?->counterOrder;
+                    $returns = $first->receipt?->returns ?? collect();
 
                     return (object) [
                         'id' => $first->id,
@@ -322,9 +324,14 @@ class CustomerController extends Controller
                         'created_at' => $first->created_at,
                         'items_count' => $items->count(),
                         'summary' => $items->map(fn($item) => collect([$item->brand?->name, $item->type?->name, $item->color])->filter()->implode(' '))->filter()->take(3)->implode('، '),
-                        'amount' => $items->sum(fn($item) => (float) $item->selling_price * (float) $item->length),
-                        'received' => (float) ($transaction?->recivedPayment ?? 0),
-                        'balance' => (float) ($transaction?->remainingBalance ?? 0),
+                        'amount' => $items->sum(fn($item) => (float) $item->selling_price * (float) $item->length)
+                            - (float) $returns->sum('return_total'),
+                        'received' => (float) ($transaction?->recivedPayment ?? 0)
+                            - (float) $returns->sum(fn($return) => (float) $return->refund_amount + (float) $return->credit_amount),
+                        'balance' => max(0, (float) ($transaction?->remainingBalance ?? 0) - (float) $returns->sum('balance_reduction')),
+                        'returned_total' => (float) $returns->sum('return_total'),
+                        'receipt' => $first->receipt,
+                        'items' => $items->sortBy('id')->values(),
                         'status' => $first->receipt?->status ?? 'completed',
                         'cancellation_reason' => $first->receipt?->cancellation_reason,
                     ];

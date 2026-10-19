@@ -220,6 +220,29 @@
             font-size: 15px
         }
 
+        .item-serial-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 2px;
+        }
+
+        .item-serial-row .item-serial {
+            margin-bottom: 0;
+        }
+
+        .returned-note {
+            color: #b02a37;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .item--returned .item-price {
+            text-decoration: line-through;
+            color: #8a94a3;
+        }
+
         .summary-row.balance {
             color: #a63b32
         }
@@ -410,19 +433,37 @@
             <div><small>تاریخ</small><strong>{{ $counterOrder->created_at?->format('d-m-Y h:i A') }}</strong></div>
         </section>
         <section class="customer"><small>گاہک</small><strong>{{ $counterOrder->customer?->name }}</strong></section>
+        @php
+            $returnedItems = isset($singleItem) ? collect() : ($returnedItems ?? collect());
+            $returnedTotal = (float) $returnedItems->sum('amount');
+        @endphp
         <section class="items" aria-label="آرڈر آئٹمز">
             @foreach ($receiptItems as $item)
-                <article class="item">
+                @php
+                    $returned = $returnedItems->get($item->id);
+                    $fullyReturned = $returned && $returned->amount >= (float) $item->line_total - 0.01;
+                @endphp
+                <article class="item {{ $fullyReturned ? 'item--returned' : '' }}">
                     <div>
                         @if ($item->item_serial && !isset($singleItem))
-                            <span class="item-serial">{{ $item->item_serial }}</span>
+                            <div class="item-serial-row">
+                                <span class="item-serial">{{ $item->item_serial }}</span>
+                                @if ($returned)
+                                    <span class="returned-note">↩ {{ $fullyReturned ? 'واپس شدہ' : rtrim(rtrim(number_format($returned->quantity, 2), '0'), '.').' واپس · Rs. '.number_format($returned->amount, 2) }}</span>
+                                @endif
+                            </div>
                         @endif
                         @if ($item->type === 'cloth')
                             <div class="item-kind">کپڑے کی خریداری</div>
                             <h2 dir="auto">{{ $item->cloth?->name }} — {{ $item->cloth?->brand?->name }} —
                                 {{ $item->cloth?->type?->name }}</h2>
                             <p>{{ data_get($item->details, 'color') ?: 'رنگ لاگو نہیں' }} ·
-                                {{ number_format((float) $item->length, 2) }} میٹر · Rs. {{ number_format((float) $item->unit_price, 2) }} فی میٹر</p>
+                                @if (data_get($item->details, 'sale_price_basis') === \App\Models\Cloth::SALE_PRICE_PER_SUIT)
+                                    {{ rtrim(rtrim(number_format((float) $item->quantity, 2), '0'), '.') }} سوٹ × {{ number_format((float) $item->length, 2) }} میٹر · Rs. {{ number_format((float) $item->unit_price, 2) }} فی سوٹ
+                                @else
+                                    {{ number_format((float) $item->length, 2) }} میٹر · Rs. {{ number_format((float) $item->unit_price, 2) }} فی میٹر
+                                @endif
+                            </p>
                         @else
                             <div class="item-kind">سلائی کا آرڈر</div>
                             <h2 dir="auto">{{ $item->measurementProfile?->name }}</h2>
@@ -446,11 +487,13 @@
             </aside>
         @endif
         <section class="summary">
-            <div class="summary-row total"><span>{{ isset($singleItem) ? 'آئٹم کی رقم' : 'کل آرڈر' }}</span><strong>Rs. {{ number_format((float) (isset($singleItem) ? $singleItem->line_total : $counterOrder->subtotal), 2) }}</strong>
+            <div class="summary-row total"><span>{{ isset($singleItem) ? 'آئٹم کی رقم' : 'کل آرڈر' }}</span><strong>Rs. {{ number_format((float) (isset($singleItem) ? $singleItem->line_total : $counterOrder->subtotal - $returnedTotal), 2) }}</strong>
             </div>
             @unless (isset($singleItem))
-                <div class="summary-row"><span>وصول شدہ</span><strong>Rs. {{ number_format((float) $counterOrder->paid_amount, 2) }}</strong></div>
-                <div class="summary-row balance"><span>اس آرڈر کا بقایا</span><strong>Rs. {{ number_format((float) $counterOrder->balance_amount, 2) }}</strong></div>
+                @unless ($returnedTotal > 0)
+                    <div class="summary-row"><span>وصول شدہ</span><strong>Rs. {{ number_format((float) $counterOrder->paid_amount, 2) }}</strong></div>
+                @endunless
+                <div class="summary-row balance"><span>اس آرڈر کا بقایا</span><strong>Rs. {{ number_format(max(0, (float) $counterOrder->balance_amount - (float) ($returnBalanceReduction ?? 0)), 2) }}</strong></div>
             @endunless
         </section>
         <footer class="footer">

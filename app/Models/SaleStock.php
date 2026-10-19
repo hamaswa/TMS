@@ -61,6 +61,35 @@ class SaleStock extends Model
         return $this->hasMany(CounterSaleReturnItem::class);
     }
 
+    /**
+     * How this line was sold and what is left to return, using the same per-suit/per-meter
+     * rules as CounterSaleReturnService. Expects returned_quantity from withSum('returnItems').
+     */
+    public function returnLine(): object
+    {
+        $perSuit = $this->sale_price_basis === 'per_suit' && (float) $this->suit_quantity > 0;
+        $sold = $perSuit ? (float) $this->suit_quantity : (float) $this->length;
+        $unitPrice = $perSuit && (float) $this->suit_unit_price > 0 ? (float) $this->suit_unit_price : (float) $this->selling_price;
+        $returned = (float) ($this->returned_quantity ?? 0);
+        $quantity = fn (float $value) => rtrim(rtrim(number_format($value, 2), '0'), '.');
+
+        return (object) [
+            'id' => $this->id,
+            'name' => collect([$this->brand?->name, $this->type?->name, $this->color])->filter()->implode(' · ') ?: 'کپڑا #'.$this->id,
+            'perSuit' => $perSuit,
+            'unit' => $perSuit ? 'سوٹ' : 'میٹر',
+            'sold' => $sold,
+            'soldLabel' => $perSuit
+                ? $quantity($sold).' سوٹ × '.number_format((float) $this->suit_length, 2).' میٹر'
+                : number_format($sold, 2).' میٹر',
+            'unitPrice' => $unitPrice,
+            'lineTotal' => round($sold * $unitPrice, 2),
+            'returned' => $returned,
+            'returnedLabel' => $quantity($returned),
+            'remaining' => max(0, round($sold - $returned, 2)),
+        ];
+    }
+
     public function clothColor()
     {
         return $this->belongsTo(ClothColor::class, 'cloth_color_id');

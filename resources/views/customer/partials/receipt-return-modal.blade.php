@@ -1,0 +1,222 @@
+{{--
+    Return / cancel popup for one shop receipt on the customer statement.
+    Step 1: pick the item(s) that came back. Step 2 (shown after picking): balance choice, refund, reason.
+    Expects: $sale (statement shop row), $customer, $modalId, $printUrl.
+--}}
+@php
+    $lines = collect($sale->items ?? [])->map->returnLine();
+    $canReturn = ($sale->receipt ?? null) && $sale->status !== 'cancelled';
+    $formId = $modalId.'Form';
+    $shopName = once(fn () => \App\Models\Setting::where('user_id', auth()->user()->businessOwnerId())->value('name')
+        ?: (auth()->user()->business?->name ?: auth()->user()->name));
+@endphp
+<div class="modal fade rr-modal" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content" dir="rtl">
+            <div class="rr-header">
+                <span class="rr-header-icon"><i class="fas fa-undo-alt"></i></span>
+                <div class="flex-grow-1">
+                    <h5 class="mb-0">آئٹم واپسی · <span dir="ltr">{{ $sale->display_number }}</span></h5>
+                    <small>جو آئٹم واپس آیا ہے اسے منتخب کریں</small>
+                </div>
+                <button type="button" class="close rr-close" data-dismiss="modal" aria-label="بند کریں">&times;</button>
+            </div>
+
+            <div class="rr-body">
+                <div class="row">
+                    {{-- Step 1 + 2 (right side in RTL) --}}
+                    <div class="col-lg-7 mb-3 mb-lg-0">
+                        <div class="rr-card">
+                            @if ($canReturn)
+                                <form method="POST" id="{{ $formId }}" action="{{ route('admin.counter-sales.returns.store', $sale->receipt) }}"
+                                    class="receipt-return-form" data-outstanding="{{ round((float) $sale->balance, 2) }}" data-paid="{{ round((float) $sale->received, 2) }}"
+                                    data-confirm="کیا آپ منتخب آئٹم واپس کرنا چاہتے ہیں؟">
+                                    @csrf
+                                    <div class="rr-step"><span>1</span> کون سا آئٹم واپس آیا؟</div>
+                                    @foreach ($lines as $line)
+                                        <div class="rr-row {{ $line->remaining <= 0 ? 'rr-row--done' : '' }}" data-return-row>
+                                            <div class="rr-row-info">
+                                                <strong>{{ $line->name }}</strong>
+                                                <small>{{ $line->soldLabel }} · <span dir="ltr">Rs {{ number_format($line->lineTotal, 2) }}</span></small>
+                                                @if ($line->returned > 0 && $line->remaining > 0)
+                                                    <small class="text-danger">پہلے واپس: {{ $line->returnedLabel }} {{ $line->unit }}</small>
+                                                @endif
+                                            </div>
+                                            @if ($line->remaining > 0)
+                                                <div class="rr-qty {{ $line->remaining > 1 || ! $line->perSuit ? '' : 'd-none' }}">
+                                                    <input type="number" class="form-control form-control-sm return-qty" name="items[{{ $line->id }}]" value="0"
+                                                        min="0" max="{{ $line->remaining }}" step="{{ $line->perSuit ? 1 : 0.01 }}"
+                                                        data-unit-price="{{ $line->unitPrice }}" data-remaining="{{ $line->remaining }}" dir="ltr"
+                                                        aria-label="واپسی {{ $line->unit }}">
+                                                    <small>{{ $line->unit }}</small>
+                                                </div>
+                                                <label class="rr-pick mb-0">
+                                                    <input type="checkbox" class="return-pick">
+                                                    <span class="rr-pick-off"><i class="fas fa-undo-alt ml-1"></i> واپس کریں</span>
+                                                    <span class="rr-pick-on"><i class="fas fa-check ml-1"></i> منتخب</span>
+                                                </label>
+                                            @else
+                                                <span class="rr-done-badge">واپس ہو چکا</span>
+                                            @endif
+                                        </div>
+                                    @endforeach
+
+                                    <div class="return-details" hidden>
+                                        <div class="rr-step mt-3"><span>2</span> رقم کا حساب</div>
+                                        @if ((float) $sale->balance > 0)
+                                            <p class="small text-muted mb-1">اس رسید پر <strong dir="ltr">Rs {{ number_format((float) $sale->balance, 2) }}</strong> بقایا ہے:</p>
+                                            <div class="rr-choice mb-2">
+                                                <label><input type="radio" name="apply_to_balance" value="1" checked> <span>بقایا کاٹ لیں</span></label>
+                                                <label><input type="radio" name="apply_to_balance" value="0"> <span>بقایا رہنے دیں</span></label>
+                                            </div>
+                                        @endif
+                                        <div class="rr-result mb-3">
+                                            <div><span>گاہک کو واپس</span><strong dir="ltr" data-out="extra">Rs 0.00</strong></div>
+                                            <div><span>باقی بقایا</span><strong dir="ltr" data-out="owed">Rs 0.00</strong></div>
+                                        </div>
+
+                                        <div class="return-settlement mb-2" hidden>
+                                            <div class="rr-choice mb-2">
+                                                <label><input type="radio" name="settlement_type" value="refund" checked> <span>نقد / بینک دیں</span></label>
+                                                <label><input type="radio" name="settlement_type" value="credit"> <span>کھاتے میں رکھیں</span></label>
+                                            </div>
+                                            <div class="form-row return-refund-fields">
+                                                <div class="col-6 form-group mb-2">
+                                                    <select name="payment_method" class="form-control form-control-sm" aria-label="رقم واپسی کا طریقہ">@foreach (\App\Support\PaymentMethods::LABELS as $method => $label)<option value="{{ $method }}" @selected($method === 'cash')>{{ $label }}</option>@endforeach</select>
+                                                </div>
+                                                <div class="col-6 form-group mb-2"><input name="payment_reference" class="form-control form-control-sm" maxlength="255" placeholder="حوالہ (اگر ہو)"></div>
+                                            </div>
+                                        </div>
+
+                                        <input name="reason" class="form-control mb-2" minlength="5" maxlength="1000" required placeholder="واپسی کی وجہ، مثلاً رنگ پسند نہیں آیا">
+                                        <input type="hidden" name="restock" value="0">
+                                        <div class="custom-control custom-checkbox small">
+                                            <input type="checkbox" class="custom-control-input" id="{{ $formId }}Restock" name="restock" value="1" checked>
+                                            <label class="custom-control-label" for="{{ $formId }}Restock">کپڑا اسٹاک میں واپس رکھیں (خراب ہو تو نشان ہٹا دیں)</label>
+                                        </div>
+                                    </div>
+                                </form>
+                            @else
+                                <div class="alert alert-info mb-0">اس رسید سے الگ الگ آئٹم واپس نہیں ہو سکتے؛ پوری رسید منسوخ کریں۔</div>
+                            @endif
+
+                            @if ($sale->status !== 'cancelled')
+                                <div class="mt-3 pt-2 border-top">
+                                    <a class="small text-muted" data-toggle="collapse" href="#{{ $modalId }}Cancel" role="button" aria-expanded="{{ $canReturn ? 'false' : 'true' }}">
+                                        <i class="fas fa-ban ml-1"></i> پوری رسید منسوخ کرنی ہے؟
+                                    </a>
+                                    <div class="collapse {{ $canReturn ? '' : 'show' }}" id="{{ $modalId }}Cancel">
+                                        <form method="POST" action="{{ route('admin.counter-sales.cancel', $sale->id) }}" class="border rounded p-3 mt-2"
+                                            data-confirm="کیا آپ یہ پوری رسید منسوخ کر کے اسٹاک اور کھاتا واپس کرنا چاہتے ہیں؟">
+                                            @csrf @method('PATCH')
+                                            <div class="form-group"><label>منسوخی کی وجہ</label><textarea class="form-control" name="cancellation_reason" rows="2" minlength="5" maxlength="1000" required></textarea></div>
+                                            @include('customer.partials.cancellation-settlement-fields', ['paidAmount' => max(0, (float) $sale->received), 'allowCompensation' => false, 'methodName' => 'refund_method', 'referenceName' => 'refund_reference'])
+                                            <button type="submit" class="btn btn-outline-danger btn-sm mt-2">پوری رسید منسوخ کریں</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Receipt (left side in RTL) --}}
+                    <div class="col-lg-5">
+                        <div class="rr-card rr-receipt">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong>{{ $shopName }}</strong><br>
+                                    <small class="text-muted" dir="ltr">{{ $sale->created_at?->format('d-m-Y') }}</small>
+                                </div>
+                                <div class="text-left small">
+                                    <strong>{{ $customer->name }}</strong><br>
+                                    @if ($customer->phone_number1)<span dir="ltr" class="text-muted">{{ $customer->phone_number1 }}</span>@endif
+                                </div>
+                            </div>
+                            @foreach ($lines as $line)
+                                <div class="rr-receipt-line {{ $line->remaining <= 0 ? 'rr-receipt-line--returned' : '' }}">
+                                    <span>{{ $line->name }} @if ($line->returned > 0)<small class="text-danger">↩ واپس</small>@endif</span>
+                                    <span dir="ltr">Rs {{ number_format($line->lineTotal, 2) }}</span>
+                                </div>
+                            @endforeach
+                            <div class="rr-receipt-total mt-2">
+                                <div><span>کل رقم</span><strong dir="ltr">Rs {{ number_format((float) $sale->amount, 2) }}</strong></div>
+                                <div><span>وصول شدہ</span><strong dir="ltr">Rs {{ number_format((float) $sale->received, 2) }}</strong></div>
+                                <div class="rr-due"><span>بقایا</span><strong dir="ltr">Rs {{ number_format((float) $sale->balance, 2) }}</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rr-footer">
+                <div class="d-flex flex-wrap" style="gap:.5rem">
+                    @if ($canReturn)
+                        <button type="submit" form="{{ $formId }}" class="btn btn-danger return-submit" disabled>
+                            <i class="fas fa-undo-alt ml-1"></i> واپس کریں (<span data-count-for="{{ $formId }}">0</span>)
+                        </button>
+                    @endif
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">بند کریں</button>
+                </div>
+                <a href="{{ $printUrl }}" target="_blank" class="btn btn-outline-primary"><i class="fas fa-print ml-1"></i> رسید پرنٹ کریں</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@once
+<style>
+    .rr-modal .modal-content { border: 0; border-radius: 14px; overflow: hidden; }
+    .rr-header { display: flex; align-items: center; gap: .9rem; padding: .9rem 1.3rem; background: linear-gradient(135deg, #17406b, #1f5a8f); }
+    .rr-header h5, .rr-header .rr-header-icon { color: #fff; }
+    .rr-header small { color: rgba(255, 255, 255, .8); }
+    .rr-header-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(255, 255, 255, .15); display: inline-flex; align-items: center; justify-content: center; }
+    .rr-close { color: #fff; opacity: .9; text-shadow: none; margin: 0; }
+    .rr-close:hover { color: #fff; }
+    .rr-body { background: #f3f6fa; padding: 1.1rem; }
+    .rr-card { background: #fff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1rem; }
+    .rr-step { font-weight: 700; margin-bottom: .6rem; }
+    .rr-step span { display: inline-flex; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: #1f5a8f; color: #fff; align-items: center; justify-content: center; font-size: .8rem; margin-left: .35rem; }
+    .rr-row { display: flex; align-items: center; gap: .75rem; padding: .65rem .75rem; border: 1px solid #e1e8f0; border-radius: 10px; margin-bottom: .5rem; transition: background .15s, border-color .15s; }
+    .rr-row:has(.return-pick:checked) { background: #fff4f4; border-color: #f1aeb5; }
+    .rr-row--done { background: #f7f8fa; color: #8a94a3; }
+    .rr-row-info { flex: 1; display: flex; flex-direction: column; line-height: 1.6; }
+    .rr-row-info small { color: #6c757d; }
+    .rr-qty { display: none; align-items: center; gap: .3rem; }
+    .rr-qty input { width: 4.5rem; }
+    .rr-row:has(.return-pick:checked) .rr-qty:not(.d-none) { display: flex; }
+    .rr-pick { position: relative; cursor: pointer; border: 1px solid #dc3545; color: #dc3545; border-radius: 8px; padding: .3rem .8rem; white-space: nowrap; font-size: .9rem; }
+    .rr-pick input { position: absolute; opacity: 0; pointer-events: none; }
+    .rr-pick-on { display: none; }
+    .rr-pick:has(input:checked) { background: #dc3545; color: #fff; }
+    .rr-pick:has(input:checked) .rr-pick-on { display: inline; }
+    .rr-pick:has(input:checked) .rr-pick-off { display: none; }
+    .rr-done-badge { font-size: .8rem; background: #e9ecef; border-radius: 6px; padding: .2rem .6rem; }
+    .rr-choice { display: flex; gap: .5rem; }
+    .rr-choice label { flex: 1; margin: 0; cursor: pointer; position: relative; }
+    .rr-choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .rr-choice span { display: block; text-align: center; border: 1px solid #cfd8e3; border-radius: 8px; padding: .4rem .5rem; font-size: .9rem; }
+    .rr-choice input:checked + span { background: #1f5a8f; border-color: #1f5a8f; color: #fff; }
+    .rr-result { display: flex; gap: .5rem; }
+    .rr-result > div { flex: 1; background: #f3f8ff; border-radius: 8px; padding: .5rem .7rem; display: flex; flex-direction: column; }
+    .rr-result > div:first-child strong { color: #198754; font-size: 1.1rem; }
+    .rr-result span { font-size: .8rem; color: #6c757d; }
+    .rr-receipt-line { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem 0; border-bottom: 1px dashed #e1e8f0; font-size: .9rem; }
+    .rr-receipt-line--returned [dir="ltr"] { text-decoration: line-through; color: #8a94a3; }
+    .rr-receipt-total > div { display: flex; justify-content: space-between; padding: .2rem 0; }
+    .rr-due { background: #eef4ff; border-radius: 8px; padding: .45rem .6rem !important; margin-top: .3rem; font-size: 1.05rem; }
+    .rr-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .8rem 1.1rem; border-top: 1px solid #e1e8f0; background: #fff; }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Mirror each return form's selected-item count onto its footer button.
+    document.querySelectorAll('[data-count-for]').forEach(function (target) {
+        var form = document.getElementById(target.dataset.countFor);
+        if (!form) return;
+        var sync = function () { target.textContent = form.querySelectorAll('.return-pick:checked').length; };
+        form.addEventListener('input', sync);
+        form.addEventListener('change', sync);
+    });
+});
+</script>
+@endonce
+@include('customer.partials.receipt-return-script')

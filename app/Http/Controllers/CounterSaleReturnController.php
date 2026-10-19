@@ -35,12 +35,13 @@ class CounterSaleReturnController extends Controller
         $data = $request->validate([
             'items' => ['required', 'array'], 'items.*' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['required', 'string', 'min:5', 'max:1000'], 'restock' => ['required', 'boolean'],
+            'apply_to_balance' => ['nullable', 'boolean'],
             'settlement_type' => ['nullable', Rule::in(['refund', 'credit'])],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'payment_reference' => ['nullable', 'string', 'max:255'],
         ]);
         $return = $service->process($receipt, $request->user(), $data['items'], $data);
-        return redirect()->route('admin.sale-returns.index', ['receipt' => $receipt->id])
+        return redirect()->back()
             ->with('success', 'آئٹم واپسی '.$return->reference.' محفوظ، اسٹاک اور اسی فروخت کا کھاتہ درست ہو گیا ہے۔');
     }
 }

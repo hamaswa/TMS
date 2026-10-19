@@ -10,6 +10,8 @@ use App\Models\CounterOrderComplaint;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use App\Models\CounterSaleReceipt;
+use App\Models\CounterSaleReturn;
+use App\Models\SaleStock;
 use App\Models\CustomerMeasurementHistory;
 use App\Models\Customers;
 use App\Models\MeasurementTemplate;
@@ -190,7 +192,8 @@ class CounterOrderController extends Controller
         $previousDue = app(CounterOrderService::class)->previousDue($counterOrder);
         $receiptLinks = CounterSaleReceipt::where('user_id', $ownerId)
             ->whereIn('id', $counterOrder->items->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id'))
-            ->with('transaction')
+            ->with(['transaction', 'returns', 'items' => fn ($query) => $query->with(['type:id,name', 'brand:id,name'])
+                ->withSum('returnItems as returned_quantity', 'quantity')->orderBy('id')])
             ->get()->keyBy('id');
 
         return view('counter-orders.edit', compact(
@@ -239,8 +242,64 @@ class CounterOrderController extends Controller
 
         $printConfig = $documents->make($setting, request(), 'tailor-order-copy', $counterOrder->id);
         [$trackingUrl, $trackingQrSvg] = $this->trackingQr($counterOrder, $documents);
+        $returnedItems = $this->returnedOrderItems($counterOrder, $request->user()->businessOwnerId());
+        $returnBalanceReduction = (float) CounterSaleReturn::where('user_id', $request->user()->businessOwnerId())
+            ->whereIn('counter_sale_receipt_id', $counterOrder->items
+                ->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id')->unique())
+            ->sum('balance_reduction');
 
-        return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig', 'trackingUrl', 'trackingQrSvg'));
+        return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig', 'trackingUrl', 'trackingQrSvg', 'returnedItems', 'returnBalanceReduction'));
+    }
+
+    /**
+     * Item returns are recorded against sold stock rows, not order lines. Map them back to the
+     * order's cloth lines (by cloth, then by position) so the receipt can mark what came back.
+     *
+     * @return \Illuminate\Support\Collection<int, object{quantity: float, amount: float}> keyed by order item id
+     */
+    private function returnedOrderItems(CounterOrder $counterOrder, int $ownerId)
+    {
+        $clothLines = $counterOrder->items
+            ->where('type', CounterOrderItem::TYPE_CLOTH)
+            ->where('source_record_type', 'counter_sale_receipt')
+            ->groupBy('source_record_id');
+        $returns = CounterSaleReturn::where('user_id', $ownerId)
+            ->whereIn('counter_sale_receipt_id', $clothLines->keys())
+            ->with('items')->get();
+        if ($returns->isEmpty()) {
+            return collect();
+        }
+
+        $stocks = SaleStock::withTrashed()->where('user_id', $ownerId)
+            ->whereIn('counter_sale_receipt_id', $clothLines->keys())
+            ->orderBy('id')->get()->groupBy('counter_sale_receipt_id');
+        $lineForStock = [];
+        foreach ($clothLines as $receiptId => $lines) {
+            $lines = $lines->sortBy('id')->values();
+            $receiptStocks = $stocks->get($receiptId, collect())->values();
+            foreach ($receiptStocks as $index => $stock) {
+                $sameCloth = $lines->where('cloth_id', $stock->cloth_id);
+                $line = $sameCloth->count() === 1 ? $sameCloth->first()
+                    : ($receiptStocks->count() === $lines->count() ? $lines->get($index) : $sameCloth->first());
+                if ($line) {
+                    $lineForStock[$stock->id] = $line->id;
+                }
+            }
+        }
+
+        $returned = collect();
+        foreach ($returns->flatMap->items as $returnItem) {
+            $lineId = $lineForStock[$returnItem->sale_stock_id] ?? null;
+            if ($lineId === null) {
+                continue;
+            }
+            $current = $returned->get($lineId, (object) ['quantity' => 0.0, 'amount' => 0.0]);
+            $current->quantity += (float) $returnItem->quantity;
+            $current->amount += (float) $returnItem->line_total;
+            $returned->put($lineId, $current);
+        }
+
+        return $returned;
     }
 
     public function getTailorRates(Request $request, int $tailorId)

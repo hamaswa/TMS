@@ -16,6 +16,7 @@ use App\Http\Controllers\ClientSubscriptionController;
 use App\Http\Controllers\ClothBrandController;
 use App\Http\Controllers\ClothController;
 use App\Http\Controllers\ClothStockController;
+use App\Http\Controllers\CounterSaleReturnController;
 use App\Http\Controllers\ClothTypeController;
 use App\Http\Controllers\CsvController;
 use App\Http\Controllers\CustomerController;
@@ -547,6 +548,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::post('stock/sell', [ClothStockController::class, 'sellStock'])->name('sellStock');
         Route::get('/print/{id}/{customerId}', [ClothStockController::class, 'printStock'])->name('printStock');
         Route::patch('/counter-sales/{sale}/cancel', [ClothStockController::class, 'cancelCounterSale'])->name('counter-sales.cancel');
+        Route::post('/counter-sales/receipts/{receipt}/returns', [CounterSaleReturnController::class, 'store'])->name('counter-sales.returns.store');
 
         Route::get('/prints/{id}/{customerId}', [ClothStockController::class, 'printStocks'])->name('printStocks');
 

@@ -935,12 +935,22 @@
                 <div class="modal fade" id="orderRecoveryModal" tabindex="-1" role="dialog" aria-labelledby="orderRecoveryTitle" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content" dir="rtl"><div class="modal-header"><h5 class="modal-title" id="orderRecoveryTitle">آرڈر واپسی، منسوخی یا شکایت</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body">
                 @if($activeReceipts->isNotEmpty() && $canAddCloth)
                     <div class="card mb-3"><div class="card-header"><strong>کپڑے کی فروخت منسوخ / واپس کریں</strong></div><div class="card-body">
-                        <p class="text-muted">اس کارروائی سے متعلقہ مکمل رسید کا کپڑا اسٹاک میں واپس اور گاہک کا کھاتا الٹ جائے گا۔</p>
+                        <p class="text-muted">ایک یا زیادہ آئٹم واپس کریں، یا پوری رسید منسوخ کریں۔</p>
                         @foreach($activeReceipts as $receipt)
+                            @php
+                                $receiptPaid = (float) ($receipt->transaction?->recivedPayment ?? 0)
+                                    - (float) $receipt->returns->sum(fn ($return) => (float) $return->refund_amount + (float) $return->credit_amount);
+                                $receiptOutstanding = max(0, (float) ($receipt->transaction?->remainingBalance ?? 0) - (float) $receipt->returns->sum('balance_reduction'));
+                            @endphp
+                            <div class="border rounded p-3 mb-2">
+                                <h6 class="font-weight-bold mb-2">{{ $receipt->receipt_number }} · آئٹم واپسی</h6>
+                                @include('customer.partials.receipt-item-return-form', ['receipt' => $receipt, 'items' => $receipt->items, 'outstanding' => $receiptOutstanding, 'paid' => $receiptPaid])
+                            </div>
+                            <h6 class="font-weight-bold text-danger mt-3">یا پوری رسید منسوخ کریں</h6>
                             <form method="POST" action="{{ route('admin.counter-sales.cancel', $receipt->first_sale_stock_id) }}" class="border rounded p-3 mb-2" data-confirm="کیا آپ یہ مکمل کپڑے کی رسید منسوخ کر کے اسٹاک اور کھاتا واپس کرنا چاہتے ہیں؟">@csrf @method('PATCH')
                                 <strong>{{ $receipt->receipt_number }}</strong>
                                 <div class="form-group mt-2"><label>واپسی / منسوخی کی وجہ</label><textarea name="cancellation_reason" class="form-control" minlength="5" maxlength="1000" required></textarea></div>
-                                @include('customer.partials.cancellation-settlement-fields', ['paidAmount' => (float) ($receipt->transaction?->recivedPayment ?? 0), 'allowCompensation' => false, 'methodName' => 'refund_method', 'referenceName' => 'refund_reference'])
+                                @include('customer.partials.cancellation-settlement-fields', ['paidAmount' => $receiptPaid, 'allowCompensation' => false, 'methodName' => 'refund_method', 'referenceName' => 'refund_reference'])
                                 <button class="btn btn-danger">مکمل رسید منسوخ کریں</button>
                             </form>
                         @endforeach
