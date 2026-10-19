@@ -396,6 +396,16 @@ class CounterOrderController extends Controller
         $fields = $measurements->fieldsForTemplate($measurements->activeFields($ownerId), $template);
         $savedRows = $measurements->savedMeasurementRows($profile, $ownerId, $template);
         $savedValues = $savedRows->pluck('value', 'source_key');
+        // Older profiles may have preferences in the customer columns without matching
+        // measurement-history rows. Keep those choices visible for their own template.
+        if ((int) $profile->measurement_template_id === (int) $template->id) {
+            foreach ($template->system_fields ?? [] as $key) {
+                $sourceKey = 'system.' . $key;
+                if (! $savedValues->has($sourceKey) && filled($profile->{$key})) {
+                    $savedValues->put($sourceKey, (string) $profile->{$key});
+                }
+            }
+        }
         $systemValues = collect($template->system_fields ?? [])
             ->mapWithKeys(fn($key) => [$key => $savedValues->get('system.' . $key)]);
         $customValues = $fields->mapWithKeys(fn($field) => [
