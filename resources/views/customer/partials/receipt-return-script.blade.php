@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.receipt-return-form').forEach(function (form) {
         var outstanding = parseFloat(form.dataset.outstanding) || 0;
         var paid = parseFloat(form.dataset.paid) || 0;
+        var otherDues = parseFloat(form.dataset.otherDues) || 0;
         var settlement = form.querySelector('.return-settlement');
         var refundFields = form.querySelector('.return-refund-fields');
         var details = form.querySelector('.return-details');
@@ -43,6 +44,18 @@ document.addEventListener('DOMContentLoaded', function () {
             settlement.hidden = !(extra > 0);
             var refund = form.querySelector('[name="settlement_type"]:checked');
             refundFields.hidden = !(extra > 0) || !refund || refund.value !== 'refund';
+            // Spell out what a credit does to the customer's other dues, and any leftover advance.
+            var duesNote = form.querySelector('.rr-dues-note');
+            if (duesNote) {
+                var credit = extra > 0 && refund && refund.value === 'credit';
+                var takenOff = Math.min(extra, otherDues);
+                var advance = Math.round((extra - takenOff) * 100) / 100;
+                var parts = [];
+                if (credit && takenOff > 0) parts.push('پچھلا بقایا ' + money(otherDues) + ' سے ' + money(Math.round((otherDues - takenOff) * 100) / 100) + ' ہو جائے گا۔');
+                if (credit && advance > 0) parts.push(money(advance) + ' گاہک کا ایڈوانس رہے گا۔');
+                duesNote.textContent = parts.join(' ');
+                duesNote.hidden = parts.length === 0;
+            }
             form.querySelector('[name="payment_method"]').required = !refundFields.hidden;
             if (submit) submit.disabled = !(total > 0);
         }
@@ -55,6 +68,14 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
         form.querySelectorAll('.return-qty').forEach(function (input) { input.addEventListener('input', update); });
+        form.querySelectorAll('.rr-step-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var input = button.parentNode.querySelector('.return-qty');
+                var next = (parseFloat(input.value) || 0) + parseFloat(button.dataset.step);
+                input.value = Math.min(Math.max(next, 0), parseFloat(input.dataset.remaining) || 0);
+                update();
+            });
+        });
         form.querySelectorAll('[name="settlement_type"], [name="apply_to_balance"]').forEach(function (radio) { radio.addEventListener('change', update); });
         update();
     });
