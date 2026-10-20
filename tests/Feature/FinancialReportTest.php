@@ -156,26 +156,36 @@ class FinancialReportTest extends TestCase
         $this->actingAs($stockSeller)->get(route('admin.financial-reports.index'))->assertForbidden();
     }
 
-    public function test_report_sections_are_split_into_tabs_and_open_on_the_requested_one(): void
+    public function test_report_has_sales_and_tailoring_views_each_with_its_own_tabs(): void
     {
         [$owner] = $this->baseData();
 
-        // Profit and loss is shown first; the other sections wait behind their tabs.
+        // Sales opens first, on its category tab.
         $this->actingAs($owner)->get(route('admin.financial-reports.index'))
             ->assertOk()
-            ->assertSee('data-finance-tab="receivables"', false)
-            ->assertSee('id="finance-panel-profit" role="tabpanel" aria-labelledby="finance-tab-profit" >', false)
-            ->assertSee('id="finance-panel-receivables" role="tabpanel" aria-labelledby="finance-tab-receivables"  hidden', false);
+            ->assertSeeText('رپورٹس')
+            ->assertSee('data-rp-tab="all-sales"', false)
+            ->assertSee('id="rp-panel-categories" role="tabpanel" aria-labelledby="rp-tab-categories" >', false)
+            ->assertSee('id="rp-panel-customers" role="tabpanel" aria-labelledby="rp-tab-customers"  hidden', false)
+            ->assertDontSee('data-rp-tab="tailors"', false);
 
-        // A search in the customers list comes back to that tab, and keeps it in the forms.
-        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['receivables_q' => 'x']))
+        // The tailoring view has its own tabs.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'tailoring']))
             ->assertOk()
-            ->assertSee('id="finance-panel-receivables" role="tabpanel" aria-labelledby="finance-tab-receivables" >', false)
-            ->assertSee('name="tab" value="receivables"', false);
+            ->assertSeeText('حالیہ سلائی آرڈرز')
+            ->assertSee('data-rp-tab="tailors"', false)
+            ->assertSee('data-rp-tab="payouts"', false)
+            ->assertSee('id="rp-panel-orders" role="tabpanel" aria-labelledby="rp-tab-orders" >', false);
 
-        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['tab' => 'cash']))
+        // A customer search comes back to the customers tab, and keeps it in the forms.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'tailoring', 'customers_q' => 'x']))
             ->assertOk()
-            ->assertSee('id="finance-panel-cash" role="tabpanel" aria-labelledby="finance-tab-cash" >', false);
+            ->assertSee('id="rp-panel-customers" role="tabpanel" aria-labelledby="rp-tab-customers" >', false)
+            ->assertSee('name="tab" value="customers"', false);
+
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['tab' => 'stock']))
+            ->assertOk()
+            ->assertSee('id="rp-panel-stock" role="tabpanel" aria-labelledby="rp-tab-stock" >', false);
     }
 
     public function test_sales_tab_reports_each_category_in_meters_or_suits_net_of_returns(): void
@@ -228,10 +238,59 @@ class FinancialReportTest extends TestCase
         $this->assertEquals(8500 - 6400, $rows['Women › 3 Piece']['profit']);
         $this->assertEquals(2, $sales['totals']['suit']['net']);
 
-        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['tab' => 'sales']))
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['start_date' => now()->startOfMonth()->toDateString(), 'end_date' => now()->endOfMonth()->toDateString()]))
             ->assertOk()
-            ->assertSee('id="finance-panel-sales" role="tabpanel" aria-labelledby="finance-tab-sales" >', false)
-            ->assertSeeText('Women › 3 Piece')->assertSeeText('2 سوٹ')->assertSeeText('7.50 میٹر');
+            ->assertSee('id="rp-panel-categories" role="tabpanel" aria-labelledby="rp-tab-categories" >', false)
+            ->assertSeeText('Women › 3 Piece')->assertSeeText('7.50');
+
+        // The full sales list can be narrowed to one main category, which includes its sub categories.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['sales_category' => $women->id]))
+            ->assertOk()
+            ->assertViewHas('report', fn ($report) => $report['lines']->total() === 1)
+            ->assertSee('id="rp-panel-all-sales" role="tabpanel" aria-labelledby="rp-tab-all-sales" >', false);
+    }
+
+    public function test_tailoring_view_splits_customer_dues_and_shows_tailor_work_and_payouts(): void
+    {
+        [$owner, $customer, $tailor] = $this->baseData();
+        $order = Order::create([
+            'customerId' => $customer->id, 'sub_customer' => $customer->id, 'suitQuantity' => 2, 'totalPayment' => 3000,
+            'tailorId' => $tailor->id, 'tailor_price' => 400, 'tailor_paid_amount' => 300, 'status' => 'stitching',
+            'userId' => $owner->id, 'returnDate' => now()->addWeek()->toDateString(),
+        ]);
+        // 3000 stitching bill, 1000 of it paid against the order.
+        Transaction::create(['customerId' => $customer->id, 'userId' => $owner->id, 'orderId' => $order->id, 'Order_type' => 'Tailor', 'recivedPayment' => 0, 'remainingBalance' => 3000]);
+        Transaction::create(['customerId' => $customer->id, 'userId' => $owner->id, 'orderId' => $order->id, 'Order_type' => 'Payment', 'recivedPayment' => 1000, 'remainingBalance' => -1000]);
+        // A separate cloth sale of 500 still unpaid.
+        Transaction::create(['customerId' => $customer->id, 'userId' => $owner->id, 'Order_type' => 'Sale', 'recivedPayment' => 0, 'remainingBalance' => 500]);
+        TailorRecord::create(['tailor_id' => $tailor->id, 'amount' => 300, 'comment' => 'weekly']);
+
+        $balances = app(\App\Services\CustomerLedgerService::class)->sideBalances($owner->id);
+        $this->assertEquals(2000, $balances[$customer->id]['tailoring']);
+        $this->assertEquals(500, $balances[$customer->id]['sales']);
+        $this->assertEquals(2500, $balances[$customer->id]['total']);
+
+        $dashboard = app(\App\Services\ReportDashboardService::class);
+        $metrics = $dashboard->tailoringMetrics($owner->id, now()->startOfMonth(), now()->endOfMonth());
+        $this->assertSame(1, $metrics['orders']);
+        $this->assertSame(2, $metrics['suits']);
+        $this->assertEquals(3000, $metrics['revenue']);
+        $this->assertEquals(1000, $metrics['received']);
+        $tailors = $dashboard->tailors($owner->id, now()->startOfMonth(), now()->endOfMonth());
+        $this->assertEquals(800, $tailors->first()->earned);
+        $this->assertEquals(500, $tailors->first()->balance);
+        $this->assertEquals(300, $dashboard->payouts($owner->id, now()->startOfMonth(), now()->endOfMonth())->sum('amount'));
+
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'tailoring']))
+            ->assertOk()
+            ->assertViewHas('report', fn ($report) => $report['customers']['total'] == 2000)
+            // Without a detailed work-status setting, workshop steps show as one simple status.
+            ->assertSeeText('کارخانے میں ہے')
+            ->assertSeeText('Report Tailor')
+            ->assertSeeText('weekly');
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'sales']))
+            ->assertOk()
+            ->assertViewHas('report', fn ($report) => $report['customers']['total'] == 500);
     }
 
     public function test_cancelled_manual_sale_is_excluded_and_its_reversal_neutralizes_cash_and_receivable(): void

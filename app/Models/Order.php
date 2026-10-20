@@ -22,6 +22,26 @@ class Order extends Model
         'cancelled' => 'منسوخ',
     ];
 
+    /** Simple mode shows every workshop step as one "in the workshop" status. */
+    public const SIMPLE_STATUS_LABELS = [
+        'unassigned' => 'درزی مقرر ہونا باقی',
+        'assigned' => 'کارخانے میں ہے',
+        'cutting' => 'کارخانے میں ہے',
+        'stitching' => 'کارخانے میں ہے',
+        'trial' => 'کارخانے میں ہے',
+        'ready' => 'تیار ہے',
+        'delivered' => 'حوالہ شدہ',
+        'cancelled' => 'منسوخ',
+    ];
+
+    /** Statuses grouped under one simple-mode filter value. */
+    public const SIMPLE_WORKSHOP_STATUSES = ['assigned', 'cutting', 'stitching', 'trial'];
+
+    public static function statusLabelsFor(bool $detailed): array
+    {
+        return $detailed ? self::STATUS_LABELS : self::SIMPLE_STATUS_LABELS;
+    }
+
     protected $fillable = ['name', 'sub_customer', 'measurement_template_id', 'suitNum', 'designPrice', 'design','customerId', 'suitQuantity', 'totalPayment', 'userId', 'returnDate', 'tailorId', 'rateId', 'remarks', 'tailor_price', 'rack_no', 'status', 'cancellation_reason', 'status_changed_at', 'started_at', 'ready_at', 'delivered_at', 'cancelled_at', 'cancelled_by_user_id', 'tailor_paid_amount', 'tailor_payment_status'];
 
     protected $casts = [

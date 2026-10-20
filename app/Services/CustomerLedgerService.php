@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Transaction;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 class CustomerLedgerService
@@ -94,13 +95,47 @@ class CustomerLedgerService
         ];
     }
 
+    /**
+     * What every customer of the shop still owes, split into cloth sales and stitching, using the same
+     * allocation as the customer ledger: each remaining charge belongs to its order (stitching) or its
+     * receipt (cloth); a charge with neither is placed by its transaction type.
+     *
+     * @return Collection<int, array{sales: float, tailoring: float, total: float}>
+     */
+    public function sideBalances(int $ownerId, ?CarbonInterface $end = null): Collection
+    {
+        return Transaction::where('userId', $ownerId)
+            ->whereNotNull('customerId')
+            ->when($end, fn ($query) => $query->where('created_at', '<=', $end->copy()->endOfDay()))
+            ->orderBy('id')
+            ->get(['id', 'customerId', 'orderId', 'counter_sale_receipt_id', 'Order_type', 'remainingBalance'])
+            ->groupBy('customerId')
+            ->map(function (Collection $transactions) {
+                $allocation = $this->allocateTransactions($transactions);
+                $sides = ['sales' => 0, 'tailoring' => 0];
+                foreach ($allocation['charges'] as $charge) {
+                    $side = $charge['order_id'] || str_starts_with((string) $charge['type'], 'Tailor') ? 'tailoring' : 'sales';
+                    $sides[$side] += $charge['remaining'];
+                }
+
+                return [
+                    'sales' => round(max(0, $sides['sales']) / 100, 2),
+                    'tailoring' => round(max(0, $sides['tailoring']) / 100, 2),
+                    'total' => round(max(0, $allocation['ledger_balance']) / 100, 2),
+                ];
+            });
+    }
+
     private function allocate(int $ownerId, int $customerId): array
     {
-        $transactions = Transaction::where('userId', $ownerId)
+        return $this->allocateTransactions(Transaction::where('userId', $ownerId)
             ->where('customerId', $customerId)
             ->orderBy('id')
-            ->get(['id', 'orderId', 'counter_sale_receipt_id', 'Order_type', 'remainingBalance']);
+            ->get(['id', 'orderId', 'counter_sale_receipt_id', 'Order_type', 'remainingBalance']));
+    }
 
+    private function allocateTransactions(Collection $transactions): array
+    {
         $charges = [];
         $sharedCredit = 0;
         $orderCredits = [];
@@ -134,6 +169,7 @@ class CustomerLedgerService
                     'transaction_id' => (int) $transaction->id,
                     'order_id' => $orderId,
                     'receipt_id' => $receiptId,
+                    'type' => $transaction->Order_type,
                     'remaining' => $amount,
                 ];
 
