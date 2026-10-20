@@ -16,6 +16,7 @@
             </span>
         </div>
     </td>
+    <td><span class="cloth-category-pill is-unit">{{ $category->unitLabel() }}</span></td>
     <td><span class="cloth-category-pill is-count">{{ $category->cloths_count }} سیٹ</span></td>
     <td>
         @if (! $category->is_active)
@@ -40,6 +41,8 @@
                     data-parent-id="{{ $category->parent_id }}"
                     data-sort-order="{{ $category->sort_order }}"
                     data-has-children="{{ $hasChildren ? 1 : 0 }}"
+                    data-has-cloths="{{ $category->cloths_count > 0 ? 1 : 0 }}"
+                    data-unit="{{ $category->stock_unit }}"
                     data-action="{{ route('admin.clothcategory.update', $category->id) }}">
                     <i class="fas fa-pen" aria-hidden="true"></i>
                     <span>کیٹیگری میں ترمیم کریں</span>

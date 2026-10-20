@@ -18,6 +18,7 @@ class Cloth extends Model
         'cloth_type_id',
         'cloth_brand_id',
         'cloth_category_id',
+        'stock_unit',
         'length',
         'price',
         'sale_price',
@@ -47,6 +48,17 @@ class Cloth extends Model
     public function sellsPerSuit(): bool
     {
         return $this->sale_price_basis === self::SALE_PRICE_PER_SUIT;
+    }
+
+    /** Packed suits are counted and sold whole; only meter stock is cut. */
+    public function countsSuits(): bool
+    {
+        return $this->stock_unit === ClothCategory::UNIT_SUIT;
+    }
+
+    public function stockUnitLabel(): string
+    {
+        return ClothCategory::unitLabelFor($this->stock_unit);
     }
 
     public function tracksColors(): bool
@@ -85,6 +97,13 @@ class Cloth extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (Cloth $cloth) {
+            if (! $cloth->stock_unit) {
+                $category = $cloth->cloth_category_id ? ClothCategory::find($cloth->cloth_category_id) : null;
+                $cloth->stock_unit = $category?->stock_unit ?: ClothCategory::UNIT_METER;
+            }
+        });
+
         static::created(function (Cloth $cloth) {
             $generated = [];
 

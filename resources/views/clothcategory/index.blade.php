@@ -33,6 +33,7 @@
         .cloth-category-name-en { display: block; color: #7185a2; font-size: .82rem; font-weight: 600; }
         .cloth-category-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: .8rem; font-weight: 800; white-space: nowrap; }
         .cloth-category-pill.is-count { background: #eef4fb; color: #29496d; }
+        .cloth-category-pill.is-unit { background: #f3effd; color: #5b3fb5; }
         .cloth-category-pill.is-active { background: #e8f8ef; color: #198754; }
         .cloth-category-pill.is-off { background: #fdf0f0; color: #b02a37; }
         .cloth-category-actions { position: relative; display: inline-block; }
@@ -116,6 +117,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">کیٹیگری</th>
+                                <th scope="col">گنتی</th>
                                 <th scope="col">کپڑے</th>
                                 <th scope="col">حالت</th>
                                 <th scope="col">ترتیب</th>
@@ -129,9 +131,9 @@
                                     @include('clothcategory.partials.row', ['category' => $child, 'parent' => $category])
                                 @endforeach
                             @empty
-                                <tr><td colspan="5" class="cloth-category-empty">ابھی کوئی کیٹیگری شامل نہیں کی گئی۔</td></tr>
+                                <tr><td colspan="6" class="cloth-category-empty">ابھی کوئی کیٹیگری شامل نہیں کی گئی۔</td></tr>
                             @endforelse
-                            <tr class="d-none" data-cloth-category-no-match><td colspan="5" class="cloth-category-empty">اس نام کی کوئی کیٹیگری نہیں ملی۔</td></tr>
+                            <tr class="d-none" data-cloth-category-no-match><td colspan="6" class="cloth-category-empty">اس نام کی کوئی کیٹیگری نہیں ملی۔</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -179,10 +181,20 @@
                             <select class="form-control" id="clothCategoryFormParent" name="parent_id">
                                 <option value="">کوئی نہیں (یہ خود مین کیٹیگری ہے)</option>
                                 @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}" @selected((string) old('parent_id') === (string) $category->id)>{{ $category->localizedName() }}</option>
+                                    <option value="{{ $category->id }}" data-unit="{{ $category->stock_unit }}" @selected((string) old('parent_id') === (string) $category->id)>{{ $category->localizedName() }}</option>
                                 @endforeach
                             </select>
                             <small class="form-text text-muted" id="clothCategoryFormParentHint">مثلاً "عبایا" کے لیے مین کیٹیگری "زنانہ" چنیں۔</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="clothCategoryFormUnit">اسٹاک کس میں گنا جائے؟</label>
+                            <select class="form-control" id="clothCategoryFormUnit" name="stock_unit">
+                                @foreach (\App\Models\ClothCategory::UNIT_LABELS as $unit => $label)
+                                    <option value="{{ $unit }}" @selected(old('stock_unit', \App\Models\ClothCategory::UNIT_METER) === $unit)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted" id="clothCategoryFormUnitHint">مردانہ کپڑا میٹر میں، زنانہ ٹو پیس / تھری پیس سوٹ میں۔</small>
                         </div>
 
                         <div class="form-group mb-0">
@@ -209,6 +221,16 @@
             var form = $('#clothCategoryForm');
             var parentSelect = $('#clothCategoryFormParent');
             var defaultParentHint = $('#clothCategoryFormParentHint').text();
+            var unitSelect = $('#clothCategoryFormUnit');
+            var defaultUnitHint = $('#clothCategoryFormUnitHint').text();
+
+            // A new sub category starts with its main category's unit.
+            parentSelect.on('change', function () {
+                var parentUnit = parentSelect.find('option:selected').data('unit');
+                if (parentUnit && !unitSelect.prop('disabled') && !$('#clothCategoryFormId').val()) {
+                    unitSelect.val(parentUnit);
+                }
+            });
 
             function openCategoryModal(category, keepInput) {
                 var editing = !!category;
@@ -227,7 +249,13 @@
                 parentSelect.prop('disabled', locked);
                 $('#clothCategoryFormParentHint').text(locked ? 'اس کیٹیگری میں سب کیٹیگریز ہیں، اس لیے یہ مین کیٹیگری ہی رہے گی۔' : defaultParentHint);
 
+                // Stock already counted in this unit can't be reinterpreted.
+                var unitLocked = editing && category.hasCloths;
+                unitSelect.prop('disabled', unitLocked);
+                $('#clothCategoryFormUnitHint').text(unitLocked ? 'اس کیٹیگری میں کپڑے موجود ہیں، اس لیے گنتی کا طریقہ نہیں بدلا جا سکتا۔' : defaultUnitHint);
+
                 if (!keepInput) {
+                    unitSelect.val(editing ? category.unit : 'meter');
                     $('#clothCategoryFormNameUr').val(editing ? category.nameUr : '');
                     $('#clothCategoryFormName').val(editing ? category.name : '');
                     parentSelect.val(editing ? (category.parentId || '') : '');
@@ -246,6 +274,8 @@
                     parentId: button.data('parent-id'),
                     sortOrder: button.data('sort-order'),
                     hasChildren: button.data('has-children') === 1,
+                    hasCloths: button.data('has-cloths') === 1,
+                    unit: button.data('unit'),
                     action: button.data('action')
                 };
             }

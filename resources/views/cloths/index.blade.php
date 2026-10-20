@@ -803,7 +803,7 @@
                     <span class="cloth-stat-icon"><i class="fas fa-swatchbook"></i></span>
                 </article>
                 <article class="cloth-stat">
-                    <div><small>کل دستیاب اسٹاک</small><strong>{{ number_format($summary['meters'], 2) }} m</strong></div>
+                    <div><small>کل دستیاب اسٹاک</small><strong>{{ number_format($summary['meters'], 2) }} m</strong>@if($summary['suits'] > 0)<small class="d-block">+ {{ number_format($summary['suits']) }} سوٹ</small>@endif</div>
                     <span class="cloth-stat-icon"><i class="fas fa-ruler-combined"></i></span>
                 </article>
                 <article class="cloth-stat">
@@ -959,7 +959,7 @@
                                                 @endif
                                             </span>
                                             <div><strong>{{ $cloth->name ?: 'نام درج نہیں' }}</strong><small>{{ $cloth->brand->name ?? 'برانڈ درج نہیں' }}
-                                                    · {{ $cloth->type->name ?? 'قسم درج نہیں' }}</small></div>
+                                                    · {{ $cloth->type->name ?? 'قسم درج نہیں' }}@if($cloth->category) · {{ $cloth->category->fullName() }}@endif</small></div>
                                         </div>
                                     </td>
                                     <td data-label="رنگ اور اسٹاک">
@@ -970,8 +970,7 @@
                                                     @php $latestCost = $color->latestCostedStockAddition?->unit_cost ?? $color->average_unit_cost ?? $cloth->price; @endphp
                                                     <div class="cloth-color-row"><span
                                                             class="cloth-color-name">{{ $cloth->tracksColors() ? ($cloth->usesDisplayOnlyColors() ? collect($cloth->selectableColorNames())->join('، ') : $color->color) : 'تمام اسٹاک' }}</span><span><b
-                                                                class="cloth-number">{{ number_format((float) $color->length, 2) }}
-                                                                m</b><small class="cloth-color-cost d-block">لاگت Rs.
+                                                                class="cloth-number">{{ $cloth->countsSuits() ? number_format((float) $color->length).' سوٹ' : number_format((float) $color->length, 2).' m' }}</b><small class="cloth-color-cost d-block">لاگت Rs.
                                                                 {{ number_format((float) $latestCost, 2) }}</small></span><a
                                                             class="cloth-color-edit"
                                                             href="{{ route('admin.edit-cloths', ['id' => $cloth->id, 'color' => $color->color]) }}"
@@ -983,15 +982,15 @@
                                         </details>
                                     </td>
                                     <td data-label="کل مقدار"><span
-                                            class="cloth-number">{{ number_format($totalStock, 2) }} m</span><span
+                                            class="cloth-number">{{ $cloth->countsSuits() ? number_format($totalStock).' سوٹ' : number_format($totalStock, 2).' m' }}</span><span
                                             class="cloth-stock-badge {{ $stockStatus === 'low' ? 'is-low' : ($stockStatus === 'empty' ? 'is-empty' : '') }}">{{ $stockLabel }}</span>
                                     </td>
                                     <td data-label="فروخت کی قیمت" class="cloth-price">
                                         @if ($cloth->sellsPerSuit())
                                             <span class="cloth-number">Rs.
                                                 {{ number_format((float) $cloth->suit_sale_price, 2) }}</span><small>فی سوٹ
-                                                · {{ number_format((float) $cloth->default_sale_length, 2) }}
-                                            میٹر</small>@else<span class="cloth-number">Rs.
+                                                @unless($cloth->countsSuits())· {{ number_format((float) $cloth->default_sale_length, 2) }}
+                                            میٹر@endunless</small>@else<span class="cloth-number">Rs.
                                                 {{ number_format((float) $cloth->sale_price, 2) }}</span><small>فی
                                                 میٹر</small>
                                         @endif

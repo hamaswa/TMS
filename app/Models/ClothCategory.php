@@ -10,11 +10,21 @@ class ClothCategory extends Model
 {
     public const NAME_SEPARATOR = ' › ';
 
+    // Meter stock is cut from a roll; suit stock is a packed women's suit sold whole.
+    public const UNIT_METER = 'meter';
+    public const UNIT_SUIT = 'suit';
+    public const UNITS = [self::UNIT_METER, self::UNIT_SUIT];
+    public const UNIT_LABELS = [
+        self::UNIT_METER => 'میٹر',
+        self::UNIT_SUIT => 'سوٹ',
+    ];
+
     protected $fillable = [
         'user_id',
         'parent_id',
         'name',
         'name_ur',
+        'stock_unit',
         'slug',
         'sort_order',
         'is_active',
@@ -68,6 +78,21 @@ class ClothCategory extends Model
         return $locale === 'ur' && $this->name_ur ? $this->name_ur : $this->name;
     }
 
+    public static function unitLabelFor(?string $unit): string
+    {
+        return self::UNIT_LABELS[$unit] ?? self::UNIT_LABELS[self::UNIT_METER];
+    }
+
+    public function unitLabel(): string
+    {
+        return self::unitLabelFor($this->stock_unit);
+    }
+
+    public function countsSuits(): bool
+    {
+        return $this->stock_unit === self::UNIT_SUIT;
+    }
+
     /** "Women › Abayas" for a child, just "Women" for a parent. */
     public function fullName(?string $locale = null): string
     {
@@ -96,6 +121,23 @@ class ClothCategory extends Model
         }
 
         return $slug;
+    }
+
+    /**
+     * Categories a cloth can be put in, in display order: sub categories, plus main categories
+     * that have none. Each one has its parent loaded for fullName().
+     */
+    public static function selectableFor(int $ownerId)
+    {
+        self::ensureDefaultFor($ownerId);
+
+        return self::where('user_id', $ownerId)->topLevel()->active()->ordered()
+            ->with(['children' => fn ($query) => $query->where('is_active', true)])
+            ->get()
+            ->flatMap(fn (self $parent) => $parent->children->isEmpty()
+                ? [$parent]
+                : $parent->children->each(fn (self $child) => $child->setRelation('parent', $parent))->all())
+            ->values();
     }
 
     /** Every shop starts with "Men", since all stock before categories existed was men's cloth. */

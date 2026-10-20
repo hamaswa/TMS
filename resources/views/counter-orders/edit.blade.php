@@ -1052,7 +1052,10 @@
                                 <div class="co-cell-main" data-label="آئٹم"><select id="co-cloth-select"
                                         class="form-control" name="cloth_id" aria-label="کپڑے کا سیٹ" required>
                                         <option value="">کپڑا منتخب کریں</option>
-                                        @foreach ($cloths as $cloth)
+                                        {{-- Grouped by category so women's suits and men's cloth are easy to tell apart. --}}
+                                        @foreach ($cloths->groupBy(fn ($cloth) => $cloth->category?->fullName() ?? 'دیگر') as $categoryName => $categoryCloths)
+                                        <optgroup label="{{ $categoryName }}">
+                                        @foreach ($categoryCloths as $cloth)
                                             @php
                                                 // Same stock row the sale uses: per color, or the cloth's first row.
                                                 $colorStock = $cloth->tracksColors()
@@ -1068,11 +1071,14 @@
                                                 data-price="{{ $cloth->sellsPerSuit() ? $cloth->suit_sale_price : $cloth->sale_price }}"
                                                 data-length="{{ $cloth->default_sale_length ?: 4.5 }}"
                                                 data-basis="{{ $cloth->sale_price_basis }}"
+                                                data-unit="{{ $cloth->stock_unit }}"
                                                 data-stock="{{ $clothStock }}"
                                                 data-color-stock='@json($colorStock)'
                                                 data-colors='@json($cloth->selectableColorNames())' @selected((int) old('cloth_id') === $cloth->id)>
                                                 {{ $cloth->name }} · {{ $cloth->brand?->name }} ·
-                                                {{ $cloth->type?->name }} — {{ number_format($clothStock, 2) }} میٹر</option>
+                                                {{ $cloth->type?->name }} — {{ number_format($clothStock, $cloth->countsSuits() ? 0 : 2) }} {{ $cloth->stockUnitLabel() }}</option>
+                                        @endforeach
+                                        </optgroup>
                                         @endforeach
                                     </select>
                                 </div>
@@ -1400,7 +1406,9 @@
                             defaultLength = Number(o.dataset.length || 4.5),
                             quantity = form.querySelector('.co-cloth-quantity'),
                             suitOnly = form.querySelector('.co-suit-only'),
-                            oldColor = preserveValues ? (form.dataset.oldColor || '') : '';
+                            oldColor = preserveValues ? (form.dataset.oldColor || '') : '',
+                            // Women's packed suits are sold by count only; there is no length to cut.
+                            suitStock = o.dataset.unit === 'suit';
                         try {
                             colors = JSON.parse(o.dataset.colors || '[]')
                         } catch (e) {}
@@ -1418,7 +1426,8 @@
                                 var x = document.createElement('option'),
                                     tracked = c in colorStock;
                                 x.value = c;
-                                x.textContent = tracked ? c + ' — ' + Number(colorStock[c]).toFixed(2) + ' میٹر' : c;
+                                x.textContent = tracked ? c + ' — ' + (suitStock ? Number(colorStock[c]).toFixed(0) + ' سوٹ' :
+                                    Number(colorStock[c]).toFixed(2) + ' میٹر') : c;
                                 x.selected = oldColor ? oldColor === c : index === 0;
                                 color.appendChild(x)
                             });
@@ -1431,10 +1440,11 @@
                         color.required = false;
                         color.disabled = !cloth.value;
                         suitOnly.hidden = o.dataset.basis !== 'per_suit';
+                        length.hidden = suitStock;
                         form.dataset.basis = o.dataset.basis || 'per_meter';
                         form.dataset.unitPrice = unitPrice;
                         if (!preserveValues) {
-                            length.value = cloth.value ? defaultLength.toFixed(2) : '';
+                            length.value = cloth.value ? (suitStock ? '1' : defaultLength.toFixed(2)) : '';
                             if (quantity) quantity.value = 1;
                             price.value = cloth.value && unitPrice ? (o.dataset.basis === 'per_suit' ? unitPrice :
                                 unitPrice * defaultLength).toFixed(2) : '';

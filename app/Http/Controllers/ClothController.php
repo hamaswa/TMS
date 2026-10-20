@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cloth;
 use App\Models\ClothType;
 use App\Models\ClothBrand;
+use App\Models\ClothCategory;
 use App\Models\ClothColor;
 use App\Models\ClothImage;
 use App\Models\ClothVideo;
@@ -111,8 +112,13 @@ class ClothController extends Controller
             default => $query->latest('cloths.id'),
         };
 
+        // Meters and packed suits can't be added together, so they are totalled separately.
+        $suitStock = (float) ClothColor::query()
+            ->whereIn('cloth_id', (clone $query)->reorder()->where('cloths.stock_unit', ClothCategory::UNIT_SUIT)->select('cloths.id'))
+            ->sum('length');
+
         $cloths = $query
-            ->with(['type', 'brand', 'colors.latestCostedStockAddition', 'images', 'storefrontListings'])
+            ->with(['type', 'brand', 'category.parent', 'colors.latestCostedStockAddition', 'images', 'storefrontListings'])
             ->paginate((int) ($filters['per_page'] ?? 25))
             ->withQueryString();
         $brands = ClothBrand::where('user_id', $ownerId)->orderBy('name')->get();
@@ -126,7 +132,8 @@ class ClothController extends Controller
         $summary = [
             'sets' => $matchedSets,
             'colors' => (int) ($colorSummary->color_count ?? 0),
-            'meters' => (float) ($colorSummary->total_meters ?? 0),
+            'meters' => (float) ($colorSummary->total_meters ?? 0) - $suitStock,
+            'suits' => $suitStock,
             'low_or_empty' => $lowOrEmptySets,
         ];
 
@@ -158,8 +165,9 @@ class ClothController extends Controller
         try {
             $cloth_types = ClothType::where('user_id', auth()->user()->businessOwnerId())->latest()->get();
             $cloth_brands = ClothBrand::where('user_id', auth()->user()->businessOwnerId())->latest()->get();
+            $cloth_categories = ClothCategory::selectableFor(Auth::user()->businessOwnerId());
             [$storefront, $canConfigureOnline] = $this->storefrontContext();
-            return view('cloths.create', compact('cloth_types', 'cloth_brands', 'storefront', 'canConfigureOnline'));
+            return view('cloths.create', compact('cloth_types', 'cloth_brands', 'cloth_categories', 'storefront', 'canConfigureOnline'));
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -175,7 +183,7 @@ class ClothController extends Controller
     {
         try {
             $this->normalizeInventoryGridInput($request);
-            $this->normalizeSuitSalePricing($request);
+            $category = $this->normalizeSuitSalePricing($request);
             $request->mergeIfMissing([
                 'color_tracking_mode' => Cloth::COLOR_TRACKING_NONE,
                 'online_availability' => 'pos_only',
@@ -354,11 +362,13 @@ class ClothController extends Controller
             // ]);
 
             // Save the cloth
-            DB::transaction(function () use ($request, $validated, $stockColors, $displayColors, $lengths, $trackingMode, $storefront, $canConfigureOnline, $colorCodeByName) {
+            DB::transaction(function () use ($request, $validated, $stockColors, $displayColors, $lengths, $trackingMode, $storefront, $canConfigureOnline, $colorCodeByName, $category) {
                 $cloth = Cloth::create([
                     'name' => trim((string) ($validated['name'] ?? '')) ?: null,
                     'cloth_type_id' => $validated['cloth_type_id'],
                     'cloth_brand_id' => $validated['cloth_brand_id'],
+                    'cloth_category_id' => $category->id,
+                    'stock_unit' => $category->stock_unit,
                     'price' => $validated['price'],
                     'sale_price' => $validated['sale_price'],
                     'suit_sale_price' => $validated['suit_sale_price'] ?? null,
@@ -481,9 +491,10 @@ class ClothController extends Controller
             abort_unless($specificColor, 404);
             $data = compact('cloth', 'specificColor');
 
+            $cloth_categories = $this->categoriesForCloth($cloth);
             [$storefront, $canConfigureOnline] = $this->storefrontContext();
             $onlineAvailability = $this->onlineAvailability($cloth, $storefront);
-            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands', 'storefront', 'canConfigureOnline', 'onlineAvailability'));
+            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands', 'cloth_categories', 'storefront', 'canConfigureOnline', 'onlineAvailability'));
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -508,9 +519,10 @@ class ClothController extends Controller
                 'specificColor' => $specificColor,
             ];
 
+            $cloth_categories = $this->categoriesForCloth($cloth);
             [$storefront, $canConfigureOnline] = $this->storefrontContext();
             $onlineAvailability = $this->onlineAvailability($cloth, $storefront);
-            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands', 'storefront', 'canConfigureOnline', 'onlineAvailability'));
+            return view('cloths.edit', compact('data', 'cloth_types', 'cloth_brands', 'cloth_categories', 'storefront', 'canConfigureOnline', 'onlineAvailability'));
         }
     }
 
@@ -528,7 +540,7 @@ class ClothController extends Controller
             if ($request->boolean('inventory_grid')) {
                 return $this->updateFromInventoryGrid($request, $cloth);
             }
-            $this->normalizeSuitSalePricing($request);
+            $category = $this->normalizeSuitSalePricing($request, $cloth);
             [$storefront, $canConfigureOnline] = $this->storefrontContext();
             $currentOnlineAvailability = $this->onlineAvailability($cloth, $storefront);
             if ($canConfigureOnline) {
@@ -591,12 +603,13 @@ class ClothController extends Controller
                 }
             }
 
-            DB::transaction(function () use ($request, $validated, $cloth, $displayColors, $storefront, $canConfigureOnline) {
+            DB::transaction(function () use ($request, $validated, $cloth, $displayColors, $storefront, $canConfigureOnline, $category) {
                 $inventory = app(InventoryService::class);
                 $cloth->update([
                     'name' => trim((string) ($validated['name'] ?? '')) ?: $cloth->name,
                     'cloth_type_id' => $validated['cloth_type_id'],
                     'cloth_brand_id' => $validated['cloth_brand_id'],
+                    'cloth_category_id' => $category->id,
                     'price' => $validated['price'],
                     'sale_price' => $validated['sale_price'],
                     'suit_sale_price' => $validated['suit_sale_price'] ?? null,
@@ -660,7 +673,7 @@ class ClothController extends Controller
     private function updateFromInventoryGrid(Request $request, Cloth $cloth)
     {
         $this->normalizeInventoryGridInput($request);
-        $this->normalizeSuitSalePricing($request);
+        $category = $this->normalizeSuitSalePricing($request, $cloth);
         [$storefront, $canConfigureOnline] = $this->storefrontContext();
         $currentOnlineAvailability = $this->onlineAvailability($cloth, $storefront);
         if (! $canConfigureOnline) {
@@ -744,12 +757,13 @@ class ClothController extends Controller
         }
         $previousSelectableNames = $cloth->selectableColorNames();
 
-        DB::transaction(function () use ($request, $validated, $cloth, $storefront, $canConfigureOnline, $newMode, $names, $hexes, $lengths, $ids, $originalNames, $codeByName, $previousSelectableNames) {
+        DB::transaction(function () use ($request, $validated, $cloth, $storefront, $canConfigureOnline, $newMode, $names, $hexes, $lengths, $ids, $originalNames, $codeByName, $previousSelectableNames, $category) {
             $inventory = app(InventoryService::class);
             $cloth->update([
                 'name' => trim($validated['name']),
                 'cloth_type_id' => $validated['cloth_type_id'],
                 'cloth_brand_id' => $validated['cloth_brand_id'],
+                'cloth_category_id' => $category->id,
                 'price' => $validated['price'],
                 'sale_price' => $validated['sale_price'],
                 'suit_sale_price' => $validated['suit_sale_price'] ?? null,
@@ -960,16 +974,33 @@ class ClothController extends Controller
         ])->save();
     }
 
-    private function normalizeSuitSalePricing(Request $request): void
+    private function normalizeSuitSalePricing(Request $request, ?Cloth $cloth = null): ClothCategory
     {
-        $typeName = (string) ClothType::where('user_id', Auth::user()->businessOwnerId())
-            ->whereKey($request->integer('cloth_type_id'))
-            ->value('name');
-        $normalizedType = mb_strtolower(trim($typeName));
-        $isCotton = str_contains($normalizedType, 'cotton')
-            || str_contains($normalizedType, 'کاٹن')
-            || str_contains($normalizedType, 'کپاس');
-        $defaultLength = $isCotton ? 4.5 : 4.0;
+        $category = $this->resolveCategory($request, $cloth);
+
+        if ($category->countsSuits()) {
+            // A packed suit is one stock unit and is never cut, so each sale takes exactly 1.
+            $defaultLength = 1.0;
+            $quantities = array_merge(
+                (array) $request->input('length', []),
+                (array) $request->input('color_lengths', []),
+                [$request->input('shared_length', 0)]
+            );
+            foreach ($quantities as $quantity) {
+                if (abs((float) $quantity - round((float) $quantity)) >= 0.00001) {
+                    throw ValidationException::withMessages(['shared_length' => 'سوٹ پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
+                }
+            }
+        } else {
+            $typeName = (string) ClothType::where('user_id', Auth::user()->businessOwnerId())
+                ->whereKey($request->integer('cloth_type_id'))
+                ->value('name');
+            $normalizedType = mb_strtolower(trim($typeName));
+            $isCotton = str_contains($normalizedType, 'cotton')
+                || str_contains($normalizedType, 'کاٹن')
+                || str_contains($normalizedType, 'کپاس');
+            $defaultLength = $isCotton ? 4.5 : 4.0;
+        }
         $suitPrice = round((float) $request->input('suit_sale_price', 0), 2);
 
         $request->merge([
@@ -978,6 +1009,48 @@ class ClothController extends Controller
             // Internal compatibility value; users sell and see the price per suit.
             'sale_price' => round($suitPrice / $defaultLength, 2),
         ]);
+
+        return $category;
+    }
+
+    /**
+     * The category picked on the form. Without one, an existing cloth keeps its own and a new cloth
+     * goes to the shop's first meter category (Men), as before categories existed.
+     */
+    private function resolveCategory(Request $request, ?Cloth $cloth): ClothCategory
+    {
+        $categories = $cloth ? $this->categoriesForCloth($cloth) : ClothCategory::selectableFor(Auth::user()->businessOwnerId());
+        $categoryId = $request->integer('cloth_category_id') ?: $cloth?->cloth_category_id;
+        $category = $categoryId
+            ? $categories->firstWhere('id', $categoryId)
+            : $categories->firstWhere('stock_unit', ClothCategory::UNIT_METER);
+
+        if (! $category) {
+            throw ValidationException::withMessages([
+                'cloth_category_id' => $cloth
+                    ? 'یہ کپڑا صرف اسی طرح گنی جانے والی کیٹیگری میں منتقل ہو سکتا ہے۔'
+                    : 'درست کیٹیگری منتخب کریں۔',
+            ]);
+        }
+
+        return $category;
+    }
+
+    /** An existing cloth may only move between categories that count stock the same way. */
+    private function categoriesForCloth(Cloth $cloth)
+    {
+        $categories = ClothCategory::selectableFor(Auth::user()->businessOwnerId())
+            ->where('stock_unit', $cloth->stock_unit)->values();
+
+        // Keep its current category selectable even if it was deactivated since.
+        if ($cloth->cloth_category_id && ! $categories->contains('id', $cloth->cloth_category_id)) {
+            $current = ClothCategory::with('parent')->where('user_id', $cloth->user_id)->find($cloth->cloth_category_id);
+            if ($current) {
+                $categories->prepend($current);
+            }
+        }
+
+        return $categories;
     }
 
 

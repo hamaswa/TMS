@@ -6,6 +6,7 @@ use App\Models\ClothCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ClothCategoryController extends Controller
@@ -34,6 +35,8 @@ class ClothCategoryController extends Controller
             'parent_id' => $parent?->id,
             'name' => $validated['name'],
             'name_ur' => $validated['name_ur'],
+            // A sub category counts stock like its main category unless the form says otherwise.
+            'stock_unit' => $validated['stock_unit'] ?? $parent?->stock_unit ?? ClothCategory::UNIT_METER,
             'slug' => ClothCategory::makeUniqueSlug($ownerId, $validated['name'], $parent),
             'sort_order' => $validated['sort_order'] ?? 0,
         ]);
@@ -61,11 +64,19 @@ class ClothCategoryController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($category, $validated, $parent, $ownerId) {
+        $unit = $validated['stock_unit'] ?? $category->stock_unit;
+        if ($unit !== $category->stock_unit && $category->cloths()->withTrashed()->exists()) {
+            throw ValidationException::withMessages([
+                'stock_unit' => 'اس کیٹیگری میں کپڑے موجود ہیں، اس لیے گنتی کا طریقہ نہیں بدلا جا سکتا۔ نئی کیٹیگری بنائیں۔',
+            ]);
+        }
+
+        DB::transaction(function () use ($category, $validated, $parent, $ownerId, $unit) {
             $category->update([
                 'parent_id' => $parent?->id,
                 'name' => $validated['name'],
                 'name_ur' => $validated['name_ur'],
+                'stock_unit' => $unit,
                 'slug' => ClothCategory::makeUniqueSlug($ownerId, $validated['name'], $parent, $category->id),
                 'sort_order' => $validated['sort_order'] ?? 0,
             ]);
@@ -112,6 +123,7 @@ class ClothCategoryController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'parent_id' => ['nullable', 'integer'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'stock_unit' => ['nullable', Rule::in(ClothCategory::UNITS)],
         ]);
 
         $duplicate = ClothCategory::where('user_id', $ownerId)

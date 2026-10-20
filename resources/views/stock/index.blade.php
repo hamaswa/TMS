@@ -185,7 +185,7 @@
                                         <td><span class="stock-name">{{ $cloth->type->name }}</span></td>
                                         <td><span class="stock-name">{{ $cloth->brand->name }}</span></td>
                                         <td><span class="stock-color">{{ $color->color }}</span></td>
-                                        <td><span class="stock-quantity">{{ number_format((float) $color->length, 2) }} میٹر</span></td>
+                                        <td><span class="stock-quantity">{{ number_format((float) $color->length, $cloth->countsSuits() ? 0 : 2) }} {{ $cloth->stockUnitLabel() }}</span></td>
                                         <td><span class="stock-money">Rs:{{ number_format($latestCost, 2) }}</span></td>
                                         <td><span class="stock-money is-value">Rs:{{ number_format((float) $color->length * $latestCost, 2) }}</span></td>
                                         <td><span class="stock-money">Rs:{{ number_format((float) ($cloth->sale_price ?: $cloth->price), 2) }}</span></td>

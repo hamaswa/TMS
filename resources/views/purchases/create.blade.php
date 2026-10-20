@@ -709,6 +709,11 @@
                         <strong id="purchase-meter-count" dir="ltr">0.00 m</strong>
                     </div>
 
+                    <div class="d-flex justify-content-between text-muted mb-2">
+                        <span>کل سوٹ</span>
+                        <strong id="purchase-suit-count">0</strong>
+                    </div>
+
                     <hr>
 
                     <small class="text-muted d-block mb-2">کل خریداری</small>
@@ -831,6 +836,18 @@
 
             <div class="purchase-sheet-row">
                 <div class="purchase-field">
+                    <label>کیٹیگری</label>
+                    <select class="form-control new-category" aria-label="کیٹیگری" required>
+                        @if ($categories->count() !== 1)
+                            <option value="">کیٹیگری منتخب کریں</option>
+                        @endif
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" data-unit="{{ $category->stock_unit }}">{{ $category->fullName() }} ({{ $category->unitLabel() }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="purchase-field">
                     <label>سیٹ کا نام</label>
                     <input class="form-control new-name"
                         maxlength="100"
@@ -863,7 +880,7 @@
                 <div class="purchase-field">
                     <label>اسٹاک کا طریقہ</label>
                     <select class="form-control new-tracking">
-                        <option value="none">مشترکہ میٹر</option>
+                        <option value="none" class="purchase-shared-option">مشترکہ میٹر</option>
                         <option value="per_color">رنگ الگ الگ</option>
                     </select>
                 </div>
@@ -888,7 +905,7 @@
                         required>
                 </div>
 
-                <div class="purchase-field">
+                <div class="purchase-field new-length-field">
                     <label>ڈیفالٹ سوٹ لمبائی</label>
                     <input type="number"
                         step="0.01"
@@ -1002,7 +1019,7 @@
             </div>
 
             <div>
-                <label>میٹر</label>
+                <label class="purchase-unit-name">میٹر</label>
                 <input type="number"
                     step="0.01"
                     min="0.01"
@@ -1083,9 +1100,45 @@
                 });
             });
 
-            const addColor = row => row.querySelector('.purchase-color-grid').appendChild(
-                colorTemplate.content.firstElementChild.cloneNode(true)
-            );
+            // Meter stock is cut from a roll; women's packed suits are counted whole.
+            const unitInfo = row => row && row.dataset.unit === 'suit'
+                ? { name: 'سوٹ', short: ' سوٹ', step: '1', min: '1', placeholder: '0', digits: 0 }
+                : { name: 'میٹر', short: ' m', step: '0.01', min: '0.01', placeholder: '0.00', digits: 2 };
+            const formatQty = (row, value) => {
+                const unit = unitInfo(row);
+                return Number(value || 0).toFixed(unit.digits) + unit.short;
+            };
+
+            // Apply the row's unit to the fields that renderNewStock/renderExisting don't rebuild.
+            const applyUnit = row => {
+                const unit = unitInfo(row),
+                    suit = row.dataset.unit === 'suit';
+
+                row.querySelectorAll('.purchase-color-quantity').forEach(input => {
+                    input.step = unit.step;
+                    input.min = input.closest('.existing') ? '0' : unit.min;
+                    input.placeholder = unit.placeholder;
+                });
+                row.querySelectorAll('.purchase-unit-name').forEach(label => label.textContent = unit.name);
+
+                const shared = row.querySelector('.purchase-shared-option');
+                if (shared) shared.textContent = 'مشترکہ ' + unit.name;
+
+                const lengthField = row.querySelector('.new-length-field');
+                if (lengthField) {
+                    const lengthInput = lengthField.querySelector('.new-default-length');
+                    lengthField.hidden = suit;
+                    lengthInput.required = !suit;
+                    if (suit) lengthInput.value = '';
+                }
+            };
+
+            const addColor = row => {
+                row.querySelector('.purchase-color-grid').appendChild(
+                    colorTemplate.content.firstElementChild.cloneNode(true)
+                );
+                applyUnit(row);
+            };
 
             // Keep options added during this purchase available to rows created later.
             const quickAddedOptions = { brand: new Map(), type: new Map() };
@@ -1105,6 +1158,8 @@
             const addNewRow = (before = null) => {
                 const row = newTemplate.content.firstElementChild.cloneNode(true);
                 populateQuickOptions(row);
+                row.dataset.unit = row.querySelector('.new-category').selectedOptions[0]?.dataset.unit || 'meter';
+                applyUnit(row);
                 before ? sets.insertBefore(row, before) : sets.appendChild(row);
                 return row;
             };
@@ -1141,23 +1196,27 @@
                     details = row.querySelector('.purchase-row-details'),
                     tracked = row.querySelector('.new-tracking').value === 'per_color';
 
+                const unit = unitInfo(row);
+
                 if (tracked) {
                     stock.innerHTML =
-                        '<label>رنگوں کی مقدار</label><button type="button" class="btn btn-outline-primary toggle-colors">رنگ اور میٹر درج کریں</button>';
+                        '<label>رنگوں کی مقدار</label><button type="button" class="btn btn-outline-primary toggle-colors">رنگ اور ' + unit.name + ' درج کریں</button>';
 
                     details.innerHTML =
-                        '<div class="purchase-color-head"><strong>اس سیٹ کے رنگ اور خریدے گئے میٹر</strong><button type="button" class="btn btn-sm btn-outline-primary add-color"><i class="fas fa-plus ml-1"></i> رنگ شامل کریں</button></div><div class="purchase-color-grid"></div>';
+                        '<div class="purchase-color-head"><strong>اس سیٹ کے رنگ اور خریدے گئے ' + unit.name + '</strong><button type="button" class="btn btn-sm btn-outline-primary add-color"><i class="fas fa-plus ml-1"></i> رنگ شامل کریں</button></div><div class="purchase-color-grid"></div>';
 
                     details.classList.add('is-open');
                     addColor(row);
                 } else {
                     stock.innerHTML =
-                        '<label>خریدے گئے میٹر</label><input type="number" step="0.01" min="0.01" class="form-control purchase-color-quantity new-shared-quantity" placeholder="0.00" required>';
+                        '<label>خریدے گئے ' + unit.name + '</label><input type="number" step="' + unit.step + '" min="' + unit.min +
+                        '" class="form-control purchase-color-quantity new-shared-quantity" placeholder="' + unit.placeholder + '" required>';
 
                     details.innerHTML = '';
                     details.classList.remove('is-open');
                 }
 
+                applyUnit(row);
                 updateTotals();
             };
 
@@ -1179,12 +1238,14 @@
                     return;
                 }
 
+                row.dataset.unit = item.unit || 'meter';
+                const unit = unitInfo(row);
                 meta.textContent = (item.brand || 'برانڈ') + ' / ' + (item.type || 'قسم');
 
                 if (item.tracks_colors) {
                     stock.innerHTML =
                         '<label>مقدار</label><button type="button" class="btn btn-outline-primary toggle-colors">' +
-                        item.colors.length + ' رنگ — میٹر درج کریں</button>';
+                        item.colors.length + ' رنگ — ' + unit.name + ' درج کریں</button>';
 
                     const grid = document.createElement('div');
                     grid.className = 'purchase-color-grid purchase-existing-color-grid';
@@ -1194,10 +1255,10 @@
                         cell.className = 'purchase-color-entry existing';
 
                         cell.innerHTML =
-                            '<label>' + color.name + '<small>موجودہ ' + Number(color.stock).toFixed(2) +
-                            ' m</small></label><input type="number" step="0.01" min="0" class="form-control purchase-color-quantity" data-color-id="' +
+                            '<label>' + color.name + '<small>موجودہ ' + formatQty(row, color.stock) +
+                            '</small></label><input type="number" step="' + unit.step + '" min="0" class="form-control purchase-color-quantity" data-color-id="' +
                             color.id + '" aria-label="' + color.name +
-                            ' کی خریداری میٹر میں" placeholder="0.00">';
+                            ' کی خریداری ' + unit.name + ' میں" placeholder="' + unit.placeholder + '">';
 
                         grid.appendChild(cell);
                     });
@@ -1208,10 +1269,10 @@
                     const color = item.colors[0];
 
                     stock.innerHTML =
-                        '<label>خریدے گئے میٹر</label><input type="number" step="0.01" min="0.01" class="form-control purchase-color-quantity" data-color-id="' +
-                        color.id +
-                        '" aria-label="خریداری کی مقدار میٹر میں" placeholder="0.00" required><small class="purchase-existing-meta">موجودہ ' +
-                        Number(color.stock).toFixed(2) + ' m</small>';
+                        '<label>خریدے گئے ' + unit.name + '</label><input type="number" step="' + unit.step + '" min="' + unit.min +
+                        '" class="form-control purchase-color-quantity" data-color-id="' + color.id +
+                        '" aria-label="خریداری کی مقدار ' + unit.name + ' میں" placeholder="' + unit.placeholder +
+                        '" required><small class="purchase-existing-meta">موجودہ ' + formatQty(row, color.stock) + '</small>';
                 }
 
                 updateTotals();
@@ -1220,6 +1281,7 @@
             const updateTotals = () => {
                 let grand = 0,
                     meters = 0,
+                    suits = 0,
                     selected = 0;
 
                 sets.querySelectorAll('.purchase-set-card').forEach((row, index) => {
@@ -1237,17 +1299,20 @@
                             .reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0),
                         total = parseFloat(row.querySelector('.purchase-set-total').value) || 0;
 
-                    row.querySelector('.purchase-set-meters').textContent = qty.toFixed(2) + ' m';
+                    const suitRow = row.dataset.unit === 'suit';
+                    row.querySelector('.purchase-set-meters').textContent = formatQty(row, qty);
 
                     row.querySelector('.purchase-unit-cost-preview').textContent =
                         'Rs. ' + (qty ? total / qty : 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 4,
-                            maximumFractionDigits: 4
-                        }) + ' / m';
+                            minimumFractionDigits: suitRow ? 2 : 4,
+                            maximumFractionDigits: suitRow ? 2 : 4
+                        }) + (suitRow ? ' / سوٹ' : ' / m');
 
-                    // New sets are priced per suit; show the per-meter rate it works out to.
+                    // Meter sets are priced per suit; show the per-meter rate it works out to.
                     const saleRate = row.querySelector('.new-sale-rate');
-                    if (saleRate) {
+                    if (saleRate && suitRow) {
+                        saleRate.textContent = '';
+                    } else if (saleRate) {
                         const suitPrice = parseFloat(row.querySelector('.new-suit-price').value) || 0,
                             suitLength = parseFloat(row.querySelector('.new-default-length').value) || 0;
                         saleRate.textContent = suitPrice && suitLength
@@ -1255,12 +1320,17 @@
                             : '';
                     }
 
-                    meters += qty;
+                    if (suitRow) {
+                        suits += qty;
+                    } else {
+                        meters += qty;
+                    }
                     grand += total;
                 });
 
                 document.getElementById('purchase-item-count').textContent = selected;
                 document.getElementById('purchase-meter-count').textContent = meters.toFixed(2) + ' m';
+                document.getElementById('purchase-suit-count').textContent = suits.toFixed(0);
                 document.getElementById('purchase-grand-total').textContent = money(grand);
                 purchaseGrandTotal = grand;
                 updatePaymentPreview();
@@ -1281,6 +1351,12 @@
                 }
 
                 if (event.target.matches('.new-tracking')) {
+                    renderNewStock(row);
+                    return;
+                }
+
+                if (event.target.matches('.new-category')) {
+                    row.dataset.unit = event.target.selectedOptions[0]?.dataset.unit || 'meter';
                     renderNewStock(row);
                     return;
                 }
@@ -1456,12 +1532,15 @@
                             ['.new-name', 'name'],
                             ['.new-brand', 'cloth_brand_id'],
                             ['.new-type', 'cloth_type_id'],
+                            ['.new-category', 'cloth_category_id'],
                             ['.new-suit-price', 'suit_sale_price'],
                             ['.new-default-length', 'default_sale_length'],
                             ['.new-tracking', 'tracking_mode'],
                             ['.new-total', 'total']
                         ].forEach(([selector, key]) => {
-                            row.querySelector(selector).name = prefix + '[' + key + ']';
+                            const field = row.querySelector(selector);
+                            // Packed suits have no cutting length, so the hidden field is not sent.
+                            field.name = field.closest('[hidden]') ? '' : prefix + '[' + key + ']';
                         });
 
                         if (row.querySelector('.new-tracking').value === 'none') {

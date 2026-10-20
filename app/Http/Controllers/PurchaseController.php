@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClothColor;
 use App\Models\Cloth;
 use App\Models\ClothBrand;
+use App\Models\ClothCategory;
 use App\Models\ClothType;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
@@ -76,10 +77,12 @@ class PurchaseController extends Controller
         $colors = $cloths->flatMap->colors;
         $brands = ClothBrand::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
         $types = ClothType::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
+        $categories = ClothCategory::selectableFor(Auth::user()->businessOwnerId());
         $catalog = $cloths->mapWithKeys(fn(Cloth $cloth) => [
             (string) $cloth->id => [
                 'id' => $cloth->id,
                 'name' => $cloth->name,
+                'unit' => $cloth->stock_unit,
                 'brand' => $cloth->brand?->name,
                 'type' => $cloth->type?->name,
                 'stock_code' => $cloth->stock_code,
@@ -94,7 +97,7 @@ class PurchaseController extends Controller
             ],
         ]);
 
-        return view('purchases.create', compact('suppliers', 'cloths', 'colors', 'catalog', 'brands', 'types', 'savedPurchase'));
+        return view('purchases.create', compact('suppliers', 'cloths', 'colors', 'catalog', 'brands', 'types', 'categories', 'savedPurchase'));
     }
 
     public function store(Request $request)
@@ -128,9 +131,11 @@ class PurchaseController extends Controller
             'new_sets.*.name' => ['required', 'string', 'max:100'],
             'new_sets.*.cloth_brand_id' => ['required', 'integer'],
             'new_sets.*.cloth_type_id' => ['required', 'integer'],
+            'new_sets.*.cloth_category_id' => ['nullable', 'integer'],
             // New sets are priced per suit at the default suit length (e.g. 4.5 m for Rs 2200).
+            // Packed women's suits have no cutting length, so it is only required for meter stock.
             'new_sets.*.suit_sale_price' => ['required', 'numeric', 'min:0'],
-            'new_sets.*.default_sale_length' => ['required', 'numeric', 'gt:0'],
+            'new_sets.*.default_sale_length' => ['nullable', 'numeric', 'gt:0'],
             'new_sets.*.tracking_mode' => ['required', Rule::in([Cloth::COLOR_TRACKING_NONE, Cloth::COLOR_TRACKING_PER_COLOR])],
             'new_sets.*.quantity' => ['nullable', 'numeric', 'gt:0'],
             'new_sets.*.total' => ['required', 'numeric', 'gt:0'],
@@ -160,9 +165,33 @@ class PurchaseController extends Controller
             422
         );
         $ownerId = Auth::user()->businessOwnerId();
+        $categories = ClothCategory::selectableFor($ownerId)->keyBy('id');
+        foreach ($existingColorIds as $index => $colorId) {
+            $color = ClothColor::where('user_id', $ownerId)->with('cloth')->find($colorId);
+            if ($color?->cloth?->countsSuits() && ! $this->isWholeNumber($existingQuantities[$index] ?? 0)) {
+                throw ValidationException::withMessages(["quantity.{$index}" => 'سوٹ پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
+            }
+        }
         foreach ($newSets as $index => $set) {
             ClothBrand::where('user_id', $ownerId)->findOrFail($set['cloth_brand_id']);
             ClothType::where('user_id', $ownerId)->findOrFail($set['cloth_type_id']);
+            // Without a category a new set goes to the shop's first meter category (Men), as before categories existed.
+            $category = ! empty($set['cloth_category_id'])
+                ? $categories->get((int) $set['cloth_category_id'])
+                : $categories->firstWhere('stock_unit', ClothCategory::UNIT_METER);
+            if (! $category) {
+                throw ValidationException::withMessages(["new_sets.{$index}.cloth_category_id" => 'درست کیٹیگری منتخب کریں۔']);
+            }
+            $countsSuits = $category->countsSuits();
+            if (! $countsSuits && empty($set['default_sale_length'])) {
+                throw ValidationException::withMessages(["new_sets.{$index}.default_sale_length" => 'ڈیفالٹ سوٹ لمبائی درج کریں۔']);
+            }
+            $setQuantities = $set['tracking_mode'] === Cloth::COLOR_TRACKING_PER_COLOR
+                ? array_column(array_values($set['colors'] ?? []), 'quantity')
+                : [$set['quantity'] ?? 0];
+            if ($countsSuits && collect($setQuantities)->contains(fn ($quantity) => ! $this->isWholeNumber($quantity))) {
+                throw ValidationException::withMessages(["new_sets.{$index}.quantity" => 'سوٹ پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
+            }
             $duplicate = Cloth::where('user_id', $ownerId)
                 ->where('cloth_brand_id', $set['cloth_brand_id'])
                 ->where('cloth_type_id', $set['cloth_type_id'])
@@ -173,6 +202,7 @@ class PurchaseController extends Controller
                     "new_sets.{$index}.name" => 'یہ سیٹ پہلے سے موجود ہے؛ اسے موجودہ سیٹ دوبارہ خریدیں سے منتخب کریں۔',
                 ]);
             }
+            $newSets[$index]['cloth_category_id'] = $category->id;
             if ($set['tracking_mode'] === Cloth::COLOR_TRACKING_PER_COLOR) {
                 $setColors = array_values($set['colors'] ?? []);
                 if ($setColors === []) {
@@ -183,14 +213,14 @@ class PurchaseController extends Controller
                     throw ValidationException::withMessages(["new_sets.{$index}.colors" => 'ایک رنگ صرف ایک مرتبہ شامل کریں۔']);
                 }
             } elseif (empty($set['quantity'])) {
-                throw ValidationException::withMessages(["new_sets.{$index}.quantity" => 'خریدے گئے میٹر درج کریں۔']);
+                throw ValidationException::withMessages(["new_sets.{$index}.quantity" => 'خریدے گئے '.$category->unitLabel().' درج کریں۔']);
             }
         }
 
 
         $supplier = $this->ownedSupplier($validated['supplier_id']);
 
-        $purchase = DB::transaction(function () use ($validated, $supplier, $existingColorIds, $existingQuantities, $submittedLineTotals, $submittedUnitCosts, $newSets, $ownerId) {
+        $purchase = DB::transaction(function () use ($validated, $supplier, $existingColorIds, $existingQuantities, $submittedLineTotals, $submittedUnitCosts, $newSets, $ownerId, $categories) {
             $purchase = Purchase::create([
                 'user_id' => Auth::user()->businessOwnerId(),
                 'supplier_id' => $supplier->id,
@@ -231,14 +261,19 @@ class PurchaseController extends Controller
                 $setQuantity = array_sum(array_column($quantities, 'quantity'));
                 $setTotal = round((float) $set['total'], 2);
                 $unitCost = round($setTotal / $setQuantity, 4);
+                $category = $categories->get((int) $set['cloth_category_id']);
+                // A packed suit is one stock unit, so its "length" per sale is always 1.
+                $suitLength = $category->countsSuits() ? 1.0 : (float) $set['default_sale_length'];
                 $cloth = Cloth::create([
                     'name' => trim($set['name']),
                     'cloth_type_id' => $set['cloth_type_id'],
                     'cloth_brand_id' => $set['cloth_brand_id'],
+                    'cloth_category_id' => $category->id,
+                    'stock_unit' => $category->stock_unit,
                     'price' => $unitCost,
-                    'sale_price' => round((float) $set['suit_sale_price'] / (float) $set['default_sale_length'], 2),
+                    'sale_price' => round((float) $set['suit_sale_price'] / $suitLength, 2),
                     'suit_sale_price' => round((float) $set['suit_sale_price'], 2),
-                    'default_sale_length' => round((float) $set['default_sale_length'], 2),
+                    'default_sale_length' => round($suitLength, 2),
                     'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
                     'color_tracking_mode' => $set['tracking_mode'],
                     'user_id' => $ownerId,
@@ -476,6 +511,11 @@ class PurchaseController extends Controller
         });
 
         return back()->with('success', 'خریداری واپسی درج ہو گئی اور اسٹاک کم کر دیا گیا ہے۔');
+    }
+
+    private function isWholeNumber($value): bool
+    {
+        return abs((float) $value - round((float) $value)) < 0.00001;
     }
 
     private function ownedPurchase(int $id): Purchase

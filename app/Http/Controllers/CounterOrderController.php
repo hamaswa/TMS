@@ -169,7 +169,7 @@ class CounterOrderController extends Controller
             ->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item));
         $canManageAllItems = $counterOrder->items->where('status', '!=', CounterOrderItem::STATUS_CANCELLED)
             ->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item));
-        $cloths = $canAddCloth ? Cloth::where('user_id', $ownerId)->with(['brand', 'type', 'colors'])->orderBy('id')->get() : collect();
+        $cloths = $canAddCloth ? Cloth::where('user_id', $ownerId)->with(['brand', 'type', 'colors', 'category.parent'])->orderBy('id')->get() : collect();
         $profiles = Customers::where('user_id', $ownerId)
             ->where(fn($query) => $query->whereKey($counterOrder->customer_id)->orWhere('parent_id', $counterOrder->customer_id))
             ->orderByRaw('parent_id is not null')->orderBy('name')->get();
@@ -658,6 +658,10 @@ class CounterOrderController extends Controller
         if ($cloth->hasSelectableColors() && blank($validated['color'] ?? null)) {
             return back()->withErrors(['color' => 'اس کپڑے کے لیے رنگ منتخب کریں۔'])->withInput();
         }
+        if ($cloth->countsSuits()) {
+            // A packed suit is one stock unit; only the number of suits matters.
+            $validated['length'] = 1;
+        }
         $lineTotal = round((float) $validated['total_price'], 2);
         $quantity = $cloth->sellsPerSuit() ? (int) ($validated['quantity'] ?? 1) : 1;
         $this->ensureClothStock($cloth, $validated['color'] ?? null, (float) $validated['length'], $quantity);
@@ -789,6 +793,9 @@ class CounterOrderController extends Controller
                 && ! in_array($validated['color'] ?? null, $cloth->selectableColorNames(), true)
             ) {
                 return back()->withErrors(['color' => 'منتخب رنگ اس کپڑے کے دستیاب رنگوں میں شامل نہیں ہے۔'])->withInput();
+            }
+            if ($cloth->countsSuits()) {
+                $validated['length'] = 1;
             }
             $quantity = $cloth->sellsPerSuit() ? (int) ($validated['quantity'] ?? 1) : 1;
             $this->ensureClothStock($cloth, $validated['color'] ?? null, (float) $validated['length'], $quantity);
@@ -1044,10 +1051,12 @@ class CounterOrderController extends Controller
         $available = round($this->clothStock($cloth, $color), 2);
 
         if ($needed > $available) {
+            $unit = $cloth->stockUnitLabel();
+            $digits = $cloth->countsSuits() ? 0 : 2;
             throw ValidationException::withMessages([
                 'length' => $available <= 0
                     ? 'اس کپڑے کا اسٹاک ختم ہے۔'
-                    : 'اسٹاک میں صرف '.number_format($available, 2).' میٹر دستیاب ہے؛ '.number_format($needed, 2).' میٹر درکار ہیں۔',
+                    : 'اسٹاک میں صرف '.number_format($available, $digits).' '.$unit.' دستیاب ہے؛ '.number_format($needed, $digits).' '.$unit.' درکار ہیں۔',
             ]);
         }
     }
