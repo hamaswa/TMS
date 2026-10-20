@@ -385,9 +385,10 @@
                                         <div class="form-group edit-field mb-0"
                                             data-template-field="system.{{ $templateSystemField }}"
                                             data-default-column="left">
-                                            <div class="d-flex justify-content-between align-items-center"><label for="preference-{{ $type->slug }}" class="mb-1">{{ $type->otn }}</label>@if(Auth::user()->hasBusinessPermission('tailoring.configuration'))<button type="button" class="btn btn-link btn-sm p-0 mb-1 text-decoration-none" data-toggle="modal" data-target="#quickOptionModal" data-option-select="preference-{{ $type->slug }}" data-option-type="{{ $type->option_id }}" data-option-label="{{ $type->otn }}">＋ نیا انتخاب</button>@endif</div>
+                                            <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
 
                                             <select id="preference-{{ $type->slug }}" class="form-control"
+                                                    @if(Auth::user()->hasBusinessPermission('tailoring.configuration')) data-inline-option-type="{{ $type->option_id }}" data-inline-option-label="{{ $type->otn }}" @endif
                                                 name="{{ $type->slug }}"
                                                 data-measure-key="system.{{ $templateSystemField }}"
                                                 data-template-system-field="{{ $templateSystemField }}">
@@ -464,6 +465,9 @@
     <script>
         (function() {
             const all = @json($allTemplateValues);
+            document.querySelectorAll('[data-measure-key]').forEach(el => {
+                el.dataset.initialSavedValue = el.value;
+            });
             const select = document.querySelector('[name="measurement_template_id"]');
             if (!select) return;
 
@@ -471,7 +475,12 @@
                 const vals = all[id] || {};
 
                 document.querySelectorAll('[data-measure-key]').forEach(el => {
-                    const v = vals[el.dataset.measureKey] ?? '';
+                    // Preserve the server-rendered saved selection when a legacy profile has
+                    // no measurement-history row for this preference yet.
+                    const key = el.dataset.measureKey;
+                    const v = Object.prototype.hasOwnProperty.call(vals, key)
+                        ? (vals[key] ?? '')
+                        : (String(id) === String(@json($selectedTemplateId ?? null)) ? (el.dataset.initialSavedValue ?? el.value) : '');
                     if (el.tagName === 'SELECT' && v && ![...el.options].some(o => o.value === v)) {
                         el.add(new Option(v, v));
                     }

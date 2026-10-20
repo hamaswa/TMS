@@ -671,7 +671,7 @@ class CustomerController extends Controller
         }
 
         $redirect = redirect()
-            ->route('admin.Customers.index', ['created' => $obj->id])
+            ->route('admin.counter-orders.create', ['customer' => $obj->id])
             ->with(
                 'insert',
                 $basicSave
