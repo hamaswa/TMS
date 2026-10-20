@@ -14,7 +14,6 @@ use App\Http\Controllers\BusinessTeamController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ClientSubscriptionController;
 use App\Http\Controllers\ClothBrandController;
-use App\Http\Controllers\ClothCategoryController;
 use App\Http\Controllers\ClothController;
 use App\Http\Controllers\ClothStockController;
 use App\Http\Controllers\CounterSaleReturnController;
@@ -514,10 +513,6 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         // Route::get('/', [HomeController::class, 'index'])->name('admin');
         // ClothType
         Route::resource('/clothtype', ClothTypeController::class);
-
-        // ClothCategory
-        Route::resource('/clothcategory', ClothCategoryController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::patch('/clothcategory/{clothcategory}/toggle', [ClothCategoryController::class, 'toggle'])->name('clothcategory.toggle');
 
         // ClothBrand
         Route::resource('/clothbrand', ClothBrandController::class);

@@ -302,9 +302,6 @@
                         <a class="{{ request()->routeIs('admin.clothtype.*') ? 'is-active' : '' }}"
                             href="{{ route('admin.clothtype.index') }}"><i class="fas fa-tags"></i>کپڑے کی اقسام</a>
 
-                        <a class="{{ request()->routeIs('admin.clothcategory.*') ? 'is-active' : '' }}"
-                            href="{{ route('admin.clothcategory.index') }}"><i class="fas fa-sitemap"></i>کپڑے کی کیٹیگریز</a>
-
                         <a class="{{ request()->routeIs('admin.purchases.create') ? 'is-active' : '' }}"
                             href="{{ route('admin.purchases.create') }}"><i class="fas fa-plus-circle"></i>نئی
                             خریداری</a>

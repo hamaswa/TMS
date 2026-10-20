@@ -103,7 +103,6 @@
                     <a class="dropdown-item" href="{{ route('admin.stock.index') }}"><i class="fas fa-layer-group fa-fw ml-2 text-info"></i>اسٹاک</a>
                     <a class="dropdown-item" href="{{ route('admin.cloth.index') }}"><i class="fas fa-swatchbook fa-fw ml-2 text-info"></i>کپڑے کی فہرست</a>
                     <a class="dropdown-item" href="{{ route('admin.clothtype.index') }}"><i class="fas fa-tags fa-fw ml-2 text-info"></i>کپڑے کی اقسام</a>
-                    <a class="dropdown-item" href="{{ route('admin.clothcategory.index') }}"><i class="fas fa-sitemap fa-fw ml-2 text-info"></i>کپڑے کی کیٹیگریز</a>
                     <a class="dropdown-item" href="{{ route('admin.clothbrand.index') }}"><i class="fas fa-copyright fa-fw ml-2 text-info"></i>کپڑے کے برانڈز</a>
                     <a class="dropdown-item" href="{{ route('admin.inventory-ledger.index') }}"><i class="fas fa-exchange-alt fa-fw ml-2 text-info"></i>اسٹاک کھاتہ</a>
                     <a class="dropdown-item" href="{{ route('admin.inventory-valuation.index') }}"><i class="fas fa-balance-scale fa-fw ml-2 text-info"></i>اسٹاک کی مالیت</a>
