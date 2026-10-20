@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -16,6 +17,7 @@ class Cloth extends Model
         'set_code',
         'cloth_type_id',
         'cloth_brand_id',
+        'cloth_category_id',
         'length',
         'price',
         'sale_price',
@@ -116,6 +118,19 @@ class Cloth extends Model
     public function brand()
     {
         return $this->belongsTo('App\Models\ClothBrand', 'cloth_brand_id', 'id');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(ClothCategory::class, 'cloth_category_id');
+    }
+
+    /** Matches cloths in the category itself or in any of its child categories. */
+    public function scopeInCategory(Builder $query, int $categoryId): Builder
+    {
+        return $query->where(fn (Builder $query) => $query
+            ->where('cloth_category_id', $categoryId)
+            ->orWhereIn('cloth_category_id', ClothCategory::query()->select('id')->where('parent_id', $categoryId)));
     }
 
     public function stocks()
