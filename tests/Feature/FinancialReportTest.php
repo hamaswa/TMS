@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Cloth;
 use App\Models\ClothBrand;
+use App\Models\ClothCategory;
 use App\Models\ClothColor;
 use App\Models\ClothType;
 use App\Models\Customers;
@@ -153,6 +154,84 @@ class FinancialReportTest extends TestCase
         $this->actingAs($owner)->get(route('admin.financial-reports.export', ['section' => 'summary']))
             ->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
         $this->actingAs($stockSeller)->get(route('admin.financial-reports.index'))->assertForbidden();
+    }
+
+    public function test_report_sections_are_split_into_tabs_and_open_on_the_requested_one(): void
+    {
+        [$owner] = $this->baseData();
+
+        // Profit and loss is shown first; the other sections wait behind their tabs.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index'))
+            ->assertOk()
+            ->assertSee('data-finance-tab="receivables"', false)
+            ->assertSee('id="finance-panel-profit" role="tabpanel" aria-labelledby="finance-tab-profit" >', false)
+            ->assertSee('id="finance-panel-receivables" role="tabpanel" aria-labelledby="finance-tab-receivables"  hidden', false);
+
+        // A search in the customers list comes back to that tab, and keeps it in the forms.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['receivables_q' => 'x']))
+            ->assertOk()
+            ->assertSee('id="finance-panel-receivables" role="tabpanel" aria-labelledby="finance-tab-receivables" >', false)
+            ->assertSee('name="tab" value="receivables"', false);
+
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['tab' => 'cash']))
+            ->assertOk()
+            ->assertSee('id="finance-panel-cash" role="tabpanel" aria-labelledby="finance-tab-cash" >', false);
+    }
+
+    public function test_sales_tab_reports_each_category_in_meters_or_suits_net_of_returns(): void
+    {
+        [$owner, , , $menCloth, $menColor] = $this->baseData();
+        $date = now()->startOfMonth()->addDay();
+        $men = ClothCategory::create(['user_id' => $owner->id, 'name' => 'Men', 'name_ur' => 'مردانہ', 'slug' => 'men']);
+        $women = ClothCategory::create(['user_id' => $owner->id, 'name' => 'Women', 'name_ur' => 'زنانہ', 'slug' => 'women', 'stock_unit' => 'suit']);
+        $threePiece = ClothCategory::create(['user_id' => $owner->id, 'parent_id' => $women->id, 'name' => '3 Piece', 'name_ur' => 'تھری پیس', 'slug' => 'women-3-piece', 'stock_unit' => 'suit']);
+        $menCloth->update(['cloth_category_id' => $men->id]);
+        $suitCloth = Cloth::create([
+            'name' => 'Gulnaar Lawn', 'cloth_type_id' => $menCloth->cloth_type_id, 'cloth_brand_id' => $menCloth->cloth_brand_id,
+            'cloth_category_id' => $threePiece->id, 'price' => 3200, 'sale_price' => 4250, 'user_id' => $owner->id,
+        ]);
+        $suitColor = ClothColor::create(['cloth_id' => $suitCloth->id, 'color' => 'Rose', 'length' => 20, 'average_unit_cost' => 3200, 'user_id' => $owner->id]);
+        $sale = fn (Cloth $cloth, ClothColor $color, float $quantity, float $price, float $cost) => SaleStock::create([
+            'user_id' => $owner->id, 'cloth_id' => $cloth->id, 'cloth_color_id' => $color->id,
+            'cloth_type_id' => $cloth->cloth_type_id, 'cloth_brand_id' => $cloth->cloth_brand_id, 'color' => $color->color,
+            'length' => $quantity, 'selling_price' => $price, 'cost_per_meter' => $cost, 'cost_total' => $quantity * $cost,
+            'sellDate' => $date, 'created_at' => $date,
+        ]);
+        $sale($menCloth, $menColor, 4.5, 150, 80);
+        $sale($menCloth, $menColor, 3, 150, 80);
+        $returnedSuitSale = $sale($suitCloth, $suitColor, 3, 4250, 3200);
+
+        // One of the three suits came back.
+        $receipt = \App\Models\CounterSaleReceipt::create(['receipt_number' => 'RCPT-TEST-1', 'user_id' => $owner->id, 'status' => 'completed']);
+        $returnId = \Illuminate\Support\Facades\DB::table('counter_sale_returns')->insertGetId([
+            'reference' => 'RET-TEST-1', 'user_id' => $owner->id, 'counter_sale_receipt_id' => $receipt->id,
+            'return_total' => 4250, 'reason' => 'Wrong colour', 'created_at' => $date, 'updated_at' => $date,
+        ]);
+        \Illuminate\Support\Facades\DB::table('counter_sale_return_items')->insert([
+            'counter_sale_return_id' => $returnId, 'sale_stock_id' => $returnedSuitSale->id, 'quantity' => 1,
+            'inventory_quantity' => 1, 'unit_price' => 4250, 'line_total' => 4250, 'restocked' => true,
+            'created_at' => $date, 'updated_at' => $date,
+        ]);
+
+        $sales = app(FinancialReportService::class)->salesByCategory($owner->id, now()->startOfMonth(), now()->endOfMonth());
+        $rows = $sales['rows']->keyBy('category');
+
+        $this->assertEquals(7.5, $rows['Men']['net']);
+        $this->assertSame('میٹر', $rows['Men']['unit_label']);
+        $this->assertEquals(1125, $rows['Men']['net_amount']);
+        $this->assertEquals(1125 - 600, $rows['Men']['profit']);
+        $this->assertEquals(3, $rows['Women › 3 Piece']['sold']);
+        $this->assertEquals(1, $rows['Women › 3 Piece']['returned']);
+        $this->assertEquals(2, $rows['Women › 3 Piece']['net']);
+        $this->assertSame('سوٹ', $rows['Women › 3 Piece']['unit_label']);
+        $this->assertEquals(8500, $rows['Women › 3 Piece']['net_amount']);
+        $this->assertEquals(8500 - 6400, $rows['Women › 3 Piece']['profit']);
+        $this->assertEquals(2, $sales['totals']['suit']['net']);
+
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['tab' => 'sales']))
+            ->assertOk()
+            ->assertSee('id="finance-panel-sales" role="tabpanel" aria-labelledby="finance-tab-sales" >', false)
+            ->assertSeeText('Women › 3 Piece')->assertSeeText('2 سوٹ')->assertSeeText('7.50 میٹر');
     }
 
     public function test_cancelled_manual_sale_is_excluded_and_its_reversal_neutralizes_cash_and_receivable(): void

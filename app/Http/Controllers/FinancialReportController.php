@@ -25,6 +25,7 @@ class FinancialReportController extends Controller
             ->paginate($perPage, ['*'], 'receivables_page')->withQueryString();
         $report['payables'] = $reports->payablesQuery(Auth::user()->businessOwnerId(), $end, $filters['payables_q'] ?? null, $modules)
             ->paginate($perPage, ['*'], 'payables_page')->withQueryString();
+        $report['sales'] = $reports->salesByCategory(Auth::user()->businessOwnerId(), $start, $end, $modules);
 
         return view('financial-reports.index', compact('report', 'filters'));
     }
