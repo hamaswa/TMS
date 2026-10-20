@@ -107,7 +107,12 @@ export const addScannedUnit = (line: SaleLine, scanned: Partial<SaleLine>): Sale
 
   if (fresh.salePriceBasis === 'per_suit') {
     const suitLength = fresh.suitLength || scanned.length || '';
-    return { ...fresh, quantity, suitLength, length: suitTotalLength(quantity, suitLength) };
+    // Add one suit's metres to the current total so a metre count the agent typed is kept.
+    const currentLength = numberValue(line.length);
+    const length = currentLength > 0
+      ? decimalText(currentLength + numberValue(suitLength))
+      : suitTotalLength(quantity, suitLength);
+    return { ...fresh, quantity, suitLength, length };
   }
 
   const scannedLength = numberValue(scanned.length ?? '');

@@ -779,14 +779,16 @@ function SaleLineCard({
                 </View>
                 <View style={styles.column}>
                   <Field
-                    label="Metres per suit"
-                    value={line.suitLength}
-                    onChangeText={(suitLength) => onChange({ suitLength, length: suitTotalLength(line.quantity, suitLength) || line.length })}
+                    label="Total metres"
+                    value={line.length}
+                    onChangeText={(length) => onChange({ length })}
                     keyboardType="decimal-pad"
                   />
                 </View>
               </View>
-              {line.length ? <Text style={styles.help}>Total cloth: {line.length} m</Text> : null}
+              {line.suitLength ? (
+                <Text style={styles.help}>Default {line.suitLength} m per suit. Change the total metres if this suit is cut differently.</Text>
+              ) : null}
             </>
           ) : (
             <Field label="Metres" value={line.length} onChangeText={(value) => onChange({ length: value })} keyboardType="decimal-pad" />
