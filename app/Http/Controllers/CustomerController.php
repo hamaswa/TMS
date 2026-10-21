@@ -828,12 +828,15 @@ class CustomerController extends Controller
         $obj->note = $validated['note'] ?? null;
         $obj->user_id = $ownerId;
 
+        $refreshedOrders = 0;
+
         DB::transaction(function () use (
             $obj,
             $validated,
             $measurementFields,
             $measurementTemplate,
-            $ownerId
+            $ownerId,
+            &$refreshedOrders
         ) {
             if (! empty($validated['mobile_pin'])) {
                 $obj->mobile_pin = Hash::make($validated['mobile_pin']);
@@ -847,7 +850,7 @@ class CustomerController extends Controller
 
             // Save measurement values independently for the selected template.
             if ($measurementTemplate) {
-                $this->measurements->saveTemplateMeasurements(
+                $history = $this->measurements->saveTemplateMeasurements(
                     $obj,
                     $ownerId,
                     $measurementTemplate,
@@ -878,10 +881,12 @@ class CustomerController extends Controller
                     Auth::id(),
                     'customer_update',
                 );
-            }
 
-            // Existing orders are intentionally not updated here.
-            // Their saved measurement snapshots and template IDs remain unchanged.
+                // Unfinished orders take the new measurements; finished ones keep their snapshot.
+                if ($history?->wasRecentlyCreated) {
+                    $refreshedOrders = $this->measurements->refreshOpenOrders($obj, $ownerId, $measurementTemplate);
+                }
+            }
         });
 
         $returnCustomer = (int) ($validated['return_customer'] ?? 0);
@@ -915,7 +920,9 @@ class CustomerController extends Controller
         }
 
         $response = redirect($editUrl);
-        $response->with('insert', 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
+        $response->with('insert', $refreshedOrders > 0
+            ? "گاہک کی معلومات محفوظ کر دی گئی ہیں۔ {$refreshedOrders} زیرِ تکمیل آرڈر میں نئی پیمائش شامل کر دی گئی ہے۔"
+            : 'گاہک کی معلومات محفوظ کر دی گئی ہیں۔');
 
         if (! empty($validated['mobile_pin'])) {
             $response->with('customer_pin', $validated['mobile_pin'])

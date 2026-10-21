@@ -243,6 +243,26 @@ class MeasurementService
         $order->measurementValues()->createMany($rows->all());
     }
 
+    /**
+     * Re-snapshot this profile's unfinished orders for the template so a reprint
+     * carries the latest measurements. Ready, delivered and cancelled orders keep theirs.
+     */
+    public function refreshOpenOrders(Customers $customer, int $ownerId, MeasurementTemplate $template): int
+    {
+        $orders = Order::query()
+            ->where('userId', $ownerId)
+            ->where('sub_customer', $customer->id)
+            ->where('measurement_template_id', $template->id)
+            ->whereIn('status', Order::OPEN_STATUSES)
+            ->get();
+
+        foreach ($orders as $order) {
+            $this->snapshotOrder($order, $customer, $template);
+        }
+
+        return $orders->count();
+    }
+
     public function savedMeasurementRows(
         Customers $customer,
         int $ownerId,

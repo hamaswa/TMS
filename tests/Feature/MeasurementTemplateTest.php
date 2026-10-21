@@ -376,6 +376,55 @@ class MeasurementTemplateTest extends TestCase
         );
     }
 
+    public function test_measurement_update_refreshes_only_unfinished_orders(): void
+    {
+        $owner = $this->owner();
+        $template = MeasurementTemplate::create([
+            'user_id' => $owner->id,
+            'name' => 'آرڈر ٹیمپلیٹ',
+            'system_fields' => ['length', 'necktype'],
+            'custom_field_ids' => [],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.Customers.store'), [
+            'name' => 'Order Customer',
+            'contact' => '03007770000',
+            'measurement_template_id' => $template->id,
+            'length' => 42,
+            'add_neck_type' => 'بین 13',
+        ])->assertRedirect();
+        $customer = Customers::where('user_id', $owner->id)->firstOrFail();
+
+        $orders = collect(['stitching', 'ready'])->mapWithKeys(function (string $status) use ($owner, $customer, $template) {
+            $order = Order::create([
+                'userId' => $owner->id,
+                'customerId' => $customer->id,
+                'sub_customer' => $customer->id,
+                'measurement_template_id' => $template->id,
+                'suitQuantity' => 1,
+                'totalPayment' => 1000,
+                'status' => $status,
+            ]);
+            app(MeasurementService::class)->snapshotOrder($order, $customer, $template);
+
+            return [$status => $order];
+        });
+
+        $this->actingAs($owner)->put(route('admin.Customers.update', $customer), [
+            'name' => 'Order Customer',
+            'contact' => '03007770000',
+            'measurement_template_id' => $template->id,
+            'length' => 44,
+            'add_neck_type' => 'بین 14',
+        ])->assertRedirect();
+
+        $values = fn (Order $order) => $order->measurementValues()->pluck('value', 'source_key')->all();
+        $this->assertSame(['system.length' => '44', 'system.necktype' => 'بین 14'], $values($orders['stitching']));
+        $this->assertSame(['system.length' => '42', 'system.necktype' => 'بین 13'], $values($orders['ready']));
+    }
+
     private function field(User $owner, string $label, bool $required = false): MeasurementField
     {
         return MeasurementField::create([

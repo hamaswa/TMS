@@ -34,6 +34,9 @@ class Order extends Model
         'cancelled' => 'منسوخ',
     ];
 
+    /** Not yet stitched, so measurement changes still reach the tailor. */
+    public const OPEN_STATUSES = ['unassigned', 'assigned', 'cutting', 'stitching', 'trial'];
+
     /** Statuses grouped under one simple-mode filter value. */
     public const SIMPLE_WORKSHOP_STATUSES = ['assigned', 'cutting', 'stitching', 'trial'];
 
