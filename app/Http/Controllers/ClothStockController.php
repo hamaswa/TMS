@@ -803,14 +803,13 @@ class ClothStockController extends Controller
         $customers = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->get();
 
+        // Each customer's balance in one grouped query; customers without transactions show 0.
         $customerTransactions = [];
-
-        foreach ($canViewBalances ? $customers : [] as $customer) {
-            $transactions = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->get();
-            $totalTransactions = $transactions->sum(function ($transaction) {
-                return $transaction->remainingBalance;
-            });
-            $customerTransactions[$customer->id] = $totalTransactions;
+        if ($canViewBalances) {
+            $sums = Transaction::where('userId', (string) Auth::user()->businessOwnerId())->whereNotNull('customerId')
+                ->groupBy('customerId')->selectRaw('customerId, SUM(remainingBalance) AS balance')
+                ->pluck('balance', 'customerId')->mapWithKeys(fn ($balance, $id) => [(int) $id => (float) $balance]);
+            $customerTransactions = $customers->mapWithKeys(fn ($customer) => [$customer->id => $sums[$customer->id] ?? 0])->all();
         }
 
         return view('stock.customer_list', compact('customers', 'customerTransactions', 'canViewBalances'));

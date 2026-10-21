@@ -251,9 +251,9 @@ class CustomerController extends Controller
         $orders = $canViewTailoring
             ? $customer->orders()->where('userId', $ownerId)
             ->with(['tailor:id,name', 'customers:id,name,serial_number', 'measurementTemplate:id,name'])
-            ->withSum(['transactions as outstanding_amount' => fn($query) => $query->where('userId', $ownerId)], 'remainingBalance')
             ->latest()->limit(50)->get()
             : collect();
+        Order::loadOutstanding($orders, $ownerId);
         $tailoringCounterLinks = $orders->isNotEmpty()
             ? CounterOrderItem::where('source_record_type', 'tailoring_order')
                 ->whereIn('source_record_id', $orders->pluck('id'))

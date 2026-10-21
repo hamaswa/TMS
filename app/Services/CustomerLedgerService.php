@@ -104,10 +104,13 @@ class CustomerLedgerService
      */
     public function sideBalances(int $ownerId, ?CarbonInterface $end = null): Collection
     {
-        return Transaction::where('userId', $ownerId)
+        // Plain rows (not models) for every transaction of the shop; userId is a text column, so it is
+        // compared as text to keep its index usable.
+        return Transaction::where('userId', (string) $ownerId)
             ->whereNotNull('customerId')
             ->when($end, fn ($query) => $query->where('created_at', '<=', $end->copy()->endOfDay()))
             ->orderBy('id')
+            ->toBase()
             ->get(['id', 'customerId', 'orderId', 'counter_sale_receipt_id', 'Order_type', 'remainingBalance'])
             ->groupBy('customerId')
             ->map(function (Collection $transactions) {

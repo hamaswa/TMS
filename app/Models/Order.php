@@ -62,6 +62,24 @@ class Order extends Model
         return $this->hasMany(Transaction::class, 'orderId', 'id');
     }
 
+    /**
+     * Set outstanding_amount (the sum of each order's transactions) on a page of orders in one query.
+     * transactions.orderId and userId are text columns, so ids are compared as text to keep it indexed;
+     * a per-order withSum() made MySQL convert and rescan the shop's transactions for every order.
+     */
+    public static function loadOutstanding(\Illuminate\Support\Collection $orders, int $ownerId): void
+    {
+        if ($orders->isEmpty()) {
+            return;
+        }
+        $totals = Transaction::where('userId', (string) $ownerId)
+            ->whereIn('orderId', $orders->map(fn (self $order) => (string) $order->id)->all())
+            ->groupBy('orderId')
+            ->selectRaw('orderId, SUM(remainingBalance) AS total')
+            ->pluck('total', 'orderId');
+        $orders->each(fn (self $order) => $order->outstanding_amount = $totals[(string) $order->id] ?? null);
+    }
+
     public function tailor()
     {
         return $this->belongsTo(Tailor::class, 'tailorId', 'id');

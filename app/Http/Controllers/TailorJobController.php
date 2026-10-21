@@ -102,6 +102,7 @@ class TailorJobController extends Controller
             ->orderByRaw("CASE WHEN status = 'delivered' THEN 1 ELSE 0 END")
             ->orderBy('returnDate')
             ->paginate(25);
+        Order::loadOutstanding($orders->getCollection(), (int) $tailor->user_id);
 
         return view('tailor-jobs.index', [
             'orders' => $orders,
@@ -458,9 +459,6 @@ class TailorJobController extends Controller
             'tailor', 'customers', 'notificationDeliveries',
             'workAssignments.worker', 'workAssignments.workType',
         ])
-            ->withSum([
-                'transactions as outstanding_amount' => fn ($query) => $query->where('userId', $userId),
-            ], 'remainingBalance')
             ->where('userId', $userId);
     }
 

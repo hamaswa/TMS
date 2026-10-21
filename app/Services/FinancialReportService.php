@@ -218,12 +218,17 @@ class FinancialReportService
     public function receivablesQuery(int $userId, CarbonInterface $end, ?string $search = null, ?array $modules = null)
     {
         $to = $end->copy()->endOfDay();
-        $balance = Transaction::query()->selectRaw('COALESCE(SUM(remainingBalance), 0)')
-            ->whereColumn('customerId', 'customers.id')
-            ->where('userId', $userId)
-            ->where('created_at', '<=', $to);
+        // Every customer's balance in one grouped pass over the shop's transactions. The transaction
+        // ids are stored as text, so the owner is compared as text (keeps its index usable) and the
+        // customer id is cast to a number before joining customers.
+        $balances = Transaction::query()
+            ->selectRaw('CAST(customerId AS UNSIGNED) AS customer_id, SUM(remainingBalance) AS balance')
+            ->where('userId', (string) $userId)
+            ->whereNotNull('customerId')
+            ->where('created_at', '<=', $to)
+            ->groupBy('customerId');
         if ($modules !== null) {
-            $balance->whereIn('Order_type', array_values(array_filter([
+            $balances->whereIn('Order_type', array_values(array_filter([
                 in_array('tailoring', $modules, true) ? 'Tailor' : null,
                 in_array('clothing', $modules, true) ? 'Sale' : null,
                 in_array('clothing', $modules, true) ? 'Sale Cancellation' : null,
@@ -232,10 +237,10 @@ class FinancialReportService
         }
 
         return Customers::query()
-            ->select(['customers.id', 'customers.name', 'customers.phone_number1'])
-            ->selectSub(clone $balance, 'balance')
+            ->joinSub($balances, 'customer_balances', 'customer_balances.customer_id', '=', 'customers.id')
+            ->select(['customers.id', 'customers.name', 'customers.phone_number1', 'customer_balances.balance'])
             ->where('customers.user_id', $userId)
-            ->whereRaw('('.$balance->toSql().') > 0', $balance->getBindings())
+            ->where('customer_balances.balance', '>', 0)
             ->when($search, fn ($query) => $query->where(function ($nested) use ($search) {
                 $nested->where('customers.name', 'like', "%{$search}%")
                     ->orWhere('customers.phone_number1', 'like', "%{$search}%");
