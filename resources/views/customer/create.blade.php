@@ -262,7 +262,7 @@
             }
         }
     </style>
-    
+
 
 <section class="main-content customer-create-page" dir="rtl">
         <div class="container-fluid px-3 px-lg-5 py-4">
@@ -383,7 +383,7 @@
                                             true)?->id,
                                     ])
                                     <div class="measurement-grid" data-template-column="right">
-                                        @foreach (['length' => 'لمبائی', 'arms' => 'بازو', 'teraa' => 'تیرا', 'senaChorai' => 'سینہ چوڑائی', 'damanchorai' => 'دامن چوڑائی', 'shalwar' => 'شلوار', 'pancha' => 'پائنچہ', 'shalwarGheer' => 'شلوار گھیر', 'monda' => 'مونڈھا', 'chuta' => 'چوٹا'] as $name => $label)
+                                        @foreach (['length' => 'لمبائی', 'arms' => 'بازو', 'teraa' => 'تیرا', 'senaChorai' => 'سینہ چوڑائی', 'damanchorai' => 'دامن چوڑائی', 'shalwar' => 'شلوار', 'pancha' => 'پائنچہ', 'shalwarGheer' => 'شلوار گھیر', 'monda' => 'مونڈھا', 'chuta' => 'چوتھا'] as $name => $label)
                                             @include('customer.partials.system-measurement-field', [
                                                 'fieldKey' => $name === 'monda' ? 'shoulder' : $name,
                                                 'name' => $name,
@@ -429,7 +429,7 @@
                                                 data-template-field="system.{{ $templateSystemField }}"
                                                 data-default-column="left">
                                                 <label for="preference-{{ $type->slug }}">{{ $type->otn }}</label>
-    
+
                                                 <select id="preference-{{ $type->slug }}" class="form-control"
                                                     @if(Auth::user()->hasBusinessPermission('tailoring.configuration')) data-inline-option-type="{{ $type->option_id }}" data-inline-option-label="{{ $type->otn }}" @endif name="{{ $type->slug }}"
                                                     data-template-system-field="{{ $templateSystemField }}">

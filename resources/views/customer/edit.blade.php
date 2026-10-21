@@ -219,7 +219,7 @@
         }
     </style>
 
-    
+
 
 <section class="main-content customer-edit-page" dir="rtl">
         <div class="container-fluid px-3 px-lg-5 py-4">
@@ -340,7 +340,7 @@
                                         $savedMeasurementValues->get('system.shalwarGheer'),
                                     ],
                                     'monda' => ['مونڈھا', $savedMeasurementValues->get('system.shoulder')],
-                                    'chuta' => ['چوٹا', $savedMeasurementValues->get('system.chuta')],
+                                    'chuta' => ['چوتھا', $savedMeasurementValues->get('system.chuta')],
                                 ];
                             @endphp
                             <div class="measurement-grid" data-template-column="right">
