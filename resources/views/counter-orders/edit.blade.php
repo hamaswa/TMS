@@ -2235,29 +2235,17 @@
                         return;
                     }
                     select.value = select.dataset.previousValue || '';
-                    var name = window.prompt('نئے انتخاب کا نام لکھیں:');
-                    if (!name || !name.trim()) return;
-                    var form = select.closest('form');
-                    var data = new FormData();
-                    data.append('Name', name.trim());
-                    data.append('OptionTypeId', select.dataset.inlineOptionType);
-                    data.append('measurement_template_id', select.dataset.inlineOptionTemplate);
-                    data.append('_token', form.querySelector('[name="_token"]').value);
-                    select.disabled = true;
-                    try {
-                        var response = await fetch(select.dataset.inlineOptionUrl, {
-                            method: 'POST', body: data, credentials: 'same-origin',
-                            headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
-                        });
-                        var result = await response.json();
-                        if (!response.ok) throw new Error(result.message || Object.values(result.errors || {}).flat().join(' '));
-                        select.add(new Option(result.name, result.name, true, true));
-                        select.dataset.previousValue = result.name;
-                    } catch (error) {
-                        window.alert(error.message || 'انتخاب محفوظ نہیں ہوا۔');
-                    } finally {
-                        select.disabled = false;
-                    }
+                    var label = select.dataset.inlineOptionLabel || (select.closest('.form-group')?.querySelector('label')?.textContent || '').trim();
+                    var result = await window.TMSQuickAdd.open({
+                        title: (label ? label + ' — ' : '') + 'نیا انتخاب شامل کریں',
+                        url: select.dataset.inlineOptionUrl,
+                        fields: [{ name: 'Name', label: 'انتخاب کا نام', urdu: true }],
+                        extra: { OptionTypeId: select.dataset.inlineOptionType, measurement_template_id: select.dataset.inlineOptionTemplate }
+                    });
+                    if (!result) return;
+                    select.add(new Option(result.name, result.name, true, true));
+                    select.dataset.previousValue = result.name;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
                 });
                 document.addEventListener('submit', async function(event) {
                     var form = event.target.closest('#co-measurement-editor-form');
@@ -2318,5 +2306,6 @@
                 });
             });
         </script>
+        @include('partials.quick-add-modal')
     @endpush
 @endsection

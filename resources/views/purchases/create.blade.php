@@ -1590,35 +1590,19 @@
                 }
                 select.value = select.dataset.previousValue || '';
                 const isBrand = select.classList.contains('new-brand');
-                const name = window.prompt(isBrand ? 'نئے برانڈ کا نام لکھیں:' : 'کپڑے کی نئی قسم کا اردو نام لکھیں:');
-                if (!name || !name.trim()) return;
-                const data = new FormData();
-                if (isBrand) {
-                    data.append('name', name.trim());
-                } else {
-                    data.append('name_ur', name.trim());
-                    const english = window.prompt('کپڑے کی قسم کا انگریزی نام لکھیں:');
-                    if (!english || !english.trim()) return;
-                    data.append('name_en', english.trim());
-                }
-                data.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]').value);
-                select.disabled = true;
-                try {
-                    const response = await fetch(isBrand ? @json(route('admin.clothbrand.store')) : @json(route('admin.clothtype.store')), {
-                        method: 'POST', body: data, credentials: 'same-origin',
-                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                    });
-                    const result = await response.json();
-                    if (!response.ok) throw new Error(result.message || Object.values(result.errors || {}).flat().join(' ') || 'محفوظ نہیں ہوا');
-                    const kind = isBrand ? 'brand' : 'type';
-                    quickAddedOptions[kind].set(String(result.id), result.name);
-                    const cls = isBrand ? '.new-brand' : '.new-type';
-                    document.querySelectorAll(cls).forEach(other => insertQuickOption(other, result.id, result.name));
-                    select.value = String(result.id);
-                    select.dataset.previousValue = select.value;
-                } catch (error) {
-                    window.alert(error.message || 'نیا انتخاب محفوظ نہیں ہوا۔');
-                } finally { select.disabled = false; }
+                const result = await window.TMSQuickAdd.open(isBrand
+                    ? { title: 'نیا برانڈ شامل کریں', url: @json(route('admin.clothbrand.store')),
+                        fields: [{ name: 'name', label: 'برانڈ کا نام' }] }
+                    : { title: 'کپڑے کی نئی قسم شامل کریں', url: @json(route('admin.clothtype.store')),
+                        fields: [{ name: 'name_ur', label: 'اردو نام (مثلاً لان)', urdu: true }, { name: 'name_en', label: 'انگریزی نام (مثلاً Lawn)' }] });
+                if (!result) return;
+                // Every row's dropdown gets the new choice; this row selects it.
+                const kind = isBrand ? 'brand' : 'type';
+                quickAddedOptions[kind].set(String(result.id), result.name);
+                document.querySelectorAll(isBrand ? '.new-brand' : '.new-type').forEach(other => insertQuickOption(other, result.id, result.name));
+                select.value = String(result.id);
+                select.dataset.previousValue = select.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
             });
 
 
@@ -1626,4 +1610,5 @@
             updateTotals();
         });
     </script>
+    @include('partials.quick-add-modal')
 @endsection
