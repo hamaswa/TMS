@@ -72,7 +72,7 @@ class CounterSaleItemReturnTest extends TestCase
                 'items' => [$whiteItem->id => 0, $navyItem->id => 3],
                 'reason' => 'Navy colour did not suit',
                 'restock' => 1,
-                'settlement_type' => 'refund',
+                'refund_amount' => 300,
                 'payment_method' => 'cash',
             ])->assertRedirect(route('admin.customers.statement', $customer->id))
             ->assertSessionHasNoErrors();
@@ -109,7 +109,7 @@ class CounterSaleItemReturnTest extends TestCase
         $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
     }
 
-    public function test_customer_can_keep_the_balance_and_get_the_full_return_value_back_up_to_what_they_paid(): void
+    public function test_cash_given_back_decides_how_much_comes_off_the_dues(): void
     {
         $owner = $this->userWithRole('shop_owner');
         $type = ClothType::create(['name' => 'Lawn', 'user_id' => $owner->id]);
@@ -136,28 +136,30 @@ class CounterSaleItemReturnTest extends TestCase
         $receipt = CounterSaleReceipt::where('user_id', $owner->id)->firstOrFail();
         [$whiteItem, $navyItem] = SaleStock::where('counter_sale_receipt_id', $receipt->id)->orderBy('id')->get()->all();
 
+        $navyReturn = fn (array $extra) => $this->actingAs($owner)->post(route('admin.counter-sales.returns.store', $receipt), [
+            'items' => [$navyItem->id => 3], 'reason' => 'Navy colour did not suit', 'restock' => 1,
+        ] + $extra);
+
+        // The 480 return is more than the 180 owed, so at least 300 must be paid out, and never more than 480.
+        $navyReturn(['refund_amount' => 299, 'payment_method' => 'cash'])->assertSessionHasErrors('refund_amount');
+        $navyReturn(['refund_amount' => 481, 'payment_method' => 'cash'])->assertSessionHasErrors('refund_amount');
+        $navyReturn(['refund_amount' => 480])->assertSessionHasErrors('payment_method');
+        $this->assertSame(0, CounterSaleReturn::count());
+
         // Keep the 180 balance: the full 480 goes back in cash.
-        $this->actingAs($owner)->post(route('admin.counter-sales.returns.store', $receipt), [
-            'items' => [$navyItem->id => 3],
-            'reason' => 'Navy colour did not suit',
-            'restock' => 1,
-            'apply_to_balance' => 0,
-            'settlement_type' => 'refund',
-            'payment_method' => 'cash',
-        ])->assertSessionHasNoErrors();
+        $navyReturn(['refund_amount' => 480, 'payment_method' => 'cash'])->assertSessionHasNoErrors();
 
         $first = CounterSaleReturn::where('counter_sale_receipt_id', $receipt->id)->sole();
         $this->assertEquals(0, (float) $first->balance_reduction);
         $this->assertEquals(480, (float) $first->refund_amount);
         $this->assertEquals(180, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
 
-        // Only 120 of the 600 paid is left, so returning the 300 white cloth refunds 120 and clears the 180.
+        // Returning the 300 white cloth with 120 in cash takes the other 180 off the dues.
         $this->actingAs($owner)->post(route('admin.counter-sales.returns.store', $receipt), [
             'items' => [$whiteItem->id => 2],
             'reason' => 'Returned the rest too',
             'restock' => 1,
-            'apply_to_balance' => 0,
-            'settlement_type' => 'refund',
+            'refund_amount' => 120,
             'payment_method' => 'cash',
         ])->assertSessionHasNoErrors();
 
@@ -219,7 +221,7 @@ class CounterSaleItemReturnTest extends TestCase
             'items' => [$navyItem->id => 3],
             'reason' => 'Navy colour did not suit',
             'restock' => 1,
-            'settlement_type' => 'refund',
+            'refund_amount' => 400,
             'payment_method' => 'cash',
         ])->assertSessionHasNoErrors();
         $return = CounterSaleReturn::where('counter_sale_receipt_id', $receipt->id)->sole();
@@ -297,17 +299,55 @@ class CounterSaleItemReturnTest extends TestCase
         $this->actingAs($owner)->get(route('admin.customer.orders', ['customer' => $customer->id, 'tab' => 'sales']))
             ->assertOk()
             ->assertSee('data-other-dues="200"', false)
-            ->assertSeeText('پچھلے بقایا میں کاٹیں');
+            ->assertSeeText('پچھلا بقایا')
+            ->assertSeeText('کل بقایا')
+            ->assertSeeText('گاہک کو کتنے پیسے واپس دے رہے ہیں؟');
 
-        // Returning 1m (150) of the paid sale clears 150 of the older dues instead of paying cash out.
+        // Returning 1m (150) of the paid sale with no cash clears 150 of the older dues.
         $this->actingAs($owner)->post(route('admin.counter-sales.returns.store', $newer), [
-            'items' => [$newerItem->id => 1], 'reason' => 'Customer wants it adjusted',
-            'restock' => 1, 'settlement_type' => 'credit',
+            'items' => [$newerItem->id => 1], 'reason' => 'Customer wants it adjusted', 'restock' => 1,
         ])->assertSessionHasNoErrors();
 
         $balances = app(\App\Services\CustomerLedgerService::class)->receiptBalances($owner->id, $customer->id);
         $this->assertEquals(50, $balances->get($older->id));
         $this->assertEquals(50, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+        $this->assertSame('credit', CounterSaleReturn::sole()->settlement_type);
+    }
+
+    public function test_cash_on_an_unpaid_return_stays_on_the_customers_dues(): void
+    {
+        $owner = $this->userWithRole('shop_owner');
+        $type = ClothType::create(['name' => 'Lawn', 'user_id' => $owner->id]);
+        $brand = ClothBrand::create(['name' => 'Alkaram', 'user_id' => $owner->id]);
+        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => 100, 'sale_price' => 150, 'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR, 'user_id' => $owner->id]);
+        ClothColor::create(['cloth_id' => $cloth->id, 'color' => 'White', 'length' => 20, 'average_unit_cost' => 100, 'user_id' => $owner->id]);
+        $customer = Customers::create(['name' => 'Ayesha', 'phone_number1' => '03001234567', 'user_id' => $owner->id]);
+        $sell = fn (int $paid, int $owed) => $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$brand->id], 'cloth_type' => [$type->id], 'color' => ['White'], 'per_meter' => [150],
+            'clothes_rack' => ['A-1'], 'length' => [2], 'c_name' => $customer->name.'|'.$customer->id,
+            'payment' => $paid, 'remain' => $owed, 'payment_method' => 'cash', 'paid_on' => now()->toDateString(),
+        ]);
+
+        // An older sale still owes 200; a new 300 sale is not paid at all. Total dues 500.
+        $sell(100, 200);
+        $sell(0, 300);
+        [$older, $newer] = CounterSaleReceipt::where('user_id', $owner->id)->orderBy('id')->get()->all();
+        $newerItem = SaleStock::where('counter_sale_receipt_id', $newer->id)->sole();
+
+        // The whole unpaid sale comes back and the shop hands over 100: 500 - 300 + 100 = 300 still owed.
+        $this->actingAs($owner)->post(route('admin.counter-sales.returns.store', $newer), [
+            'items' => [$newerItem->id => 2], 'reason' => 'Colour did not suit', 'restock' => 1,
+            'refund_amount' => 100, 'payment_method' => 'cash',
+        ])->assertSessionHasNoErrors();
+
+        $return = CounterSaleReturn::sole();
+        $this->assertEquals(200, (float) $return->balance_reduction);
+        $this->assertEquals(100, (float) $return->refund_amount);
+        $this->assertSame('refund', $return->settlement_type);
+        $this->assertEquals(300, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+        $balances = app(\App\Services\CustomerLedgerService::class)->receiptBalances($owner->id, $customer->id);
+        $this->assertEquals(200, $balances->get($older->id));
+        $this->assertEquals(100, $balances->get($newer->id));
     }
 
     private function userWithRole(string $name): User

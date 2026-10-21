@@ -18,7 +18,9 @@ return new class extends Migration
         }
 
         // Existing stock was all men's cloth, so every shop with cloths gets a "Men" category.
+        // Cloths left behind by deleted users stay uncategorised; the category needs a real owner.
         $ownerIds = DB::table('cloths')->whereNotNull('user_id')->whereNull('cloth_category_id')
+            ->whereIn('user_id', DB::table('users')->select('id'))
             ->distinct()->pluck('user_id');
 
         foreach ($ownerIds as $ownerId) {

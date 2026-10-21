@@ -1,6 +1,6 @@
 {{--
     Return / cancel popup for one shop receipt on the customer statement.
-    Step 1: pick the item(s) that came back. Step 2 (shown after picking): balance choice, refund, reason.
+    Step 1: pick the item(s) that came back. Step 2 (shown after picking): the customer's dues, cash given back, reason.
     Expects: $sale (statement shop row), $customer, $modalId, $printUrl.
 --}}
 @php
@@ -9,8 +9,10 @@
     $formId = $modalId.'Form';
     $shopName = once(fn () => \App\Models\Setting::where('user_id', auth()->user()->businessOwnerId())->value('name')
         ?: (auth()->user()->business?->name ?: auth()->user()->name));
-    // The customer's dues on other orders, so a refund can be taken off them instead of paid out.
-    $otherDues = auth()->user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
+    // The customer's dues on other orders, so the return can come off them instead of being paid out.
+    $canSeeDues = auth()->user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
+    $receiptDues = max(0, round((float) $sale->balance, 2));
+    $otherDues = $canSeeDues
         ? max(0, round((float) \App\Models\Transaction::where('userId', auth()->user()->businessOwnerId())
             ->where('customerId', $customer->id)->sum('remainingBalance') - max(0, (float) $sale->balance), 2))
         : 0;
@@ -34,7 +36,7 @@
                         <div class="rr-card">
                             @if ($canReturn)
                                 <form method="POST" id="{{ $formId }}" action="{{ route('admin.counter-sales.returns.store', $sale->receipt) }}"
-                                    class="receipt-return-form" data-outstanding="{{ round((float) $sale->balance, 2) }}" data-paid="{{ round((float) $sale->received, 2) }}" data-other-dues="{{ $otherDues }}"
+                                    class="receipt-return-form" data-outstanding="{{ $receiptDues }}" data-other-dues="{{ $otherDues }}"
                                     data-confirm="کیا آپ منتخب آئٹم واپس کرنا چاہتے ہیں؟">
                                     @csrf
                                     <div class="rr-step"><span>1</span> کون سا آئٹم واپس آیا؟</div>
@@ -70,32 +72,14 @@
 
                                     <div class="return-details" hidden>
                                         <div class="rr-step mt-3"><span>2</span> رقم کا حساب</div>
-                                        @if ((float) $sale->balance > 0)
-                                            <p class="small text-muted mb-1">اس رسید پر <strong dir="ltr">Rs {{ number_format((float) $sale->balance, 2) }}</strong> بقایا ہے:</p>
-                                            <div class="rr-choice mb-2">
-                                                <label><input type="radio" name="apply_to_balance" value="1" checked> <span>بقایا کاٹ لیں</span></label>
-                                                <label><input type="radio" name="apply_to_balance" value="0"> <span>بقایا رہنے دیں</span></label>
-                                            </div>
-                                        @endif
-                                        <div class="rr-result mb-3">
-                                            <div><span>گاہک کو واپس</span><strong dir="ltr" data-out="extra">Rs 0.00</strong></div>
-                                            <div><span>باقی بقایا</span><strong dir="ltr" data-out="owed">Rs 0.00</strong></div>
+                                        <div class="form-group mb-2">
+                                            <label for="{{ $formId }}Cash" class="font-weight-bold mb-1">گاہک کو کتنے پیسے واپس دے رہے ہیں؟</label>
+                                            <input type="number" id="{{ $formId }}Cash" name="refund_amount" class="form-control return-cash"
+                                                min="0" step="0.01" placeholder="رقم لکھیں، کچھ نہیں دے رہے تو 0" dir="ltr">
+                                            <div class="rr-cash-note mt-1" data-cash-note hidden></div>
                                         </div>
 
                                         <div class="return-settlement mb-2" hidden>
-                                            @if ($otherDues > 0)
-                                                <p class="small text-muted mb-1">گاہک کا پچھلا بقایا <strong dir="ltr">Rs {{ number_format($otherDues, 2) }}</strong> ہے:</p>
-                                            @endif
-                                            <div class="rr-choice mb-2">
-                                                @if ($otherDues > 0)
-                                                    <label><input type="radio" name="settlement_type" value="credit" checked> <span>پچھلے بقایا میں کاٹیں</span></label>
-                                                    <label><input type="radio" name="settlement_type" value="refund"> <span>نقد / بینک دیں</span></label>
-                                                @else
-                                                    <label><input type="radio" name="settlement_type" value="refund" checked> <span>نقد / بینک دیں</span></label>
-                                                    <label><input type="radio" name="settlement_type" value="credit"> <span>ایڈوانس میں رکھیں</span></label>
-                                                @endif
-                                            </div>
-                                            <p class="small rr-dues-note mb-2" hidden></p>
                                             <div class="form-row return-refund-fields">
                                                 <div class="col-6 form-group mb-2">
                                                     <select name="payment_method" class="form-control form-control-sm" aria-label="رقم واپسی کا طریقہ">@foreach (\App\Support\PaymentMethods::LABELS as $method => $label)<option value="{{ $method }}" @selected($method === 'cash')>{{ $label }}</option>@endforeach</select>
@@ -157,7 +141,13 @@
                             <div class="rr-receipt-total mt-2">
                                 <div><span>کل رقم</span><strong dir="ltr">Rs {{ number_format((float) $sale->amount, 2) }}</strong></div>
                                 <div><span>وصول شدہ</span><strong dir="ltr">Rs {{ number_format((float) $sale->received, 2) }}</strong></div>
-                                <div class="rr-due"><span>بقایا</span><strong dir="ltr">Rs {{ number_format((float) $sale->balance, 2) }}</strong></div>
+                                @if ($canSeeDues)
+                                    <div><span>اس رسید کا بقایا</span><strong dir="ltr">Rs {{ number_format($receiptDues, 2) }}</strong></div>
+                                    <div><span>پچھلا بقایا</span><strong dir="ltr">Rs {{ number_format($otherDues, 2) }}</strong></div>
+                                    <div class="rr-due"><span>کل بقایا</span><strong dir="ltr">Rs {{ number_format($receiptDues + $otherDues, 2) }}</strong></div>
+                                @else
+                                    <div class="rr-due"><span>بقایا</span><strong dir="ltr">Rs {{ number_format($receiptDues, 2) }}</strong></div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -200,7 +190,6 @@
     .rr-qty { display: none; align-items: center; gap: .3rem; }
     .rr-qty input { width: 4.5rem; }
     .rr-step-btn { width: 2rem; font-weight: 700; padding: .15rem 0; }
-    .rr-dues-note { background: #fff8e6; border-radius: 8px; padding: .4rem .6rem; }
     .rr-row:has(.return-pick:checked) .rr-qty:not(.d-none) { display: flex; }
     .rr-pick { position: relative; cursor: pointer; border: 1px solid #dc3545; color: #dc3545; border-radius: 8px; padding: .3rem .8rem; white-space: nowrap; font-size: .9rem; }
     .rr-pick input { position: absolute; opacity: 0; pointer-events: none; }
@@ -209,18 +198,11 @@
     .rr-pick:has(input:checked) .rr-pick-on { display: inline; }
     .rr-pick:has(input:checked) .rr-pick-off { display: none; }
     .rr-done-badge { font-size: .8rem; background: #e9ecef; border-radius: 6px; padding: .2rem .6rem; }
-    .rr-choice { display: flex; gap: .5rem; }
-    .rr-choice label { flex: 1; margin: 0; cursor: pointer; position: relative; }
-    .rr-choice input { position: absolute; opacity: 0; pointer-events: none; }
-    .rr-choice span { display: block; text-align: center; border: 1px solid #cfd8e3; border-radius: 8px; padding: .4rem .5rem; font-size: .9rem; }
-    .rr-choice input:checked + span { background: #1f5a8f; border-color: #1f5a8f; color: #fff; }
-    .rr-result { display: flex; gap: .5rem; }
-    .rr-result > div { flex: 1; background: #f3f8ff; border-radius: 8px; padding: .5rem .7rem; display: flex; flex-direction: column; }
-    .rr-result > div:first-child strong { color: #198754; font-size: 1.1rem; }
-    .rr-result span { font-size: .8rem; color: #6c757d; }
     .rr-receipt-line { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem 0; border-bottom: 1px dashed #e1e8f0; font-size: .9rem; }
     .rr-receipt-line--returned [dir="ltr"] { text-decoration: line-through; color: #8a94a3; }
     .rr-receipt-total > div { display: flex; justify-content: space-between; padding: .2rem 0; }
+    .rr-cash-note { font-weight: 700; color: #17406b; }
+    .rr-cash-note.is-error { color: #dc3545; }
     .rr-due { background: #eef4ff; border-radius: 8px; padding: .45rem .6rem !important; margin-top: .3rem; font-size: 1.05rem; }
     .rr-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .8rem 1.1rem; border-top: 1px solid #e1e8f0; background: #fff; }
 </style>

@@ -35,8 +35,7 @@ class CounterSaleReturnController extends Controller
         $data = $request->validate([
             'items' => ['required', 'array'], 'items.*' => ['nullable', 'numeric', 'min:0'],
             'reason' => ['required', 'string', 'min:5', 'max:1000'], 'restock' => ['required', 'boolean'],
-            'apply_to_balance' => ['nullable', 'boolean'],
-            'settlement_type' => ['nullable', Rule::in(['refund', 'credit'])],
+            'refund_amount' => ['nullable', 'numeric', 'min:0'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'payment_reference' => ['nullable', 'string', 'max:255'],
         ]);

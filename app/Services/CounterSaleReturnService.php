@@ -61,32 +61,44 @@ class CounterSaleReturnService
             $originalOutstanding = max(0, (float) ($original?->remainingBalance ?? 0));
             $previousReturns = $lockedReceipt->returns()->lockForUpdate()->get();
             $currentOutstanding = max(0, round($originalOutstanding - (float) $previousReturns->sum('balance_reduction') - $laterPayments, 2));
-            // What the customer has actually paid on this receipt, less what earlier returns already gave back.
-            $netPaid = max(0, round((float) ($original?->recivedPayment ?? 0) + $laterPayments
-                - (float) $previousReturns->sum(fn ($previous) => (float) $previous->refund_amount + (float) $previous->credit_amount), 2));
-            // By default the return clears this receipt's balance first. If the customer keeps the balance,
-            // they get the full value back — but never more than they paid; any excess still clears the balance.
-            $balanceReduction = filter_var($data['apply_to_balance'] ?? true, FILTER_VALIDATE_BOOLEAN)
-                ? min($returnTotal, $currentOutstanding)
-                : min($currentOutstanding, max(0, round($returnTotal - $netPaid, 2)));
-            $paidPortion = round($returnTotal - $balanceReduction, 2);
-            $settlementType = $paidPortion > 0 ? ($data['settlement_type'] ?? null) : 'none';
-            if ($paidPortion > 0 && ! in_array($settlementType, ['refund', 'credit'], true)) {
-                throw ValidationException::withMessages(['settlement_type' => 'ادا شدہ حصے کے لیے رقم واپسی یا کھاتا کریڈٹ منتخب کریں۔']);
+            $customerId = $lockedReceipt->customer_id ?? $original?->customerId;
+            // Everything the customer owes the shop, this receipt included.
+            $totalDues = $customerId
+                ? max($currentOutstanding, round((float) Transaction::where('userId', $ownerId)->where('customerId', $customerId)
+                    ->lockForUpdate()->sum('remainingBalance'), 2))
+                : $currentOutstanding;
+
+            // New total dues = total dues - return value + cash given. Whatever isn't paid out in cash comes
+            // off the dues, this receipt first, then older ones; the dues can't go below zero.
+            $refund = round((float) ($data['refund_amount'] ?? 0), 2);
+            $minRefund = max(0, round($returnTotal - $totalDues, 2));
+            if ($refund < $minRefund) {
+                throw ValidationException::withMessages(['refund_amount' => 'گاہک کو کم از کم Rs '.number_format($minRefund, 2).' دینے ہیں (واپسی Rs '
+                    .number_format($returnTotal, 2).' − بقایا Rs '.number_format($totalDues, 2).')']);
             }
-            if ($settlementType === 'refund' && (blank($data['payment_method'] ?? null)
+            if ($refund > $returnTotal) {
+                throw ValidationException::withMessages(['refund_amount' => 'آئٹم کی قیمت Rs '.number_format($returnTotal, 2).' ہے، اس سے زیادہ نہیں دے سکتے']);
+            }
+            if ($refund > 0 && (blank($data['payment_method'] ?? null)
                 || (PaymentMethods::requiresReference($data['payment_method']) && blank($data['payment_reference'] ?? null)))) {
                 throw ValidationException::withMessages(['payment_method' => 'رقم واپسی کا طریقہ اور ضروری حوالہ درج کریں۔']);
             }
-            $refund = $settlementType === 'refund' ? $paidPortion : 0;
-            $credit = $settlementType === 'credit' ? $paidPortion : 0;
+            $offDues = round($returnTotal - $refund, 2);
+            $balanceReduction = min($offDues, $currentOutstanding);
+            $credit = round($offDues - $balanceReduction, 2);
+            $settlementType = match (true) {
+                $refund > 0 && $credit > 0 => 'mixed',
+                $refund > 0 => 'refund',
+                $credit > 0 => 'credit',
+                default => 'none',
+            };
             $return = CounterSaleReturn::create([
                 'reference' => $this->reference(), 'user_id' => $ownerId,
-                'customer_id' => $lockedReceipt->customer_id ?? $original?->customerId,
+                'customer_id' => $customerId,
                 'counter_sale_receipt_id' => $lockedReceipt->id, 'return_total' => $returnTotal,
                 'balance_reduction' => $balanceReduction, 'refund_amount' => $refund, 'credit_amount' => $credit,
-                'settlement_type' => $settlementType, 'payment_method' => $settlementType === 'refund' ? $data['payment_method'] : null,
-                'payment_reference' => $settlementType === 'refund' ? ($data['payment_reference'] ?? null) : null,
+                'settlement_type' => $settlementType, 'payment_method' => $refund > 0 ? $data['payment_method'] : null,
+                'payment_reference' => $refund > 0 ? ($data['payment_reference'] ?? null) : null,
                 'reason' => $data['reason'], 'processed_by_user_id' => $actor->id,
             ]);
 
