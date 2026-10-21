@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ClothCategory;
 use App\Models\Customers;
 use App\Models\DaliyExpenses;
 use App\Models\Expenses;
@@ -269,5 +270,106 @@ class FinancialReportService
                     ->orWhere('suppliers.phone', 'like', "%{$search}%");
             }))
             ->orderBy('suppliers.name');
+    }
+
+    /**
+     * Cloth sold in the period per category, in the unit the category counts stock in
+     * (meters for men's cloth, suits for women's 2/3-piece), with returns taken off.
+     */
+    public function salesByCategory(int $userId, CarbonInterface $start, CarbonInterface $end, ?array $modules = null): array
+    {
+        if ($modules !== null && ! in_array('clothing', $modules, true)) {
+            return ['rows' => collect(), 'totals' => [], 'top_sets' => collect()];
+        }
+        $from = $start->copy()->startOfDay();
+        $to = $end->copy()->endOfDay();
+
+        $sold = SaleStock::financiallyActive()
+            ->leftJoin('cloths', 'cloths.id', '=', 'sale_stocks.cloth_id')
+            ->where('sale_stocks.user_id', $userId)
+            ->whereBetween('sale_stocks.sellDate', [$from, $to])
+            ->groupBy('cloths.cloth_category_id', 'cloths.stock_unit')
+            ->selectRaw('cloths.cloth_category_id AS category_id, cloths.stock_unit AS unit')
+            ->selectRaw('COUNT(*) AS sales_count, SUM(sale_stocks.length) AS quantity')
+            ->selectRaw('SUM(sale_stocks.selling_price * sale_stocks.length) AS amount, SUM(COALESCE(sale_stocks.cost_total, 0)) AS cost')
+            ->get();
+
+        $returned = DB::table('counter_sale_return_items')
+            ->join('counter_sale_returns', 'counter_sale_returns.id', '=', 'counter_sale_return_items.counter_sale_return_id')
+            ->join('sale_stocks', 'sale_stocks.id', '=', 'counter_sale_return_items.sale_stock_id')
+            ->leftJoin('cloths', 'cloths.id', '=', 'sale_stocks.cloth_id')
+            ->where('counter_sale_returns.user_id', $userId)
+            ->whereBetween('counter_sale_returns.created_at', [$from, $to])
+            ->groupBy('cloths.cloth_category_id', 'cloths.stock_unit')
+            ->selectRaw('cloths.cloth_category_id AS category_id, cloths.stock_unit AS unit')
+            ->selectRaw('SUM(counter_sale_return_items.inventory_quantity) AS quantity, SUM(counter_sale_return_items.line_total) AS amount')
+            ->selectRaw('SUM(CASE WHEN counter_sale_return_items.restocked = 1 THEN counter_sale_return_items.inventory_quantity * COALESCE(sale_stocks.cost_per_meter, 0) ELSE 0 END) AS cost')
+            ->get();
+
+        $categories = ClothCategory::with('parent')->where('user_id', $userId)
+            ->whereIn('id', $sold->pluck('category_id')->merge($returned->pluck('category_id'))->filter()->unique())
+            ->get()->keyBy('id');
+
+        $rows = [];
+        foreach ([$sold, $returned] as $index => $lines) {
+            foreach ($lines as $line) {
+                $key = ($line->category_id ?: 0).'-'.($line->unit ?: ClothCategory::UNIT_METER);
+                $category = $line->category_id ? $categories->get($line->category_id) : null;
+                $rows[$key] ??= [
+                    'category' => $category ? $category->fullName() : 'بغیر کیٹیگری',
+                    'main' => $category ? ($category->parent ?? $category)->localizedName() : 'بغیر کیٹیگری',
+                    'sort' => $category ? [($category->parent ?? $category)->sort_order, $category->sort_order] : [PHP_INT_MAX, 0],
+                    'unit' => $line->unit ?: ClothCategory::UNIT_METER,
+                    'unit_label' => ClothCategory::unitLabelFor($line->unit),
+                    'sales_count' => 0, 'sold' => 0.0, 'returned' => 0.0,
+                    'amount' => 0.0, 'returned_amount' => 0.0, 'cost' => 0.0, 'returned_cost' => 0.0,
+                ];
+                if ($index === 0) {
+                    $rows[$key]['sales_count'] += (int) $line->sales_count;
+                    $rows[$key]['sold'] += (float) $line->quantity;
+                    $rows[$key]['amount'] += (float) $line->amount;
+                    $rows[$key]['cost'] += (float) $line->cost;
+                } else {
+                    $rows[$key]['returned'] += (float) $line->quantity;
+                    $rows[$key]['returned_amount'] += (float) $line->amount;
+                    $rows[$key]['returned_cost'] += (float) $line->cost;
+                }
+            }
+        }
+
+        $rows = collect($rows)->map(function (array $row) {
+            $row['net'] = $row['sold'] - $row['returned'];
+            $row['net_amount'] = $row['amount'] - $row['returned_amount'];
+            $row['profit'] = $row['net_amount'] - ($row['cost'] - $row['returned_cost']);
+
+            return $row;
+        })->sortBy(fn (array $row) => sprintf('%012d-%012d-%s', $row['sort'][0], $row['sort'][1], $row['category']))->values();
+
+        // Meters and suits can't be added together, so each unit gets its own total.
+        $totals = $rows->groupBy('unit')->map(fn ($unitRows, $unit) => [
+            'unit_label' => ClothCategory::unitLabelFor($unit),
+            'net' => $unitRows->sum('net'),
+            'net_amount' => $unitRows->sum('net_amount'),
+        ])->all();
+
+        $topSets = SaleStock::financiallyActive()
+            ->join('cloths', 'cloths.id', '=', 'sale_stocks.cloth_id')
+            ->where('sale_stocks.user_id', $userId)
+            ->whereBetween('sale_stocks.sellDate', [$from, $to])
+            ->groupBy('cloths.id', 'cloths.name', 'cloths.stock_unit', 'cloths.cloth_category_id')
+            ->selectRaw('cloths.id, cloths.name, cloths.stock_unit AS unit, cloths.cloth_category_id AS category_id')
+            ->selectRaw('SUM(sale_stocks.length) AS quantity, SUM(sale_stocks.selling_price * sale_stocks.length) AS amount')
+            ->orderByDesc('amount')->limit(10)->get();
+        $topCategories = ClothCategory::with('parent')->whereIn('id', $topSets->pluck('category_id')->filter())->get()->keyBy('id');
+        $topSets = $topSets->map(fn ($set) => [
+            'name' => $set->name ?: 'سیٹ '.$set->id,
+            'category' => $set->category_id && $topCategories->has($set->category_id) ? $topCategories[$set->category_id]->fullName() : '',
+            'quantity' => (float) $set->quantity,
+            'unit' => $set->unit ?: ClothCategory::UNIT_METER,
+            'unit_label' => ClothCategory::unitLabelFor($set->unit),
+            'amount' => (float) $set->amount,
+        ]);
+
+        return ['rows' => $rows, 'totals' => $totals, 'top_sets' => $topSets];
     }
 }

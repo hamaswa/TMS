@@ -1007,15 +1007,8 @@ class OrderController extends Controller
 
     private function statusLabels(bool $detailed): array
     {
-        return $detailed ? Order::STATUS_LABELS : [
-            'unassigned' => 'درزی مقرر ہونا باقی',
-            'assigned'   => 'کارخانے میں ہے',
-            'cutting'    => 'کارخانے میں ہے',
-            'stitching'  => 'کارخانے میں ہے',
-            'trial'      => 'کارخانے میں ہے',
-            'ready'      => 'تیار ہے',
-            'delivered'  => 'حوالہ شدہ',
-        ];
+        // Simple mode never offered "cancelled" here; detailed mode keeps every status.
+        return $detailed ? Order::STATUS_LABELS : array_diff_key(Order::SIMPLE_STATUS_LABELS, ['cancelled' => true]);
     }
 
     public function productionPanel(Order $order)

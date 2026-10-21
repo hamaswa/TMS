@@ -882,6 +882,312 @@
                     min-width: 0;
                 }
             }
+
+        /* Searchable cloth picker that sits on top of the native #co-cloth-select. */
+        .co-picker-native {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            opacity: 0;
+            pointer-events: none
+        }
+
+        .co-picker {
+            position: relative
+        }
+
+        .co-picker-trigger {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 40px;
+            padding: 5px 11px;
+            border: 1px solid #cfdbe9;
+            border-radius: 9px;
+            background: #fff;
+            color: var(--navy);
+            text-align: right;
+            transition: border-color .15s ease, box-shadow .15s ease
+        }
+
+        .co-picker-trigger:hover {
+            border-color: #9fbde6
+        }
+
+        .co-picker-trigger:focus,
+        .co-picker.is-open .co-picker-trigger {
+            border-color: var(--blue);
+            outline: 0;
+            box-shadow: 0 0 0 3px rgba(23, 105, 224, .14)
+        }
+
+        .co-picker-trigger-text {
+            flex: 1;
+            min-width: 0
+        }
+
+        .co-picker-trigger-text strong,
+        .co-picker-trigger-text small {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .co-picker-trigger-text strong {
+            font-size: .84rem;
+            font-weight: 800
+        }
+
+        .co-picker-trigger-text small {
+            color: var(--muted);
+            font-size: .7rem
+        }
+
+        .co-picker-placeholder {
+            color: #8a99ad;
+            font-size: .84rem
+        }
+
+        .co-picker-caret {
+            color: #8a99ad;
+            font-size: .75rem;
+            transition: transform .15s ease
+        }
+
+        .co-picker.is-open .co-picker-caret {
+            transform: rotate(180deg)
+        }
+
+        .co-picker-panel {
+            position: fixed;
+            z-index: 1060;
+            display: flex;
+            flex-direction: column;
+            max-height: 420px;
+            overflow: hidden;
+            border: 1px solid #d6e2f0;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 22px 48px rgba(18, 45, 79, .2);
+            direction: rtl
+        }
+
+        .co-picker-panel[hidden] {
+            display: none
+        }
+
+        .co-picker-search {
+            position: relative;
+            padding: 10px 10px 8px;
+            border-bottom: 1px solid #edf1f6
+        }
+
+        .co-picker-search i {
+            position: absolute;
+            top: 50%;
+            left: 22px;
+            color: #94a3b8;
+            transform: translateY(-50%);
+            pointer-events: none
+        }
+
+        .co-picker-search input {
+            width: 100%;
+            height: 38px;
+            padding: 6px 12px 6px 34px;
+            border: 1px solid #dbe5f0;
+            border-radius: 9px;
+            background: #f8fafd;
+            font-size: .83rem
+        }
+
+        .co-picker-search input:focus {
+            border-color: var(--blue);
+            outline: 0;
+            background: #fff
+        }
+
+        .co-picker-search,
+        .co-picker-tabs,
+        .co-picker-subtabs {
+            flex: 0 0 auto
+        }
+
+        .co-picker-tabs {
+            display: flex;
+            gap: 4px;
+            margin: 8px 10px 0;
+            padding: 4px;
+            overflow-x: auto;
+            border-radius: 11px;
+            background: #f1f5f9;
+            scrollbar-width: none
+        }
+
+        .co-picker-tabs[hidden],
+        .co-picker-subtabs[hidden] {
+            display: none
+        }
+
+        .co-picker-tab {
+            flex: 1 0 auto;
+            min-height: 34px;
+            padding: 6px 14px;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: #475569;
+            font-size: .8rem;
+            font-weight: 800;
+            line-height: 1.4;
+            white-space: nowrap
+        }
+
+        .co-picker-tab:hover {
+            color: var(--navy)
+        }
+
+        .co-picker-tab.is-active {
+            background: #fff;
+            color: var(--blue);
+            box-shadow: 0 2px 6px rgba(18, 45, 79, .12)
+        }
+
+        .co-picker-subtabs {
+            display: flex;
+            gap: 6px;
+            padding: 8px 10px 2px;
+            overflow-x: auto;
+            scrollbar-width: none
+        }
+
+        .co-picker-chip {
+            flex: 0 0 auto;
+            min-height: 28px;
+            padding: 4px 12px;
+            border: 1px solid #dbe5f0;
+            border-radius: 999px;
+            background: #fff;
+            color: #4a5f7a;
+            font-size: .74rem;
+            font-weight: 800;
+            line-height: 1.4;
+            white-space: nowrap
+        }
+
+        .co-picker-chip.is-active {
+            border-color: var(--blue);
+            background: #eaf2ff;
+            color: var(--blue)
+        }
+
+        .co-picker-list {
+            min-height: 0;
+            border-top: 1px solid #edf1f6;
+            margin-top: 8px
+        }
+
+        .co-picker-list {
+            flex: 1;
+            padding: 4px 6px 8px;
+            overflow-y: auto
+        }
+
+        .co-picker-group {
+            position: sticky;
+            top: -4px;
+            z-index: 1;
+            padding: 9px 8px 5px;
+            background: #fff;
+            color: #64748b;
+            font-size: .7rem;
+            font-weight: 850;
+            letter-spacing: .02em
+        }
+
+        .co-picker-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 8px 9px;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--navy);
+            text-align: right
+        }
+
+        .co-picker-option:hover,
+        .co-picker-option.is-active {
+            background: #eef5ff
+        }
+
+        .co-picker-option.is-selected {
+            background: #e3efff;
+            box-shadow: inset 0 0 0 1px #b9d3f7
+        }
+
+        .co-picker-avatar {
+            display: inline-flex;
+            flex: 0 0 34px;
+            align-items: center;
+            justify-content: center;
+            height: 34px;
+            border-radius: 9px;
+            background: #eaf2ff;
+            color: var(--blue);
+            font-size: .85rem;
+            font-weight: 900
+        }
+
+        .co-picker-option[data-unit="suit"] .co-picker-avatar {
+            background: #f3edff;
+            color: #6d3fd1
+        }
+
+        .co-picker-option-text {
+            flex: 1;
+            min-width: 0
+        }
+
+        .co-picker-option-text strong,
+        .co-picker-option-text small {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .co-picker-option-text strong {
+            font-size: .84rem;
+            font-weight: 800
+        }
+
+        .co-picker-option-text small {
+            color: var(--muted);
+            font-size: .72rem
+        }
+
+        .co-picker-price {
+            flex: 0 0 auto;
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: #f1f5f9;
+            color: #334155;
+            font-size: .72rem;
+            font-weight: 800;
+            white-space: nowrap
+        }
+
+        .co-picker-empty {
+            padding: 26px 12px;
+            color: var(--muted);
+            font-size: .82rem;
+            text-align: center
+        }
     </style>
     <section class="main-content co-page">
         <div class="co-shell">
@@ -1052,7 +1358,10 @@
                                 <div class="co-cell-main" data-label="آئٹم"><select id="co-cloth-select"
                                         class="form-control" name="cloth_id" aria-label="کپڑے کا سیٹ" required>
                                         <option value="">کپڑا منتخب کریں</option>
-                                        @foreach ($cloths as $cloth)
+                                        {{-- Grouped by category so women's suits and men's cloth are easy to tell apart. --}}
+                                        @foreach ($cloths->groupBy(fn ($cloth) => $cloth->category?->fullName() ?? 'دیگر') as $categoryName => $categoryCloths)
+                                        <optgroup label="{{ $categoryName }}">
+                                        @foreach ($categoryCloths as $cloth)
                                             @php
                                                 // Same stock row the sale uses: per color, or the cloth's first row.
                                                 $colorStock = $cloth->tracksColors()
@@ -1065,14 +1374,20 @@
                                             {{-- Out-of-stock cloths are not offered (unless re-shown after a failed submit). --}}
                                             @continue($clothStock <= 0 && (int) old('cloth_id') !== $cloth->id)
                                             <option value="{{ $cloth->id }}"
+                                                data-name="{{ $cloth->name }}"
+                                                data-main="{{ $cloth->category?->parent?->localizedName() ?? $cloth->category?->localizedName() }}"
+                                                data-sub="{{ $cloth->category?->parent ? $cloth->category->localizedName() : '' }}"
+                                                data-meta="{{ collect([$cloth->brand?->name, $cloth->type?->name])->filter()->implode(' · ') }}"
                                                 data-price="{{ $cloth->sellsPerSuit() ? $cloth->suit_sale_price : $cloth->sale_price }}"
                                                 data-length="{{ $cloth->default_sale_length ?: 4.5 }}"
                                                 data-basis="{{ $cloth->sale_price_basis }}"
+                                                data-unit="{{ $cloth->stock_unit }}"
                                                 data-stock="{{ $clothStock }}"
                                                 data-color-stock='@json($colorStock)'
                                                 data-colors='@json($cloth->selectableColorNames())' @selected((int) old('cloth_id') === $cloth->id)>
-                                                {{ $cloth->name }} · {{ $cloth->brand?->name }} ·
-                                                {{ $cloth->type?->name }} — {{ number_format($clothStock, 2) }} میٹر</option>
+                                                {{ $cloth->name }} · {{ $cloth->brand?->name }} · {{ $cloth->type?->name }}</option>
+                                        @endforeach
+                                        </optgroup>
                                         @endforeach
                                     </select>
                                 </div>
@@ -1368,8 +1683,10 @@
                         closeInlineEditors(row.id);
                         row.hidden = false;
                         this.setAttribute('aria-expanded', 'true');
-                        var select = row.querySelector('select[name="cloth_id"]');
-                        if (select) select.focus();
+                        var picker = row.querySelector('.co-picker-trigger'),
+                            select = row.querySelector('select[name="cloth_id"]');
+                        if (picker) picker.focus();
+                        else if (select) select.focus();
                     });
                 }
                 document.addEventListener('click', function(event) {
@@ -1400,7 +1717,9 @@
                             defaultLength = Number(o.dataset.length || 4.5),
                             quantity = form.querySelector('.co-cloth-quantity'),
                             suitOnly = form.querySelector('.co-suit-only'),
-                            oldColor = preserveValues ? (form.dataset.oldColor || '') : '';
+                            oldColor = preserveValues ? (form.dataset.oldColor || '') : '',
+                            // Women's packed suits are sold by count only; there is no length to cut.
+                            suitStock = o.dataset.unit === 'suit';
                         try {
                             colors = JSON.parse(o.dataset.colors || '[]')
                         } catch (e) {}
@@ -1418,7 +1737,8 @@
                                 var x = document.createElement('option'),
                                     tracked = c in colorStock;
                                 x.value = c;
-                                x.textContent = tracked ? c + ' — ' + Number(colorStock[c]).toFixed(2) + ' میٹر' : c;
+                                x.textContent = tracked ? c + ' — ' + (suitStock ? Number(colorStock[c]).toFixed(0) + ' سوٹ' :
+                                    Number(colorStock[c]).toFixed(2) + ' میٹر') : c;
                                 x.selected = oldColor ? oldColor === c : index === 0;
                                 color.appendChild(x)
                             });
@@ -1431,10 +1751,11 @@
                         color.required = false;
                         color.disabled = !cloth.value;
                         suitOnly.hidden = o.dataset.basis !== 'per_suit';
+                        length.hidden = suitStock;
                         form.dataset.basis = o.dataset.basis || 'per_meter';
                         form.dataset.unitPrice = unitPrice;
                         if (!preserveValues) {
-                            length.value = cloth.value ? defaultLength.toFixed(2) : '';
+                            length.value = cloth.value ? (suitStock ? '1' : defaultLength.toFixed(2)) : '';
                             if (quantity) quantity.value = 1;
                             price.value = cloth.value && unitPrice ? (o.dataset.basis === 'per_suit' ? unitPrice :
                                 unitPrice * defaultLength).toFixed(2) : '';
@@ -1446,6 +1767,240 @@
                     if (cloth.value) updateClothFields(true);
                     else color.disabled = true;
                 }
+
+
+                // Searchable, grouped picker drawn over the native cloth select. The select stays the
+                // source of truth: picking a card sets its value and fires "change" for the code above.
+                (function initClothPicker(select) {
+                    if (!select) return;
+                    var form = select.closest('form'),
+                        wrap = document.createElement('div'),
+                        trigger = document.createElement('button'),
+                        panel = document.createElement('div'),
+                        search, list, tabs, subtabs,
+                        activeMain = '',
+                        activeSub = '',
+                        activeIndex = -1;
+
+                    wrap.className = 'co-picker';
+                    trigger.type = 'button';
+                    trigger.className = 'co-picker-trigger';
+                    trigger.setAttribute('aria-haspopup', 'listbox');
+                    trigger.setAttribute('aria-expanded', 'false');
+                    trigger.setAttribute('aria-label', 'کپڑا منتخب کریں');
+                    panel.className = 'co-picker-panel';
+                    panel.hidden = true;
+                    panel.innerHTML =
+                        '<div class="co-picker-search"><input type="search" autocomplete="off" placeholder="نام، برانڈ یا قسم سے تلاش کریں" aria-label="کپڑا تلاش کریں"><i class="fas fa-search"></i></div>' +
+                        '<div class="co-picker-tabs" role="tablist" aria-label="مین کیٹیگری"></div>' +
+                        '<div class="co-picker-subtabs" role="tablist" aria-label="سب کیٹیگری"></div>' +
+                        '<div class="co-picker-list" role="listbox"></div>';
+                    search = panel.querySelector('input');
+                    tabs = panel.querySelector('.co-picker-tabs');
+                    subtabs = panel.querySelector('.co-picker-subtabs');
+                    list = panel.querySelector('.co-picker-list');
+
+                    select.classList.add('co-picker-native');
+                    select.tabIndex = -1;
+                    select.setAttribute('aria-hidden', 'true');
+                    select.parentNode.insertBefore(wrap, select);
+                    wrap.appendChild(trigger);
+                    wrap.appendChild(select);
+                    document.body.appendChild(panel);
+
+                    function escapeHtml(value) {
+                        return String(value || '').replace(/[&<>"']/g, function(c) {
+                            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+                        });
+                    }
+
+                    function items() {
+                        return Array.from(select.options).filter(function(o) { return o.value; }).map(function(o) {
+                            var suit = o.dataset.basis === 'per_suit';
+                            return {
+                                value: o.value,
+                                name: o.dataset.name || o.textContent.trim(),
+                                meta: o.dataset.meta || '',
+                                group: o.parentNode.tagName === 'OPTGROUP' ? o.parentNode.label : '',
+                                main: o.dataset.main || '',
+                                sub: o.dataset.sub || '',
+                                unit: o.dataset.unit || 'meter',
+                                price: Number(o.dataset.price || 0),
+                                priceUnit: suit ? 'سوٹ' : 'میٹر'
+                            };
+                        });
+                    }
+
+                    function money(value) {
+                        return 'Rs ' + Number(value || 0).toLocaleString('en-PK', {maximumFractionDigits: 0});
+                    }
+
+                    function renderTrigger() {
+                        var o = select.options[select.selectedIndex];
+                        trigger.innerHTML = (o && o.value
+                            ? '<span class="co-picker-trigger-text"><strong>' + escapeHtml(o.dataset.name || o.textContent) +
+                                '</strong><small>' + escapeHtml(o.dataset.meta || '') + '</small></span>'
+                            : '<span class="co-picker-trigger-text co-picker-placeholder">کپڑا منتخب کریں</span>') +
+                            '<i class="fas fa-chevron-down co-picker-caret" aria-hidden="true"></i>';
+                    }
+
+                    function unique(values) {
+                        return values.filter(function(value, index) { return value && values.indexOf(value) === index; });
+                    }
+
+                    // Main categories (Men, Women…) as tabs; the selected one's sub categories as chips below.
+                    function renderTabs(all) {
+                        var mains = unique(all.map(function(item) { return item.main; })),
+                            subs = activeMain ? unique(all.filter(function(item) { return item.main === activeMain; })
+                                .map(function(item) { return item.sub; })) : [];
+                        tabs.hidden = mains.length < 2;
+                        tabs.innerHTML = [''].concat(mains).map(function(main) {
+                            return '<button type="button" role="tab" class="co-picker-tab' + (main === activeMain ? ' is-active' : '') +
+                                '" aria-selected="' + (main === activeMain) + '" data-main="' + escapeHtml(main) + '">' +
+                                (main ? escapeHtml(main) : 'سب') + '</button>';
+                        }).join('');
+                        subtabs.hidden = subs.length < 2;
+                        subtabs.innerHTML = [''].concat(subs).map(function(sub) {
+                            return '<button type="button" role="tab" class="co-picker-chip' + (sub === activeSub ? ' is-active' : '') +
+                                '" aria-selected="' + (sub === activeSub) + '" data-sub="' + escapeHtml(sub) + '">' +
+                                (sub ? escapeHtml(sub) : 'سب ' + escapeHtml(activeMain)) + '</button>';
+                        }).join('');
+                    }
+
+                    function renderList() {
+                        var all = items(),
+                            term = search.value.trim().toLowerCase(),
+                            html = '',
+                            lastGroup = null,
+                            shown = all.filter(function(item) {
+                                return (!activeMain || item.main === activeMain) &&
+                                    (!activeSub || item.sub === activeSub) &&
+                                    (!term || (item.name + ' ' + item.meta + ' ' + item.group).toLowerCase().indexOf(term) !== -1);
+                            });
+                        renderTabs(all);
+                        shown.forEach(function(item, index) {
+                            if (item.group !== lastGroup) {
+                                html += '<div class="co-picker-group">' + escapeHtml(item.group || 'دیگر') + '</div>';
+                                lastGroup = item.group;
+                            }
+                            html += '<button type="button" role="option" class="co-picker-option' +
+                                (item.value === select.value ? ' is-selected' : '') + '" data-value="' + item.value +
+                                '" data-unit="' + item.unit + '" data-index="' + index + '">' +
+                                '<span class="co-picker-avatar">' + escapeHtml(item.name.trim().charAt(0).toUpperCase() || '؟') + '</span>' +
+                                '<span class="co-picker-option-text"><strong>' + escapeHtml(item.name) + '</strong><small>' +
+                                escapeHtml(item.meta) + '</small></span>' +
+                                (item.price ? '<span class="co-picker-price">' + money(item.price) + ' / ' + item.priceUnit + '</span>' : '') +
+                                '</button>';
+                        });
+                        list.innerHTML = html || '<div class="co-picker-empty"><i class="fas fa-box-open ml-1"></i> کوئی دستیاب کپڑا نہیں ملا</div>';
+                        activeIndex = -1;
+                    }
+
+                    function place() {
+                        var rect = trigger.getBoundingClientRect(),
+                            width = Math.max(rect.width, Math.min(420, window.innerWidth - 24)),
+                            right = Math.max(12, window.innerWidth - rect.right),
+                            below = window.innerHeight - rect.bottom - 12,
+                            above = rect.top - 12;
+                        panel.style.width = width + 'px';
+                        panel.style.right = Math.min(right, window.innerWidth - width - 12) + 'px';
+                        if (below >= 260 || below >= above) {
+                            panel.style.top = (rect.bottom + 6) + 'px';
+                            panel.style.bottom = '';
+                            panel.style.maxHeight = Math.min(420, below) + 'px';
+                        } else {
+                            panel.style.top = '';
+                            panel.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+                            panel.style.maxHeight = Math.min(420, above) + 'px';
+                        }
+                    }
+
+                    function open() {
+                        if (select.disabled) return;
+                        search.value = '';
+                        renderList();
+                        panel.hidden = false;
+                        wrap.classList.add('is-open');
+                        trigger.setAttribute('aria-expanded', 'true');
+                        place();
+                        var selected = list.querySelector('.is-selected');
+                        if (selected) selected.scrollIntoView({block: 'nearest'});
+                        search.focus();
+                    }
+
+                    function close(focusTrigger) {
+                        if (panel.hidden) return;
+                        panel.hidden = true;
+                        wrap.classList.remove('is-open');
+                        trigger.setAttribute('aria-expanded', 'false');
+                        if (focusTrigger) trigger.focus();
+                    }
+
+                    function choose(value) {
+                        select.value = value;
+                        select.dispatchEvent(new Event('change', {bubbles: true}));
+                        renderTrigger();
+                        close(true);
+                    }
+
+                    function highlight(step) {
+                        var options = list.querySelectorAll('.co-picker-option');
+                        if (!options.length) return;
+                        activeIndex = (activeIndex + step + options.length) % options.length;
+                        options.forEach(function(option, index) { option.classList.toggle('is-active', index === activeIndex); });
+                        options[activeIndex].scrollIntoView({block: 'nearest'});
+                    }
+
+                    trigger.addEventListener('click', function() { panel.hidden ? open() : close(false); });
+                    trigger.addEventListener('keydown', function(event) {
+                        if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            open();
+                        }
+                    });
+                    search.addEventListener('input', renderList);
+                    search.addEventListener('keydown', function(event) {
+                        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                            event.preventDefault();
+                            highlight(event.key === 'ArrowDown' ? 1 : -1);
+                        } else if (event.key === 'Enter') {
+                            event.preventDefault();
+                            var options = list.querySelectorAll('.co-picker-option'),
+                                target = options[activeIndex >= 0 ? activeIndex : 0];
+                            if (target) choose(target.dataset.value);
+                        } else if (event.key === 'Escape') {
+                            close(true);
+                        }
+                    });
+                    tabs.addEventListener('click', function(event) {
+                        var tab = event.target.closest('.co-picker-tab');
+                        if (!tab) return;
+                        activeMain = tab.dataset.main;
+                        activeSub = '';
+                        renderList();
+                        search.focus();
+                    });
+                    subtabs.addEventListener('click', function(event) {
+                        var chip = event.target.closest('.co-picker-chip');
+                        if (!chip) return;
+                        activeSub = chip.dataset.sub;
+                        renderList();
+                        search.focus();
+                    });
+                    list.addEventListener('click', function(event) {
+                        var option = event.target.closest('.co-picker-option');
+                        if (option) choose(option.dataset.value);
+                    });
+                    document.addEventListener('mousedown', function(event) {
+                        if (!panel.hidden && !panel.contains(event.target) && !wrap.contains(event.target)) close(false);
+                    });
+                    window.addEventListener('resize', function() { if (!panel.hidden) place(); });
+                    window.addEventListener('scroll', function() { if (!panel.hidden) place(); }, true);
+                    select.addEventListener('change', renderTrigger);
+                    // The row form is reset after an item is added; show the empty picker again.
+                    if (form) form.addEventListener('reset', function() { setTimeout(renderTrigger, 0); });
+                    renderTrigger();
+                })(cloth);
 
                 $(document).on('change', '#co-tailor', function() {
                     var tailorId = $(this).val();

@@ -274,6 +274,42 @@ class CounterSaleItemReturnTest extends TestCase
         $this->assertEquals(200, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
     }
 
+    public function test_a_paid_return_can_be_taken_off_the_customers_previous_dues(): void
+    {
+        $owner = $this->userWithRole('shop_owner');
+        $type = ClothType::create(['name' => 'Lawn', 'user_id' => $owner->id]);
+        $brand = ClothBrand::create(['name' => 'Alkaram', 'user_id' => $owner->id]);
+        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => 100, 'sale_price' => 150, 'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR, 'user_id' => $owner->id]);
+        ClothColor::create(['cloth_id' => $cloth->id, 'color' => 'White', 'length' => 20, 'average_unit_cost' => 100, 'user_id' => $owner->id]);
+        $customer = Customers::create(['name' => 'Ayesha', 'phone_number1' => '03001234567', 'user_id' => $owner->id]);
+        $sell = fn (int $paid, int $owed) => $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$brand->id], 'cloth_type' => [$type->id], 'color' => ['White'], 'per_meter' => [150],
+            'clothes_rack' => ['A-1'], 'length' => [2], 'c_name' => $customer->name.'|'.$customer->id,
+            'payment' => $paid, 'remain' => $owed, 'payment_method' => 'cash', 'paid_on' => now()->toDateString(),
+        ]);
+
+        // An older 300 sale still owes 200; a new 300 sale is paid in full.
+        $sell(100, 200);
+        $sell(300, 0);
+        [$older, $newer] = CounterSaleReceipt::where('user_id', $owner->id)->orderBy('id')->get()->all();
+        $newerItem = SaleStock::where('counter_sale_receipt_id', $newer->id)->sole();
+
+        $this->actingAs($owner)->get(route('admin.customer.orders', ['customer' => $customer->id, 'tab' => 'sales']))
+            ->assertOk()
+            ->assertSee('data-other-dues="200"', false)
+            ->assertSeeText('پچھلے بقایا میں کاٹیں');
+
+        // Returning 1m (150) of the paid sale clears 150 of the older dues instead of paying cash out.
+        $this->actingAs($owner)->post(route('admin.counter-sales.returns.store', $newer), [
+            'items' => [$newerItem->id => 1], 'reason' => 'Customer wants it adjusted',
+            'restock' => 1, 'settlement_type' => 'credit',
+        ])->assertSessionHasNoErrors();
+
+        $balances = app(\App\Services\CustomerLedgerService::class)->receiptBalances($owner->id, $customer->id);
+        $this->assertEquals(50, $balances->get($older->id));
+        $this->assertEquals(50, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+    }
+
     private function userWithRole(string $name): User
     {
         $role = Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);

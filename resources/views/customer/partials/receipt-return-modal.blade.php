@@ -9,6 +9,11 @@
     $formId = $modalId.'Form';
     $shopName = once(fn () => \App\Models\Setting::where('user_id', auth()->user()->businessOwnerId())->value('name')
         ?: (auth()->user()->business?->name ?: auth()->user()->name));
+    // The customer's dues on other orders, so a refund can be taken off them instead of paid out.
+    $otherDues = auth()->user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
+        ? max(0, round((float) \App\Models\Transaction::where('userId', auth()->user()->businessOwnerId())
+            ->where('customerId', $customer->id)->sum('remainingBalance') - max(0, (float) $sale->balance), 2))
+        : 0;
 @endphp
 <div class="modal fade rr-modal" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
@@ -29,7 +34,7 @@
                         <div class="rr-card">
                             @if ($canReturn)
                                 <form method="POST" id="{{ $formId }}" action="{{ route('admin.counter-sales.returns.store', $sale->receipt) }}"
-                                    class="receipt-return-form" data-outstanding="{{ round((float) $sale->balance, 2) }}" data-paid="{{ round((float) $sale->received, 2) }}"
+                                    class="receipt-return-form" data-outstanding="{{ round((float) $sale->balance, 2) }}" data-paid="{{ round((float) $sale->received, 2) }}" data-other-dues="{{ $otherDues }}"
                                     data-confirm="کیا آپ منتخب آئٹم واپس کرنا چاہتے ہیں؟">
                                     @csrf
                                     <div class="rr-step"><span>1</span> کون سا آئٹم واپس آیا؟</div>
@@ -44,11 +49,13 @@
                                             </div>
                                             @if ($line->remaining > 0)
                                                 <div class="rr-qty {{ $line->remaining > 1 || ! $line->perSuit ? '' : 'd-none' }}">
+                                                    @if ($line->perSuit)<button type="button" class="btn btn-sm btn-light rr-step-btn" data-step="-1" aria-label="ایک کم">−</button>@endif
                                                     <input type="number" class="form-control form-control-sm return-qty" name="items[{{ $line->id }}]" value="0"
                                                         min="0" max="{{ $line->remaining }}" step="{{ $line->perSuit ? 1 : 0.01 }}"
                                                         data-unit-price="{{ $line->unitPrice }}" data-remaining="{{ $line->remaining }}" dir="ltr"
                                                         aria-label="واپسی {{ $line->unit }}">
-                                                    <small>{{ $line->unit }}</small>
+                                                    @if ($line->perSuit)<button type="button" class="btn btn-sm btn-light rr-step-btn" data-step="1" aria-label="ایک زیادہ">+</button>@endif
+                                                    <small>{{ $line->unit }} <span class="text-muted">/ {{ rtrim(rtrim(number_format($line->remaining, 2), '0'), '.') }}</span></small>
                                                 </div>
                                                 <label class="rr-pick mb-0">
                                                     <input type="checkbox" class="return-pick">
@@ -76,10 +83,19 @@
                                         </div>
 
                                         <div class="return-settlement mb-2" hidden>
+                                            @if ($otherDues > 0)
+                                                <p class="small text-muted mb-1">گاہک کا پچھلا بقایا <strong dir="ltr">Rs {{ number_format($otherDues, 2) }}</strong> ہے:</p>
+                                            @endif
                                             <div class="rr-choice mb-2">
-                                                <label><input type="radio" name="settlement_type" value="refund" checked> <span>نقد / بینک دیں</span></label>
-                                                <label><input type="radio" name="settlement_type" value="credit"> <span>کھاتے میں رکھیں</span></label>
+                                                @if ($otherDues > 0)
+                                                    <label><input type="radio" name="settlement_type" value="credit" checked> <span>پچھلے بقایا میں کاٹیں</span></label>
+                                                    <label><input type="radio" name="settlement_type" value="refund"> <span>نقد / بینک دیں</span></label>
+                                                @else
+                                                    <label><input type="radio" name="settlement_type" value="refund" checked> <span>نقد / بینک دیں</span></label>
+                                                    <label><input type="radio" name="settlement_type" value="credit"> <span>ایڈوانس میں رکھیں</span></label>
+                                                @endif
                                             </div>
+                                            <p class="small rr-dues-note mb-2" hidden></p>
                                             <div class="form-row return-refund-fields">
                                                 <div class="col-6 form-group mb-2">
                                                     <select name="payment_method" class="form-control form-control-sm" aria-label="رقم واپسی کا طریقہ">@foreach (\App\Support\PaymentMethods::LABELS as $method => $label)<option value="{{ $method }}" @selected($method === 'cash')>{{ $label }}</option>@endforeach</select>
@@ -183,6 +199,8 @@
     .rr-row-info small { color: #6c757d; }
     .rr-qty { display: none; align-items: center; gap: .3rem; }
     .rr-qty input { width: 4.5rem; }
+    .rr-step-btn { width: 2rem; font-weight: 700; padding: .15rem 0; }
+    .rr-dues-note { background: #fff8e6; border-radius: 8px; padding: .4rem .6rem; }
     .rr-row:has(.return-pick:checked) .rr-qty:not(.d-none) { display: flex; }
     .rr-pick { position: relative; cursor: pointer; border: 1px solid #dc3545; color: #dc3545; border-radius: 8px; padding: .3rem .8rem; white-space: nowrap; font-size: .9rem; }
     .rr-pick input { position: absolute; opacity: 0; pointer-events: none; }

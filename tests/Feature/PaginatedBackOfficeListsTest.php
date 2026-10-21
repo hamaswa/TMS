@@ -87,9 +87,9 @@ class PaginatedBackOfficeListsTest extends TestCase
     public function test_financial_receivables_are_database_paginated_and_searchable(): void
     {
         [$owner] = $this->shop();
-        for ($i = 1; $i <= 12; $i++) {
+        for ($i = 1; $i <= 17; $i++) {
             $customer = Customers::create([
-                'name' => $i === 12 ? 'Unique Receivable' : 'Customer ' . $i,
+                'name' => $i === 17 ? 'Unique Receivable' : 'Customer ' . $i,
                 'phone_number1' => '0300' . str_pad((string) $i, 7, '0', STR_PAD_LEFT),
                 'user_id' => $owner->id,
             ]);
@@ -99,11 +99,13 @@ class PaginatedBackOfficeListsTest extends TestCase
             ]);
         }
 
-        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['per_page' => 10]))
-            ->assertOk()->assertViewHas('report', fn ($report) => $report['receivables'] instanceof LengthAwarePaginator
-                && $report['receivables']->count() === 10 && $report['receivables']->total() === 12);
-        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['receivables_q' => 'Unique']))
-            ->assertOk()->assertViewHas('report', fn ($report) => $report['receivables']->total() === 1);
+        // Stitching dues are listed in the tailoring view, 15 customers a page.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'tailoring']))
+            ->assertOk()->assertViewHas('report', fn ($report) => $report['customers']['list'] instanceof LengthAwarePaginator
+                && $report['customers']['list']->count() === 15 && $report['customers']['list']->total() === 17
+                && $report['customers']['total'] == 1700);
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'tailoring', 'customers_q' => 'Unique']))
+            ->assertOk()->assertViewHas('report', fn ($report) => $report['customers']['list']->total() === 1);
     }
 
     private function shop(): array

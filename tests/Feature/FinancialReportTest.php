@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Cloth;
 use App\Models\ClothBrand;
+use App\Models\ClothCategory;
 use App\Models\ClothColor;
 use App\Models\ClothType;
 use App\Models\Customers;
@@ -153,6 +154,143 @@ class FinancialReportTest extends TestCase
         $this->actingAs($owner)->get(route('admin.financial-reports.export', ['section' => 'summary']))
             ->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
         $this->actingAs($stockSeller)->get(route('admin.financial-reports.index'))->assertForbidden();
+    }
+
+    public function test_report_has_sales_and_tailoring_views_each_with_its_own_tabs(): void
+    {
+        [$owner] = $this->baseData();
+
+        // Sales opens first, on its category tab.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index'))
+            ->assertOk()
+            ->assertSeeText('رپورٹس')
+            ->assertSee('data-rp-tab="all-sales"', false)
+            ->assertSee('id="rp-panel-categories" role="tabpanel" aria-labelledby="rp-tab-categories" >', false)
+            ->assertSee('id="rp-panel-customers" role="tabpanel" aria-labelledby="rp-tab-customers"  hidden', false)
+            ->assertDontSee('data-rp-tab="tailors"', false);
+
+        // The tailoring view has its own tabs.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'tailoring']))
+            ->assertOk()
+            ->assertSeeText('حالیہ سلائی آرڈرز')
+            ->assertSee('data-rp-tab="tailors"', false)
+            ->assertSee('data-rp-tab="payouts"', false)
+            ->assertSee('id="rp-panel-orders" role="tabpanel" aria-labelledby="rp-tab-orders" >', false);
+
+        // A customer search comes back to the customers tab, and keeps it in the forms.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'tailoring', 'customers_q' => 'x']))
+            ->assertOk()
+            ->assertSee('id="rp-panel-customers" role="tabpanel" aria-labelledby="rp-tab-customers" >', false)
+            ->assertSee('name="tab" value="customers"', false);
+
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['tab' => 'stock']))
+            ->assertOk()
+            ->assertSee('id="rp-panel-stock" role="tabpanel" aria-labelledby="rp-tab-stock" >', false);
+    }
+
+    public function test_sales_tab_reports_each_category_in_meters_or_suits_net_of_returns(): void
+    {
+        [$owner, , , $menCloth, $menColor] = $this->baseData();
+        $date = now()->startOfMonth()->addDay();
+        $men = ClothCategory::create(['user_id' => $owner->id, 'name' => 'Men', 'name_ur' => 'مردانہ', 'slug' => 'men']);
+        $women = ClothCategory::create(['user_id' => $owner->id, 'name' => 'Women', 'name_ur' => 'زنانہ', 'slug' => 'women', 'stock_unit' => 'suit']);
+        $threePiece = ClothCategory::create(['user_id' => $owner->id, 'parent_id' => $women->id, 'name' => '3 Piece', 'name_ur' => 'تھری پیس', 'slug' => 'women-3-piece', 'stock_unit' => 'suit']);
+        $menCloth->update(['cloth_category_id' => $men->id]);
+        $suitCloth = Cloth::create([
+            'name' => 'Gulnaar Lawn', 'cloth_type_id' => $menCloth->cloth_type_id, 'cloth_brand_id' => $menCloth->cloth_brand_id,
+            'cloth_category_id' => $threePiece->id, 'price' => 3200, 'sale_price' => 4250, 'user_id' => $owner->id,
+        ]);
+        $suitColor = ClothColor::create(['cloth_id' => $suitCloth->id, 'color' => 'Rose', 'length' => 20, 'average_unit_cost' => 3200, 'user_id' => $owner->id]);
+        $sale = fn (Cloth $cloth, ClothColor $color, float $quantity, float $price, float $cost) => SaleStock::create([
+            'user_id' => $owner->id, 'cloth_id' => $cloth->id, 'cloth_color_id' => $color->id,
+            'cloth_type_id' => $cloth->cloth_type_id, 'cloth_brand_id' => $cloth->cloth_brand_id, 'color' => $color->color,
+            'length' => $quantity, 'selling_price' => $price, 'cost_per_meter' => $cost, 'cost_total' => $quantity * $cost,
+            'sellDate' => $date, 'created_at' => $date,
+        ]);
+        $sale($menCloth, $menColor, 4.5, 150, 80);
+        $sale($menCloth, $menColor, 3, 150, 80);
+        $returnedSuitSale = $sale($suitCloth, $suitColor, 3, 4250, 3200);
+
+        // One of the three suits came back.
+        $receipt = \App\Models\CounterSaleReceipt::create(['receipt_number' => 'RCPT-TEST-1', 'user_id' => $owner->id, 'status' => 'completed']);
+        $returnId = \Illuminate\Support\Facades\DB::table('counter_sale_returns')->insertGetId([
+            'reference' => 'RET-TEST-1', 'user_id' => $owner->id, 'counter_sale_receipt_id' => $receipt->id,
+            'return_total' => 4250, 'reason' => 'Wrong colour', 'created_at' => $date, 'updated_at' => $date,
+        ]);
+        \Illuminate\Support\Facades\DB::table('counter_sale_return_items')->insert([
+            'counter_sale_return_id' => $returnId, 'sale_stock_id' => $returnedSuitSale->id, 'quantity' => 1,
+            'inventory_quantity' => 1, 'unit_price' => 4250, 'line_total' => 4250, 'restocked' => true,
+            'created_at' => $date, 'updated_at' => $date,
+        ]);
+
+        $sales = app(FinancialReportService::class)->salesByCategory($owner->id, now()->startOfMonth(), now()->endOfMonth());
+        $rows = $sales['rows']->keyBy('category');
+
+        $this->assertEquals(7.5, $rows['Men']['net']);
+        $this->assertSame('میٹر', $rows['Men']['unit_label']);
+        $this->assertEquals(1125, $rows['Men']['net_amount']);
+        $this->assertEquals(1125 - 600, $rows['Men']['profit']);
+        $this->assertEquals(3, $rows['Women › 3 Piece']['sold']);
+        $this->assertEquals(1, $rows['Women › 3 Piece']['returned']);
+        $this->assertEquals(2, $rows['Women › 3 Piece']['net']);
+        $this->assertSame('سوٹ', $rows['Women › 3 Piece']['unit_label']);
+        $this->assertEquals(8500, $rows['Women › 3 Piece']['net_amount']);
+        $this->assertEquals(8500 - 6400, $rows['Women › 3 Piece']['profit']);
+        $this->assertEquals(2, $sales['totals']['suit']['net']);
+
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['start_date' => now()->startOfMonth()->toDateString(), 'end_date' => now()->endOfMonth()->toDateString()]))
+            ->assertOk()
+            ->assertSee('id="rp-panel-categories" role="tabpanel" aria-labelledby="rp-tab-categories" >', false)
+            ->assertSeeText('Women › 3 Piece')->assertSeeText('7.50');
+
+        // The full sales list can be narrowed to one main category, which includes its sub categories.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['sales_category' => $women->id]))
+            ->assertOk()
+            ->assertViewHas('report', fn ($report) => $report['lines']->total() === 1)
+            ->assertSee('id="rp-panel-all-sales" role="tabpanel" aria-labelledby="rp-tab-all-sales" >', false);
+    }
+
+    public function test_tailoring_view_splits_customer_dues_and_shows_tailor_work_and_payouts(): void
+    {
+        [$owner, $customer, $tailor] = $this->baseData();
+        $order = Order::create([
+            'customerId' => $customer->id, 'sub_customer' => $customer->id, 'suitQuantity' => 2, 'totalPayment' => 3000,
+            'tailorId' => $tailor->id, 'tailor_price' => 400, 'tailor_paid_amount' => 300, 'status' => 'stitching',
+            'userId' => $owner->id, 'returnDate' => now()->addWeek()->toDateString(),
+        ]);
+        // 3000 stitching bill, 1000 of it paid against the order.
+        Transaction::create(['customerId' => $customer->id, 'userId' => $owner->id, 'orderId' => $order->id, 'Order_type' => 'Tailor', 'recivedPayment' => 0, 'remainingBalance' => 3000]);
+        Transaction::create(['customerId' => $customer->id, 'userId' => $owner->id, 'orderId' => $order->id, 'Order_type' => 'Payment', 'recivedPayment' => 1000, 'remainingBalance' => -1000]);
+        // A separate cloth sale of 500 still unpaid.
+        Transaction::create(['customerId' => $customer->id, 'userId' => $owner->id, 'Order_type' => 'Sale', 'recivedPayment' => 0, 'remainingBalance' => 500]);
+        TailorRecord::create(['tailor_id' => $tailor->id, 'amount' => 300, 'comment' => 'weekly']);
+
+        $balances = app(\App\Services\CustomerLedgerService::class)->sideBalances($owner->id);
+        $this->assertEquals(2000, $balances[$customer->id]['tailoring']);
+        $this->assertEquals(500, $balances[$customer->id]['sales']);
+        $this->assertEquals(2500, $balances[$customer->id]['total']);
+
+        $dashboard = app(\App\Services\ReportDashboardService::class);
+        $metrics = $dashboard->tailoringMetrics($owner->id, now()->startOfMonth(), now()->endOfMonth());
+        $this->assertSame(1, $metrics['orders']);
+        $this->assertSame(2, $metrics['suits']);
+        $this->assertEquals(3000, $metrics['revenue']);
+        $this->assertEquals(1000, $metrics['received']);
+        $tailors = $dashboard->tailors($owner->id, now()->startOfMonth(), now()->endOfMonth());
+        $this->assertEquals(800, $tailors->first()->earned);
+        $this->assertEquals(500, $tailors->first()->balance);
+        $this->assertEquals(300, $dashboard->payouts($owner->id, now()->startOfMonth(), now()->endOfMonth())->sum('amount'));
+
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'tailoring']))
+            ->assertOk()
+            ->assertViewHas('report', fn ($report) => $report['customers']['total'] == 2000)
+            // Without a detailed work-status setting, workshop steps show as one simple status.
+            ->assertSeeText('کارخانے میں ہے')
+            ->assertSeeText('Report Tailor')
+            ->assertSeeText('weekly');
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'sales']))
+            ->assertOk()
+            ->assertViewHas('report', fn ($report) => $report['customers']['total'] == 500);
     }
 
     public function test_cancelled_manual_sale_is_excluded_and_its_reversal_neutralizes_cash_and_receivable(): void

@@ -118,7 +118,12 @@ document.addEventListener('DOMContentLoaded', function () {
         function choose(value) {
             close(true);
             if (select.value === value) return;
-            select.value = value;
+            // The same name exists once per template; select the enabled copy, because a
+            // disabled selected option is left out of the submitted form.
+            var option = Array.prototype.find.call(select.options, function (o) {
+                return o.value === value && !o.disabled;
+            });
+            if (option) option.selected = true; else select.value = value;
             select.dispatchEvent(new Event('change', { bubbles: true }));
         }
 

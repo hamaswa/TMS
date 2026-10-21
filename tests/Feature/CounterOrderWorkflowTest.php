@@ -747,7 +747,7 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertDontSeeText('مشترکہ آرڈر رسید');
     }
 
-    public function test_cloth_picker_shows_stock_and_rejects_more_than_is_available(): void
+    public function test_cloth_picker_hides_stock_amounts_and_rejects_more_than_is_available(): void
     {
         [$owner, $customer, $cloth, $stock] = $this->fixture();
         $order = CounterOrder::create([
@@ -758,7 +758,8 @@ class CounterOrderWorkflowTest extends TestCase
         $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
             ->assertOk()
             ->assertSee('data-stock="10"', false)
-            ->assertSeeText('10.00 میٹر');
+            // The picker lists in-stock cloth without showing how much is left.
+            ->assertDontSeeText('10.00 میٹر');
 
         $this->actingAs($owner)->postJson(route('admin.counter-orders.cloth-items.store', $order), [
             'cloth_id' => $cloth->id, 'color' => $stock->color, 'length' => 11, 'total_price' => 3300,
