@@ -723,13 +723,14 @@
                     <div class="purchase-payment-box">
                         <h3 class="purchase-payment-title">
                             <i class="fas fa-money-bill-wave ml-1"></i>
-                            سپلائر ادائیگی (اختیاری)
+                            سپلائر کو ادائیگی
                         </h3>
+                        <small class="text-muted d-block mb-2">ابھی کچھ نہیں دیا تو خالی چھوڑ دیں، پوری رقم ادھار رہے گی۔</small>
 
                         <div class="form-group">
                             <label for="purchase-paid-amount" class="d-flex justify-content-between align-items-center">
-                                <span>ادا شدہ رقم</span>
-                                <button type="button" class="btn btn-link btn-sm p-0" id="purchase-pay-full">پوری رقم</button>
+                                <span>سپلائر کو ابھی کتنے پیسے دیے؟</span>
+                                <button type="button" class="btn btn-link btn-sm p-0" id="purchase-pay-full">پوری رقم دے دی</button>
                             </label>
                             <input id="purchase-paid-amount"
                                 form="purchase-create-form"
@@ -745,7 +746,7 @@
 
                         <div class="purchase-payment-fields">
                             <div class="form-group">
-                                <label for="purchase-payment-method">ادائیگی کا طریقہ</label>
+                                <label for="purchase-payment-method">پیسے کیسے دیے؟</label>
                                 <select id="purchase-payment-method"
                                     form="purchase-create-form"
                                     name="payment_method"
@@ -765,15 +766,15 @@
                                     maxlength="255"
                                     value="{{ old('payment_reference') }}"
                                     class="form-control @error('payment_reference') is-invalid @enderror"
-                                    placeholder="نقد کے علاوہ طریقے کے لیے لازمی">
+                                    placeholder="بینک یا موبائل والٹ ہو تو نمبر لازمی لکھیں">
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-between text-muted">
-                            <span>بقایا رقم</span>
+                            <span>سپلائر کو ابھی دینے باقی</span>
                             <strong id="purchase-balance-preview" dir="ltr">Rs. 0.00</strong>
                         </div>
-                        <small class="text-muted d-block mt-1">ادائیگی صرف "محفوظ اور انوینٹری میں شامل کریں" پر درج ہوگی۔</small>
+                        <small class="text-muted d-block mt-1">یہ ادائیگی "محفوظ اور انوینٹری میں شامل کریں" دبانے پر درج ہوگی، "بعد کے لیے محفوظ کریں" پر نہیں۔</small>
                     </div>
 
                     <div class="purchase-choice">
@@ -798,8 +799,11 @@
                             class="purchase-secondary-btn"
                             @disabled($suppliers->isEmpty())>
                             <i class="fas fa-save ml-1"></i>
-                            صرف مسودہ محفوظ کریں
+                            بعد کے لیے محفوظ کریں
                         </button>
+                        <small>
+                            مال ابھی نہیں آیا تو یہ دبائیں؛ اسٹاک میں شامل نہیں ہوگا، بعد میں کھول کر شامل کریں۔
+                        </small>
                     </div>
 
 
