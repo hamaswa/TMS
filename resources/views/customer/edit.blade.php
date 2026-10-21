@@ -481,10 +481,14 @@
                     const v = Object.prototype.hasOwnProperty.call(vals, key)
                         ? (vals[key] ?? '')
                         : (String(id) === String(@json($selectedTemplateId ?? null)) ? (el.dataset.initialSavedValue ?? el.value) : '');
-                    if (el.tagName === 'SELECT' && v && ![...el.options].some(o => o.value === v)) {
+                    if (el.tagName === 'SELECT' && v && ![...el.options].some(o => o.value === v && !o.disabled)) {
                         el.add(new Option(v, v));
                     }
-                    el.value = v;
+                    // Prefer the enabled copy of a per-template choice; a disabled selection is not submitted.
+                    const enabled = el.tagName === 'SELECT' && v
+                        ? [...el.options].find(o => o.value === v && !o.disabled)
+                        : null;
+                    if (enabled) enabled.selected = true; else el.value = v;
                 });
 
                 document.querySelectorAll('[data-template-field]').forEach(wrap => {
