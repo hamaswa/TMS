@@ -981,7 +981,7 @@
                                 <div style="word-break: break-word; white-space: normal; min-width: 0;">
                                     {{ $orderDetail->customers->chuta }}
                                 </div>
-                                <div style="font-weight:600; font-size:20px;">چوتا</div>
+                                <div style="font-weight:600; font-size:20px;">چوتھا</div>
                             </div>
                         </div>
 
