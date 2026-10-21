@@ -774,7 +774,7 @@
                             <span>سپلائر کو ابھی دینے باقی</span>
                             <strong id="purchase-balance-preview" dir="ltr">Rs. 0.00</strong>
                         </div>
-                        <small class="text-muted d-block mt-1">یہ ادائیگی "محفوظ اور انوینٹری میں شامل کریں" دبانے پر درج ہوگی، "بعد کے لیے محفوظ کریں" پر نہیں۔</small>
+                        <small class="text-muted d-block mt-1">یہ ادائیگی دونوں بٹنوں پر ابھی درج ہو جائے گی، چاہے مال بعد میں آئے۔ وصول کرتے وقت دوبارہ نہ لکھیں۔</small>
                     </div>
 
                     <div class="purchase-choice">

@@ -8,6 +8,7 @@ use App\Models\ClothColor;
 use App\Models\ClothType;
 use App\Models\Purchase;
 use App\Models\Supplier;
+use App\Models\SupplierPayment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -123,6 +124,47 @@ class PurchaseWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_payment_entered_on_a_draft_is_kept_when_the_cloth_is_received_later(): void
+    {
+        [$owner, $supplier, $color] = $this->draftPurchase();
+        Purchase::query()->delete();
+        $payload = [
+            'supplier_id' => $supplier->id,
+            'purchase_date' => now()->toDateString(),
+            'cloth_color_id' => [$color->id],
+            'quantity' => [5],
+            'line_total' => [600],
+            'submit_action' => 'draft',
+        ];
+
+        // A draft checks the payment the same way as a received purchase.
+        $this->actingAs($owner)->from(route('admin.purchases.create'))
+            ->post(route('admin.purchases.store'), $payload + ['paid_amount' => 250, 'payment_method' => 'bank_transfer'])
+            ->assertSessionHasErrors('payment_reference');
+        $this->assertDatabaseCount('purchases', 0);
+
+        $this->actingAs($owner)->post(route('admin.purchases.store'), $payload + [
+            'paid_amount' => 250, 'payment_method' => 'bank_transfer', 'payment_reference' => 'BANK-7',
+        ])->assertSessionHasNoErrors();
+
+        $purchase = Purchase::where('user_id', $owner->id)->firstOrFail();
+        $this->assertSame('draft', $purchase->status);
+        $this->assertEquals(350, (float) $purchase->balance_amount);
+        $this->assertDatabaseHas('supplier_payments', [
+            'purchase_id' => $purchase->id, 'amount' => 250, 'payment_method' => 'bank_transfer', 'reference' => 'BANK-7',
+        ]);
+        $this->actingAs($owner)->get(route('admin.purchases.show', $purchase))
+            ->assertOk()->assertSeeText('کی ادائیگی پہلے سے درج ہے');
+
+        // Receiving later adds the stock without asking for, or repeating, the payment.
+        $this->actingAs($owner)->patch(route('admin.purchases.receive', $purchase))->assertSessionHasNoErrors();
+        $purchase->refresh();
+        $this->assertSame('received', $purchase->status);
+        $this->assertEquals(250, (float) $purchase->paid_amount);
+        $this->assertEquals(350, (float) $purchase->balance_amount);
+        $this->assertSame(1, SupplierPayment::where('purchase_id', $purchase->id)->count());
+    }
+
     public function test_purchase_can_create_a_new_color_tracked_set_and_receive_it_in_one_flow(): void
     {
         Storage::fake('public');
@@ -229,6 +271,28 @@ class PurchaseWorkflowTest extends TestCase
             ->assertOk()
             ->assertSeeText('واپسی کے بعد رقم')
             ->assertSeeText('روپے 300.00');
+    }
+
+    public function test_packed_suit_purchase_is_shown_and_returned_in_whole_suits(): void
+    {
+        [$owner, , $color, $purchase] = $this->draftPurchase();
+        $color->cloth->update(['stock_unit' => \App\Models\ClothCategory::UNIT_SUIT]);
+        $this->actingAs($owner)->patch(route('admin.purchases.receive', $purchase));
+        $item = $purchase->items()->firstOrFail();
+
+        $this->actingAs($owner)->get(route('admin.purchases.show', $purchase))
+            ->assertOk()
+            ->assertSeeText('5 سوٹ')
+            ->assertSeeText('روپے 100.00 / سوٹ')
+            ->assertDontSeeText('میٹر');
+
+        $this->actingAs($owner)->post(route('admin.purchases.return', $purchase), [
+            'purchase_item_id' => $item->id, 'quantity' => 1.5, 'return_date' => now()->toDateString(),
+        ])->assertSessionHasErrors('quantity');
+        $this->actingAs($owner)->post(route('admin.purchases.return', $purchase), [
+            'purchase_item_id' => $item->id, 'quantity' => 2, 'return_date' => now()->toDateString(),
+        ])->assertSessionHasNoErrors();
+        $this->assertEquals(2, (float) $item->fresh()->returned_quantity);
     }
 
     public function test_cancelling_draft_preserves_audit_total_but_clears_payable_without_moving_stock(): void

@@ -435,10 +435,18 @@
     @php
         $statusLabels = ['draft' => 'زیرِ تیاری', 'received' => 'وصول شدہ', 'cancelled' => 'منسوخ'];
         $statusLabel = $statusLabels[$purchase->status] ?? $purchase->status;
-        $orderedQuantity = $purchase->items->sum('quantity');
-        $receivedQuantity = $purchase->items->sum('received_quantity');
-        $returnedQuantity = $purchase->items->sum('returned_quantity');
         $itemGroups = $purchase->items->groupBy('cloth_id');
+        // Packed women's suits are bought and counted whole; everything else is in meters.
+        $quantityText = fn ($quantity, bool $suits) => $suits
+            ? number_format((float) $quantity).' سوٹ'
+            : number_format((float) $quantity, 2).' میٹر';
+        // Totals keep meters and suits apart, e.g. "40.00 میٹر + 80 سوٹ".
+        $totalText = function (string $column) use ($purchase, $quantityText) {
+            return $purchase->items->groupBy(fn ($row) => $row->cloth->countsSuits() ? 'suit' : 'meter')
+                ->sortKeys()
+                ->map(fn ($rows, $unit) => $quantityText($rows->sum($column), $unit === 'suit'))
+                ->implode(' + ') ?: $quantityText(0, false);
+        };
     @endphp
     <section class="main-content purchase-page" dir="rtl">
         <div class="purchase-shell">
@@ -507,12 +515,19 @@
                 <div class="purchase-panel purchase-draft-notice">
                     <p><i class="fas fa-info-circle text-primary ml-1"></i> مال وصول کرنے پر تمام آئٹمز اسٹاک میں شامل ہو
                         جائیں گے۔</p>
+                    @if ((float) $purchase->paid_amount > 0)
+                        <p class="mb-2"><i class="fas fa-check-circle text-success ml-1"></i> سپلائر کو
+                            <strong dir="ltr">Rs. {{ number_format($purchase->paid_amount, 2) }}</strong> کی ادائیگی پہلے سے درج ہے؛
+                            مال وصول کرتے وقت یہ دوبارہ نہ لکھیں۔</p>
+                    @endif
                     <div class="purchase-draft-actions">
                         <form method="POST" action="{{ route('admin.purchases.receive', $purchase) }}"
                             data-confirm="کیا تمام مال وصول کر کے اسٹاک اپ ڈیٹ کرنا ہے؟" data-confirm-variant="success">
                             @csrf @method('PATCH')<button class="btn btn-success">مال وصول کریں</button></form>
                         <form method="POST" action="{{ route('admin.purchases.cancel', $purchase) }}"
-                            data-confirm="کیا یہ خریداری منسوخ کرنا ہے؟">@csrf @method('PATCH')<button
+                            data-confirm="{{ (float) $purchase->paid_amount > 0
+                                ? 'کیا یہ خریداری منسوخ کرنا ہے؟ درج ادائیگی سپلائر کے کھاتے میں ایڈوانس کے طور پر رہے گی۔'
+                                : 'کیا یہ خریداری منسوخ کرنا ہے؟' }}">@csrf @method('PATCH')<button
                                 class="btn btn-outline-danger">منسوخ کریں</button></form>
                     </div>
                 </div>
@@ -532,7 +547,7 @@
                                 <th>آرڈر شدہ</th>
                                 <th>وصول شدہ</th>
                                 <th>واپس شدہ</th>
-                                <th>حسابی فی میٹر لاگت</th>
+                                <th>حسابی لاگت</th>
                                 <th>واپسی کے بعد رقم</th>
                                 @if ($purchase->status === 'received')
                                     <th>عمل</th>
@@ -553,6 +568,8 @@
                                     $groupUnitCost =
                                         $groupQuantity > 0 ? (float) $items->sum('line_total') / $groupQuantity : 0;
                                     $showColors = $item->cloth->tracksColors() && $items->count() > 1;
+                                    $suits = $item->cloth->countsSuits();
+                                    $unit = $suits ? 'سوٹ' : 'میٹر';
                                 @endphp
                                 <tr>
                                     <td data-label="#">{{ $loop->iteration }}</td>
@@ -566,8 +583,7 @@
                                                 <div class="purchase-color-list">
                                                     @foreach ($items as $colorItem)
                                                         <div class="purchase-color-line">
-                                                            <strong>{{ $colorItem->color }}</strong><span>{{ number_format($colorItem->quantity, 2) }}
-                                                                میٹر</span></div>
+                                                            <strong>{{ $colorItem->color }}</strong><span>{{ $quantityText($colorItem->quantity, $suits) }}</span></div>
                                                     @endforeach
                                                 </div>
                                             </details>
@@ -576,15 +592,13 @@
                                         @endif
                                     </td>
                                     <td data-label="آرڈر شدہ"><span
-                                            class="purchase-quantity">{{ number_format($groupQuantity, 2) }} میٹر</span>
+                                            class="purchase-quantity">{{ $quantityText($groupQuantity, $suits) }}</span>
                                     </td>
                                     <td data-label="وصول شدہ"><span
-                                            class="purchase-quantity is-received">{{ number_format($groupReceived, 2) }}
-                                            میٹر</span></td>
+                                            class="purchase-quantity is-received">{{ $quantityText($groupReceived, $suits) }}</span></td>
                                     <td data-label="واپس شدہ"><span
-                                            class="purchase-quantity is-returned">{{ number_format($groupReturned, 2) }}
-                                            میٹر</span></td>
-                                    <td data-label="حسابی فی میٹر لاگت">روپے {{ number_format($groupUnitCost, 2) }}</td>
+                                            class="purchase-quantity is-returned">{{ $quantityText($groupReturned, $suits) }}</span></td>
+                                    <td data-label="حسابی لاگت">روپے {{ number_format($groupUnitCost, 2) }} / {{ $unit }}</td>
                                     <td data-label="واپسی کے بعد رقم">روپے {{ number_format($groupTotal, 2) }}</td>
                                     @if ($purchase->status === 'received')
                                         <td class="purchase-return-action" data-label="مال واپس کریں">
@@ -602,12 +616,12 @@
                                                                         value="{{ $returnItem->id }}"><input type="hidden"
                                                                         name="return_date"
                                                                         value="{{ now()->toDateString() }}"><input
-                                                                        type="number" name="quantity" step="0.01"
-                                                                        min="0.01"
+                                                                        type="number" name="quantity" step="{{ $suits ? 1 : 0.01 }}"
+                                                                        min="{{ $suits ? 1 : 0.01 }}"
                                                                         max="{{ (float) $returnItem->received_quantity - (float) $returnItem->returned_quantity }}"
                                                                         class="form-control"
-                                                                        aria-label="واپسی کی مقدار میٹر میں"
-                                                                        placeholder="میٹر" required><button
+                                                                        aria-label="واپسی کی مقدار {{ $unit }} میں"
+                                                                        placeholder="{{ $unit }}" required><button
                                                                         class="btn btn-outline-danger">واپس کریں</button>
                                                                 </form>
                                                             </div>
@@ -623,11 +637,9 @@
                     </table>
                 </div>
                 <div class="purchase-totals-strip"><span>کل سیٹ:<strong>{{ $itemGroups->count() }}</strong></span><span
-                        class="total-primary">آرڈر شدہ:<strong>{{ number_format($orderedQuantity, 2) }}
-                            میٹر</strong></span><span class="total-success">وصول
-                        شدہ:<strong>{{ number_format($receivedQuantity, 2) }} میٹر</strong></span><span
-                        class="total-danger">واپس شدہ:<strong>{{ number_format($returnedQuantity, 2) }}
-                            میٹر</strong></span></div>
+                        class="total-primary">آرڈر شدہ:<strong>{{ $totalText('quantity') }}</strong></span><span
+                        class="total-success">وصول شدہ:<strong>{{ $totalText('received_quantity') }}</strong></span><span
+                        class="total-danger">واپس شدہ:<strong>{{ $totalText('returned_quantity') }}</strong></span></div>
             </section>
 
             <div class="purchase-lower-grid">

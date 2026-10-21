@@ -108,12 +108,11 @@ class PurchaseController extends Controller
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:1000'],
             'submit_action' => ['nullable', Rule::in(['draft', 'receive'])],
-            // Optional supplier payment, posted only when the purchase is received.
+            // Optional supplier payment, recorded on save whether the cloth has arrived or not.
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
             'payment_method' => ['nullable', Rule::in(array_keys(PaymentMethods::LABELS))],
             'payment_reference' => [
-                Rule::requiredIf(fn() => $request->input('submit_action') === 'receive'
-                    && (float) $request->input('paid_amount') > 0
+                Rule::requiredIf(fn() => (float) $request->input('paid_amount') > 0
                     && PaymentMethods::requiresReference($request->input('payment_method'))),
                 'nullable',
                 'string',
@@ -317,8 +316,7 @@ class PurchaseController extends Controller
             ]);
 
             // Reject an overpayment before anything is committed.
-            if (($validated['submit_action'] ?? 'draft') === 'receive'
-                && round((float) ($validated['paid_amount'] ?? 0), 2) > round($total, 2)) {
+            if (round((float) ($validated['paid_amount'] ?? 0), 2) > round($total, 2)) {
                 throw ValidationException::withMessages(['paid_amount' => 'ادائیگی کی رقم کل خریداری سے زیادہ نہیں ہو سکتی۔']);
             }
 
@@ -326,36 +324,38 @@ class PurchaseController extends Controller
         });
 
         $receiveNow = ($validated['submit_action'] ?? 'draft') === 'receive';
+        $paidAmount = round((float) ($validated['paid_amount'] ?? 0), 2);
+
+        DB::transaction(function () use ($purchase, $paidAmount, $validated, $receiveNow) {
+            if ($receiveNow) {
+                $this->receivePurchase($purchase->id);
+            }
+
+            // Money already handed to the supplier is recorded now, even if the cloth comes later.
+            if ($paidAmount <= 0) {
+                return;
+            }
+
+            $purchase = Purchase::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($purchase->id);
+            if ($paidAmount > (float) $purchase->balance_amount) {
+                throw ValidationException::withMessages(['paid_amount' => 'ادائیگی کی رقم کل خریداری سے زیادہ نہیں ہو سکتی۔']);
+            }
+            SupplierPayment::create([
+                'user_id' => $purchase->user_id,
+                'supplier_id' => $purchase->supplier_id,
+                'purchase_id' => $purchase->id,
+                'payment_date' => $validated['purchase_date'],
+                'amount' => $paidAmount,
+                'payment_method' => $validated['payment_method'] ?? 'cash',
+                'reference' => $validated['payment_reference'] ?? null,
+            ]);
+            $purchase->update([
+                'paid_amount' => (float) $purchase->paid_amount + $paidAmount,
+                'balance_amount' => (float) $purchase->balance_amount - $paidAmount,
+            ]);
+        });
 
         if ($receiveNow) {
-            $paidAmount = round((float) ($validated['paid_amount'] ?? 0), 2);
-
-            DB::transaction(function () use ($purchase, $paidAmount, $validated) {
-                $this->receivePurchase($purchase->id);
-
-                if ($paidAmount <= 0) {
-                    return;
-                }
-
-                $purchase = Purchase::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($purchase->id);
-                if ($paidAmount > (float) $purchase->balance_amount) {
-                    throw ValidationException::withMessages(['paid_amount' => 'ادائیگی کی رقم کل خریداری سے زیادہ نہیں ہو سکتی۔']);
-                }
-                SupplierPayment::create([
-                    'user_id' => $purchase->user_id,
-                    'supplier_id' => $purchase->supplier_id,
-                    'purchase_id' => $purchase->id,
-                    'payment_date' => $validated['purchase_date'],
-                    'amount' => $paidAmount,
-                    'payment_method' => $validated['payment_method'] ?? 'cash',
-                    'reference' => $validated['payment_reference'] ?? null,
-                ]);
-                $purchase->update([
-                    'paid_amount' => (float) $purchase->paid_amount + $paidAmount,
-                    'balance_amount' => (float) $purchase->balance_amount - $paidAmount,
-                ]);
-            });
-
             return redirect()
                 ->route('admin.purchases.create')
                 ->with(
@@ -371,7 +371,9 @@ class PurchaseController extends Controller
             ->route('admin.purchases.show', $purchase)
             ->with(
                 'success',
-                'خریداری بعد کے لیے محفوظ ہو گئی ہے، ابھی اسٹاک میں شامل نہیں ہوئی۔ مال آنے پر اسے کھول کر انوینٹری میں شامل کریں۔'
+                'خریداری بعد کے لیے محفوظ ہو گئی ہے، ابھی اسٹاک میں شامل نہیں ہوئی۔'
+                    .($paidAmount > 0 ? ' روپے '.number_format($paidAmount, 2).' کی ادائیگی درج کر دی گئی ہے۔' : '')
+                    .' مال آنے پر اسے کھول کر انوینٹری میں شامل کریں۔'
             );
     }
 
@@ -478,6 +480,9 @@ class PurchaseController extends Controller
             $purchase = Purchase::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($purchase->id);
             $item = PurchaseItem::where('purchase_id', $purchase->id)->lockForUpdate()->findOrFail($validated['purchase_item_id']);
             $quantity = round((float) $validated['quantity'], 2);
+            if ($item->cloth?->countsSuits() && ! $this->isWholeNumber($quantity)) {
+                throw ValidationException::withMessages(['quantity' => 'سوٹ پورے واپس ہوتے ہیں، مثلاً 1 یا 2۔']);
+            }
             $availableToReturn = (float) $item->received_quantity - (float) $item->returned_quantity;
             if ($quantity > $availableToReturn) {
                 throw ValidationException::withMessages(['quantity' => 'Return quantity exceeds the received quantity remaining.']);
