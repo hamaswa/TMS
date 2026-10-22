@@ -55,7 +55,7 @@ class CounterSaleReturnService
                 $lines[] = compact('item', 'quantity', 'unitPrice', 'inventoryQuantity', 'lineTotal');
             }
 
-            $original = Transaction::where('userId', $ownerId)->where('counter_sale_receipt_id', $lockedReceipt->id)
+            $original = Transaction::where('userId', (string) $ownerId)->where('counter_sale_receipt_id', $lockedReceipt->id)
                 ->where('Order_type', 'Sale')->lockForUpdate()->first();
             $laterPayments = (float) $lockedReceipt->payments()->sum('recivedPayment');
             $originalOutstanding = max(0, (float) ($original?->remainingBalance ?? 0));
@@ -64,7 +64,7 @@ class CounterSaleReturnService
             $customerId = $lockedReceipt->customer_id ?? $original?->customerId;
             // Everything the customer owes the shop, this receipt included.
             $totalDues = $customerId
-                ? max($currentOutstanding, round((float) Transaction::where('userId', $ownerId)->where('customerId', $customerId)
+                ? max($currentOutstanding, round((float) Transaction::where('userId', (string) $ownerId)->where('customerId', (string) $customerId)
                     ->lockForUpdate()->sum('remainingBalance'), 2))
                 : $currentOutstanding;
 

@@ -16,8 +16,8 @@ class OrderCancellationSettlementService
         $total = $money($source['order_total']);
         $outstanding = min($total, max(0, $money($source['outstanding'])));
         $paid = max(0, $money($total - $outstanding));
-        $ledgerBalance = $money(Transaction::where('userId', $source['user_id'])
-            ->where('customerId', $source['customer_id'])->sum('remainingBalance'));
+        $ledgerBalance = $money(Transaction::where('userId', (string) $source['user_id'])
+            ->where('customerId', $source['customer_id'] === null ? null : (string) $source['customer_id'])->sum('remainingBalance'));
         $otherBalance = max(0, $money($ledgerBalance - $outstanding));
         $charge = $money($data['cancellation_charge'] ?? 0);
         $compensation = $money($data['compensation'] ?? 0);

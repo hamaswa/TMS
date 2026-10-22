@@ -131,8 +131,8 @@ class CustomerLedgerService
 
     private function allocate(int $ownerId, int $customerId): array
     {
-        return $this->allocateTransactions(Transaction::where('userId', $ownerId)
-            ->where('customerId', $customerId)
+        return $this->allocateTransactions(Transaction::where('userId', (string) $ownerId)
+            ->where('customerId', (string) $customerId)
             ->orderBy('id')
             ->get(['id', 'orderId', 'counter_sale_receipt_id', 'Order_type', 'remainingBalance']));
     }

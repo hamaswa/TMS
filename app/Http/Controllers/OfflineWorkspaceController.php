@@ -95,9 +95,9 @@ class OfflineWorkspaceController extends Controller
                 ];
             }
 
-            $query = Order::where('userId', $actor['owner_id']);
+            $query = Order::where('userId', (string) $actor['owner_id']);
             if ($actor['type'] === 'tailor') {
-                $query->where('tailorId', $actor['id']);
+                $query->where('tailorId', (string) $actor['id']);
             }
 
             $order = $query->lockForUpdate()->find($command['aggregate_id']);

@@ -37,7 +37,7 @@ class SaleController extends Controller
     public function show($id)
     {
         $sale = $this->ownedSale($id)->load('detail');
-        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())
+        $transaction = Transaction::where('userId', (string) Auth::user()->businessOwnerId())
             ->where('sale_id', $id)
             ->orderBy('id')
             ->get();
@@ -92,12 +92,12 @@ class SaleController extends Controller
         $sales = $this->ownedSale($id)->load('detail');
         abort_if($sales->status === 'cancelled', 422, 'منسوخ شدہ فروخت تبدیل نہیں کی جا سکتی۔');
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())->orderBy('name')->get();
-        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())->where('sale_id', $id)->get();
+        $transaction = Transaction::where('userId', (string) Auth::user()->businessOwnerId())->where('sale_id', $id)->get();
 
         // Calculate the latest balance
         $latestBalance = $sales->customer_id
-            ? Transaction::where('userId', Auth::user()->businessOwnerId())
-                ->where('customerId', $sales->customer_id)
+            ? Transaction::where('userId', (string) Auth::user()->businessOwnerId())
+                ->where('customerId', (string) $sales->customer_id)
                 ->where(fn ($query) => $query->whereNull('sale_id')->orWhere('sale_id', '!=', $sales->id))
                 ->sum('remainingBalance')
             : $transaction->sum('remainingBalance');
@@ -161,7 +161,7 @@ class SaleController extends Controller
                 ]);
             }
 
-            $original = Transaction::where('userId', $ownerId)
+            $original = Transaction::where('userId', (string) $ownerId)
                 ->where('sale_id', $sale->id)
                 ->where('Order_type', 'Sale')
                 ->lockForUpdate()
@@ -198,16 +198,16 @@ class SaleController extends Controller
 
         $saleid = $sale->id;
 
-        $customerTransactions = Transaction::where('userId', Auth::user()->businessOwnerId())
+        $customerTransactions = Transaction::where('userId', (string) Auth::user()->businessOwnerId())
             ->when($sale->customer_id,
-                fn ($query) => $query->where('customerId', $sale->customer_id),
+                fn ($query) => $query->where('customerId', (string) $sale->customer_id),
                 fn ($query) => $query->where('sale_id', $saleid))
             ->orderBy('id')->get();
 
         // Calculate the latest balance
         $latestBalance = $customerTransactions->sum('remainingBalance');
 
-        $transaction = Transaction::where('userId', Auth::user()->businessOwnerId())
+        $transaction = Transaction::where('userId', (string) Auth::user()->businessOwnerId())
             ->where('sale_id', $id)
             ->where('Order_type', 'Sale')
             ->latest()

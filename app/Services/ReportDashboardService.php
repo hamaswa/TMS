@@ -102,7 +102,7 @@ class ReportDashboardService
             ->selectRaw('MAX(counter_sale_receipt_id) AS receipt_id, MAX(sellDate) AS sold_at, MAX(c_name) AS customer')
             ->selectRaw('COUNT(*) AS items, SUM(selling_price * length) AS amount')
             ->orderByDesc('sold_at')->limit($limit)->get();
-        $methods = Transaction::where('userId', $userId)->whereIn('counter_sale_receipt_id', $bills->pluck('receipt_id')->filter())
+        $methods = Transaction::where('userId', (string) $userId)->whereIn('counter_sale_receipt_id', $bills->pluck('receipt_id')->filter())
             ->where('Order_type', 'Sale')->pluck('payment_method', 'counter_sale_receipt_id');
 
         return $bills->map(fn ($bill) => [
@@ -194,7 +194,7 @@ class ReportDashboardService
      */
     public function ordersByStatus(int $userId, CarbonInterface $start, CarbonInterface $end, bool $detailed): Collection
     {
-        $counts = Order::where('userId', $userId)->whereBetween('created_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+        $counts = Order::where('userId', (string) $userId)->whereBetween('created_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
             ->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status');
         $labels = Order::statusLabelsFor($detailed);
 
@@ -213,7 +213,7 @@ class ReportDashboardService
         return Order::query()
             ->leftJoin('customers', 'customers.id', '=', 'orders.customerId')
             ->leftJoin('tailors', 'tailors.id', '=', 'orders.tailorId')
-            ->where('orders.userId', $userId)
+            ->where('orders.userId', (string) $userId)
             ->whereBetween('orders.created_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
             ->when($status === 'workshop', fn ($query) => $query->whereIn('orders.status', Order::SIMPLE_WORKSHOP_STATUSES))
             ->when($status && $status !== 'workshop', fn ($query) => $query->where('orders.status', $status))
@@ -240,7 +240,7 @@ class ReportDashboardService
                 ->selectRaw("SUM(CASE WHEN orders.created_at >= ? THEN {$suits} ELSE 0 END) AS period_suits", [$from])
                 ->selectRaw("SUM(CASE WHEN orders.created_at >= ? THEN COALESCE(orders.tailor_price, 0) * {$suits} ELSE 0 END) AS period_earned", [$from])
                 ->selectRaw("SUM(COALESCE(orders.tailor_price, 0) * {$suits}) AS earned, SUM(COALESCE(orders.tailor_paid_amount, 0)) AS paid")
-                ->where('orders.userId', $userId)->whereNotNull('orders.tailorId')
+                ->where('orders.userId', (string) $userId)->whereNotNull('orders.tailorId')
                 ->where(fn ($query) => $query->whereNull('orders.status')->orWhere('orders.status', '!=', 'cancelled'))
                 ->where('orders.created_at', '<=', $to)
                 ->groupBy('orders.tailorId'), 'tailor_work', 'tailor_work.tailor_id', '=', 'tailors.id')
@@ -323,7 +323,7 @@ class ReportDashboardService
     /** Money customers paid in the period towards cloth sales or stitching. */
     private function received(int $userId, CarbonInterface $start, CarbonInterface $end, string $side): float
     {
-        return (float) Transaction::where('userId', $userId)
+        return (float) Transaction::where('userId', (string) $userId)
             ->whereBetween('created_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
             ->where(fn ($query) => $side === 'sales'
                 ? $query->whereIn('Order_type', self::SALE_TYPES)
@@ -335,7 +335,7 @@ class ReportDashboardService
 
     private function activeOrders(int $userId)
     {
-        return Order::where('orders.userId', $userId)
+        return Order::where('orders.userId', (string) $userId)
             ->where(fn ($query) => $query->whereNull('orders.status')->orWhere('orders.status', '!=', 'cancelled'));
     }
 }

@@ -6,6 +6,7 @@ use App\Models\ClothColor;
 use App\Models\InventoryMovement;
 use App\Services\InventoryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -32,8 +33,8 @@ class InventoryLedgerController extends Controller
         $movements = InventoryMovement::where('user_id', Auth::user()->businessOwnerId())->with(['cloth.brand', 'cloth.type', 'clothColor'])
             ->when($validated['cloth_color_id'] ?? null, fn ($q, $id) => $q->where('cloth_color_id', $id))
             ->when($validated['movement_type'] ?? null, fn ($q, $type) => $q->where('movement_type', $type))
-            ->when($validated['from_date'] ?? null, fn ($q, $date) => $q->whereDate('occurred_at', '>=', $date))
-            ->when($validated['to_date'] ?? null, fn ($q, $date) => $q->whereDate('occurred_at', '<=', $date))
+            ->when($validated['from_date'] ?? null, fn ($q, $date) => $q->where('occurred_at', '>=', Carbon::parse($date)->startOfDay()))
+            ->when($validated['to_date'] ?? null, fn ($q, $date) => $q->where('occurred_at', '<=', Carbon::parse($date)->endOfDay()))
             ->latest('occurred_at')->latest('id')
             ->paginate((int) ($validated['per_page'] ?? 25))->withQueryString();
         $colors = ClothColor::where('user_id', Auth::user()->businessOwnerId())->with('cloth.brand', 'cloth.type')->orderBy('cloth_id')->get();

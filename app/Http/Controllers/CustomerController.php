@@ -26,6 +26,7 @@ use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -131,7 +132,7 @@ class CustomerController extends Controller
             ->whereNull('parent_id')
             ->withSum([
                 'transactions as current_balance' => fn($transactions) => $transactions
-                    ->where('userId', Auth::user()->businessOwnerId()),
+                    ->where('userId', (string) Auth::user()->businessOwnerId()),
             ], 'remainingBalance')
             ->orderBy('name')
             ->get();
@@ -201,7 +202,7 @@ class CustomerController extends Controller
         $canViewTailoring = $tailoringEnabled && $user->hasBusinessPermission(BusinessRole::TAILORING_ORDERS);
         $canViewShop = $clothingEnabled && $user->hasBusinessPermission(BusinessRole::CLOTHING_SALES);
         $canManageMeasurements = $tailoringEnabled && $user->hasBusinessPermission(BusinessRole::TAILORING_CUSTOMERS);
-        $baseTransactions = Transaction::where('userId', $user->businessOwnerId())->where('customerId', $customer->id);
+        $baseTransactions = Transaction::where('userId', (string) $user->businessOwnerId())->where('customerId', (string) $customer->id);
         $totalBalance = $canViewBalances ? (float) (clone $baseTransactions)->sum('remainingBalance') : null;
         $totalReceived = $canViewBalances ? (float) (clone $baseTransactions)->sum('recivedPayment') : null;
         $visibleTypes = array_values(array_filter([
@@ -240,16 +241,16 @@ class CustomerController extends Controller
             $ledgerQuery->where('Order_type', 'Payment');
         }
         if (request()->filled('ledger_from')) {
-            $ledgerQuery->whereDate('created_at', '>=', request()->date('ledger_from')->format('Y-m-d'));
+            $ledgerQuery->where('created_at', '>=', request()->date('ledger_from')->startOfDay());
         }
         if (request()->filled('ledger_to')) {
-            $ledgerQuery->whereDate('created_at', '<=', request()->date('ledger_to')->format('Y-m-d'));
+            $ledgerQuery->where('created_at', '<=', request()->date('ledger_to')->endOfDay());
         }
         $transactions = $canViewBalances && $visibleTypes
             ? $ledgerQuery->latest()->paginate(20, ['*'], 'ledger_page')->withQueryString()
             : null;
         $orders = $canViewTailoring
-            ? $customer->orders()->where('userId', $ownerId)
+            ? $customer->orders()->where('userId', (string) $ownerId)
             ->with(['tailor:id,name', 'customers:id,name,serial_number', 'measurementTemplate:id,name'])
             ->latest()->limit(50)->get()
             : collect();
@@ -290,7 +291,7 @@ class CustomerController extends Controller
         if ($canManageMeasurements) {
             $measurementProfiles = Customers::where('user_id', $ownerId)
                 ->where(function ($query) use ($customer) {
-                    $query->whereKey($customer->id)->orWhere('parent_id', $customer->id);
+                    $query->whereKey($customer->id)->orWhere('parent_id', (string) $customer->id);
                 })
                 ->with('measurementTemplate:id,name')
                 ->withCount(['measurementValues', 'measurementHistories'])
@@ -490,7 +491,7 @@ class CustomerController extends Controller
                 ->where('user_id', $ownerId)
                 ->where(function ($query) use ($existingCustomer) {
                     $query->whereKey($existingCustomer->id)
-                        ->orWhere('parent_id', $existingCustomer->id);
+                        ->orWhere('parent_id', (string) $existingCustomer->id);
                 })
                 ->get()
                 ->first(fn(Customers $profile) => $normalizeName($profile->name) === $requestedName);
@@ -968,12 +969,12 @@ class CustomerController extends Controller
         }
         $customer = $this->ownedCustomer($validated['customer_id']);
         // Retrieve the current remaining balance for the customer
-        $currentBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->sum('remainingBalance');
+        $currentBalance = Transaction::where('userId', (string) Auth::user()->businessOwnerId())->where('customerId', (string) $customer->id)->sum('remainingBalance');
 
         $order = null;
         if (! empty($validated['order_id'])) {
-            $order = Order::where('userId', Auth::user()->businessOwnerId())
-                ->where('customerId', $customer->id)
+            $order = Order::where('userId', (string) Auth::user()->businessOwnerId())
+                ->where('customerId', (string) $customer->id)
                 ->findOrFail($validated['order_id']);
             $orderBalance = $this->customerLedger->orderBalance($order);
 
@@ -1101,7 +1102,7 @@ class CustomerController extends Controller
         }
         $customer = $this->ownedCustomer($validated['customer_id']);
         // Retrieve the current remaining balance for the customer
-        $currentBalance = Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $customer->id)->sum('remainingBalance');
+        $currentBalance = Transaction::where('userId', (string) Auth::user()->businessOwnerId())->where('customerId', (string) $customer->id)->sum('remainingBalance');
 
         // Retrieve the customer's name
         $customerName = $customer->name;
@@ -1296,7 +1297,7 @@ class CustomerController extends Controller
 
         $balanceTotals = Transaction::query()
             ->selectRaw('customerId, SUM(remainingBalance) AS current_balance')
-            ->where('userId', $ownerId)
+            ->where('userId', (string) $ownerId)
             ->groupBy('customerId');
         $stats = DB::query()
             ->fromSub($balanceTotals, 'customer_balances')

@@ -55,7 +55,7 @@ class CounterOrderController extends Controller
         $selectedProfileId = $selectedCustomer
             ? Customers::where('user_id', $request->user()->businessOwnerId())
             ->whereKey($request->integer('profile', $selectedCustomer->id))
-            ->where(fn($query) => $query->whereKey($selectedCustomer->id)->orWhere('parent_id', $selectedCustomer->id))
+            ->where(fn($query) => $query->whereKey($selectedCustomer->id)->orWhere('parent_id', (string) $selectedCustomer->id))
             ->value('id')
             : null;
         $openOrders = $selectedCustomer
@@ -171,7 +171,7 @@ class CounterOrderController extends Controller
             ->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item));
         $cloths = $canAddCloth ? Cloth::where('user_id', $ownerId)->with(['brand', 'type', 'colors', 'category.parent'])->orderBy('id')->get() : collect();
         $profiles = Customers::where('user_id', $ownerId)
-            ->where(fn($query) => $query->whereKey($counterOrder->customer_id)->orWhere('parent_id', $counterOrder->customer_id))
+            ->where(fn($query) => $query->whereKey($counterOrder->customer_id)->orWhere('parent_id', $counterOrder->customer_id === null ? null : (string) $counterOrder->customer_id))
             ->orderByRaw('parent_id is not null')->orderBy('name')->get();
         $selectedProfileId = $profiles->contains('id', $request->integer('profile'))
             ? $request->integer('profile')

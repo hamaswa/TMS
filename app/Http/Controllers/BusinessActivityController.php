@@ -6,6 +6,7 @@ use App\Models\BusinessActivityLog;
 use App\Models\Business;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class BusinessActivityController extends Controller
 {
@@ -18,8 +19,8 @@ class BusinessActivityController extends Controller
         return view('team.activity', [
             'logs' => $query->latest('id')->paginate(30)->withQueryString(),
             'members' => $business->members()->orderBy('name')->get(['id', 'name', 'username']),
-            'todayCount' => BusinessActivityLog::where('business_id', $business->id)->whereDate('created_at', today())->count(),
-            'actorCount' => BusinessActivityLog::where('business_id', $business->id)->whereDate('created_at', today())->distinct('actor_user_id')->count('actor_user_id'),
+            'todayCount' => BusinessActivityLog::where('business_id', $business->id)->whereBetween('created_at', [today(), today()->endOfDay()])->count(),
+            'actorCount' => BusinessActivityLog::where('business_id', $business->id)->whereBetween('created_at', [today(), today()->endOfDay()])->distinct('actor_user_id')->count('actor_user_id'),
         ]);
     }
 
@@ -74,10 +75,10 @@ class BusinessActivityController extends Controller
             $query->where('actor_user_id', $filters['employee']);
         }
         if (! empty($filters['from'])) {
-            $query->whereDate('created_at', '>=', $filters['from']);
+            $query->where('created_at', '>=', Carbon::parse($filters['from'])->startOfDay());
         }
         if (! empty($filters['to'])) {
-            $query->whereDate('created_at', '<=', $filters['to']);
+            $query->where('created_at', '<=', Carbon::parse($filters['to'])->endOfDay());
         }
         if (! empty($filters['action'])) {
             $query->where('route_name', 'like', '%' . $filters['action'] . '%');

@@ -15,6 +15,7 @@ use App\Models\SupplierPayment;
 use App\Services\InventoryService;
 use App\Support\PaymentMethods;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -52,8 +53,8 @@ class PurchaseController extends Controller
                     ->orWhere('reference', 'like', "%{$search}%")
                     ->orWhereHas('supplier', fn($supplier) => $supplier->where('name', 'like', "%{$search}%"));
             }))
-            ->when($filters['from_date'] ?? null, fn($q, $date) => $q->whereDate('purchase_date', '>=', $date))
-            ->when($filters['to_date'] ?? null, fn($q, $date) => $q->whereDate('purchase_date', '<=', $date))
+            ->when($filters['from_date'] ?? null, fn($q, $date) => $q->where('purchase_date', '>=', Carbon::parse($date)->toDateString()))
+            ->when($filters['to_date'] ?? null, fn($q, $date) => $q->where('purchase_date', '<=', Carbon::parse($date)->toDateString()))
             ->latest('purchase_date')->latest('id')
             ->paginate((int) ($filters['per_page'] ?? 25))->withQueryString();
         $suppliers = Supplier::where('user_id', Auth::user()->businessOwnerId())->where('active', true)->orderBy('name')->get();

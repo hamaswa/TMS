@@ -116,6 +116,8 @@ class SubscriptionManagementTest extends TestCase
             ->assertSee(route('admin.subscription.index'), false);
 
         $subscription->update(['ends_on' => now()->subDay()->toDateString()]);
+        // A real request loads the user again; the business caches its subscription per instance.
+        $owner = $owner->fresh();
         $this->actingAs($owner)->get(route('admin.home'))
             ->assertRedirect(route('admin.subscription.required'));
         $this->actingAs($owner)->get(route('admin.subscription.required'))

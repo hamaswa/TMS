@@ -505,9 +505,9 @@ class ClothStockController extends Controller
         // dd($id);
 
         $receipt = $latestSaleStock->receipt;
-        $gettransactions = Transaction::where('customerId', $id)
+        $gettransactions = Transaction::where('customerId', (string) $id)
             ->where('Order_type', 'Sale')
-            ->where('userId', auth()->user()->businessOwnerId())
+            ->where('userId', (string) auth()->user()->businessOwnerId())
             ->when(
                 $receipt,
                 fn ($query) => $query->where(function ($linked) use ($receipt, $sale_id) {
@@ -524,9 +524,9 @@ class ClothStockController extends Controller
         $remaining = $gettransactions->remainingBalance;
         $payment = $gettransactions->recivedPayment;
 
-        $transactions = Transaction::where('customerId', $id)
+        $transactions = Transaction::where('customerId', (string) $id)
             ->whereIn('Order_type', ['Sale', 'Sale Cancellation'])
-            ->where('userId', auth()->user()->businessOwnerId())
+            ->where('userId', (string) auth()->user()->businessOwnerId())
             ->orderBy('id')
             ->get();
         // dd($transactions);
@@ -541,9 +541,9 @@ class ClothStockController extends Controller
         $tailortransactions = Transaction::select(
             DB::raw('SUM(remainingBalance) as Balance')
         )
-            ->where('customerId', $id)
+            ->where('customerId', (string) $id)
             ->where('Order_type', 'Tailor')
-            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('userId', (string) Auth::user()->businessOwnerId())
             ->groupBy('customerId')
             ->first();
 
@@ -556,7 +556,7 @@ class ClothStockController extends Controller
                 ? SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('counter_sale_receipt_id', $receipt->id)->orderBy('id')->get()
                 : SaleStock::where('user_id', Auth::user()->businessOwnerId())->where('created_at', $latestSaleStock->created_at)->orderBy('id')->get();
             $cancellationTransaction = $receipt?->status === 'cancelled'
-                ? Transaction::where('userId', Auth::user()->businessOwnerId())
+                ? Transaction::where('userId', (string) Auth::user()->businessOwnerId())
                     ->where('sale_id', $receipt->first_sale_stock_id)
                     ->where('Order_type', 'Sale Cancellation')
                     ->latest('id')
@@ -582,19 +582,19 @@ class ClothStockController extends Controller
 
         $id = $customers->id;
 
-        $transactions = Transaction::where('customerId', $id)
+        $transactions = Transaction::where('customerId', (string) $id)
             ->where('Order_type', 'Sale')
             ->where('sale_id', $sale_id)
-            ->where('userId', auth()->user()->businessOwnerId())
+            ->where('userId', (string) auth()->user()->businessOwnerId())
             ->get();
         // dd($transactions);
 
         $remaining = $transactions->sum('remainingBalance');
         $payment = $transactions->sum('recivedPayment');
 
-        $latestTransaction = Transaction::where('customerId', $id)
+        $latestTransaction = Transaction::where('customerId', (string) $id)
             ->where('Order_type', 'Sale')
-            ->where('userId', auth()->user()->businessOwnerId())
+            ->where('userId', (string) auth()->user()->businessOwnerId())
             ->latest() // Order by creation date in descending order
             ->first(); // Retrieve the first (latest) transaction
 
@@ -604,9 +604,9 @@ class ClothStockController extends Controller
             $latestReceivedPayment = 0; // Default value if no transaction found
         }
         // dd($latestReceivedPayment);
-        $previousTransactions = Transaction::where('customerId', $id)
+        $previousTransactions = Transaction::where('customerId', (string) $id)
             ->where('Order_type', 'Sale')
-            ->where('userId', auth()->user()->businessOwnerId())
+            ->where('userId', (string) auth()->user()->businessOwnerId())
             ->when($latestTransaction, fn ($query) => $query->where('id', '<>', $latestTransaction->id))
             ->get();
 
@@ -682,7 +682,7 @@ class ClothStockController extends Controller
                     'cancellation_reason' => 'اس پرانی فروخت میں مکمل اسٹاک شناخت موجود نہیں، اس لیے خودکار منسوخی دستیاب نہیں ہے۔',
                 ]);
             }
-            $original = Transaction::where('userId', $ownerId)
+            $original = Transaction::where('userId', (string) $ownerId)
                 ->where('Order_type', 'Sale')
                 ->where(function ($linked) use ($receipt) {
                     $linked->where('counter_sale_receipt_id', $receipt->id)
@@ -839,9 +839,9 @@ class ClothStockController extends Controller
             DB::raw('SUM(recivedPayment) as Payment'),
             DB::raw('SUM(remainingBalance) as Balance')
         )
-            ->where('customerId', $id)
+            ->where('customerId', (string) $id)
             ->where('Order_type', 'Sale')
-            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('userId', (string) Auth::user()->businessOwnerId())
             ->groupBy('customerId')
             ->get();
 
@@ -858,9 +858,9 @@ class ClothStockController extends Controller
             DB::raw('SUM(recivedPayment) as Payment'),
             DB::raw('SUM(remainingBalance) as Balance')
         )
-            ->where('customerId', $id)
+            ->where('customerId', (string) $id)
             ->where('Order_type', 'Tailor')
-            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('userId', (string) Auth::user()->businessOwnerId())
             ->groupBy('customerId')
             ->get();
 

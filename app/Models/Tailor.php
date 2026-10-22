@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Relations\HasManyByText;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -29,7 +30,7 @@ class Tailor extends Model
 
     public function orders()
     {
-        return $this->hasMany(Order::class,'tailorId','id');
+        return HasManyByText::of($this, Order::class, 'tailorId');
     }
 
     public function customers()

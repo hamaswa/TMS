@@ -58,10 +58,10 @@ class OrderController extends Controller
         $currentTailor = $this->findOwnedTailor($data->tailorId);
         $missingTailor = ! empty($data->tailorId) && ! $currentTailor;
         $customerBalance = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
-            ? Transaction::where('userId', Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->sum('remainingBalance')
+            ? Transaction::where('userId', (string) Auth::user()->businessOwnerId())->where("customerId", $data->customerId)->sum('remainingBalance')
             : null;
-        $orderTransaction = Transaction::where('userId', Auth::user()->businessOwnerId())
-            ->where('customerId', $data->customerId)->where('orderId', $data->id)->first();
+        $orderTransaction = Transaction::where('userId', (string) Auth::user()->businessOwnerId())
+            ->where('customerId', $data->customerId)->where('orderId', (string) $data->id)->first();
         $recivedPayment = $orderTransaction?->recivedPayment ?? 0;
         $orderBalance = $orderTransaction?->remainingBalance ?? max(0, (float) $data->totalPayment - (float) $recivedPayment);
         $tailorRates = $currentTailor
@@ -352,14 +352,14 @@ class OrderController extends Controller
         $data = [];
         $data['customer'] = $customer;
         $data['remainingBalance'] = Auth::user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES)
-            ? Transaction::where('userId', Auth::user()->businessOwnerId())->where('customerId', $id)->sum('remainingBalance')
+            ? Transaction::where('userId', (string) Auth::user()->businessOwnerId())->where('customerId', (string) $id)->sum('remainingBalance')
             : null;
         $data['tailors'] = Tailor::with('tailorsalary')
             ->where('user_id', Auth::user()->businessOwnerId())->get();
         $data['hasReadyTailor'] = $data['tailors']->contains(
             fn(Tailor $tailor) => $tailor->tailorsalary->isNotEmpty()
         );
-        $data['childData'] = Customers::where('parent_id', $id)->get();
+        $data['childData'] = Customers::where('parent_id', (string) $id)->get();
         $data['design'] = Options::where('option_id', 1)->where('user_id', auth()->user()->businessOwnerId())->get();
         $data['measurementTemplates'] = MeasurementTemplate::where('user_id', auth()->user()->businessOwnerId())
             ->where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
@@ -370,7 +370,7 @@ class OrderController extends Controller
         $data['selectedMeasurementProfile'] = Customers::where('user_id', auth()->user()->businessOwnerId())
             ->whereKey($requestedProfileId)
             ->where(function ($query) use ($customer) {
-                $query->whereKey($customer->id)->orWhere('parent_id', $customer->id);
+                $query->whereKey($customer->id)->orWhere('parent_id', (string) $customer->id);
             })
             ->first() ?: $customer;
 
@@ -528,15 +528,15 @@ class OrderController extends Controller
             // Get the selected customer's parent account.
             $customerIds = \App\Models\Customers::query()
                 ->where('id', $id)
-                ->orWhere('parent_id', $id)
+                ->orWhere('parent_id', (string) $id)
                 ->pluck('id')
-                ->all();
+                ->map(fn ($customerId) => (string) $customerId)->all();
 
             // Show orders belonging to the parent and all sub-customers.
             $Orders = DB::table('orders')
                 ->leftJoin('tailors', 'orders.tailorId', '=', 'tailors.id')
                 ->select('orders.*', 'tailors.name as tailor_name')
-                ->where('orders.userId', Auth::user()->businessOwnerId())
+                ->where('orders.userId', (string) Auth::user()->businessOwnerId())
                 ->where(function ($query) use ($customerIds) {
                     $query->whereIn('orders.customerId', $customerIds)
                         ->orWhereIn('orders.sub_customer', $customerIds);
@@ -806,7 +806,7 @@ class OrderController extends Controller
         $data = Customers::where('user_id', Auth::user()->businessOwnerId())
             ->when($primaryCustomer, fn($query) => $query->where(function ($family) use ($primaryCustomer) {
                 $family->whereKey($primaryCustomer->id)
-                    ->orWhere('parent_id', $primaryCustomer->id);
+                    ->orWhere('parent_id', (string) $primaryCustomer->id);
             }))
             ->where(function ($query) use ($search) {
                 $query->where('name', 'like', '%' . $search . '%')
@@ -854,7 +854,7 @@ class OrderController extends Controller
         $today = today()->toDateString();
 
         // 1) Base query: ownership + the active filter. No eager loads here.
-        $base = Order::where('userId', $ownerId)
+        $base = Order::where('userId', (string) $ownerId)
             ->whereHas('customers', fn($query) => $query->where('user_id', $ownerId));
 
         if ($filter === 'upcoming') {
@@ -978,7 +978,7 @@ class OrderController extends Controller
                 ->get()
         );
 
-        $tailorWorkloads = Order::where('userId', $ownerId)
+        $tailorWorkloads = Order::where('userId', (string) $ownerId)
             ->whereNotNull('tailorId')
             ->whereNotIn('status', ['ready', 'delivered'])
             ->selectRaw('tailorId, count(*) as active_jobs')
@@ -1079,7 +1079,7 @@ class OrderController extends Controller
         Log::info('Order ID:', ['id' => $request->order_id]);
 
         $validated = $request->validate(['order_id' => ['required', 'integer']]);
-        $order = Order::with('transactions')->where('userId', Auth::user()->businessOwnerId())->where('id', $validated['order_id'])->first();
+        $order = Order::with('transactions')->where('userId', (string) Auth::user()->businessOwnerId())->where('id', $validated['order_id'])->first();
         if ($order) {
             Log::info('Order found:', ['order' => $order]);
             $setting = Setting::where('user_id', $order->userId)->first();

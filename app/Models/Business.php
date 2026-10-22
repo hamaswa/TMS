@@ -131,7 +131,10 @@ class Business extends Model
             return $this->getRelation('activeSubscription');
         }
 
-        return $this->activeSubscription()->first();
+        $subscription = $this->activeSubscription()->first();
+        $this->setRelation('activeSubscription', $subscription);
+
+        return $subscription;
     }
 
     public function hasActiveSubscriptionAccess(): bool

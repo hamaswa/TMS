@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Relations\HasManyByText;
 use App\Services\CustomerSerialNumberService;
 use App\Support\PakistanPhoneNumber;
 use Illuminate\Database\Eloquent\Builder;
@@ -159,12 +160,12 @@ class Customers extends Authenticatable
 
     public function orders()
     {
-        return $this->hasMany(Order::class, 'customerId', 'id');
+        return HasManyByText::of($this, Order::class, 'customerId');
     }
 
     public function transactions()
     {
-        return $this->hasMany(Transaction::class, 'customerId', 'id');
+        return HasManyByText::of($this, Transaction::class, 'customerId');
     }
 
     public function sales()

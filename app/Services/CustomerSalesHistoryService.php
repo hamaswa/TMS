@@ -46,7 +46,7 @@ class CustomerSalesHistoryService
             ->groupBy(fn($sale) => $sale->counter_sale_receipt_id
                 ? 'receipt-' . $sale->counter_sale_receipt_id
                 : 'legacy-' . $sale->created_at?->format('Y-m-d H:i:s'));
-        $stockTransactions = Transaction::where('userId', $ownerId)
+        $stockTransactions = Transaction::where('userId', (string) $ownerId)
             ->where('Order_type', 'Sale')
             ->whereIn('sale_id', $stockGroups->map(fn($items) => $items->first()->id))
             ->get()->keyBy('sale_id');

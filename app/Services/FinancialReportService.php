@@ -31,7 +31,7 @@ class FinancialReportService
         $tailoringEnabled = $modules === null || in_array('tailoring', $modules, true);
         $clothingEnabled = $modules === null || in_array('clothing', $modules, true);
 
-        $tailoringRevenue = $tailoringEnabled ? (float) Order::where('userId', $userId)->whereBetween('created_at', [$from, $to])->sum('totalPayment') : 0;
+        $tailoringRevenue = $tailoringEnabled ? (float) Order::where('userId', (string) $userId)->whereBetween('created_at', [$from, $to])->sum('totalPayment') : 0;
         $counterRevenue = $clothingEnabled ? (float) SaleStock::financiallyActive()->where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum(DB::raw('selling_price * length')) : 0;
         $manualSalesRevenue = $clothingEnabled ? (float) DB::table('saledetails')->join('sales', 'saledetails.sale_id', '=', 'sales.id')
             ->where('sales.user_id', $userId)->where('sales.status', '!=', 'cancelled')
@@ -84,7 +84,7 @@ class FinancialReportService
             ->sum(DB::raw('storefront_order_return_items.quantity * storefront_order_items.cost_per_meter')) : 0;
         $storefrontCogs -= $storefrontReturnedCogs;
         $onlineCogs = $legacyOnlineCogs + $storefrontCogs;
-        $tailorLabor = $tailoringEnabled ? (float) Order::where('userId', $userId)->whereBetween('created_at', [$from, $to])->sum(DB::raw('tailor_price * suitQuantity')) : 0;
+        $tailorLabor = $tailoringEnabled ? (float) Order::where('userId', (string) $userId)->whereBetween('created_at', [$from, $to])->sum(DB::raw('tailor_price * suitQuantity')) : 0;
         $productionWorkerEarnings = $tailoringEnabled ? (float) DB::table('worker_ledger_entries')
             ->join('production_workers', 'production_workers.id', '=', 'worker_ledger_entries.production_worker_id')
             ->where('worker_ledger_entries.user_id', $userId)
@@ -117,7 +117,7 @@ class FinancialReportService
             $clothingEnabled ? 'Sale Cancellation' : null,
             ($tailoringEnabled || $clothingEnabled) ? 'Payment' : null,
         ]));
-        $customerReceipts = (float) Transaction::where('userId', $userId)->whereIn('Order_type', $transactionTypes)
+        $customerReceipts = (float) Transaction::where('userId', (string) $userId)->whereIn('Order_type', $transactionTypes)
             ->whereBetween('created_at', [$from, $to])->sum('recivedPayment');
         $securityDepositsReceived = $tailoringEnabled ? (float) TailorSecurityDepositTransaction::where('user_id', $userId)
             ->where('transaction_type', TailorSecurityDepositTransaction::TYPE_RECEIVED)

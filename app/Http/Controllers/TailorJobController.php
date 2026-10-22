@@ -98,7 +98,7 @@ class TailorJobController extends Controller
         $tailor = $this->sessionTailor();
         $detailedWorkflow = $this->usesDetailedWorkflow((int) $tailor->user_id);
         $orders = $this->jobQuery($tailor->user_id)
-            ->where('tailorId', $tailor->id)
+            ->where('tailorId', (string) $tailor->id)
             ->orderByRaw("CASE WHEN status = 'delivered' THEN 1 ELSE 0 END")
             ->orderBy('returnDate')
             ->paginate(25);
@@ -266,7 +266,7 @@ class TailorJobController extends Controller
         }
 
         DB::transaction(function () use ($job, $nextStatus, $actor, $ownerId, $rackNo, $validated) {
-            $job = Order::where('userId', $ownerId)
+            $job = Order::where('userId', (string) $ownerId)
                 ->lockForUpdate()
                 ->findOrFail($job->id);
             $fromStatus = $job->status;
@@ -459,7 +459,7 @@ class TailorJobController extends Controller
             'tailor', 'customers', 'notificationDeliveries',
             'workAssignments.worker', 'workAssignments.workType',
         ])
-            ->where('userId', $userId);
+            ->where('userId', (string) $userId);
     }
 
     private function ownedJob(int $id): Order
@@ -470,8 +470,8 @@ class TailorJobController extends Controller
 
         $tailor = $this->sessionTailor();
 
-        return Order::where('userId', $tailor->user_id)
-            ->where('tailorId', $tailor->id)
+        return Order::where('userId', (string) $tailor->user_id)
+            ->where('tailorId', (string) $tailor->id)
             ->findOrFail($id);
     }
 
@@ -484,14 +484,18 @@ class TailorJobController extends Controller
 
     private function statsFor(int $userId, ?int $tailorId = null): array
     {
-        $query = Order::where('userId', $userId)
-            ->when($tailorId, fn ($builder) => $builder->where('tailorId', $tailorId));
+        $query = Order::where('userId', (string) $userId)
+            ->when($tailorId, fn ($builder) => $builder->where('tailorId', (string) $tailorId));
+
+        // returnDate is text holding 'Y-m-d' (sometimes with a time), so compare against 'Y-m-d' strings.
+        $today = today()->toDateString();
+        $tomorrow = today()->addDay()->toDateString();
 
         return [
             'active' => (clone $query)->where('status', '!=', 'delivered')->count(),
             'unassigned' => (clone $query)->where('status', 'unassigned')->count(),
-            'due_today' => (clone $query)->whereDate('returnDate', today())->where('status', '!=', 'delivered')->count(),
-            'overdue' => (clone $query)->whereDate('returnDate', '<', today())->where('status', '!=', 'delivered')->count(),
+            'due_today' => (clone $query)->where('returnDate', '>=', $today)->where('returnDate', '<', $tomorrow)->where('status', '!=', 'delivered')->count(),
+            'overdue' => (clone $query)->where('returnDate', '<', $today)->where('status', '!=', 'delivered')->count(),
             'ready' => (clone $query)->where('status', 'ready')->count(),
         ];
     }

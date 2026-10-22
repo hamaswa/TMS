@@ -95,14 +95,14 @@ class TailorController extends Controller
     public function tailor_dashboard()
     {
         $tailorId = (int) session()->get('tailor_id');
-        $monthOrders = Order::where('tailorId', $tailorId)
+        $monthOrders = Order::where('tailorId', (string) $tailorId)
             ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
             ->get();
         $suits = $monthOrders->sum(fn (Order $order) => max(1, (int) $order->suitQuantity));
         $earnings = $monthOrders->sum(fn (Order $order) => $order->tailorAmountDue());
         $paid = (float) $monthOrders->sum('tailor_paid_amount');
         $outstanding = max(0, $earnings - $paid);
-        $activeJobs = Order::where('tailorId', $tailorId)
+        $activeJobs = Order::where('tailorId', (string) $tailorId)
             ->where('status', '!=', 'delivered')
             ->count();
 
@@ -370,15 +370,15 @@ class TailorController extends Controller
 
         $result = Order::query()
             ->with('rate.options')
-            ->where('tailorId', $tailor->id)
-            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('tailorId', (string) $tailor->id)
+            ->where('userId', (string) Auth::user()->businessOwnerId())
             ->whereBetween('orders.created_at', [$startDate, $endDate])
             ->latest('created_at')
             ->get();
 
         $tailor_report = $result;
         $advanceCutQuery = Transaction::where('tailorId', $tailor->id)
-            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('userId', (string) Auth::user()->businessOwnerId())
             ->where('Order_type', 'Tailor_Advance_Cut')
             ->whereBetween('created_at', [$startDate, $endDate]);
         $advanceCutAmount = (float) (clone $advanceCutQuery)->sum('remainingBalance');
@@ -495,7 +495,7 @@ class TailorController extends Controller
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->sum('amount');
             $alreadyCovered = (float) Transaction::where('tailorId', $tailor->id)
-                ->where('userId', $ownerId)
+                ->where('userId', (string) $ownerId)
                 ->where('Order_type', 'Tailor_Advance_Cut')
                 ->whereBetween('created_at', [$startDate, $endDate])
                 ->sum('remainingBalance');
@@ -543,13 +543,13 @@ class TailorController extends Controller
 
         $tailor_report = $tailor->orders()
             ->with('rate.options')
-            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('userId', (string) Auth::user()->businessOwnerId())
             ->whereBetween('created_at', [$startDate, $endDate])
             ->latest('created_at')
             ->get();
 
         $advanceCutQuery = Transaction::where('tailorId', $tailor->id)
-            ->where('userId', Auth::user()->businessOwnerId())
+            ->where('userId', (string) Auth::user()->businessOwnerId())
             ->where('Order_type', 'Tailor_Advance_Cut')
             ->whereBetween('created_at', [$startDate, $endDate]);
         $advanceCutAmount = (float) (clone $advanceCutQuery)->sum('remainingBalance');
@@ -642,7 +642,7 @@ class TailorController extends Controller
         $orders = DB::table('orders')
             ->select('orders.created_at as date', 'orders.totalPayment as t_payment', 'orders.advancePayment as advance_payment', 'orders.suitQuantity as suit', 'customers.name as c_name')
             ->leftJoin('customers', 'orders.customerId', '=', 'customers.id')
-            ->where('orders.tailorId', $id)
+            ->where('orders.tailorId', (string) $id)
             ->whereBetween('orders.created_at', [$startDate, $endDate])
             ->get();
 
@@ -727,9 +727,9 @@ class TailorController extends Controller
         }
 
         $tailor_records = Order::with(['customers', 'rate.options'])
-            ->where('tailorId', $id)
+            ->where('tailorId', (string) $id)
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->where('userId', $ownerId)
+            ->where('userId', (string) $ownerId)
             ->latest('created_at')
             ->get();
 
@@ -758,7 +758,7 @@ function count_suit($start, $end)
     $tailor_id = session()->get('tailor_id');
     return DB::table('orders')
         ->select('orders.suitQuantity as suit')
-        ->where('orders.tailorId', $tailor_id)
+        ->where('orders.tailorId', (string) $tailor_id)
         ->whereBetween('orders.created_at', [$start, $end])
         ->sum('suitQuantity');
 }
@@ -768,7 +768,7 @@ function sum_of_payment($start, $end)
     $tailor_id = session()->get('tailor_id');
     return DB::table('orders')
         ->select('orders.suitQuantity as suit')
-        ->where('orders.tailorId', $tailor_id)
+        ->where('orders.tailorId', (string) $tailor_id)
         ->whereBetween('orders.created_at', [$start, $end])
         ->sum('totalPayment');
 }

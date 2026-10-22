@@ -69,15 +69,18 @@ class HomeController extends Controller
         $ownerId = $user->businessOwnerId();
         $canWorkshop = $user->hasBusinessPermission('tailoring.workshop');
         $canOrders = $user->hasBusinessPermission('tailoring.orders');
-        $orders = Order::where('userId', $ownerId);
+        $orders = Order::where('userId', (string) $ownerId);
+        // returnDate is text holding 'Y-m-d' (sometimes with a time), so compare against 'Y-m-d' strings.
+        $today = today()->toDateString();
+        $tomorrow = today()->addDay()->toDateString();
         $tailoring = [
             'active' => $canWorkshop ? (clone $orders)->where('status', '!=', 'delivered')->count() : null,
-            'due_today' => $canWorkshop ? (clone $orders)->whereDate('returnDate', today())->where('status', '!=', 'delivered')->count() : null,
+            'due_today' => $canWorkshop ? (clone $orders)->where('returnDate', '>=', $today)->where('returnDate', '<', $tomorrow)->where('status', '!=', 'delivered')->count() : null,
             'ready' => $canWorkshop ? (clone $orders)->where('status', 'ready')->count() : null,
             'month_suits' => $canOrders ? (int) (clone $orders)->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->sum('suitQuantity') : null,
         ];
 
-        $dashboardOrders = fn () => Order::where('userId', $ownerId)
+        $dashboardOrders = fn () => Order::where('userId', (string) $ownerId)
             ->whereHas('customers', fn ($query) => $query->where('user_id', $ownerId))
             ->with([
                 'customers' => fn ($query) => $query->where('user_id', $ownerId)
@@ -94,12 +97,12 @@ class HomeController extends Controller
 
         if ($canWorkshop || $canOrders) {
             $operationalOrders = $dashboardOrders()
-                ->whereDate('returnDate', '>=', today())
+                ->where('returnDate', '>=', $today)
                 ->whereNotIn('status', ['ready', 'delivered'])
                 ->limit(5)
                 ->get();
             $overdueOrders = $dashboardOrders()
-                ->whereDate('returnDate', '<', today())
+                ->where('returnDate', '<', $today)
                 ->whereNotIn('status', ['ready', 'delivered'])
                 ->limit(5)
                 ->get();
@@ -133,7 +136,7 @@ class HomeController extends Controller
             'draft_purchases' => $canPurchases ? Purchase::where('user_id', $ownerId)->where('status', 'draft')->count() : null,
             'month_sales' => $canSales ? (float) (clone $monthSalesQuery)->sum(DB::raw('selling_price * length')) : null,
             'today_sales' => $canSales ? (float) SaleStock::where('user_id', $ownerId)
-                ->financiallyActive()->whereDate('sellDate', today())->sum(DB::raw('selling_price * length')) : null,
+                ->financiallyActive()->whereBetween('sellDate', [today(), today()->endOfDay()])->sum(DB::raw('selling_price * length')) : null,
             'new_customers_week' => $canSales ? Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', false)
                 ->whereBetween('first_sale_at', [now()->startOfWeek(), now()->endOfWeek()])->count() : null,
             'new_customers_month' => $canSales ? Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', false)

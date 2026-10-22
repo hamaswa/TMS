@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Relations\HasManyByText;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -59,7 +60,7 @@ class Order extends Model
 
     public function transactions()
     {
-        return $this->hasMany(Transaction::class, 'orderId', 'id');
+        return HasManyByText::of($this, Transaction::class, 'orderId');
     }
 
     /**

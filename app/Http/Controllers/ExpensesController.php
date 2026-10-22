@@ -21,14 +21,14 @@ class ExpensesController extends Controller
         $filters = $this->dateFilters($request);
 
         $expenses = Expenses::where('user_id', $ownerId)
-            ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('expense_date', '>=', $date))
-            ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('expense_date', '<=', $date))
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->where('expense_date', '>=', Carbon::parse($date)->toDateString()))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->where('expense_date', '<=', Carbon::parse($date)->toDateString()))
             ->orderByDesc('expense_date')->orderByDesc('id')
             ->get();
 
         $workers = Workers::where('user_id', $ownerId)
-            ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('dateentered', '>=', $date))
-            ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('dateentered', '<=', $date))
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->where('dateentered', '>=', Carbon::parse($date)->toDateString()))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->where('dateentered', '<=', Carbon::parse($date)->toDateString()))
             ->orderByDesc('dateentered')->orderByDesc('id')
             ->get();
 
@@ -213,8 +213,8 @@ class ExpensesController extends Controller
         $filters = $this->dateFilters($request);
 
         $query = DaliyExpenses::where('user_id', $ownerId)
-            ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
-            ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '<=', $date));
+            ->when($filters['from'] ?? null, fn ($query, $date) => $query->where('created_at', '>=', Carbon::parse($date)->startOfDay()))
+            ->when($filters['to'] ?? null, fn ($query, $date) => $query->where('created_at', '<=', Carbon::parse($date)->endOfDay()));
 
         // Total of the whole filtered list, not just the current page.
         $listTotal = (float) (clone $query)->sum('Expense_payment');
@@ -230,7 +230,7 @@ class ExpensesController extends Controller
             'action' => route('admin.dailyexpense.update', ['id' => $editRecord->id]),
         ] : null;
 
-        $todayTotal = (float) DaliyExpenses::where('user_id', $ownerId)->whereDate('created_at', today())->sum('Expense_payment');
+        $todayTotal = (float) DaliyExpenses::where('user_id', $ownerId)->whereBetween('created_at', [today(), today()->endOfDay()])->sum('Expense_payment');
         $monthTotal = (float) DaliyExpenses::where('user_id', $ownerId)
             ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
             ->sum('Expense_payment');

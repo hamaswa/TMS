@@ -40,8 +40,8 @@ class CounterOrderService
             return 0.0;
         }
 
-        $ledgerBalance = (float) Transaction::where('userId', $order->user_id)
-            ->where('customerId', $order->customer_id)
+        $ledgerBalance = (float) Transaction::where('userId', (string) $order->user_id)
+            ->where('customerId', $order->customer_id === null ? null : (string) $order->customer_id)
             ->sum('remainingBalance');
 
         return max(0, min($orderPrevious, round($ledgerBalance, 2)));

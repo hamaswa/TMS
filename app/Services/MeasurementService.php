@@ -250,8 +250,8 @@ class MeasurementService
     public function refreshOpenOrders(Customers $customer, int $ownerId, MeasurementTemplate $template): int
     {
         $orders = Order::query()
-            ->where('userId', $ownerId)
-            ->where('sub_customer', $customer->id)
+            ->where('userId', (string) $ownerId)
+            ->where('sub_customer', (string) $customer->id)
             ->where('measurement_template_id', $template->id)
             ->whereIn('status', Order::OPEN_STATUSES)
             ->get();
