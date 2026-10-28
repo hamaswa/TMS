@@ -458,7 +458,7 @@
                     <div class="flex-grow-1">
                         <h1 class="h3 mb-1">{{ $purchase->purchase_number }}</h1>
                         <div class="purchase-breadcrumb">{{ $purchase->supplier->name }} <span class="mx-2">•</span>
-                            {{ $purchase->purchase_date->format('d M Y') }}</div>
+                            {{ $purchase->purchase_date->format('d-m-Y') }}</div>
                     </div>
                     <span class="purchase-status purchase-status-{{ $purchase->status }}">
                         @if ($purchase->status === 'received')

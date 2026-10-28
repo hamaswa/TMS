@@ -143,7 +143,7 @@
                                         <div class="purchase-number">{{ $purchase->purchase_number }}</div>
                                         <div class="purchase-ref">{{ $purchase->reference ?: '—' }}</div>
                                     </td>
-                                    <td data-label="تاریخ">{{ $purchase->purchase_date->format('d M Y') }}</td>
+                                    <td data-label="تاریخ">{{ $purchase->purchase_date->format('d-m-Y') }}</td>
                                     <td data-label="سپلائر">{{ $purchase->supplier->name }}</td>
                                     <td data-label="حالت"><span
                                             class="purchase-status purchase-status-{{ $purchase->status }}">{{ $statusLabel }}</span>
