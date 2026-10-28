@@ -26,6 +26,9 @@ class ReportDashboardService
 {
     public const SALE_TYPES = ['Sale', 'Sale Cancellation', 'Sale Return'];
     public const TAILOR_TYPES = ['Tailor', 'Tailor_Advance_Cut'];
+    private const BILL_KEY = 'COALESCE(sale_stocks.counter_sale_receipt_id, -sale_stocks.id)';
+    private const KEPT_QUANTITY = 'sale_stocks.length - COALESCE(line_returns.returned_quantity, 0)';
+    private const KEPT_AMOUNT = 'sale_stocks.selling_price * sale_stocks.length - COALESCE(line_returns.returned_amount, 0)';
 
     public function __construct(
         private FinancialReportService $finance,
@@ -53,7 +56,8 @@ class ReportDashboardService
         };
 
         if (in_array('clothing', $modules, true)) {
-            $add(SaleStock::financiallyActive()->where('user_id', $userId)->whereBetween('sellDate', [$from, $to]), 'sellDate', 'selling_price * length', 'cloth');
+            // A returned item is taken off the day it was sold, so the chart only shows what customers kept.
+            $add($this->keptSales($userId, $to)->whereBetween('sale_stocks.sellDate', [$from, $to]), 'sale_stocks.sellDate', self::KEPT_AMOUNT, 'cloth');
             $add(DB::table('saledetails')->join('sales', 'saledetails.sale_id', '=', 'sales.id')
                 ->where('sales.user_id', $userId)->where('sales.status', '!=', 'cancelled')
                 ->whereBetween('sales.created_at', [$from, $to]), 'sales.created_at', 'saledetails.quantity * saledetails.price', 'cloth');
@@ -79,8 +83,9 @@ class ReportDashboardService
         $categories = $this->finance->salesByCategory($userId, $start, $end, $modules);
         $from = $start->copy()->startOfDay();
         $to = $end->copy()->endOfDay();
-        $bills = SaleStock::financiallyActive()->where('user_id', $userId)->whereBetween('sellDate', [$from, $to])
-            ->selectRaw('COUNT(DISTINCT COALESCE(counter_sale_receipt_id, -id)) AS bills')->value('bills');
+        // A bill whose every item came back is no longer a sale.
+        $bills = $this->keptSales($userId, $to)->whereBetween('sale_stocks.sellDate', [$from, $to])
+            ->selectRaw('COUNT(DISTINCT CASE WHEN '.self::KEPT_QUANTITY.' > 0.0001 THEN '.self::BILL_KEY.' END) AS bills')->value('bills');
 
         return [
             'revenue' => array_sum($revenue),
@@ -96,11 +101,11 @@ class ReportDashboardService
     /** The latest sale bills: one row per counter receipt (or per sale without one). */
     public function recentSales(int $userId, CarbonInterface $start, CarbonInterface $end, int $limit = 5): Collection
     {
-        $bills = SaleStock::financiallyActive()->where('user_id', $userId)
-            ->whereBetween('sellDate', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
-            ->groupBy(DB::raw('COALESCE(counter_sale_receipt_id, -id)'))
-            ->selectRaw('MAX(counter_sale_receipt_id) AS receipt_id, MAX(sellDate) AS sold_at, MAX(c_name) AS customer')
-            ->selectRaw('COUNT(*) AS items, SUM(selling_price * length) AS amount')
+        $bills = $this->keptSales($userId, $end)
+            ->whereBetween('sale_stocks.sellDate', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+            ->groupBy(DB::raw(self::BILL_KEY))
+            ->selectRaw('MAX(sale_stocks.counter_sale_receipt_id) AS receipt_id, MAX(sale_stocks.sellDate) AS sold_at, MAX(sale_stocks.c_name) AS customer')
+            ->selectRaw('COUNT(*) AS items, SUM('.self::KEPT_AMOUNT.') AS amount, SUM(COALESCE(line_returns.returned_amount, 0)) AS returned')
             ->orderByDesc('sold_at')->limit($limit)->get();
         $methods = Transaction::where('userId', (string) $userId)->whereIn('counter_sale_receipt_id', $bills->pluck('receipt_id')->filter())
             ->where('Order_type', 'Sale')->pluck('payment_method', 'counter_sale_receipt_id');
@@ -110,6 +115,7 @@ class ReportDashboardService
             'customer' => $bill->customer ?: 'عام گاہک',
             'items' => (int) $bill->items,
             'amount' => (float) $bill->amount,
+            'returned' => (float) $bill->returned,
             'method' => PaymentMethods::label($methods[$bill->receipt_id] ?? 'cash'),
         ]);
     }
@@ -119,15 +125,15 @@ class ReportDashboardService
     {
         $categories = ClothCategory::with('parent')->where('user_id', $userId)->get()->keyBy('id');
 
-        return SaleStock::financiallyActive()
+        return $this->keptSales($userId, $end)
             ->leftJoin('cloths', 'cloths.id', '=', 'sale_stocks.cloth_id')
-            ->where('sale_stocks.user_id', $userId)
             ->whereBetween('sale_stocks.sellDate', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
             ->when($categoryId, fn ($query) => $query->whereIn('cloths.cloth_category_id',
                 $categories->filter(fn ($category) => $category->id === $categoryId || $category->parent_id === $categoryId)->keys()))
             ->orderByDesc('sale_stocks.sellDate')->orderByDesc('sale_stocks.id')
             ->select(['sale_stocks.id', 'sale_stocks.sellDate', 'sale_stocks.c_name', 'sale_stocks.color', 'sale_stocks.length', 'sale_stocks.selling_price'])
             ->addSelect(['cloths.name AS cloth_name', 'cloths.stock_unit', 'cloths.cloth_category_id'])
+            ->selectRaw('COALESCE(line_returns.returned_quantity, 0) AS returned_quantity, COALESCE(line_returns.returned_amount, 0) AS returned_amount')
             ->paginate($perPage, ['*'], 'sales_page')->withQueryString()
             ->through(fn ($line) => [
                 'date' => $line->sellDate,
@@ -136,7 +142,8 @@ class ReportDashboardService
                 'category' => $categories->get($line->cloth_category_id)?->fullName() ?? '—',
                 'quantity' => (float) $line->length,
                 'unit' => $line->stock_unit ?: ClothCategory::UNIT_METER,
-                'amount' => (float) $line->selling_price * (float) $line->length,
+                'amount' => (float) $line->selling_price * (float) $line->length - (float) $line->returned_amount,
+                'returned' => (float) $line->returned_quantity,
                 'customer' => $line->c_name ?: 'عام گاہک',
             ]);
     }
@@ -144,9 +151,11 @@ class ReportDashboardService
     /** Biggest cloth customer in the period. */
     public function topSalesCustomer(int $userId, CarbonInterface $start, CarbonInterface $end): ?array
     {
-        $row = SaleStock::financiallyActive()->where('user_id', $userId)->whereNotNull('c_name')->where('c_name', '!=', '')
-            ->whereBetween('sellDate', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
-            ->groupBy('c_name')->selectRaw('c_name, SUM(selling_price * length) AS amount, COUNT(DISTINCT COALESCE(counter_sale_receipt_id, -id)) AS bills')
+        $row = $this->keptSales($userId, $end)->whereNotNull('sale_stocks.c_name')->where('sale_stocks.c_name', '!=', '')
+            ->whereBetween('sale_stocks.sellDate', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+            ->groupBy('sale_stocks.c_name')->selectRaw('sale_stocks.c_name, SUM('.self::KEPT_AMOUNT.') AS amount')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN '.self::KEPT_QUANTITY.' > 0.0001 THEN '.self::BILL_KEY.' END) AS bills')
+            ->havingRaw('SUM('.self::KEPT_AMOUNT.') > 0.009')
             ->orderByDesc('amount')->first();
 
         return $row ? ['name' => $row->c_name, 'amount' => (float) $row->amount, 'count' => (int) $row->bills] : null;
@@ -331,6 +340,14 @@ class ReportDashboardService
                 : $query->whereIn('Order_type', self::TAILOR_TYPES)
                     ->orWhere(fn ($payment) => $payment->where('Order_type', 'Payment')->whereNotNull('orderId')))
             ->sum('recivedPayment');
+    }
+
+    /** Counter sale lines with what has come back from each one (line_returns), so totals count only what the customer kept. */
+    private function keptSales(int $userId, CarbonInterface $end)
+    {
+        return SaleStock::financiallyActive()
+            ->leftJoinSub($this->finance->returnedPerSaleLine($userId, $end), 'line_returns', 'line_returns.sale_stock_id', '=', 'sale_stocks.id')
+            ->where('sale_stocks.user_id', $userId);
     }
 
     private function activeOrders(int $userId)

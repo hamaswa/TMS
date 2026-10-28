@@ -238,6 +238,16 @@ class FinancialReportTest extends TestCase
         $this->assertEquals(8500 - 6400, $rows['Women › 3 Piece']['profit']);
         $this->assertEquals(2, $sales['totals']['suit']['net']);
 
+        // The returned suit also comes off revenue, its cost, the trend chart and the top sets.
+        $report = app(FinancialReportService::class)->build($owner->id, now()->startOfMonth(), now()->endOfMonth(), false);
+        $this->assertEquals(1125 + 8500, $report['revenue']['کاؤنٹر کپڑا فروخت']);
+        $this->assertEquals(600 + 6400, $report['direct_costs']['کاؤنٹر فروخت کی لاگت']);
+        $daily = app(\App\Services\ReportDashboardService::class)->dailySeries($owner->id, now()->startOfMonth(), now()->endOfMonth(), ['clothing']);
+        $this->assertEquals(1125 + 8500, $daily[$date->toDateString()]['cloth']);
+        $topSuit = $sales['top_sets']->firstWhere('name', 'Gulnaar Lawn');
+        $this->assertEquals(2, $topSuit['quantity']);
+        $this->assertEquals(8500, $topSuit['amount']);
+
         $this->actingAs($owner)->get(route('admin.financial-reports.index', ['start_date' => now()->startOfMonth()->toDateString(), 'end_date' => now()->endOfMonth()->toDateString()]))
             ->assertOk()
             ->assertSee('id="rp-panel-categories" role="tabpanel" aria-labelledby="rp-tab-categories" >', false)

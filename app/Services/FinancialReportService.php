@@ -33,6 +33,12 @@ class FinancialReportService
 
         $tailoringRevenue = $tailoringEnabled ? (float) Order::where('userId', (string) $userId)->whereBetween('created_at', [$from, $to])->sum('totalPayment') : 0;
         $counterRevenue = $clothingEnabled ? (float) SaleStock::financiallyActive()->where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum(DB::raw('selling_price * length')) : 0;
+        // Counter returns come off sales on the day the item came back, like storefront refunds below.
+        $counterReturns = $clothingEnabled ? $this->counterReturnsQuery($userId, $from, $to)
+            ->selectRaw('COALESCE(SUM(counter_sale_return_items.line_total), 0) AS amount')
+            ->selectRaw('COALESCE(SUM(CASE WHEN counter_sale_return_items.restocked = 1 THEN counter_sale_return_items.inventory_quantity * COALESCE(sale_stocks.cost_per_meter, 0) ELSE 0 END), 0) AS cost')
+            ->first() : null;
+        $counterRevenue -= (float) ($counterReturns->amount ?? 0);
         $manualSalesRevenue = $clothingEnabled ? (float) DB::table('saledetails')->join('sales', 'saledetails.sale_id', '=', 'sales.id')
             ->where('sales.user_id', $userId)->where('sales.status', '!=', 'cancelled')
             ->whereBetween('sales.created_at', [$from, $to])->sum(DB::raw('saledetails.quantity * saledetails.price'))
@@ -61,6 +67,7 @@ class FinancialReportService
         }
 
         $counterCogs = $clothingEnabled ? (float) SaleStock::financiallyActive()->where('user_id', $userId)->whereBetween('sellDate', [$from, $to])->sum('cost_total') : 0;
+        $counterCogs -= (float) ($counterReturns->cost ?? 0);
         $legacyOnlineCogs = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
             ->whereRaw('LOWER(status) != ?', ['cancelled'])->sum('cost_total') : 0;
         $storefrontCogs = $clothingEnabled ? (float) DB::table('storefront_order_items')
@@ -299,12 +306,8 @@ class FinancialReportService
             ->selectRaw('SUM(sale_stocks.selling_price * sale_stocks.length) AS amount, SUM(COALESCE(sale_stocks.cost_total, 0)) AS cost')
             ->get();
 
-        $returned = DB::table('counter_sale_return_items')
-            ->join('counter_sale_returns', 'counter_sale_returns.id', '=', 'counter_sale_return_items.counter_sale_return_id')
-            ->join('sale_stocks', 'sale_stocks.id', '=', 'counter_sale_return_items.sale_stock_id')
+        $returned = $this->counterReturnsQuery($userId, $from, $to)
             ->leftJoin('cloths', 'cloths.id', '=', 'sale_stocks.cloth_id')
-            ->where('counter_sale_returns.user_id', $userId)
-            ->whereBetween('counter_sale_returns.created_at', [$from, $to])
             ->groupBy('cloths.cloth_category_id', 'cloths.stock_unit')
             ->selectRaw('cloths.cloth_category_id AS category_id, cloths.stock_unit AS unit')
             ->selectRaw('SUM(counter_sale_return_items.inventory_quantity) AS quantity, SUM(counter_sale_return_items.line_total) AS amount')
@@ -357,13 +360,17 @@ class FinancialReportService
             'net_amount' => $unitRows->sum('net_amount'),
         ])->all();
 
+        // Sets ranked by what the customers kept: anything returned from those sales is taken off.
         $topSets = SaleStock::financiallyActive()
             ->join('cloths', 'cloths.id', '=', 'sale_stocks.cloth_id')
+            ->leftJoinSub($this->returnedPerSaleLine($userId, $to), 'line_returns', 'line_returns.sale_stock_id', '=', 'sale_stocks.id')
             ->where('sale_stocks.user_id', $userId)
             ->whereBetween('sale_stocks.sellDate', [$from, $to])
             ->groupBy('cloths.id', 'cloths.name', 'cloths.stock_unit', 'cloths.cloth_category_id')
             ->selectRaw('cloths.id, cloths.name, cloths.stock_unit AS unit, cloths.cloth_category_id AS category_id')
-            ->selectRaw('SUM(sale_stocks.length) AS quantity, SUM(sale_stocks.selling_price * sale_stocks.length) AS amount')
+            ->selectRaw('SUM(sale_stocks.length - COALESCE(line_returns.returned_quantity, 0)) AS quantity')
+            ->selectRaw('SUM(sale_stocks.selling_price * sale_stocks.length - COALESCE(line_returns.returned_amount, 0)) AS amount')
+            ->havingRaw('SUM(sale_stocks.length - COALESCE(line_returns.returned_quantity, 0)) > 0.0001')
             ->orderByDesc('amount')->limit(10)->get();
         $topCategories = ClothCategory::with('parent')->whereIn('id', $topSets->pluck('category_id')->filter())->get()->keyBy('id');
         $topSets = $topSets->map(fn ($set) => [
@@ -376,5 +383,27 @@ class FinancialReportService
         ]);
 
         return ['rows' => $rows, 'totals' => $totals, 'top_sets' => $topSets];
+    }
+
+    /** Quantity and money that has come back from each counter sale line up to a date, to join on sale_stocks.id. */
+    public function returnedPerSaleLine(int $userId, CarbonInterface $to)
+    {
+        return DB::table('counter_sale_return_items')
+            ->join('counter_sale_returns', 'counter_sale_returns.id', '=', 'counter_sale_return_items.counter_sale_return_id')
+            ->where('counter_sale_returns.user_id', $userId)
+            ->where('counter_sale_returns.created_at', '<=', $to->copy()->endOfDay())
+            ->groupBy('counter_sale_return_items.sale_stock_id')
+            ->selectRaw('counter_sale_return_items.sale_stock_id')
+            ->selectRaw('SUM(counter_sale_return_items.inventory_quantity) AS returned_quantity, SUM(counter_sale_return_items.line_total) AS returned_amount');
+    }
+
+    /** Counter return lines booked in a period, joined to the sale line they came from. */
+    public function counterReturnsQuery(int $userId, CarbonInterface $from, CarbonInterface $to)
+    {
+        return DB::table('counter_sale_return_items')
+            ->join('counter_sale_returns', 'counter_sale_returns.id', '=', 'counter_sale_return_items.counter_sale_return_id')
+            ->join('sale_stocks', 'sale_stocks.id', '=', 'counter_sale_return_items.sale_stock_id')
+            ->where('counter_sale_returns.user_id', $userId)
+            ->whereBetween('counter_sale_returns.created_at', [$from, $to]);
     }
 }

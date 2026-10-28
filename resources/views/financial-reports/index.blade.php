@@ -108,7 +108,7 @@
     // Donut: sales by category, or stitching orders by status.
     $palette = ['#16a34a', '#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#0ea5e9', '#14b8a6', '#f97316'];
     if ($isSales) {
-        $slices = $current['categories']['rows']->groupBy('category')->map(fn ($rows) => $rows->sum('amount'))->filter(fn ($amount) => $amount > 0);
+        $slices = $current['categories']['rows']->groupBy('category')->map(fn ($rows) => $rows->sum('net_amount'))->filter(fn ($amount) => $amount > 0);
         $other = $current['revenue'] - $slices->sum();
         if ($other > 0.5) {
             $slices['دیگر فروخت'] = $other;
@@ -221,7 +221,7 @@
                 <div class="rp-card-head"><h3><i class="fas fa-shopping-cart"></i> حالیہ فروخت</h3><a class="rp-more" href="{{ $link(['tab' => 'all-sales']) }}" data-rp-tab-jump="all-sales">سب دیکھیں <i class="fas fa-arrow-left"></i></a></div>
                 <div class="table-responsive"><table class="rp-table"><thead><tr><th>#</th><th>رقم</th><th>ادائیگی</th><th>گاہک</th><th>آئٹمز</th><th>تاریخ</th></tr></thead><tbody>
                     @forelse($report['recent'] as $sale)
-                        <tr><td class="is-num">{{ $loop->iteration }}</td><td><span class="rp-money is-green">{{ $money($sale['amount']) }}</span></td><td><span class="rp-pill {{ $sale['method'] === 'نقد' ? 'is-green' : 'is-blue' }}">{{ $sale['method'] }}</span></td><td>{{ $sale['customer'] }}</td><td class="is-num">{{ $sale['items'] }}</td><td class="is-num">{{ \Carbon\Carbon::parse($sale['date'])->format('Y-m-d') }}</td></tr>
+                        <tr><td class="is-num">{{ $loop->iteration }}</td><td><span class="rp-money is-green">{{ $money($sale['amount']) }}</span>@if($sale['returned'] > 0)<div class="rp-money is-red" style="font-size:.72rem">واپسی: {{ $money($sale['returned']) }}</div>@endif</td><td><span class="rp-pill {{ $sale['method'] === 'نقد' ? 'is-green' : 'is-blue' }}">{{ $sale['method'] }}</span></td><td>{{ $sale['customer'] }}</td><td class="is-num">{{ $sale['items'] }}</td><td class="is-num">{{ \Carbon\Carbon::parse($sale['date'])->format('Y-m-d') }}</td></tr>
                     @empty
                         <tr><td colspan="6" class="rp-empty">اس مدت میں کوئی فروخت نہیں۔</td></tr>
                     @endforelse
@@ -308,7 +308,7 @@
                     </form></div>
                 <div class="table-responsive"><table class="rp-table"><thead><tr><th>تاریخ</th><th>سیٹ</th><th>کیٹیگری</th><th>مقدار</th><th>رقم</th><th>گاہک</th></tr></thead><tbody>
                     @forelse($report['lines'] as $line)
-                        <tr><td class="is-num">{{ \Carbon\Carbon::parse($line['date'])->format('Y-m-d') }}</td><td><strong>{{ $line['name'] }}</strong>@if($line['color'] && $line['color'] !== 'عام')<div class="rp-muted">{{ $line['color'] }}</div>@endif</td><td class="rp-muted">{{ $line['category'] }}</td><td><span class="rp-num">{{ $qty($line['quantity'], $line['unit']) }}</span> {{ $unitLabel($line['unit']) }}</td><td><span class="rp-money">{{ $money($line['amount']) }}</span></td><td>{{ $line['customer'] }}</td></tr>
+                        <tr><td class="is-num">{{ \Carbon\Carbon::parse($line['date'])->format('Y-m-d') }}</td><td><strong>{{ $line['name'] }}</strong>@if($line['color'] && $line['color'] !== 'عام')<div class="rp-muted">{{ $line['color'] }}</div>@endif</td><td class="rp-muted">{{ $line['category'] }}</td><td><span class="rp-num">{{ $qty($line['quantity'], $line['unit']) }}</span> {{ $unitLabel($line['unit']) }}@if($line['returned'] > 0)<div class="rp-muted" style="color:var(--rp-red)">واپسی: <span class="rp-num">{{ $qty($line['returned'], $line['unit']) }}</span></div>@endif</td><td><span class="rp-money">{{ $money($line['amount']) }}</span></td><td>{{ $line['customer'] }}</td></tr>
                     @empty
                         <tr><td colspan="6" class="rp-empty">اس مدت میں کوئی فروخت نہیں۔</td></tr>
                     @endforelse
