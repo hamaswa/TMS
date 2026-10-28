@@ -659,7 +659,7 @@
                                 <div class="tj-order-main"><span class="tj-order-number">#{{ $order->id }}</span>
                                     <div>
                                         <h3>{{ $order->customers->name ?? 'گاہک نمبر ' . $order->customerId }}</h3>
-                                        <small>آرڈر کی تاریخ: {{ optional($order->created_at)->format('d-m-Y') }}</small>
+                                        <small>آرڈر کی تاریخ: {{ \App\Support\DisplayDate::long($order->created_at) }}</small>
                                     </div>
                                 </div><div class="d-flex align-items-center flex-wrap" style="gap:7px">
                                     <span class="tj-status {{ $overdue ? 'is-overdue' : '' }}"><i
@@ -678,7 +678,7 @@
                                             class="fas fa-tshirt ml-1"></i>سوٹ</small><strong>{{ $order->suitQuantity ?: 1 }}</strong>
                                 </div>
                                 <div class="tj-info"><small><i class="fas fa-calendar-alt ml-1"></i>دینے کی
-                                        تاریخ</small><strong>{{ $deadline ? $deadline->format('d-m-Y') : 'مقرر نہیں' }}</strong>
+                                        تاریخ</small><strong>{{ $deadline ? \App\Support\DisplayDate::long($deadline) : 'مقرر نہیں' }}</strong>
                                 </div>
                                 <div class="tj-info"><small><i class="fas fa-tasks ml-1"></i>موجودہ
                                         مرحلہ</small><strong>{{ $statusLabels[$order->status] ?? $order->status }}</strong>

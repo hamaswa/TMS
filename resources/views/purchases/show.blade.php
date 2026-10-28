@@ -458,7 +458,7 @@
                     <div class="flex-grow-1">
                         <h1 class="h3 mb-1">{{ $purchase->purchase_number }}</h1>
                         <div class="purchase-breadcrumb">{{ $purchase->supplier->name }} <span class="mx-2">•</span>
-                            {{ $purchase->purchase_date->format('d-m-Y') }}</div>
+                            {{ \App\Support\DisplayDate::long($purchase->purchase_date) }}</div>
                     </div>
                     <span class="purchase-status purchase-status-{{ $purchase->status }}">
                         @if ($purchase->status === 'received')
@@ -679,7 +679,7 @@
                                         class="text-muted d-block">سپلائر</small><strong>{{ $purchase->supplier->name }}</strong>
                                 </div>
                                 <div class="col-md-6 mb-3"><small class="text-muted d-block">خریداری کی
-                                        تاریخ</small><strong>{{ $purchase->purchase_date->format('d-m-Y') }}</strong></div>
+                                        تاریخ</small><strong>{{ \App\Support\DisplayDate::long($purchase->purchase_date) }}</strong></div>
                                 <div class="col-12"><small
                                         class="text-muted d-block">حوالہ</small><strong>{{ $purchase->reference ?: '—' }}</strong>
                                 </div>
@@ -704,7 +704,7 @@
                                     @forelse($purchase->returns as $return)
                                         <tr>
                                             <td>{{ $return->return_number }}</td>
-                                            <td>{{ $return->return_date->format('d-m-Y') }}</td>
+                                            <td>{{ \App\Support\DisplayDate::long($return->return_date) }}</td>
                                             <td>روپے {{ number_format($return->total_amount, 2) }}</td>
                                     </tr>@empty<tr>
                                             <td colspan="3" class="purchase-empty"><i class="fas fa-inbox"></i>کوئی
@@ -729,7 +729,7 @@
                                 <tbody>
                                     @forelse($purchase->payments as $payment)
                                         <tr>
-                                            <td>{{ $payment->payment_date->format('d-m-Y') }}</td>
+                                            <td>{{ \App\Support\DisplayDate::long($payment->payment_date) }}</td>
                                             <td>{{ \App\Support\PaymentMethods::LABELS[$payment->payment_method] ?? 'درج نہیں' }}
                                             </td>
                                             <td>روپے {{ number_format($payment->amount, 2) }}</td>

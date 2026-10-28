@@ -232,6 +232,17 @@ class PurchaseWorkflowTest extends TestCase
         $this->assertDatabaseCount('inventory_movements', 1);
     }
 
+    public function test_purchase_dates_read_day_month_year_in_urdu_and_english(): void
+    {
+        [$owner, , , $purchase] = $this->draftPurchase();
+        $purchase->update(['purchase_date' => '2026-10-18']);
+
+        $this->actingAs($owner)->get(route('admin.purchases.index'))
+            ->assertOk()->assertSee('<span dir="rtl">18 اکتوبر 2026</span>', false);
+        $this->actingAs($owner)->withSession(['ui_locale' => 'en'])->get(route('admin.purchases.index'))
+            ->assertOk()->assertSee('<span dir="ltr">18 October 2026</span>', false);
+    }
+
     public function test_purchase_cannot_be_saved_with_zero_line_total(): void
     {
         [$owner, $supplier, $color] = $this->draftPurchase();
