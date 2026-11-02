@@ -117,7 +117,7 @@ class MeasurementTemplateTest extends TestCase
         $this->assertTrue($template->is_default);
         $this->assertTrue($template->is_builtin);
         $this->assertSame('مردانہ شلوار قمیض', $template->name);
-        $this->assertSame(array_keys(MeasurementService::SYSTEM_FIELDS), $template->system_fields);
+        $this->assertSame(['length', 'arms', 'chuta'], $template->system_fields);
         $this->assertSame([$field->id], $template->custom_field_ids);
         $this->assertSame(1, $template->layout_columns);
         $this->assertSame('left', collect($template->field_layout)->firstWhere('source', 'custom.'.$field->id)['column']);
@@ -132,6 +132,34 @@ class MeasurementTemplateTest extends TestCase
             ->assertOk()
             ->assertSeeText('مردانہ شلوار قمیض')
             ->assertSeeText('گھٹنے کی چوڑائی');
+    }
+
+    public function test_builtin_template_field_stays_removed_after_reseeding(): void
+    {
+        $owner = $this->owner();
+        $service = app(TailoringOptionDefaultsService::class);
+        $service->seedForOwner($owner->id);
+        $template = MeasurementTemplate::where('user_id', $owner->id)->where('is_builtin', true)->firstOrFail();
+        $withoutNeck = array_values(array_diff($template->system_fields, ['necktype']));
+
+        $this->actingAs($owner)->get(route('admin.measurement-templates.edit', $template))
+            ->assertOk()
+            ->assertSee('value="necktype"', false)
+            ->assertDontSee('type="hidden" name="system_fields[]"', false);
+
+        $this->actingAs($owner)->put(route('admin.measurement-templates.update', $template), [
+            'name' => $template->name,
+            'system_fields' => $withoutNeck,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($withoutNeck, $template->fresh()->system_fields);
+
+        $service->seedForOwner($owner->id);
+
+        $this->assertSame($withoutNeck, $template->fresh()->system_fields);
+        $this->assertTrue($template->fresh()->is_builtin);
+        $this->actingAs($owner)->get(route('admin.OptionType.index', ['template' => $template->id]))
+            ->assertOk()
+            ->assertDontSeeText('افغانی گلہ');
     }
 
     public function test_selected_template_controls_required_customer_measurements(): void

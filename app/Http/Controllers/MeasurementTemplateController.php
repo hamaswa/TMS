@@ -57,12 +57,11 @@ class MeasurementTemplateController extends Controller
     public function update(Request $request, int $template)
     {
         $template = $this->ownedTemplate($template);
-        $validated = $this->validateTemplate($request, $template->user_id, $template->id, $template->is_builtin);
+        $validated = $this->validateTemplate($request, $template->user_id, $template->id);
 
         DB::transaction(function () use ($validated, $template) {
             if ($template->is_builtin) {
                 $validated['name'] = TailoringOptionDefaultsService::DEFAULT_MEASUREMENT_TEMPLATE_NAME;
-                $validated['system_fields'] = array_keys(MeasurementService::SYSTEM_FIELDS);
             }
             $template->update($validated + [
                 'is_default' => $template->is_builtin,
@@ -108,7 +107,7 @@ class MeasurementTemplateController extends Controller
         return back()->with('success', 'ٹیمپلیٹ غیر فعال کر دیا گیا ہے۔ پرانے ریکارڈ محفوظ رہیں گے۔');
     }
 
-    private function validateTemplate(Request $request, int $ownerId, ?int $templateId = null, bool $isBuiltin = false): array
+    private function validateTemplate(Request $request, int $ownerId, ?int $templateId = null): array
     {
         $systemKeys = array_keys(MeasurementService::SYSTEM_FIELDS);
         $validated = $request->validate([
@@ -125,9 +124,7 @@ class MeasurementTemplateController extends Controller
             'layout_columns' => ['nullable', 'integer', Rule::in([1, 2])],
         ]);
 
-        $selectedSystem = $isBuiltin
-            ? $systemKeys
-            : array_values(array_intersect($systemKeys, $validated['system_fields'] ?? []));
+        $selectedSystem = array_values(array_intersect($systemKeys, $validated['system_fields'] ?? []));
         if ($templateId) {
             MeasurementField::where('user_id', $ownerId)->whereNull('measurement_template_id')
                 ->whereIn('id', array_map('intval', $validated['custom_field_ids'] ?? []))

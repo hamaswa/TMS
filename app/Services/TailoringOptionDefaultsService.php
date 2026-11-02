@@ -359,10 +359,10 @@ class TailoringOptionDefaultsService
             $template->description = 'قمیض، شلوار اور متعلقہ سلائی کی پسند کے لیے مکمل بنیادی ٹیمپلیٹ';
             $template->custom_field_ids = [];
             $template->layout_columns = 2;
+            $template->system_fields = array_keys(MeasurementService::SYSTEM_FIELDS);
         }
 
         $template->forceFill([
-            'system_fields' => array_keys(MeasurementService::SYSTEM_FIELDS),
             'is_builtin' => true,
             'is_default' => true,
             'is_active' => true,

@@ -70,8 +70,8 @@
                                 </div>
                                 @if ($template?->is_builtin)
                                     <div class="template-default"><i class="fas fa-lock ml-1"></i><strong>بنیادی ڈیفالٹ
-                                            ٹیمپلیٹ</strong><span>یہ ہمیشہ دستیاب رہے گا؛ اس کے بنیادی خانے بند نہیں کیے جا
-                                            سکتے۔</span></div>
+                                            ٹیمپلیٹ</strong><span>یہ ہمیشہ دستیاب رہے گا؛ اس کا نام نہیں بدلا جا سکتا، مگر خانے آپ
+                                            منتخب کر سکتے ہیں۔</span></div>
                                 @endif
                             </div>
                         </div>
@@ -94,7 +94,6 @@
                                             'hint' => $meta['unit'] === 'inch' ? 'انچ' : $meta['unit'],
                                             'checked' => in_array($key, $selectedSystem, true),
                                             'defaultColumn' => 'right',
-                                            'locked' => (bool) $template?->is_builtin,
                                         ])
                                         @if($editing)
                                             <button type="button" class="template-field-edit" data-toggle="modal" data-target="#systemTitleModal" data-system-key="{{ $key }}" data-system-label="{{ $meta['label'] }}" title="خانے کا نام تبدیل کریں" aria-label="{{ $meta['label'] }} کا نام تبدیل کریں"><i class="fas fa-pen"></i></button>
@@ -125,7 +124,6 @@
                                             'hint' => 'انتخابی فہرست',
                                             'checked' => in_array($key, $selectedSystem, true),
                                             'defaultColumn' => 'left',
-                                            'locked' => (bool) $template?->is_builtin,
                                         ])
                                             @if($editing)
                                                 <button type="button" class="template-field-edit" data-toggle="modal" data-target="#systemChoiceModal" data-system-key="{{ $key }}" data-system-label="{{ $meta['label'] }}" title="انتخاب تبدیل کریں" aria-label="{{ $meta['label'] }} کے انتخاب تبدیل کریں"><i class="fas fa-pen"></i></button>
