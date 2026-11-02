@@ -46,14 +46,14 @@ class OptionSourceTest extends TestCase
         }
     }
 
-    public function test_new_accounts_show_only_the_default_list(): void
+    public function test_default_list_shows_seeded_and_shop_added_choices(): void
     {
         $this->assertSame('default', $this->owner->fresh()->option_source);
 
         $this->actingAs($this->owner)->get(route('admin.Customers.create'))
             ->assertOk()
             ->assertSee('سیڈ سلائی')
-            ->assertDontSee('اپنی سلائی');
+            ->assertSee('اپنی سلائی');
     }
 
     public function test_choosing_own_shows_only_choices_the_shop_created(): void
@@ -101,7 +101,7 @@ class OptionSourceTest extends TestCase
         ]);
     }
 
-    public function test_choice_added_on_the_default_list_stays_visible(): void
+    public function test_choice_added_on_the_default_list_also_shows_on_the_own_list(): void
     {
         $this->actingAs($this->owner)->post(route('admin.Options.store'), [
             'OptionTypeId' => 1,
@@ -112,28 +112,21 @@ class OptionSourceTest extends TestCase
         $this->actingAs($this->owner)->get(route('admin.Customers.create'))
             ->assertOk()
             ->assertSee('نئی سلائی');
+
+        $this->owner->forceFill(['option_source' => 'own'])->save();
+        $this->actingAs($this->owner)->get(route('admin.Customers.create'))
+            ->assertOk()
+            ->assertSee('نئی سلائی');
     }
 
-    public function test_custom_template_choices_stay_visible_on_the_default_list(): void
+    public function test_name_already_in_the_visible_list_is_rejected(): void
     {
-        $custom = MeasurementTemplate::create([
-            'user_id' => $this->owner->id,
-            'name' => 'واسکٹ',
-            'system_fields' => ['swingtype'],
-            'custom_field_ids' => [],
-            'is_active' => true,
-        ]);
-        Options::create([
-            'user_id' => $this->owner->id,
-            'measurement_template_id' => $custom->id,
-            'option_id' => 1,
-            'slug' => 'waistcoat-choice',
-            'Name' => 'واسکٹ سلائی',
-        ]);
+        $this->actingAs($this->owner)->post(route('admin.Options.store'), [
+            'OptionTypeId' => 1,
+            'measurement_template_id' => $this->template->id,
+            'Name' => 'سیڈ سلائی',
+        ])->assertSessionHasErrors('Name');
 
-        $names = Options::where('user_id', $this->owner->id)->inOwnerSource($this->owner->id)->pluck('Name');
-
-        $this->assertTrue($names->contains('واسکٹ سلائی'));
-        $this->assertFalse($names->contains('اپنی سلائی'));
+        $this->assertSame(1, Options::where('user_id', $this->owner->id)->where('Name', 'سیڈ سلائی')->count());
     }
 }

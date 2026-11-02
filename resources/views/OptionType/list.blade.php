@@ -54,9 +54,9 @@
 
         <form method="POST" action="{{ route('admin.option-source.update') }}" class="oc-source">
             @csrf @method('PUT')
-            <div class="oc-source-copy"><strong>گاہک کی پیمائش میں کون سے انتخاب دکھائیں؟</strong><span>یہ ترتیب پورے اکاؤنٹ پر لاگو ہوگی۔ دوسری فہرست حذف نہیں ہوگی، صرف چھپ جائے گی۔</span></div>
+            <div class="oc-source-copy"><strong>گاہک کی پیمائش میں کون سے انتخاب دکھائیں؟</strong><span>یہ ترتیب پورے اکاؤنٹ پر لاگو ہوگی۔ اپنے انتخاب چننے پر ڈیفالٹ فہرست حذف نہیں ہوگی، صرف چھپ جائے گی۔</span></div>
             <div class="oc-source-options">
-                <button type="submit" name="option_source" value="default" class="oc-source-btn {{ $usesOwnChoices ? '' : 'is-active' }}" aria-pressed="{{ $usesOwnChoices ? 'false' : 'true' }}"><i class="fas fa-layer-group"></i><span><b>ڈیفالٹ انتخاب</b><small>سسٹم کی تیار فہرست</small></span>@unless($usesOwnChoices)<em class="oc-source-mark" style="font-style:normal"><i class="fas fa-check ml-1"></i>منتخب</em>@endunless</button>
+                <button type="submit" name="option_source" value="default" class="oc-source-btn {{ $usesOwnChoices ? '' : 'is-active' }}" aria-pressed="{{ $usesOwnChoices ? 'false' : 'true' }}"><i class="fas fa-layer-group"></i><span><b>ڈیفالٹ انتخاب</b><small>تیار فہرست اور آپ کے شامل کردہ نام</small></span>@unless($usesOwnChoices)<em class="oc-source-mark" style="font-style:normal"><i class="fas fa-check ml-1"></i>منتخب</em>@endunless</button>
                 <button type="submit" name="option_source" value="own" class="oc-source-btn {{ $usesOwnChoices ? 'is-active' : '' }}" aria-pressed="{{ $usesOwnChoices ? 'true' : 'false' }}"><i class="fas fa-user-edit"></i><span><b>اپنے انتخاب</b><small>صرف آپ کے بنائے ہوئے</small></span>@if($usesOwnChoices)<em class="oc-source-mark" style="font-style:normal"><i class="fas fa-check ml-1"></i>منتخب</em>@endif</button>
             </div>
         </form>

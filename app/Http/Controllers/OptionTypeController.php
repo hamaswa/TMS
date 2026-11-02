@@ -60,7 +60,7 @@ class OptionTypeController extends Controller
 
         return back()->with('success', $validated['option_source'] === User::OPTION_SOURCE_OWN
             ? 'اب پیمائش میں صرف آپ کے اپنے انتخاب دکھائی دیں گے۔'
-            : 'اب پیمائش میں ڈیفالٹ انتخاب دکھائی دیں گے۔');
+            : 'اب پیمائش میں ڈیفالٹ انتخاب کے ساتھ آپ کے اپنے انتخاب بھی دکھائی دیں گے۔');
     }
 
     /**

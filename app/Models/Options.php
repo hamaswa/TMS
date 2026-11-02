@@ -36,21 +36,11 @@ class Options extends Model
     }
 
     /**
-     * Limit choices to the list the shop has selected on the options page.
+     * The default list also shows what the shop added; the own list hides the seeded choices.
      */
     public function scopeInOwnerSource($query, int $ownerId)
     {
-        if (self::ownerUsesOwnChoices($ownerId)) {
-            return $query->where('is_default', false);
-        }
-
-        // Custom templates never receive the seeded list, so all their choices stay visible.
-        return $query->where(function ($query) use ($ownerId) {
-            $query->where('is_default', true)->orWhereIn(
-                'measurement_template_id',
-                MeasurementTemplate::where('user_id', $ownerId)->where('is_builtin', false)->select('id')
-            );
-        });
+        return self::ownerUsesOwnChoices($ownerId) ? $query->where('is_default', false) : $query;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use App\Models\OptionType;
 use App\Models\Options;
 use App\Models\MeasurementTemplate;
@@ -51,6 +52,16 @@ class OptionsController extends Controller
         ], ['Name.required' => 'نئے انتخاب کا نام لکھیں۔']);
         $template = $this->ownedTemplate((int) $validated['measurement_template_id']);
         $this->availableOptionTypeForTemplate((int) $validated['OptionTypeId'], $template);
+        $ownerId = Auth::user()->businessOwnerId();
+        $alreadyListed = Options::where('user_id', $ownerId)
+            ->where('measurement_template_id', $template->id)
+            ->where('option_id', $validated['OptionTypeId'])
+            ->where('Name', $validated['Name'])
+            ->inOwnerSource($ownerId)
+            ->exists();
+        if ($alreadyListed) {
+            throw ValidationException::withMessages(['Name' => 'یہ انتخاب پہلے سے موجود ہے۔']);
+        }
         $slug = Str::slug($validated['Name'], '_');
         $obj = new Options;
         $obj->Name = $validated['Name'];
@@ -58,8 +69,6 @@ class OptionsController extends Controller
         $obj->option_id=$validated['OptionTypeId'];
         $obj->user_id = Auth::user()->businessOwnerId();
         $obj->measurement_template_id = $template->id;
-        // A choice added while the shop uses the default list joins that list, so it stays visible.
-        $obj->is_default = $template->is_builtin && ! Options::ownerUsesOwnChoices($obj->user_id);
         $obj->save();
         if ($request->expectsJson()) {
             return response()->json(['id' => $obj->id, 'name' => $obj->Name, 'template_id' => $template->id], 201);
