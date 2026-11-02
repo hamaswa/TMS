@@ -26,7 +26,32 @@ class Options extends Model
     /**
      * @var array
      */
-    protected $fillable = ['user_id', 'measurement_template_id', 'option_id', 'slug', 'Name', 'created_at', 'updated_at'];
+    protected $fillable = ['user_id', 'measurement_template_id', 'option_id', 'slug', 'Name', 'is_default', 'created_at', 'updated_at'];
+
+    protected $casts = ['is_default' => 'boolean'];
+
+    public static function ownerUsesOwnChoices(int $ownerId): bool
+    {
+        return User::whereKey($ownerId)->value('option_source') === User::OPTION_SOURCE_OWN;
+    }
+
+    /**
+     * Limit choices to the list the shop has selected on the options page.
+     */
+    public function scopeInOwnerSource($query, int $ownerId)
+    {
+        if (self::ownerUsesOwnChoices($ownerId)) {
+            return $query->where('is_default', false);
+        }
+
+        // Custom templates never receive the seeded list, so all their choices stay visible.
+        return $query->where(function ($query) use ($ownerId) {
+            $query->where('is_default', true)->orWhereIn(
+                'measurement_template_id',
+                MeasurementTemplate::where('user_id', $ownerId)->where('is_builtin', false)->select('id')
+            );
+        });
+    }
 
     /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

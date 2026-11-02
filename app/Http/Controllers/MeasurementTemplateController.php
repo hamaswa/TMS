@@ -201,7 +201,7 @@ class MeasurementTemplateController extends Controller
             $types = OptionType::where(function ($query) use ($ownerId) {
                 $query->whereNull('user_id')->orWhere('user_id', $ownerId);
             })->whereIn('type', $keys->map(fn ($key) => $key === 'Daaman' ? 'daaman' : $key)->all())
-                ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)->orderBy('Name')])->get();
+                ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)->inOwnerSource($ownerId)->orderBy('Name')])->get();
             foreach ($types as $type) {
                 $key = $type->type === 'daaman' ? 'Daaman' : $type->type;
                 $systemOptionTypes[$key] = [

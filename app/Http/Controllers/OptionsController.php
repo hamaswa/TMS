@@ -58,6 +58,8 @@ class OptionsController extends Controller
         $obj->option_id=$validated['OptionTypeId'];
         $obj->user_id = Auth::user()->businessOwnerId();
         $obj->measurement_template_id = $template->id;
+        // A choice added while the shop uses the default list joins that list, so it stays visible.
+        $obj->is_default = $template->is_builtin && ! Options::ownerUsesOwnChoices($obj->user_id);
         $obj->save();
         if ($request->expectsJson()) {
             return response()->json(['id' => $obj->id, 'name' => $obj->Name, 'template_id' => $template->id], 201);

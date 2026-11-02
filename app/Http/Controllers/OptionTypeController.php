@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use App\Models\OptionType;
+use App\Models\Options;
 use App\Models\MeasurementTemplate;
+use App\Models\User;
 class OptionTypeController extends Controller
 {
     /**
@@ -36,13 +39,28 @@ class OptionTypeController extends Controller
         )->all();
         $OptionTypes = $this->availableOptionTypes()
             ->whereIn('type', $preferenceTypes)
-            ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)->orderBy('Name')])
-            ->withCount(['options as choices_count' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)])
+            ->with(['options' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)->inOwnerSource($ownerId)->orderBy('Name')])
+            ->withCount(['options as choices_count' => fn ($query) => $query->where('user_id', $ownerId)->where('measurement_template_id', $template->id)->inOwnerSource($ownerId)])
             ->orderByRaw('CASE WHEN user_id IS NULL THEN 0 ELSE 1 END')
             ->orderBy('id')
             ->get();
+        $usesOwnChoices = Options::ownerUsesOwnChoices($ownerId);
 
-        return view('OptionType.list', compact('OptionTypes', 'template', 'templates'));
+        return view('OptionType.list', compact('OptionTypes', 'template', 'templates', 'usesOwnChoices'));
+    }
+
+    public function updateSource(Request $request)
+    {
+        $validated = $request->validate([
+            'option_source' => ['required', Rule::in([User::OPTION_SOURCE_DEFAULT, User::OPTION_SOURCE_OWN])],
+        ]);
+        $owner = User::findOrFail(Auth::user()->businessOwnerId());
+        $owner->option_source = $validated['option_source'];
+        $owner->save();
+
+        return back()->with('success', $validated['option_source'] === User::OPTION_SOURCE_OWN
+            ? 'اب پیمائش میں صرف آپ کے اپنے انتخاب دکھائی دیں گے۔'
+            : 'اب پیمائش میں ڈیفالٹ انتخاب دکھائی دیں گے۔');
     }
 
     /**

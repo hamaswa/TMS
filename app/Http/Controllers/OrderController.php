@@ -90,6 +90,7 @@ class OrderController extends Controller
             ->with(['options' => fn($query) => $query
                 ->where('user_id', Auth::user()->businessOwnerId())
                 ->where('measurement_template_id', $data->measurement_template_id)
+                ->inOwnerSource(Auth::user()->businessOwnerId())
                 ->orderBy('Name')])
             ->get()
             ->mapWithKeys(fn(OptionType $type) => [
@@ -362,7 +363,9 @@ class OrderController extends Controller
         $data['childData'] = Customers::where('parent_id', (string) $id)->get();
         $data['design'] = Options::where('option_id', 1)->where('user_id', auth()->user()->businessOwnerId())->get();
         $data['measurementTemplates'] = MeasurementTemplate::where('user_id', auth()->user()->businessOwnerId())
-            ->where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
+            ->where('is_active', true)
+            ->with(['templateOptions' => fn ($query) => $query->inOwnerSource(auth()->user()->businessOwnerId())->with('optionType')])
+            ->orderByDesc('is_default')->orderBy('name')->get();
         $data['measurementTemplateId'] = $customer->measurement_template_id
             ?: $data['measurementTemplates']->firstWhere('is_default', true)?->id;
 

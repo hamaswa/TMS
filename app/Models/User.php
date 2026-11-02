@@ -19,6 +19,10 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
+    public const OPTION_SOURCE_DEFAULT = 'default';
+
+    public const OPTION_SOURCE_OWN = 'own';
+
     /**
      * The attributes that are mass assignable.
      *

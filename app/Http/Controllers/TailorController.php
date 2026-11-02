@@ -572,6 +572,7 @@ class TailorController extends Controller
             $tailor_rates = $tailor->tailorsalary;
             $types = Options::where('option_id', 1)
                 ->where('user_id', Auth::user()->businessOwnerId())
+                ->inOwnerSource(Auth::user()->businessOwnerId())
                 ->orderBy('Name')
                 ->get();
 

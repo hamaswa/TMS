@@ -142,9 +142,12 @@ class CustomerController extends Controller
 
     private function optionChoicesFor($optionTypes)
     {
-        return DB::table('options')
-            ->where('user_id', Auth::user()->businessOwnerId())
+        $ownerId = Auth::user()->businessOwnerId();
+
+        return Options::query()
+            ->where('user_id', $ownerId)
             ->whereIn('option_id', $optionTypes->pluck('option_id'))
+            ->inOwnerSource($ownerId)
             ->get()
             ->groupBy('option_id');
     }
@@ -1314,8 +1317,11 @@ class CustomerController extends Controller
 
     private function measurementTemplates()
     {
-        return MeasurementTemplate::where('user_id', Auth::user()->businessOwnerId())
-            ->where('is_active', true)->with('templateOptions.optionType')
+        $ownerId = Auth::user()->businessOwnerId();
+
+        return MeasurementTemplate::where('user_id', $ownerId)
+            ->where('is_active', true)
+            ->with(['templateOptions' => fn ($query) => $query->inOwnerSource($ownerId)->with('optionType')])
             ->orderByDesc('is_default')->orderBy('name')->get();
     }
 

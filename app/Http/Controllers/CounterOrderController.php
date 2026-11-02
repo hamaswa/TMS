@@ -411,7 +411,10 @@ class CounterOrderController extends Controller
         $customValues = $fields->mapWithKeys(fn($field) => [
             $field->id => $savedValues->get('custom.' . $field->id),
         ]);
-        $preferenceChoices = $template->templateOptions
+        $preferenceChoices = $template->templateOptions()
+            ->inOwnerSource($ownerId)
+            ->with('optionType')
+            ->get()
             ->groupBy(fn($option) => $option->optionType?->type === 'daaman' ? 'Daaman' : $option->optionType?->type)
             ->map(fn($options) => $options->pluck('Name')->values())
             ->filter(fn($options, $key) => filled($key));

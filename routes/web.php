@@ -378,6 +378,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::middleware('business.permission:tailoring.configuration')->group(function () {
         Route::get('/tailoring-workflow', [TailoringWorkflowSettingController::class, 'edit'])->name('tailoring-workflow.edit');
         Route::put('/tailoring-workflow', [TailoringWorkflowSettingController::class, 'update'])->name('tailoring-workflow.update');
+        Route::put('/option-source', [OptionTypeController::class, 'updateSource'])->name('option-source.update');
         Route::resource('/OptionType', OptionTypeController::class);
         Route::resource('/Options', OptionsController::class);
         Route::resource('/measurement-fields', MeasurementFieldController::class)->only(['index', 'store', 'update', 'destroy']);

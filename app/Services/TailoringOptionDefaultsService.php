@@ -335,6 +335,7 @@ class TailoringOptionDefaultsService
                             'measurement_template_id' => null,
                             'option_id' => $optionType->id,
                             'Name' => $choice,
+                            'is_default' => true,
                         ],
                         [
                             'slug' => 'default-'.$ownerId.'-'.substr(sha1($typeSlug.'|'.$choice), 0, 16),
@@ -378,6 +379,7 @@ class TailoringOptionDefaultsService
                     'measurement_template_id' => $template->id,
                     'option_id' => $option->option_id,
                     'Name' => $option->Name,
+                    'is_default' => $option->is_default,
                 ], [
                     'slug' => $option->slug.'-template-'.$template->id,
                 ]);
