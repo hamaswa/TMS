@@ -82,6 +82,24 @@ class Business extends Model
         return $this->belongsTo(User::class, 'owner_user_id');
     }
 
+    public function planRequests()
+    {
+        return $this->hasMany(SubscriptionPlanRequest::class);
+    }
+
+    /** The plan request (with its payment) waiting for the super admin, if any. */
+    public function pendingPlanRequest()
+    {
+        return $this->hasOne(SubscriptionPlanRequest::class)
+            ->where('status', SubscriptionPlanRequest::STATUS_PENDING)
+            ->latestOfMany();
+    }
+
+    public function latestPlanRequest()
+    {
+        return $this->hasOne(SubscriptionPlanRequest::class)->latestOfMany();
+    }
+
     public function members()
     {
         return $this->hasMany(User::class);

@@ -46,6 +46,8 @@ use App\Http\Controllers\PublicStorefrontCheckoutController;
 use App\Http\Controllers\PublicStorefrontController;
 use App\Http\Controllers\PublicStorefrontTailoringCartController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PlanRequestReviewController;
+use App\Http\Controllers\PlatformPaymentSettingsController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleCustomerController;
@@ -144,6 +146,8 @@ Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'busines
     Route::put('/password', [EmployeePasswordController::class, 'update'])->middleware('throttle:6,1')->name('update');
 });
 
+Route::get('/platform/easypaisa-qr', [PlatformPaymentSettingsController::class, 'qr'])->middleware('auth')->name('platform.easypaisa-qr');
+
 // Administrator routes
 Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:administrative'], 'as' => 'administrator.'], function () {
 
@@ -153,6 +157,11 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
     Route::get('/subscription-plans', [SubscriptionPlanController::class, 'index'])->name('subscription-plans.index');
     Route::post('/subscription-plans', [SubscriptionPlanController::class, 'store'])->name('subscription-plans.store');
     Route::put('/subscription-plans/{plan}', [SubscriptionPlanController::class, 'update'])->name('subscription-plans.update');
+    Route::get('/payment-settings', [PlatformPaymentSettingsController::class, 'edit'])->name('payment-settings.edit');
+    Route::put('/payment-settings', [PlatformPaymentSettingsController::class, 'update'])->name('payment-settings.update');
+    Route::post('/plan-requests/{planRequest}/approve', [PlanRequestReviewController::class, 'approve'])->name('plan-requests.approve');
+    Route::post('/plan-requests/{planRequest}/reject', [PlanRequestReviewController::class, 'reject'])->name('plan-requests.reject');
+    Route::get('/plan-requests/{planRequest}/proof', [PlanRequestReviewController::class, 'proof'])->name('plan-requests.proof');
     Route::post('/clients/{id}/subscriptions', [AdministratorSubscriptionController::class, 'storeSubscription'])->name('subscriptions.store');
     Route::post('/clients/{id}/subscriptions/{subscription}/payments', [AdministratorSubscriptionController::class, 'storePayment'])->name('subscription-payments.store');
     Route::patch('/clients/{id}/subscription-payments/{payment}/reverse', [AdministratorSubscriptionController::class, 'reversePayment'])->name('subscription-payments.reverse');
@@ -189,6 +198,7 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
 
 Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner'], 'as' => 'admin.'], function () {
     Route::get('/subscription', [ClientSubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription/plans/{plan}/request', [ClientSubscriptionController::class, 'requestPlan'])->name('subscription.request');
     Route::get('/subscription-required', [ClientSubscriptionController::class, 'required'])->name('subscription.required');
     Route::get('/notifications', [NotificationController::class, 'showNotifications'])->name('notifications.index');
     Route::post('/mark-as-read/{id}', [NotificationController::class, 'readNotifications'])->name('notification.read');

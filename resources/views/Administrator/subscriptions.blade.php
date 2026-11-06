@@ -18,7 +18,7 @@
     </div>
     <form method="GET" class="card card-body mb-3"><div class="form-row align-items-end">
         <div class="col-md-6 mb-2"><label for="subscription_search">Search</label><input id="subscription_search" name="search" value="{{ request('search') }}" class="form-control" placeholder="Business, client or email"></div>
-        <div class="col-md-3 mb-2"><label for="subscription_state">Subscription state</label><select id="subscription_state" name="state" class="form-control"><option value="">All states</option>@foreach(['active'=>'Active','expiring'=>'Expiring','expired'=>'Expired','unconfigured'=>'Not configured'] as $value=>$label)<option value="{{ $value }}" @selected(request('state')===$value)>{{ $label }}</option>@endforeach</select></div>
+        <div class="col-md-3 mb-2"><label for="subscription_state">Subscription state</label><select id="subscription_state" name="state" class="form-control"><option value="">All states</option>@foreach(['requested'=>'Payment requests','active'=>'Active','expiring'=>'Expiring','expired'=>'Expired','unconfigured'=>'Not configured'] as $value=>$label)<option value="{{ $value }}" @selected(request('state')===$value)>{{ $label }}</option>@endforeach</select></div>
         <div class="col-md-3 mb-2"><button class="btn btn-primary">Apply filters</button> <a href="{{ route('administrator.subscriptions.index') }}" class="btn btn-light">Clear</a></div>
     </div></form>
     <div class="card"><div class="table-responsive"><table class="table table-hover mb-0">
@@ -27,7 +27,8 @@
             @php($subscription=$business->latestSubscription)
             <tr>
                 <td><strong>{{ $business->name }}</strong><br><small class="text-muted">{{ $business->owner?->name }} · {{ $business->owner?->email }}</small></td>
-                <td>@if($subscription){{ $subscription->starts_on->format('d M Y') }} &ndash; {{ $subscription->ends_on->format('d M Y') }}<br><small>{{ $subscription->plan_name }}</small>@else<span class="text-muted">Not configured</span>@endif</td>
+                <td>@if($subscription){{ $subscription->starts_on->format('d M Y') }} &ndash; {{ $subscription->ends_on->format('d M Y') }}<br><small>{{ $subscription->plan_name }}</small>@else<span class="text-muted">Not configured</span>@endif
+                    @if($business->pendingPlanRequest)<br><a href="{{ route('administrator.clients.show', $business->owner_user_id) }}#plan-request" class="badge badge-warning"><i class="fas fa-receipt"></i> {{ $business->pendingPlanRequest->payment_reference ? 'Payment to check' : 'Requested' }}: {{ $business->pendingPlanRequest->plan?->name }} · Rs {{ number_format((float) $business->pendingPlanRequest->amount) }}</a>@endif</td>
                 <td>@if($subscription)@php($state=$subscription->state())<span class="badge badge-{{ ['active'=>'success','expiring'=>'warning','expired'=>'danger'][$state] ?? 'secondary' }}">{{ ucfirst($state) }}</span>@else<span class="badge badge-secondary">Unconfigured</span>@endif</td>
                 <td>{{ $subscription ? 'Rs '.number_format((float)$subscription->fee,2) : '—' }}</td>
                 <td>{{ $subscription ? 'Rs '.number_format($subscription->amountPaid(),2) : '—' }}</td>

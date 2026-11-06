@@ -2,28 +2,80 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PlatformSetting;
 use App\Models\SubscriptionPlan;
+use App\Services\SubscriptionPlanRequestService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class ClientSubscriptionController extends Controller
 {
+    /** Urdu names for the billing-period tabs (English mode translates them). */
+    private const PERIOD_LABELS = [30 => 'ماہانہ', 90 => 'سہ ماہی', 180 => 'ششماہی', 365 => 'سالانہ'];
+
     public function index()
     {
-        $business = Auth::user()->ownedBusiness()->firstOrFail();
+        $business = Auth::user()->ownedBusiness()->with(['pendingPlanRequest.plan', 'latestPlanRequest.plan'])->firstOrFail();
         $subscriptions = $business->subscriptions()
             ->with(['payments.recordedBy', 'payments.reversedBy'])
             ->withSum('activePayments', 'amount')
             ->latest('ends_on')
             ->get();
         $currentSubscription = $subscriptions->first(fn ($subscription) => ! $subscription->cancelled_at);
-        $plans = SubscriptionPlan::query()
-            ->where('is_active', true)
-            ->where('lifecycle_status', SubscriptionPlan::LIFECYCLE_ACTIVE)
-            ->orderBy('display_order')
-            ->orderBy('price')
-            ->get();
+        $plans = $this->availablePlans();
 
-        return view('subscriptions.client', compact('business', 'subscriptions', 'currentSubscription', 'plans'));
+        return view('subscriptions.client', [
+            'business' => $business,
+            'subscriptions' => $subscriptions,
+            'currentSubscription' => $currentSubscription,
+            'planGroups' => $this->groupByPeriod($plans),
+            'yearlySavings' => $this->yearlySavings($plans),
+            'popularPlanIds' => $this->popularPlanIds($plans),
+            'easypaisa' => PlatformSetting::easypaisa(),
+        ]);
+    }
+
+    public function requestPlan(Request $request, SubscriptionPlan $plan, SubscriptionPlanRequestService $requests)
+    {
+        abort_unless($plan->is_active && $plan->lifecycle_status === SubscriptionPlan::LIFECYCLE_ACTIVE, 404);
+
+        // With Easypaisa set up, the shop pays first and sends the transaction ID; otherwise it is a plain request.
+        $paying = PlatformSetting::easypaisa() !== null && (float) $plan->price > 0;
+        $request->merge(['payment_reference' => is_string($request->input('payment_reference')) ? trim($request->input('payment_reference')) : $request->input('payment_reference')]);
+        $validator = Validator::make($request->all(), [
+            'payment_reference' => [$paying ? 'required' : 'nullable', 'string', 'regex:/^[A-Za-z0-9]{6,30}$/'],
+            'payment_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+        ], [
+            'payment_reference.required' => 'ادائیگی کی ٹرانزیکشن آئی ڈی درج کریں۔',
+            'payment_reference.regex' => 'درست ٹرانزیکشن آئی ڈی درج کریں۔ یہ ادائیگی کے ایس ایم ایس میں لکھی ہوتی ہے۔',
+            'payment_proof.mimes' => 'اسکرین شاٹ تصویر یا پی ڈی ایف فائل ہونا چاہیے۔',
+            'payment_proof.max' => 'اسکرین شاٹ کا سائز زیادہ سے زیادہ پانچ ایم بی ہو سکتا ہے۔',
+        ]);
+        // Always return to the plans page (not "back"), so the payment popup reopens with the errors.
+        $toPlans = redirect()->to(route('admin.subscription.index').'#plans');
+        if ($validator->fails()) {
+            return $toPlans->withErrors($validator)->withInput($request->except('payment_proof'));
+        }
+
+        $user = Auth::user();
+        try {
+            $requests->submit(
+                $user->ownedBusiness()->firstOrFail(),
+                $user,
+                $plan,
+                $paying ? $request->input('payment_reference') : null,
+                $paying ? $request->file('payment_proof') : null,
+            );
+        } catch (ValidationException $exception) {
+            return $toPlans->withErrors($exception->errors())->withInput($request->except('payment_proof'));
+        }
+
+        return redirect()->to(route('admin.subscription.index').'#plans')->with('plan_requested', $paying
+            ? 'آپ کی ادائیگی کی تفصیل سپر ایڈمن کو بھیج دی گئی ہے۔ تصدیق کے بعد آپ کا پلان فعال ہو جائے گا۔'
+            : 'آپ کی درخواست سپر ایڈمن کو بھیج دی گئی ہے۔ وہ پلان فعال کرنے کے لیے آپ سے رابطہ کریں گے۔');
     }
 
     public function required()
@@ -43,5 +95,72 @@ class ClientSubscriptionController extends Controller
             'latestSubscription',
             'nextSubscription'
         ));
+    }
+
+    private function availablePlans(): Collection
+    {
+        return SubscriptionPlan::query()
+            ->where('is_active', true)
+            ->where('lifecycle_status', SubscriptionPlan::LIFECYCLE_ACTIVE)
+            ->orderBy('display_order')
+            ->orderBy('price')
+            ->get();
+    }
+
+    /**
+     * Plans keyed by billing period, shortest first, each with its tab label.
+     *
+     * @return Collection<int, array{label: string, plans: Collection}>
+     */
+    private function groupByPeriod(Collection $plans): Collection
+    {
+        return $plans->groupBy('billing_period_days')
+            ->sortKeys()
+            ->map(fn (Collection $group, int $days) => [
+                'label' => self::PERIOD_LABELS[$days] ?? "{$days} دن",
+                'plans' => $group->values(),
+            ]);
+    }
+
+    /**
+     * How much each yearly plan saves against twelve months of the matching monthly plan.
+     * Plans pair up by code, e.g. "business-pro-annual" with "business-pro-monthly".
+     *
+     * @return array<int, float> yearly plan id => rupees saved
+     */
+    private function yearlySavings(Collection $plans): array
+    {
+        $tier = fn (SubscriptionPlan $plan) => $this->tier($plan);
+        $monthly = $plans->where('billing_period_days', 30)->keyBy($tier);
+
+        $savings = [];
+        foreach ($plans->where('billing_period_days', 365) as $plan) {
+            $match = $monthly->get($tier($plan));
+            $saved = $match ? (float) $match->price * 12 - (float) $plan->price : 0;
+            if ($saved > 0) {
+                $savings[$plan->id] = $saved;
+            }
+        }
+
+        return $savings;
+    }
+
+    /**
+     * The recommended plan plus its other billing periods, so "Popular" shows on every tab.
+     *
+     * @return array<int, int>
+     */
+    private function popularPlanIds(Collection $plans): array
+    {
+        $tiers = $plans->where('is_recommended', true)->map(fn (SubscriptionPlan $plan) => $this->tier($plan))->all();
+
+        return $plans->filter(fn (SubscriptionPlan $plan) => in_array($this->tier($plan), $tiers, true))
+            ->pluck('id')->all();
+    }
+
+    /** Plans of one tier share a code apart from the period suffix, e.g. "business-pro-monthly". */
+    private function tier(SubscriptionPlan $plan): string
+    {
+        return preg_replace('/-(monthly|annual|yearly)$/', '', $plan->code);
     }
 }

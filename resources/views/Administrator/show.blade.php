@@ -26,13 +26,46 @@
             <div class="card mb-4"><div class="card-header bg-white d-flex justify-content-between align-items-center"><h5 class="mb-0">Subscription and payments</h5><a href="{{ route('administrator.subscriptions.index') }}" class="btn btn-sm btn-outline-primary">All subscriptions</a></div><div class="card-body">
                 @if($currentSubscription)<div class="alert alert-{{ ['active'=>'success','expiring'=>'warning','expired'=>'danger'][$currentSubscription->state()] ?? 'secondary' }}"><strong>{{ $currentSubscription->plan_name }}</strong> · {{ $currentSubscription->starts_on->format('d M Y') }} to {{ $currentSubscription->ends_on->format('d M Y') }} · {{ ucfirst($currentSubscription->state()) }}<br>Fee: Rs {{ number_format((float)$currentSubscription->fee,2) }} · Paid: Rs {{ number_format($currentSubscription->amountPaid(),2) }} · Balance: Rs {{ number_format($currentSubscription->balanceDue(),2) }}</div>@else<div class="alert alert-info">No subscription is configured. Existing access remains unchanged until a subscription is added.</div>@endif
                 <h6>Create subscription or renewal</h6>
+                @php($planRequest = $business->pendingPlanRequest)
+                @php($formPlan = old('subscription_plan_id') ? $subscriptionPlans->firstWhere('id', (int) old('subscription_plan_id')) : $planRequest?->plan)
+                @php($formStart = old('starts_on', $currentSubscription?->ends_on?->copy()->addDay()->toDateString() ?? now()->toDateString()))
+                @if($planRequest)
+                    @php($rejectBag = $errors->getBag('plan_request_'.$planRequest->id))
+                    <div id="plan-request" class="border border-warning rounded p-3 mb-4" style="background:#fffbea">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start" style="gap:1rem">
+                            <div>
+                                <h6 class="mb-2"><i class="fas fa-receipt text-warning"></i> Payment request waiting for you</h6>
+                                <dl class="row mb-0 small">
+                                    <dt class="col-5">Plan</dt><dd class="col-7">{{ $planRequest->plan?->name }}</dd>
+                                    <dt class="col-5">Amount</dt><dd class="col-7"><strong>Rs {{ number_format((float) $planRequest->amount) }}</strong></dd>
+                                    <dt class="col-5">Easypaisa TID</dt><dd class="col-7">@if($planRequest->payment_reference)<code class="h6">{{ $planRequest->payment_reference }}</code>@else<span class="text-muted">Not paid yet (plan request only)</span>@endif</dd>
+                                    <dt class="col-5">Sent</dt><dd class="col-7">{{ $planRequest->created_at->format('d M Y, h:i A') }} by {{ $planRequest->requestedBy?->name ?? 'shop owner' }}</dd>
+                                </dl>
+                            </div>
+                            @if($planRequest->proof_path)
+                                <a href="{{ route('administrator.plan-requests.proof', $planRequest) }}" target="_blank" rel="noopener" class="text-center small">
+                                    @if(str_starts_with((string) $planRequest->proof_mime_type, 'image/'))<img src="{{ route('administrator.plan-requests.proof', $planRequest) }}" alt="Payment screenshot" class="border rounded d-block mb-1" style="width:120px;height:160px;object-fit:cover">@else<i class="fas fa-file-alt fa-3x d-block mb-1"></i>@endif
+                                    Open screenshot
+                                </a>
+                            @endif
+                        </div>
+                        <p class="small text-muted mt-3 mb-2">Check the TID against your Easypaisa SMS or app before approving. Approving starts the plan and records the payment.</p>
+                        @if($rejectBag->any())<div class="alert alert-danger py-2 small">{{ $rejectBag->first() }}</div>@endif
+                        <div class="d-flex flex-wrap align-items-start" style="gap:.5rem">
+                            <form method="POST" action="{{ route('administrator.plan-requests.approve', $planRequest) }}" data-confirm="Approve this payment and start {{ $planRequest->plan?->name }}?">@csrf<button class="btn btn-success"><i class="fas fa-check"></i> Approve and activate</button></form>
+                            <form method="POST" action="{{ route('administrator.plan-requests.reject', $planRequest) }}" class="flex-grow-1">@csrf
+                                <div class="input-group"><input name="reason" class="form-control" required maxlength="1000" placeholder="Reason, e.g. TID not found"><div class="input-group-append"><button class="btn btn-outline-danger">Reject</button></div></div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
                 <form method="POST" action="{{ route('administrator.subscriptions.store',$user) }}" class="border rounded p-3 mb-4">@csrf
                     <div class="form-row">
-                        <div class="form-group col-md-4"><label for="subscription_plan_id">Plan with limits</label><select id="subscription_plan_id" name="subscription_plan_id" class="form-control"><option value="">Custom / unlimited legacy terms</option>@foreach($subscriptionPlans as $plan)<option value="{{ $plan->id }}" @selected((string)old('subscription_plan_id')===(string)$plan->id)>{{ $plan->name }} · Rs {{ number_format((float)$plan->price,2) }} · {{ $plan->billing_period_days }} days</option>@endforeach</select><small class="form-text text-muted"><a href="{{ route('administrator.subscription-plans.index') }}">Create or edit plans</a></small></div>
+                        <div class="form-group col-md-4"><label for="subscription_plan_id">Plan with limits</label><select id="subscription_plan_id" name="subscription_plan_id" class="form-control"><option value="">Custom / unlimited legacy terms</option>@foreach($subscriptionPlans as $plan)<option value="{{ $plan->id }}" data-price="{{ (float) $plan->price }}" data-days="{{ $plan->billing_period_days }}" @selected($formPlan?->id === $plan->id)>{{ $plan->name }} · Rs {{ number_format((float)$plan->price,2) }} · {{ $plan->billing_period_days }} days</option>@endforeach</select><small class="form-text text-muted"><a href="{{ route('administrator.subscription-plans.index') }}">Create or edit plans</a></small></div>
                         <div class="form-group col-md-2"><label for="plan_name">Custom plan name</label><input id="plan_name" name="plan_name" value="{{ old('plan_name') }}" class="form-control" maxlength="100" placeholder="Only without a plan"></div>
-                        <div class="form-group col-md-2"><label for="starts_on">Starts on</label><input id="starts_on" type="date" name="starts_on" value="{{ old('starts_on',$currentSubscription?->ends_on?->copy()->addDay()->toDateString() ?? now()->toDateString()) }}" class="form-control" required></div>
-                        <div class="form-group col-md-2"><label for="ends_on">Ends on</label><input id="ends_on" type="date" name="ends_on" value="{{ old('ends_on',$currentSubscription?->ends_on?->copy()->addYear()->toDateString() ?? now()->addYear()->toDateString()) }}" class="form-control" required></div>
-                        <div class="form-group col-md-2"><label for="subscription_fee">Fee</label><input id="subscription_fee" type="number" name="fee" value="{{ old('fee') }}" class="form-control" min="0" step="0.01" required></div>
+                        <div class="form-group col-md-2"><label for="starts_on">Starts on</label><input id="starts_on" type="date" name="starts_on" value="{{ $formStart }}" class="form-control" required></div>
+                        <div class="form-group col-md-2"><label for="ends_on">Ends on</label><input id="ends_on" type="date" name="ends_on" value="{{ old('ends_on', $formPlan ? \Illuminate\Support\Carbon::parse($formStart)->addDays($formPlan->billing_period_days - 1)->toDateString() : ($currentSubscription?->ends_on?->copy()->addYear()->toDateString() ?? now()->addYear()->toDateString())) }}" class="form-control" required></div>
+                        <div class="form-group col-md-2"><label for="subscription_fee">Fee</label><input id="subscription_fee" type="number" name="fee" value="{{ old('fee', $formPlan ? (float) $formPlan->price : null) }}" class="form-control" min="0" step="0.01" required></div>
                     </div>
                     <div class="form-group"><label for="subscription_notes">Notes</label><textarea id="subscription_notes" name="notes" class="form-control" rows="2" maxlength="2000">{{ old('notes') }}</textarea></div>
                     <button class="btn btn-primary">Create subscription</button>
@@ -82,3 +115,25 @@
     </div>
 </div></section>
 @endsection
+
+@push('scripts')
+<script>
+    // Picking a plan fills its fee and an end date one billing period after the start date.
+    $(function () {
+        var fill = function () {
+            var option = $('#subscription_plan_id option:selected');
+            var days = parseInt(option.data('days'), 10);
+            if (!days) { return; }
+            $('#subscription_fee').val(option.data('price'));
+            var start = $('#starts_on').val();
+            if (start) {
+                var end = new Date(start + 'T00:00:00');
+                end.setDate(end.getDate() + days - 1);
+                var pad = function (n) { return String(n).padStart(2, '0'); };
+                $('#ends_on').val(end.getFullYear() + '-' + pad(end.getMonth() + 1) + '-' + pad(end.getDate()));
+            }
+        };
+        $('#subscription_plan_id, #starts_on').on('change', fill);
+    });
+</script>
+@endpush

@@ -7,6 +7,7 @@ use App\Models\BusinessSubscription;
 use App\Models\SubscriptionPayment;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\SubscriptionPlanRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ class AdministratorSubscriptionController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'state' => ['nullable', Rule::in(['active', 'expiring', 'expired', 'unconfigured'])],
+            'state' => ['nullable', Rule::in(['requested', 'active', 'expiring', 'expired', 'unconfigured'])],
         ]);
         $today = now()->toDateString();
         $warningDate = now()->addDays(BusinessSubscription::EXPIRY_WARNING_DAYS)->toDateString();
@@ -27,6 +28,7 @@ class AdministratorSubscriptionController extends Controller
         $businesses = Business::query()
             ->with([
                 'owner:id,name,email',
+                'pendingPlanRequest.plan:id,name',
                 'latestSubscription' => fn ($query) => $query
                     ->withSum('activePayments', 'amount'),
             ])
@@ -37,7 +39,9 @@ class AdministratorSubscriptionController extends Controller
                         ->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%"))))
             ->when($filters['state'] ?? null, function ($query, $state) use ($today, $warningDate) {
-                if ($state === 'unconfigured') {
+                if ($state === 'requested') {
+                    $query->whereHas('planRequests', fn ($request) => $request->pending());
+                } elseif ($state === 'unconfigured') {
                     $query->whereDoesntHave('subscriptions', fn ($subscription) => $subscription->whereNull('cancelled_at'));
                 } elseif ($state === 'expired') {
                     $query->whereHas('latestSubscription', fn ($subscription) => $subscription->whereDate('ends_on', '<', $today));
@@ -109,6 +113,8 @@ class AdministratorSubscriptionController extends Controller
             }
 
             $lockedBusiness->subscriptions()->create($attributes);
+            // A subscription assigned by hand answers any plan request the shop has open.
+            app(SubscriptionPlanRequestService::class)->closePendingFor($lockedBusiness, Auth::user());
         });
 
         return redirect()->route('administrator.clients.show', $user)
