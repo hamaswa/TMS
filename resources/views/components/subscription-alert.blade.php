@@ -2,11 +2,14 @@
     @if(Auth::user()->isBusinessOwner())
         @php($business = Auth::user()->business)
         @if($business && ! $business->isDemo() && ! $business->subscriptionIsManaged())
-            {{-- Shop is not on any plan yet: keep a banner on every page and pop up (with a chime) once per login. --}}
+            {{-- Shop is not on any plan yet: keep a banner on every page and pop up (with a chime) once per account. --}}
             @php($deadline = \App\Models\Business::noPlanDeadline())
             @php($daysLeft = $deadline ? (int) now()->startOfDay()->diffInDays($deadline, false) : null)
-            @php($showNoPlanPopup = ! session('no_plan_notice_seen') && ! request()->routeIs('admin.subscription.index'))
-            @php(session()->put('no_plan_notice_seen', true))
+            {{-- The popup shows once per account; after that the banner below is enough. --}}
+            @php($showNoPlanPopup = ! Auth::user()->plan_notice_seen_at && ! request()->routeIs('admin.subscription.index'))
+            @if($showNoPlanPopup)
+                @php(Auth::user()->forceFill(['plan_notice_seen_at' => now()])->saveQuietly())
+            @endif
             <div class="container-fluid px-3 px-md-4 pt-3" data-no-plan-banner>
                 <div class="alert alert-warning mb-0 d-flex flex-wrap justify-content-between align-items-center" role="alert" style="gap:.5rem">
                     <div><strong>آپ ہمارے کسی پلان پر نہیں ہیں۔</strong>

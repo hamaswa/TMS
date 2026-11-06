@@ -73,6 +73,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'employee_active' => 'boolean',
             'must_change_password' => 'boolean',
             'password_changed_at' => 'datetime',
+            'plan_notice_seen_at' => 'datetime',
             'password_reset_at' => 'datetime',
             'tailoring_access' => 'boolean',
             'clothing_access' => 'boolean',

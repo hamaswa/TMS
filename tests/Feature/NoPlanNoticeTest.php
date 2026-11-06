@@ -32,6 +32,14 @@ class NoPlanNoticeTest extends TestCase
             ->assertOk()
             ->assertSee(self::URDU_BANNER)
             ->assertDontSee('no-plan-modal', false);
+        $this->assertNotNull($owner->fresh()->plan_notice_seen_at);
+
+        // A new login (fresh session) shows only the banner, not the popup again.
+        $this->flushSession();
+        $this->actingAs($owner->fresh())->get(route('admin.home'))
+            ->assertOk()
+            ->assertSee(self::URDU_BANNER)
+            ->assertDontSee('no-plan-modal', false);
     }
 
     public function test_notice_is_english_when_owner_uses_english(): void
