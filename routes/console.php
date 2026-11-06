@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('shop-hub:sync')->everyMinute()->withoutOverlapping();
+Schedule::command('subscriptions:suspend-shops-without-plan')->dailyAt('00:10')->withoutOverlapping();

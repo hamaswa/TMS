@@ -26,6 +26,7 @@ class SubscriptionEntitlementTest extends TestCase
             'max_employees' => 3,
             'max_business_roles' => 2,
             'max_tailors' => 4,
+            'max_customers' => 500,
             'allowed_permissions' => [BusinessRole::TAILORING_ACCESS, BusinessRole::TEAM_MANAGE],
         ]);
 
@@ -42,10 +43,35 @@ class SubscriptionEntitlementTest extends TestCase
         $this->assertSame(3, $subscription->max_employees);
         $this->assertSame(2, $subscription->max_business_roles);
         $this->assertSame(4, $subscription->max_tailors);
+        $this->assertSame(500, $subscription->max_customers);
         $this->assertSame($plan->allowed_permissions, $subscription->allowed_permissions);
 
         $plan->update(['max_employees' => 50]);
         $this->assertSame(3, $subscription->fresh()->max_employees);
+    }
+
+    public function test_standard_plans_are_available_to_super_admin(): void
+    {
+        $plans = SubscriptionPlan::pluck('code')->all();
+        foreach (['starter-tailoring', 'starter-clothing', 'business-pro', 'elite-boutique'] as $tier) {
+            $this->assertContains($tier.'-monthly', $plans);
+            $this->assertContains($tier.'-annual', $plans);
+        }
+
+        $starter = SubscriptionPlan::where('code', 'starter-tailoring-monthly')->firstOrFail();
+        $this->assertTrue($starter->allow_tailoring);
+        $this->assertFalse($starter->allow_clothing);
+        $this->assertSame(500, $starter->max_customers);
+        $this->assertNotContains(BusinessRole::CLOTHING_ACCESS, $starter->allowed_permissions);
+
+        $pro = SubscriptionPlan::where('code', 'business-pro-monthly')->firstOrFail();
+        $this->assertTrue($pro->allow_tailoring && $pro->allow_clothing && $pro->is_recommended);
+        $this->assertNotContains(BusinessRole::ACTIVITY_VIEW, $pro->allowed_permissions);
+
+        $elite = SubscriptionPlan::where('code', 'elite-boutique-annual')->firstOrFail();
+        $this->assertNull($elite->max_customers);
+        $this->assertSame(365, $elite->billing_period_days);
+        $this->assertFalse($elite->is_public);
     }
 
     public function test_expired_subscription_restricts_owner_employee_and_tailor_but_preserves_renewal_access(): void
@@ -227,6 +253,55 @@ class SubscriptionEntitlementTest extends TestCase
             ->assertSeeText('Tailoring Starter');
         $this->actingAs($owner)->get(route('administrator.subscription-plans.index'))
             ->assertForbidden();
+    }
+
+    public function test_simple_plan_form_fills_code_workspaces_and_permissions(): void
+    {
+        [$admin] = $this->accounts();
+
+        $this->actingAs($admin)->post(route('administrator.subscription-plans.store'), [
+            '_form' => 'new',
+            'name' => 'Clothing Basic',
+            'price' => 900,
+            'billing_period_days' => 30,
+            'trial_days' => 7,
+            'workspace' => 'clothing',
+            'max_customers' => 300,
+            'features' => ['allow_financial_reports', 'allow_team_management'],
+            'permissions_mode' => 'all',
+            'allowed_permissions' => [BusinessRole::TAILORING_ACCESS],
+            'is_public' => 1,
+            'lifecycle_status' => 'active',
+        ])->assertSessionHasNoErrors();
+
+        $plan = SubscriptionPlan::where('code', 'clothing-basic')->firstOrFail();
+        $this->assertFalse($plan->allow_tailoring);
+        $this->assertTrue($plan->allow_clothing);
+        $this->assertTrue($plan->is_active);
+        $this->assertSame(300, $plan->max_customers);
+        $this->assertContains(BusinessRole::CLOTHING_SALES, $plan->allowed_permissions);
+        $this->assertContains(BusinessRole::FINANCE_VIEW, $plan->allowed_permissions);
+        $this->assertNotContains(BusinessRole::TAILORING_ACCESS, $plan->allowed_permissions);
+        $this->assertNotContains(BusinessRole::STOREFRONT_MANAGE, $plan->allowed_permissions);
+        $this->assertTrue($plan->allowsAllFeaturePermissions());
+
+        $this->actingAs($admin)->post(route('administrator.subscription-plans.store'), [
+            'name' => 'Clothing Basic', 'price' => 900, 'billing_period_days' => 30, 'workspace' => 'both',
+        ])->assertSessionHasNoErrors();
+        $this->assertTrue(SubscriptionPlan::where('code', 'clothing-basic-2')->exists());
+
+        $this->actingAs($admin)->put(route('administrator.subscription-plans.update', $plan), [
+            'name' => 'Clothing Basic', 'price' => 950, 'billing_period_days' => 30, 'workspace' => 'clothing',
+            'lifecycle_status' => 'archived',
+        ])->assertSessionHasNoErrors();
+        $plan->refresh();
+        $this->assertSame('clothing-basic', $plan->code);
+        $this->assertFalse($plan->is_active);
+
+        $this->actingAs($admin)->get(route('administrator.subscription-plans.index'))
+            ->assertOk()
+            ->assertSee('plan-modal-'.$plan->id, false)
+            ->assertSeeText('Clothing only');
     }
 
     public function test_public_storefront_requires_active_subscription_and_storefront_entitlement(): void

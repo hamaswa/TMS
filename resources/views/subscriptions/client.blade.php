@@ -25,5 +25,34 @@
         @if($subscription->payments->isNotEmpty())<tr><td colspan="5" class="bg-light"><strong>ادائیگیاں:</strong> @foreach($subscription->payments as $payment)<span class="d-inline-block ml-3 {{ $payment->reversed_at?'text-muted':'' }}">روپے {{ number_format((float)$payment->amount,2) }} · {{ $payment->paid_on->format('d-m-Y') }} · {{ \App\Models\SubscriptionPayment::URDU_METHODS[$payment->payment_method] ?? $payment->payment_method }} @if($payment->reversed_at)(واپس/منسوخ)@endif</span>@endforeach</td></tr>@endif
         @empty<tr><td colspan="5" class="text-center text-muted py-5">ابھی کوئی سبسکرپشن ریکارڈ نہیں۔</td></tr>@endforelse</tbody>
     </table></div></div>
+
+    @if($plans->isNotEmpty())
+        <div id="plans" class="pt-4">
+            <h2 class="h4 mb-1">دستیاب پلان</h2>
+            <p class="text-muted">پلان فعال کروانے یا تبدیل کرنے کے لیے سپر ایڈمن سے رابطہ کریں۔</p>
+            <div class="row">
+                @foreach($plans as $plan)
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="card h-100 {{ $plan->is_recommended ? 'border-primary shadow-sm' : '' }}">
+                            <div class="card-body d-flex flex-column">
+                                @if($plan->is_recommended)<span class="badge badge-primary align-self-start mb-2">تجویز کردہ</span>@endif
+                                <h3 class="h5 mb-1">{{ $plan->name }}</h3>
+                                <div class="h4 mb-3">روپے {{ number_format((float) $plan->price) }} <small class="text-muted">/ {{ $plan->billing_period_days == 365 ? 'سال' : ($plan->billing_period_days == 30 ? 'ماہ' : $plan->billing_period_days.' دن') }}</small></div>
+                                <ul class="list-unstyled small mb-0">
+                                    <li class="mb-1"><i class="fas fa-store fa-fw text-primary"></i> {{ ['tailoring' => 'صرف ٹیلرنگ', 'clothing' => 'صرف کپڑا', 'both' => 'ٹیلرنگ اور کپڑا'][$plan->workspace()] ?? '—' }}</li>
+                                    <li class="mb-1"><i class="fas fa-users fa-fw text-primary"></i> زیادہ سے زیادہ گاہک: {{ $plan->max_customers === null ? 'لامحدود' : number_format($plan->max_customers) }}</li>
+                                    <li class="mb-1"><i class="fas fa-user-tie fa-fw text-primary"></i> زیادہ سے زیادہ ملازمین: {{ $plan->max_employees === null ? 'لامحدود' : number_format($plan->max_employees) }}</li>
+                                    @foreach(['allow_storefront' => 'آن لائن دکان', 'allow_financial_reports' => 'مالی رپورٹس', 'allow_activity_log' => 'ملازمین کی سرگرمی'] as $feature => $label)
+                                        <li class="mb-1 {{ $plan->{$feature} ? '' : 'text-muted' }}"><i class="fas {{ $plan->{$feature} ? 'fa-check text-success' : 'fa-times' }} fa-fw"></i> {{ $label }}</li>
+                                    @endforeach
+                                </ul>
+                                @if($plan->trial_days > 0 && ! $currentSubscription)<div class="small text-success mt-auto pt-3">{{ $plan->trial_days }} دن مفت آزمائش</div>@endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
 </div></section>
 @endsection

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 
 class Business extends Model
@@ -22,6 +23,8 @@ class Business extends Model
     public const STATUS_SUSPENDED = 'suspended';
     public const STATUS_REJECTED = 'rejected';
     public const STATUSES = [self::STATUS_PENDING, self::STATUS_ACTIVE, self::STATUS_SUSPENDED, self::STATUS_REJECTED];
+    /** Stored as the status reason when a shop is suspended for not choosing a plan by the deadline. */
+    public const NO_PLAN_SUSPENSION_REASON = 'No subscription plan chosen before the deadline.';
     public const TAILORING_STATUS_SIMPLE = 'simple';
     public const TAILORING_STATUS_DETAILED = 'detailed';
     public const TAILORING_STATUS_MODES = [self::TAILORING_STATUS_SIMPLE, self::TAILORING_STATUS_DETAILED];
@@ -199,6 +202,27 @@ class Business extends Model
     public function isDemo(): bool
     {
         return (bool) $this->is_demo;
+    }
+
+    /** The date from which shops still without any plan are suspended, or null when no deadline is set. */
+    public static function noPlanDeadline(): ?Carbon
+    {
+        $date = config('subscriptions.no_plan_deadline');
+
+        return blank($date) ? null : Carbon::parse($date)->startOfDay();
+    }
+
+    /** An active, real shop that has never been put on a subscription. */
+    public function needsPlan(): bool
+    {
+        return $this->isActive() && ! $this->isDemo() && ! $this->subscriptionIsManaged();
+    }
+
+    public function scopeWithoutPlan($query)
+    {
+        return $query->where('status', self::STATUS_ACTIVE)
+            ->where('is_demo', false)
+            ->whereDoesntHave('subscriptions');
     }
 
     public function statusHistory()

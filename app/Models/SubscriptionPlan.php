@@ -26,6 +26,27 @@ class SubscriptionPlan extends Model
         'allow_activity_log' => 'Employee activity log',
     ];
 
+    public const WORKSPACES = [
+        'tailoring' => 'Tailoring only',
+        'clothing' => 'Clothing only',
+        'both' => 'Tailoring + Clothing',
+    ];
+
+    /** Common billing periods offered in the plan form, in days. */
+    public const BILLING_PERIODS = [
+        30 => 'Monthly',
+        90 => 'Every 3 months',
+        180 => 'Every 6 months',
+        365 => 'Yearly',
+    ];
+
+    /** Optional features shown as simple on/off switches (workspaces are chosen separately). */
+    public const EXTRA_FEATURES = [
+        'allow_storefront' => 'Online storefront',
+        'allow_financial_reports' => 'Financial reports',
+        'allow_activity_log' => 'Employee activity log',
+    ];
+
     protected $fillable = [
         'name',
         'code',
@@ -37,6 +58,7 @@ class SubscriptionPlan extends Model
         'max_employees',
         'max_business_roles',
         'max_tailors',
+        'max_customers',
         'allow_tailoring',
         'allow_clothing',
         'allow_storefront',
@@ -61,6 +83,7 @@ class SubscriptionPlan extends Model
             'max_employees' => 'integer',
             'max_business_roles' => 'integer',
             'max_tailors' => 'integer',
+            'max_customers' => 'integer',
             'allow_tailoring' => 'boolean',
             'allow_clothing' => 'boolean',
             'allow_storefront' => 'boolean',
@@ -87,6 +110,7 @@ class SubscriptionPlan extends Model
             'max_employees' => $this->max_employees,
             'max_business_roles' => $this->max_business_roles,
             'max_tailors' => $this->max_tailors,
+            'max_customers' => $this->max_customers,
             'allow_tailoring' => $this->allow_tailoring,
             'allow_clothing' => $this->allow_clothing,
             'allow_storefront' => $this->allow_storefront,
@@ -95,6 +119,60 @@ class SubscriptionPlan extends Model
             'allow_activity_log' => $this->allow_activity_log,
             'allowed_permissions' => $this->allowed_permissions,
         ];
+    }
+
+    public function workspace(): ?string
+    {
+        return match (true) {
+            $this->allow_tailoring && $this->allow_clothing => 'both',
+            (bool) $this->allow_tailoring => 'tailoring',
+            (bool) $this->allow_clothing => 'clothing',
+            default => null,
+        };
+    }
+
+    public function billingPeriodLabel(): string
+    {
+        return match ((int) $this->billing_period_days) {
+            30 => 'month',
+            365 => 'year',
+            default => $this->billing_period_days.' days',
+        };
+    }
+
+    /** True when the plan allows every permission its features cover. */
+    public function allowsAllFeaturePermissions(): bool
+    {
+        $all = self::permissionsForFeatures($this->only(array_keys(self::FEATURES)), array_keys(BusinessRole::PERMISSIONS));
+
+        return array_diff($all, $this->allowed_permissions ?? []) === [];
+    }
+
+    /**
+     * Drop permissions whose feature the plan does not include.
+     *
+     * @param  array<string, bool>  $features
+     * @param  array<int, string>  $permissions
+     * @return array<int, string>
+     */
+    public static function permissionsForFeatures(array $features, array $permissions): array
+    {
+        return array_values(array_filter(array_unique($permissions), function (string $permission) use ($features) {
+            if (str_starts_with($permission, 'tailoring.')) {
+                return (bool) ($features['allow_tailoring'] ?? false);
+            }
+            if (str_starts_with($permission, 'clothing.')) {
+                return (bool) ($features['allow_clothing'] ?? false);
+            }
+
+            return match ($permission) {
+                BusinessRole::STOREFRONT_MANAGE => (bool) ($features['allow_storefront'] ?? false),
+                BusinessRole::FINANCE_VIEW => (bool) ($features['allow_financial_reports'] ?? false),
+                BusinessRole::TEAM_MANAGE => (bool) ($features['allow_team_management'] ?? false),
+                BusinessRole::ACTIVITY_VIEW => (bool) ($features['allow_activity_log'] ?? false),
+                default => true,
+            };
+        }));
     }
 
     public function scopePubliclyAvailable($query)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SubscriptionPlan;
 use Illuminate\Support\Facades\Auth;
 
 class ClientSubscriptionController extends Controller
@@ -15,8 +16,14 @@ class ClientSubscriptionController extends Controller
             ->latest('ends_on')
             ->get();
         $currentSubscription = $subscriptions->first(fn ($subscription) => ! $subscription->cancelled_at);
+        $plans = SubscriptionPlan::query()
+            ->where('is_active', true)
+            ->where('lifecycle_status', SubscriptionPlan::LIFECYCLE_ACTIVE)
+            ->orderBy('display_order')
+            ->orderBy('price')
+            ->get();
 
-        return view('subscriptions.client', compact('business', 'subscriptions', 'currentSubscription'));
+        return view('subscriptions.client', compact('business', 'subscriptions', 'currentSubscription', 'plans'));
     }
 
     public function required()

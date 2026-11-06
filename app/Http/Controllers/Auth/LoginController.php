@@ -54,15 +54,19 @@ class LoginController extends Controller
     {
         if ($user->business && ! $user->business->isActive()) {
             $status = $user->business->status;
+            $suspendedForNoPlan = $status === Business::STATUS_SUSPENDED
+                && $user->business->status_reason === Business::NO_PLAN_SUSPENSION_REASON;
             auth()->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            $message = match ($status) {
-                Business::STATUS_PENDING => 'آپ کا اکاؤنٹ سپر ایڈمن کی منظوری کا منتظر ہے۔',
-                Business::STATUS_REJECTED => 'آپ کے اکاؤنٹ کی درخواست منظور نہیں ہوئی۔ سپر ایڈمن سے رابطہ کریں۔',
-                default => 'آپ کا اکاؤنٹ غیر فعال ہے۔ سپر ایڈمن سے رابطہ کریں۔',
-            };
+            $message = $suspendedForNoPlan
+                ? 'آپ نے مقررہ تاریخ تک کوئی پلان منتخب نہیں کیا، اس لیے آپ کا اکاؤنٹ غیر فعال کر دیا گیا ہے۔ پلان فعال کروانے کے لیے سپر ایڈمن سے رابطہ کریں۔'
+                : match ($status) {
+                    Business::STATUS_PENDING => 'آپ کا اکاؤنٹ سپر ایڈمن کی منظوری کا منتظر ہے۔',
+                    Business::STATUS_REJECTED => 'آپ کے اکاؤنٹ کی درخواست منظور نہیں ہوئی۔ سپر ایڈمن سے رابطہ کریں۔',
+                    default => 'آپ کا اکاؤنٹ غیر فعال ہے۔ سپر ایڈمن سے رابطہ کریں۔',
+                };
 
             return redirect()->route('login')->withErrors(['email' => $message]);
         }
