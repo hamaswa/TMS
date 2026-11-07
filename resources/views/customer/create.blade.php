@@ -266,6 +266,7 @@
 
 <section class="main-content customer-create-page" dir="rtl">
         <div class="container-fluid px-3 px-lg-5 py-4">
+            @include('components.customer-limit-alert')
             <div class="customer-form-card customer-tailoring-shell bg-white mx-auto">
                 <div class="customer-form-head">
                     <h1 class="h3 font-weight-bold mb-2">

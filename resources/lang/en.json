@@ -2848,7 +2848,6 @@
     "چمک سادہ مکمل ٹچ": "Plain shine, full touch",
     "چمک سلای اوپر والی سنگل": "Shine stitch, top single",
     "چمک سیلائی": "Shine stitch",
-    "چوتھا": "Fourth",
     "چوتھا": "Chotha",
     "چوڑی": "Wide",
     "چھوٹا حرف": "Lowercase letter",
@@ -3597,5 +3596,17 @@
     "اسکرین شاٹ محفوظ نہیں ہو سکا۔ دوبارہ کوشش کریں۔": "The screenshot could not be saved. Please try again.",
     "پلان کی درخواست بھیجیں": "Request this plan",
     "کیا آپ یہ پلان لینا چاہتے ہیں؟ درخواست بھیجنے کے بعد سپر ایڈمن ادائیگی اور پلان فعال کرنے کے لیے آپ سے رابطہ کریں گے۔": "Do you want this plan? After you send the request, the super admin will contact you about payment and activating the plan.",
-    "درخواست بھیجیں": "Send request"
+    "درخواست بھیجیں": "Send request",
+    "اپ گریڈ کریں": "Upgrade",
+    "پلان اپ گریڈ کریں": "Upgrade plan",
+    "پلان اپ گریڈ کرنے کی وجہ": "Reason for upgrading",
+    "مثلاً مزید گاہک یا ملازمین چاہئیں، آن لائن دکان چاہیے…": "e.g. we need more customers or staff, or an online shop…",
+    "تفصیلات ملاحظہ کریں": "Review details",
+    "اسکرین شاٹ لگائیں": "Attach screenshot",
+    "اختیاری — تصدیق جلدی ہو جاتی ہے": "Optional — speeds up verification",
+    "ادائیگی کی تصدیق کریں": "Confirm payment",
+    "ادائیگی کی تفصیلات (ایزی پیسہ):": "Payment details (Easypaisa):",
+    "پلان اپ گریڈ کریں۔": "Upgrade your plan.",
+    "رقم بھیجنے کے بعد ایپ یا ایس ایم ایس سے ٹرانزیکشن آئی ڈی (TID) درج کریں — ایزی پیسہ، جاز کیش، سادہ پے یا راست": "After paying, enter the transaction ID (TID) from the app or SMS — Easypaisa, JazzCash, SadaPay or Raast",
+    "درست ٹرانزیکشن آئی ڈی درج کریں: صرف حروف، ہندسے اور ڈیش (-)، جیسے 12345678901 یا RAAST-45372891۔": "Enter a valid transaction ID: letters, digits and dashes (-) only, e.g. 12345678901 or RAAST-45372891."
 }

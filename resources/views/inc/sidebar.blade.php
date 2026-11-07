@@ -335,7 +335,7 @@
                                 class="fas fa-balance-scale"></i>اسٹاک کی مالیت</a>
                     </div>
                 @endif
-                @if ($canShopSales && Auth::user()->business?->storefront)
+                @if ($canShopSales && Auth::user()->business?->storefront && Auth::user()->business->subscriptionAllowsFeature('allow_storefront'))
                     <a class="tms-side-link {{ request()->routeIs('admin.storefront.orders.*') ? 'is-active' : '' }}"
                         href="{{ route('admin.storefront.orders.index') }}"><span class="tms-side-icon"><i
                                 class="fas fa-shopping-bag"></i></span><span class="tms-side-label">آن لائن

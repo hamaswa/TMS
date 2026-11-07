@@ -28,6 +28,68 @@
     .plan-card li.is-off { color: #9fb3c8; text-decoration: line-through; }
     .plan-card .plan-action { margin-top: auto; }
     .plan-card .plan-action .btn { border-radius: 999px; font-weight: 600; }
+
+    /* Payment popup (landscape: plan summary beside the payment details) */
+    #pay-modal .modal-dialog { max-width: 860px; }
+    #pay-modal .modal-content { border: 0; border-radius: 1.25rem; overflow: hidden; box-shadow: 0 24px 60px rgba(16, 42, 67, .35); background: #fff; }
+    #pay-modal .modal-content:not(.is-online) { max-width: 480px; margin-inline: auto; }
+    .pay-head { position: relative; flex: 0 0 auto; padding: 1rem 1.5rem 1.9rem; background: linear-gradient(120deg, #1546b8 0%, #2563eb 55%, #3b82f6 100%); color: #fff; overflow: hidden; }
+    .pay-head::after { content: ""; position: absolute; inset-inline: -5%; bottom: -26px; height: 44px; background: #fff; border-radius: 50% 50% 0 0 / 100% 100% 0 0; }
+    .pay-head .pay-rocket { position: absolute; inset-inline-end: 1.75rem; top: .7rem; font-size: 2.2rem; color: #fff; transform: rotate(-12deg); text-shadow: 0 6px 16px rgba(0, 0, 0, .25); }
+    .pay-head h5 { position: relative; z-index: 1; margin: 0; font-size: 1.5rem; font-weight: 700; text-align: center; padding-inline: 3rem; }
+    .pay-head .pay-close { position: absolute; z-index: 2; inset-inline-start: .9rem; top: .75rem; width: 2.3rem; height: 2.3rem; border: 0; border-radius: 50%; background: #fff; color: #1d4ed8; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
+    .pay-head .pay-close:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 2px; }
+    #pay-modal .modal-body { padding: .25rem 1.5rem 1rem; }
+    #pay-modal .is-online .pay-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 1.5rem; align-items: start; }
+    .pay-plan { text-align: center; }
+    .is-online .pay-plan { padding-inline-end: 1.5rem; border-inline-end: 1px solid #e2e8f0; height: 100%; }
+    .pay-chip { display: inline-block; margin-bottom: .5rem; padding: .3rem 1.2rem; border-radius: 999px; background: #e8f0fe; color: #1e3a8a; font-weight: 700; font-size: 1.05rem; }
+    .pay-chip .fa-crown { color: #f5b301; margin-inline-end: .35rem; }
+    .pay-price { display: flex; justify-content: center; align-items: baseline; gap: .5rem; color: #1e3a8a; padding-bottom: .75rem; margin-bottom: .75rem; border-bottom: 1px solid #e2e8f0; }
+    .pay-price strong { font-size: 2.5rem; line-height: 1; font-weight: 800; }
+    .pay-price span { font-size: 1.15rem; font-weight: 600; }
+    .pay-features { list-style: none; padding: 0; margin: 0; text-align: start; }
+    .pay-features li { display: flex; align-items: center; gap: .55rem; padding: .15rem 0; font-size: .95rem; color: #1f2937; }
+    .pay-features li .fa-check-circle { color: #2563eb; font-size: 1.05rem; flex: 0 0 auto; }
+    .pay-upgrade { margin-top: .9rem; text-align: start; }
+    .pay-upgrade label { font-weight: 700; color: #166534; font-size: .92rem; margin-bottom: .3rem; }
+    .pay-upgrade .form-control { border-radius: .75rem; font-size: .92rem; resize: vertical; }
+    .pay-error { margin-top: .35rem; color: #b91c1c; font-size: .85rem; font-weight: 600; }
+    .pay-account { display: flex; align-items: center; gap: 1rem; padding: .8rem; margin-bottom: .8rem; border: 1px solid #dbe7fb; border-radius: 1rem; background: #eff5ff; }
+    .pay-account .pay-qr { flex: 0 0 auto; padding: .35rem; border-radius: .75rem; background: #fff; text-align: center; box-shadow: 0 2px 8px rgba(16, 42, 67, .08); }
+    .pay-account .pay-qr img { display: block; width: 104px; height: 104px; object-fit: contain; }
+    .pay-account .pay-qr small { display: block; margin-top: .15rem; font-weight: 700; font-size: .68rem; color: #1f2937; letter-spacing: .02em; }
+    .pay-account .pay-details { flex: 1 1 auto; min-width: 0; padding-inline-start: 1rem; border-inline-start: 1px solid #c7d7f0; }
+    .pay-account .pay-name { font-weight: 700; font-size: 1.1rem; color: #1e3a8a; }
+    .pay-account .pay-number { font-size: 1.35rem; font-weight: 800; color: #1e3a8a; white-space: nowrap; }
+    .pay-account .pay-number .fa-phone-alt { font-size: 1rem; margin-right: .35rem; }
+    .pay-account .btn-copy { border: 1px solid #93b4ea; background: #fff; color: #1e3a8a; border-radius: .6rem; padding: .3rem .8rem; }
+    .pay-hint { color: #374151; font-size: .88rem; margin-bottom: .4rem; }
+    .pay-hint .fa-info-circle { color: #2563eb; }
+    .pay-tid { position: relative; }
+    .pay-tid .form-control { height: 2.9rem; border-radius: .75rem; font-size: 1.05rem; padding-right: 2.6rem; padding-left: .9rem; }
+    .pay-tid .fa-mobile-alt { position: absolute; top: 50%; right: 1rem; transform: translateY(-50%); color: #1e3a8a; font-size: 1.15rem; pointer-events: none; }
+    .pay-proof { display: flex; align-items: center; gap: .6rem; margin-top: .6rem; font-size: .85rem; color: #6b7280; min-width: 0; }
+    .pay-proof-btn { flex: 0 0 auto; padding: .3rem .8rem; border: 1px dashed #93b4ea; border-radius: .6rem; background: #f8fbff; color: #1e3a8a; cursor: pointer; }
+    #payment_proof:focus-visible + .pay-proof-btn { outline: 2px solid #2563eb; outline-offset: 2px; }
+    .pay-proof-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #pay-modal .modal-footer { justify-content: center; gap: .75rem; border-top: 0; padding: .4rem 1.5rem 1.2rem; background: linear-gradient(180deg, #fff 0%, #eef4ff 100%); }
+    #pay-modal .modal-footer > * { margin: 0; }
+    .pay-submit { flex: 0 1 320px; padding: .7rem 1.25rem; border: 0; border-radius: .75rem; font-size: 1.1rem; font-weight: 700; background: linear-gradient(180deg, #2fb344 0%, #16a34a 100%); box-shadow: 0 6px 16px rgba(22, 163, 74, .35); }
+    .pay-cancel { padding: .7rem 1.25rem; border: 1px solid #e2e8f0; border-radius: .75rem; background: #f1f5f9; color: #1f2937; font-size: 1rem; }
+    .pay-cancel .fa-times-circle { color: #64748b; }
+    @media (max-width: 767.98px) {
+        #pay-modal .is-online .pay-grid { display: block; }
+        .is-online .pay-plan { padding-inline-end: 0; border-inline-end: 0; margin-bottom: 1rem; }
+        .pay-features { display: table; margin: 0 auto; }
+    }
+    @media (max-width: 575.98px) {
+        .pay-head .pay-rocket { display: none; }
+        .pay-head h5 { font-size: 1.25rem; }
+        .pay-price strong { font-size: 2.1rem; }
+        .pay-account { flex-direction: column; text-align: center; }
+        .pay-account .pay-details { padding-inline-start: 0; border-inline-start: 0; }
+    }
 </style>
 @endpush
 
@@ -142,13 +204,15 @@
                                         <button type="button" class="btn btn-outline-info btn-block" disabled><i class="fas fa-hourglass-half" aria-hidden="true"></i> {{ $pendingRequest->payment_reference ? 'ادائیگی زیر جائزہ' : 'درخواست بھیج دی گئی' }}</button>
                                     @else
                                         {{-- Always confirm in a popup first: payment details when Easypaisa is set up, otherwise a plain request. --}}
-                                        <button type="button" class="btn btn-block {{ $isPopular ? 'btn-primary' : 'btn-outline-primary' }}"
+                                        @php($isUpgrade = $plan->isUpgradeFrom($currentPlan))
+                                        <button type="button" class="btn btn-block {{ $isUpgrade ? 'btn-success' : ($isPopular ? 'btn-primary' : 'btn-outline-primary') }}"
+                                            data-pay-upgrade="{{ $isUpgrade ? 1 : 0 }}"
                                             data-pay-plan="{{ $plan->id }}"
                                             data-pay-action="{{ route('admin.subscription.request', $plan) }}"
                                             data-pay-name="{{ preg_replace('/\s*\((Annual|Yearly|Monthly)\)$/i', '', $plan->name) }}"
                                             data-pay-period="{{ $periodName((int) $plan->billing_period_days) }}"
                                             data-pay-amount="{{ number_format((float) $plan->price) }}"
-                                            data-pay-online="{{ $easypaisa && (float) $plan->price > 0 ? 1 : 0 }}">منتخب کریں</button>
+                                            data-pay-online="{{ $easypaisa && (float) $plan->price > 0 ? 1 : 0 }}">@if($isUpgrade)<i class="fas fa-arrow-up" aria-hidden="true"></i> اپ گریڈ کریں@elseمنتخب کریں@endif</button>
                                     @endif
                                 </div>
                             </div>
@@ -177,66 +241,73 @@
 </div></section>
 
 @if($planGroups->isNotEmpty())
-    @php($payErrors = $errors->hasAny(['payment_reference', 'payment_proof']))
     @php($oldPayPlan = old('plan_id') ? $planGroups->flatMap(fn ($group) => $group['plans'])->firstWhere('id', (int) old('plan_id')) : null)
     <div class="modal fade" id="pay-modal" tabindex="-1" role="dialog" aria-labelledby="pay-modal-title" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
-            <form class="modal-content" method="POST" enctype="multipart/form-data" action="{{ $oldPayPlan ? route('admin.subscription.request', $oldPayPlan) : '' }}" id="pay-form">
+            <form class="modal-content{{ $easypaisa ? ' is-online' : '' }}" method="POST" enctype="multipart/form-data" action="{{ $oldPayPlan ? route('admin.subscription.request', $oldPayPlan) : '' }}" id="pay-form">
                 @csrf
                 <input type="hidden" name="plan_id" value="{{ $oldPayPlan?->id }}">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="pay-modal-title"><span class="js-online">ایزی پیسہ سے ادائیگی کریں</span><span class="js-offline">پلان کی درخواست بھیجیں</span></h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+                <div class="pay-head">
+                    <i class="fas fa-rocket pay-rocket" aria-hidden="true"></i>
+                    <h5 id="pay-modal-title"><span class="js-online">تفصیلات ملاحظہ کریں</span><span class="js-offline">پلان کی درخواست بھیجیں</span></h5>
+                    <button type="button" class="pay-close" data-dismiss="modal" aria-label="بند کریں"><i class="fas fa-times" aria-hidden="true"></i></button>
                 </div>
-                <div class="modal-body">
-                    <div class="pay-summary text-center rounded p-3 mb-3" style="background:#f1f5fa">
-                        <div class="small text-muted" data-pay-field="label"></div>
-                        <div class="h3 mb-0">روپے <strong data-pay-field="amount"></strong></div>
+                <div class="modal-body pay-grid">
+                    <div class="pay-plan">
+                    <div class="pay-chip"><i class="fas fa-crown" aria-hidden="true"></i><span dir="ltr" data-pay-field="name"></span></div>
+                    <div class="pay-price">
+                        <span>روپے</span>
+                        <strong dir="ltr" data-pay-field="amount"></strong>
+                        <span>/ <span data-pay-field="period"></span></span>
+                    </div>
+                    <ul class="pay-features" data-pay-field="features"></ul>
+
+                    <div class="pay-upgrade js-upgrade">
+                        <label for="upgrade_reason"><i class="fas fa-arrow-up" aria-hidden="true"></i> پلان اپ گریڈ کرنے کی وجہ</label>
+                        <textarea id="upgrade_reason" name="upgrade_reason" class="form-control @error('upgrade_reason') is-invalid @enderror" rows="2" minlength="5" maxlength="1000" required placeholder="مثلاً مزید گاہک یا ملازمین چاہئیں، آن لائن دکان چاہیے…">{{ old('upgrade_reason') }}</textarea>
+                        @error('upgrade_reason')<div class="pay-error" role="alert">{{ $message }}</div>@enderror
                     </div>
 
-                    @if($payErrors)
-                        <div class="alert alert-danger"><ul class="mb-0 pl-3">@foreach(array_merge($errors->get('payment_reference'), $errors->get('payment_proof')) as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-                    @endif
-
-                    <p class="js-offline mb-0">کیا آپ یہ پلان لینا چاہتے ہیں؟ درخواست بھیجنے کے بعد سپر ایڈمن ادائیگی اور پلان فعال کرنے کے لیے آپ سے رابطہ کریں گے۔</p>
+                    <p class="js-offline text-center mb-0">کیا آپ یہ پلان لینا چاہتے ہیں؟ درخواست بھیجنے کے بعد سپر ایڈمن ادائیگی اور پلان فعال کرنے کے لیے آپ سے رابطہ کریں گے۔</p>
+                    </div>
 
                     @if($easypaisa)
-                    <div class="js-online">
-                    <ol class="small pl-3 mb-3">
-                        <li class="mb-1">نیچے دیے گئے ایزی پیسہ اکاؤنٹ میں اوپر لکھی رقم بھیجیں۔</li>
-                        <li class="mb-1">ادائیگی کے بعد ایس ایم ایس یا ایپ سے ٹرانزیکشن آئی ڈی نوٹ کریں۔</li>
-                        <li>ٹرانزیکشن آئی ڈی نیچے درج کریں اور بھیجیں۔ تصدیق کے بعد پلان فعال ہو جائے گا۔</li>
-                    </ol>
-
-                    <div class="d-flex flex-wrap align-items-center border rounded p-3 mb-3" style="gap:1rem">
+                    <div class="js-online pay-pay">
+                    <div class="pay-account">
                         @if($easypaisa['qr_path'])
-                            <img src="{{ route('platform.easypaisa-qr') }}" alt="ایزی پیسہ QR کوڈ" class="border rounded" style="width:132px;height:132px;object-fit:contain">
+                            <div class="pay-qr">
+                                <img src="{{ route('platform.easypaisa-qr') }}" alt="ایزی پیسہ QR کوڈ">
+                                <small dir="ltr">SCAN TO PAY</small>
+                            </div>
                         @endif
-                        <div class="flex-grow-1">
-                            <div class="small text-muted">ایزی پیسہ اکاؤنٹ</div>
-                            @if($easypaisa['account_name'])<div class="font-weight-bold" dir="ltr" translate="no">{{ $easypaisa['account_name'] }}</div>@endif
-                            <div class="d-flex align-items-center mt-1" style="gap:.5rem">
-                                <span class="h4 mb-0" dir="ltr" translate="no" id="easypaisa-number">{{ $easypaisa['number'] }}</span>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="#easypaisa-number"><i class="far fa-copy" aria-hidden="true"></i> <span>کاپی کریں</span></button>
+                        <div class="pay-details">
+                            <div class="small text-muted mb-1">ادائیگی کی تفصیلات (ایزی پیسہ):</div>
+                            @if($easypaisa['account_name'])<div class="pay-name" dir="ltr" translate="no">{{ $easypaisa['account_name'] }}</div>@endif
+                            <div class="d-flex flex-wrap align-items-center mt-1" style="gap:.6rem">
+                                <span class="pay-number" dir="ltr" translate="no"><i class="fas fa-phone-alt" aria-hidden="true"></i><span id="easypaisa-number">{{ $easypaisa['number'] }}</span></span>
+                                <button type="button" class="btn btn-sm btn-copy" data-copy="#easypaisa-number"><i class="far fa-copy" aria-hidden="true"></i> <span>کاپی کریں</span></button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="payment_reference">ٹرانزیکشن آئی ڈی (TID)</label>
-                        <input id="payment_reference" name="payment_reference" class="form-control @error('payment_reference') is-invalid @enderror" dir="ltr" inputmode="numeric" autocomplete="off" maxlength="30" required placeholder="e.g. 12345678901" value="{{ old('payment_reference') }}">
+                    <label for="payment_reference" class="pay-hint d-block"><i class="fas fa-info-circle" aria-hidden="true"></i> رقم بھیجنے کے بعد ایپ یا ایس ایم ایس سے ٹرانزیکشن آئی ڈی (TID) درج کریں — ایزی پیسہ، جاز کیش، سادہ پے یا راست</label>
+                    <div class="pay-tid">
+                        <input id="payment_reference" name="payment_reference" class="form-control @error('payment_reference') is-invalid @enderror" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" required placeholder="e.g. 12345678901 / RAAST-45372891" value="{{ old('payment_reference') }}">
+                        <i class="fas fa-mobile-alt" aria-hidden="true"></i>
                     </div>
-                    <div class="form-group mb-0">
-                        <label for="payment_proof">ادائیگی کا اسکرین شاٹ <span class="text-muted">(اختیاری)</span></label>
-                        <input id="payment_proof" type="file" name="payment_proof" class="form-control-file @error('payment_proof') is-invalid @enderror" accept="image/png,image/jpeg,image/webp,application/pdf">
-                        <small class="form-text text-muted">اسکرین شاٹ سے تصدیق جلدی ہو جاتی ہے۔</small>
+                    @error('payment_reference')<div class="pay-error" role="alert">{{ $message }}</div>@enderror
+                    <div class="pay-proof">
+                        <input id="payment_proof" type="file" name="payment_proof" class="sr-only" accept="image/png,image/jpeg,image/webp,application/pdf">
+                        <label for="payment_proof" class="pay-proof-btn mb-0"><i class="fas fa-paperclip" aria-hidden="true"></i> اسکرین شاٹ لگائیں</label>
+                        <span class="pay-proof-name" data-proof-name>اختیاری — تصدیق جلدی ہو جاتی ہے</span>
                     </div>
+                    @error('payment_proof')<div class="pay-error" role="alert">{{ $message }}</div>@enderror
                     </div>
                     @endif
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-dismiss="modal">بند کریں</button>
-                    <button class="btn btn-success"><i class="fas fa-paper-plane" aria-hidden="true"></i> <span class="js-online">ادائیگی کی تفصیل بھیجیں</span><span class="js-offline">درخواست بھیجیں</span></button>
+                    <button class="btn btn-success pay-submit"><i class="fas fa-shield-alt" aria-hidden="true"></i> <span class="js-online">ادائیگی کی تصدیق کریں</span><span class="js-offline">درخواست بھیجیں</span></button>
+                    <button type="button" class="btn pay-cancel" data-dismiss="modal"><i class="fas fa-times-circle" aria-hidden="true"></i> بند کریں</button>
                 </div>
             </form>
         </div>
@@ -263,23 +334,44 @@
             var form = $('#pay-form');
             form.attr('action', button.data('pay-action'));
             form.find('[name=plan_id]').val(button.data('pay-plan'));
-            form.find('[data-pay-field=label]').text(button.data('pay-name') + ' · ' + button.data('pay-period'));
+            form.find('[data-pay-field=name]').text(button.data('pay-name'));
+            form.find('[data-pay-field=period]').text(button.data('pay-period'));
             form.find('[data-pay-field=amount]').text(button.data('pay-amount'));
+            // Show the plan's included features (the ticked lines on its card).
+            var features = form.find('[data-pay-field=features]').empty();
+            button.closest('.plan-card').find('ul li:not(.is-off)').each(function () {
+                var text = $(this).text().replace(/\s+/g, ' ').trim();
+                if (text) {
+                    $('<li>').append('<i class="fas fa-check-circle" aria-hidden="true"></i>', $('<span>').text(text)).appendTo(features);
+                }
+            });
             // Free plans, or no Easypaisa account yet: just confirm the request, no payment fields.
             var online = String(button.data('pay-online')) === '1';
+            form.toggleClass('is-online', online);
             form.find('.js-online').toggle(online);
             form.find('.js-offline').toggle(!online);
+            // Upgrades to a pricier plan must say why.
+            var upgrade = String(button.data('pay-upgrade')) === '1';
+            form.find('.js-upgrade').toggle(upgrade).find(':input').prop('disabled', !upgrade);
+            form.find('#pay-modal-title .js-online').text(upgrade ? 'پلان اپ گریڈ کریں' : 'تفصیلات ملاحظہ کریں');
             form.find('.js-online :input').prop('disabled', !online);
             $('#pay-modal').modal('show');
         };
         $(document).on('click', '[data-pay-plan]', function () {
-            $('#payment_reference').val('').removeClass('is-invalid');
-            $('#pay-modal .alert-danger').remove();
+            $('#payment_reference, #upgrade_reason').val('').removeClass('is-invalid');
+            $('#payment_proof').val('').trigger('change');
+            $('#pay-modal .pay-error').remove();
+            $('#pay-modal .is-invalid').removeClass('is-invalid');
             openPay($(this));
         });
-        @if($easypaisa && $errors->hasAny(['payment_reference', 'payment_proof']) && old('plan_id'))
+        @if($errors->hasAny(['payment_reference', 'payment_proof', 'upgrade_reason']) && old('plan_id'))
             openPay($('[data-pay-plan="{{ (int) old('plan_id') }}"]').first());
         @endif
+
+        var proofHint = $('[data-proof-name]').text();
+        $(document).on('change', '#payment_proof', function () {
+            $('[data-proof-name]').text(this.files && this.files.length ? this.files[0].name : proofHint);
+        });
 
         $(document).on('click', '[data-copy]', function () {
             var button = $(this);

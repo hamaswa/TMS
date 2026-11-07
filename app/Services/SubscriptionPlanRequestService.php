@@ -29,6 +29,7 @@ class SubscriptionPlanRequestService
         SubscriptionPlan $plan,
         ?string $reference,
         ?UploadedFile $proof,
+        ?string $upgradeReason = null,
     ): SubscriptionPlanRequest {
         $reference = $reference !== null ? strtoupper(trim($reference)) : null;
         if ($reference && $this->referenceAlreadyUsed($reference)) {
@@ -40,7 +41,7 @@ class SubscriptionPlanRequestService
         $stored = $proof ? $this->storeProof($proof, $business) : [];
 
         try {
-            return DB::transaction(function () use ($business, $owner, $plan, $reference, $stored) {
+            return DB::transaction(function () use ($business, $owner, $plan, $reference, $stored, $upgradeReason) {
                 Business::query()->lockForUpdate()->findOrFail($business->id);
                 // One open request per shop: a new choice replaces the previous one.
                 $business->planRequests()->pending()->get()
@@ -48,6 +49,8 @@ class SubscriptionPlanRequestService
 
                 return $business->planRequests()->create([
                     'subscription_plan_id' => $plan->id,
+                    'is_upgrade' => $upgradeReason !== null,
+                    'upgrade_reason' => $upgradeReason,
                     'requested_by_user_id' => $owner->id,
                     'amount' => $plan->price,
                     'payment_method' => $reference ? SubscriptionPlanRequest::METHOD_EASYPAISA : null,
@@ -63,6 +66,35 @@ class SubscriptionPlanRequestService
         }
     }
 
+    /**
+     * Running plans stop when an upgrade starts: one used for some days ends yesterday,
+     * one that only started today is cancelled. Queued future plans are left alone.
+     */
+    private function endRunningPlansForUpgrade(Business $business, SubscriptionPlan $plan, User $admin): void
+    {
+        $today = now()->startOfDay();
+        $business->subscriptions()
+            ->whereNull('cancelled_at')
+            ->whereDate('starts_on', '<=', $today->toDateString())
+            ->whereDate('ends_on', '>=', $today->toDateString())
+            ->get()
+            ->each(function (BusinessSubscription $running) use ($today, $plan, $admin) {
+                $note = BusinessSubscription::UPGRADE_REPLACED_NOTE.' '.$plan->name.' on '.$today->format('d M Y').'.';
+                if ($running->starts_on->lt($today)) {
+                    $running->forceFill([
+                        'ends_on' => $today->copy()->subDay()->toDateString(),
+                        'notes' => trim(($running->notes ? $running->notes."\n" : '').$note),
+                    ])->save();
+                } else {
+                    $running->forceFill([
+                        'cancelled_at' => now(),
+                        'cancelled_by_user_id' => $admin->id,
+                        'cancellation_reason' => $note,
+                    ])->save();
+                }
+            });
+    }
+
     public function approve(SubscriptionPlanRequest $request, User $admin): BusinessSubscription
     {
         return DB::transaction(function () use ($request, $admin) {
@@ -71,11 +103,17 @@ class SubscriptionPlanRequestService
             $business = Business::query()->lockForUpdate()->findOrFail($request->business_id);
             $plan = $request->plan;
 
-            // Start after any running or future period so renewals don't overlap.
-            $lastEnd = $business->subscriptions()->whereNull('cancelled_at')->max('ends_on');
-            $startsOn = $lastEnd && Carbon::parse($lastEnd)->gte(now()->startOfDay())
-                ? Carbon::parse($lastEnd)->addDay()
-                : now()->startOfDay();
+            if ($request->is_upgrade) {
+                // An upgrade starts today and replaces the plan running now.
+                $startsOn = now()->startOfDay();
+                $this->endRunningPlansForUpgrade($business, $plan, $admin);
+            } else {
+                // Start after any running or future period so renewals don't overlap.
+                $lastEnd = $business->subscriptions()->whereNull('cancelled_at')->max('ends_on');
+                $startsOn = $lastEnd && Carbon::parse($lastEnd)->gte(now()->startOfDay())
+                    ? Carbon::parse($lastEnd)->addDay()
+                    : now()->startOfDay();
+            }
 
             $subscription = $business->subscriptions()->create([
                 'subscription_plan_id' => $plan->id,

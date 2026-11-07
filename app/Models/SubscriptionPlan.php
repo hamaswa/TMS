@@ -131,6 +131,18 @@ class SubscriptionPlan extends Model
         };
     }
 
+    /** Price per day, so monthly and yearly plans can be compared. */
+    public function dailyRate(): float
+    {
+        return (float) $this->price / max(1, (int) $this->billing_period_days);
+    }
+
+    /** True when this plan costs more (per day) than the shop's current plan. */
+    public function isUpgradeFrom(?self $current): bool
+    {
+        return $current !== null && $current->id !== $this->id && $this->dailyRate() > $current->dailyRate();
+    }
+
     public function billingPeriodLabel(): string
     {
         return match ((int) $this->billing_period_days) {

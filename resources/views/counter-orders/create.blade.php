@@ -8,6 +8,7 @@
 </style>
 <section class="main-content co-start">
     <div class="co-start__shell">
+            @include('components.customer-limit-alert')
         <header class="co-start__head"><h1>نیا آرڈر</h1><p>@if($canAddCloth && $canAddTailoring)ایک آرڈر شروع کریں، پھر اسی میں کپڑا اور سلائی ضرورت کے مطابق شامل کریں۔@elseif($canAddCloth)ایک آرڈر شروع کریں، پھر گاہک کے لیے فروخت ہونے والا کپڑا شامل کریں۔@else ایک آرڈر شروع کریں، پھر گاہک کا سلائی آرڈر شامل کریں۔@endif</p></header>
         @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
         @if($openOrders->isNotEmpty())<section class="co-open"><h2>اس گاہک کے کھلے آرڈرز</h2><p>نیا آرڈر بنانے سے پہلے دیکھیں کہ موجودہ آرڈر میں ہی آئٹم شامل کرنا تو بہتر نہیں۔</p>@foreach($openOrders as $openOrder)<div class="co-open__row"><div><strong>{{ $openOrder->displayNumber() }}</strong><small>@if($openOrder->serial_number)حوالہ {{ $openOrder->reference }} · @endif{{ $openOrder->draft_items_count }} نئے · {{ $openOrder->confirmed_items_count }} تصدیق شدہ آئٹمز · Rs. {{ number_format((float)$openOrder->balance_amount,2) }} بقایا</small></div><a class="co-secondary" href="{{ route('admin.counter-orders.edit',['counterOrder'=>$openOrder,'profile'=>$selectedProfileId]) }}">آرڈر کھولیں</a></div>@endforeach</section>@endif

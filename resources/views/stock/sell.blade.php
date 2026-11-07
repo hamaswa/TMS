@@ -76,6 +76,7 @@
 @section('content')
 <section class="main-content counter-sale-page" dir="rtl">
 <div class="counter-sale-shell" id="formContainer">
+            @include('components.customer-limit-alert')
     <div class="counter-sale-breadcrumb"><a href="{{ route('admin.home') }}">ڈیش بورڈ</a><span class="mx-2">‹</span>فروخت<span class="mx-2">‹</span>کپڑے کی فروخت</div>
     <header class="counter-sale-header">
         <div class="counter-sale-heading"><span class="counter-sale-heading-icon"><i class="fas fa-tags"></i></span><div><h1>کپڑے کی فروخت کریں</h1><p>فروخت کی مکمل معلومات درج کریں</p></div></div>

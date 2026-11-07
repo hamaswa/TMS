@@ -78,6 +78,15 @@ class StandardSubscriptionPlansTest extends TestCase
                 $this->assertSame(403, $status, "{$feature} should be blocked on {$code}");
             }
         }
+
+        // Online orders follow the online shop feature, even when an old storefront still exists.
+        $status = $this->actingAs($owner)->get(route('admin.storefront.orders.index'))->status();
+        $expected['storefront'] ? $this->assertNotSame(403, $status) : $this->assertSame(403, $status, "online orders should be blocked on {$code}");
+
+        // The team page only offers to add tailors and other workers when the plan includes tailoring.
+        $team = $this->actingAs($owner)->get(route('admin.team.index'));
+        $workerForm = 'action="'.route('admin.production-workers.store').'"';
+        $expected['tailoring'] ? $team->assertSee($workerForm, false) : $team->assertDontSee($workerForm, false);
     }
 
     private function accounts(): array

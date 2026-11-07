@@ -1169,6 +1169,8 @@ class CustomerController extends Controller
 
             return redirect()->route('admin.Customers.index', ['created' => $customer?->id])
                 ->with('insert', 'نیا گاہک شامل کر دیا گیا ہے۔');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json($e->getMessage());
         }

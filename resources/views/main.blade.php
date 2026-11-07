@@ -1,5 +1,6 @@
 @include('inc/header')
 @include('components.subscription-alert')
+@include('components.admin-plan-request-alert')
 @if(Auth::check() && Auth::user()->business?->isDemo())
     <div class="px-3 px-md-4 pt-3" role="status">
         <div class="alert alert-info mb-0 d-flex align-items-center justify-content-between flex-wrap" style="gap:.5rem">

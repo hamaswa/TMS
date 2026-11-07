@@ -17,7 +17,7 @@
             <div class="alert alert-warning mb-0">موجودہ پلان میں مزید رول نہیں بنایا جا سکتا۔ پلان اپ گریڈ کے لیے سپر ایڈمن سے رابطہ کریں۔</div>
         @else
         <form method="POST" action="{{ route('admin.team.roles.store') }}">@csrf
-            <div class="form-group" style="max-width:520px"><label class="font-weight-bold" for="new-role-name">رول کا نام</label><input id="new-role-name" class="form-control form-control-lg" name="name" value="{{ old('name') }}" placeholder="{{ $business->tailoring_enabled && ! $business->clothing_enabled ? 'مثلاً آرڈر منیجر' : ($business->clothing_enabled && ! $business->tailoring_enabled ? 'مثلاً سیلز پرسن' : 'مثلاً برانچ منیجر') }}" required></div>
+            <div class="form-group" style="max-width:520px"><label class="font-weight-bold" for="new-role-name">رول کا نام</label><input id="new-role-name" class="form-control form-control-lg" name="name" value="{{ old('name') }}" placeholder="{{ $business->tailoringAvailable() && ! $business->clothingAvailable() ? 'مثلاً آرڈر منیجر' : ($business->clothingAvailable() && ! $business->tailoringAvailable() ? 'مثلاً سیلز پرسن' : 'مثلاً برانچ منیجر') }}" required></div>
             @include('team.partials.permission-selector', ['selectorId' => 'new-role-permissions', 'selectedPermissions' => old('permissions', []), 'roleNameTarget' => '#new-role-name'])
             <div class="d-flex justify-content-end mt-3"><button class="btn btn-primary btn-lg px-5"><i class="fas fa-user-shield ml-1"></i> رول محفوظ کریں</button></div>
         </form>

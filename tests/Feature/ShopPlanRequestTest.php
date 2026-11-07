@@ -193,6 +193,152 @@ class ShopPlanRequestTest extends TestCase
         $this->assertSame(0, $business->planRequests()->pending()->count());
     }
 
+    public function test_raast_style_transaction_ids_are_accepted(): void
+    {
+        [, $owner, $business] = $this->accounts();
+        $this->setUpEasypaisa();
+        $plan = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+
+        foreach (['RAAST 4537', 'RAAST--45372891', '-RAAST45372891', 'TID#123456'] as $bad) {
+            $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_reference' => $bad])
+                ->assertSessionHasErrors('payment_reference');
+        }
+
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_reference' => 'raast-45372891'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('RAAST-45372891', $business->pendingPlanRequest()->firstOrFail()->payment_reference);
+    }
+
+    public function test_approved_upgrade_starts_today_and_replaces_the_running_plan(): void
+    {
+        [$admin, $owner, $business] = $this->accounts();
+        $this->setUpEasypaisa();
+        $starter = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+        $pro = SubscriptionPlan::where('code', 'business-pro-monthly')->firstOrFail();
+        $this->actingAs($admin)->post(route('administrator.subscriptions.store', $owner), [
+            'subscription_plan_id' => $starter->id,
+            'starts_on' => now()->subDays(5)->toDateString(),
+            'ends_on' => now()->addDays(24)->toDateString(),
+            'fee' => $starter->price,
+        ])->assertSessionHasNoErrors();
+        $old = $business->subscriptions()->firstOrFail();
+
+        $this->actingAs($owner)->post(route('admin.subscription.request', $pro), [
+            'payment_reference' => 'RAAST-45372891',
+            'upgrade_reason' => 'Need the online shop.',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post(route('administrator.plan-requests.approve', $business->pendingPlanRequest()->firstOrFail()))
+            ->assertSessionHasNoErrors();
+
+        $current = $business->fresh()->currentSubscription();
+        $this->assertSame($pro->id, $current->subscription_plan_id);
+        $this->assertSame(now()->toDateString(), $current->starts_on->toDateString());
+        $this->assertSame(now()->subDay()->toDateString(), $old->fresh()->ends_on->toDateString());
+        $this->assertTrue($owner->fresh()->hasModule(User::MODULE_TAILORING));
+        $this->actingAs($owner)->get(route('admin.subscription.index'))->assertOk()->assertSee('موجودہ پلان: Business Pro');
+
+        // The super admin history marks the replaced period and the upgrade clearly.
+        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))
+            ->assertOk()
+            ->assertSee('Upgraded away')
+            ->assertSee('Replaced by upgrade to Business Pro')
+            ->assertSee('Upgrade reason:')
+            ->assertSee('Need the online shop.');
+    }
+
+    public function test_queued_next_plan_does_not_hide_the_plan_running_today(): void
+    {
+        [$admin, $owner, $business] = $this->accounts();
+        $starter = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+        $pro = SubscriptionPlan::where('code', 'business-pro-monthly')->firstOrFail();
+        $business->subscriptions()->create([
+            'subscription_plan_id' => $starter->id, 'plan_name' => $starter->name, 'fee' => 1200,
+            'starts_on' => now()->toDateString(), 'ends_on' => now()->addDays(29)->toDateString(),
+            ...$starter->entitlementSnapshot(),
+        ]);
+        $business->subscriptions()->create([
+            'subscription_plan_id' => $pro->id, 'plan_name' => $pro->name, 'fee' => 2500,
+            'starts_on' => now()->addDays(30)->toDateString(), 'ends_on' => now()->addDays(59)->toDateString(),
+            ...$pro->entitlementSnapshot(),
+        ]);
+
+        $this->assertSame($starter->id, $business->fresh()->currentSubscription()?->subscription_plan_id);
+        $this->assertTrue($owner->fresh()->hasModule(User::MODULE_CLOTHING));
+    }
+
+    public function test_super_admin_is_alerted_once_about_each_new_plan_request(): void
+    {
+        [$admin, $owner] = $this->accounts();
+        $plan = SubscriptionPlan::where('code', 'business-pro-monthly')->firstOrFail();
+
+        $this->actingAs($admin)->get(route('administrator.subscriptions.index'))
+            ->assertOk()
+            ->assertSee('id="plan-request-alert"', false)
+            ->assertDontSee('"shop":"Plan Request Shop"', false);
+
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan))->assertSessionHasNoErrors();
+
+        // Shown on the next page load (e.g. right after login)…
+        $this->actingAs($admin)->get(route('administrator.subscriptions.index'))
+            ->assertOk()
+            ->assertSee('"shop":"Plan Request Shop"', false);
+        // …and not again after that.
+        $this->actingAs($admin->fresh())->getJson(route('administrator.plan-requests.unannounced'))
+            ->assertOk()->assertExactJson(['requests' => []]);
+
+        // A request sent while the admin is on a page arrives through the live check.
+        $this->actingAs($owner)->post(route('admin.subscription.request', SubscriptionPlan::where('code', 'elite-boutique-monthly')->firstOrFail()))
+            ->assertSessionHasNoErrors();
+        $this->actingAs($admin->fresh())->getJson(route('administrator.plan-requests.unannounced'))
+            ->assertOk()
+            ->assertJsonPath('requests.0.shop', 'Plan Request Shop')
+            ->assertJsonPath('requests.0.plan', 'Elite Boutique');
+
+        // Shop owners never get the admin alert.
+        $this->actingAs($owner)->get(route('admin.subscription.index'))->assertDontSee('id="plan-request-alert"', false);
+        $this->actingAs($owner)->getJson(route('administrator.plan-requests.unannounced'))->assertForbidden();
+    }
+
+    public function test_upgrading_to_a_pricier_plan_needs_a_reason_that_super_admin_sees(): void
+    {
+        [$admin, $owner, $business] = $this->accounts();
+        $starter = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+        $pro = SubscriptionPlan::where('code', 'business-pro-monthly')->firstOrFail();
+        $starterTailoring = SubscriptionPlan::where('code', 'starter-tailoring-monthly')->firstOrFail();
+        $this->actingAs($admin)->post(route('administrator.subscriptions.store', $owner), [
+            'subscription_plan_id' => $starter->id,
+            'starts_on' => now()->toDateString(),
+            'ends_on' => now()->addDays(29)->toDateString(),
+            'fee' => $starter->price,
+        ])->assertSessionHasNoErrors();
+
+        // Pricier plans say "upgrade"; a same-price plan is a normal choice.
+        $page = $this->actingAs($owner)->get(route('admin.subscription.index'))->assertOk()->assertSee('اپ گریڈ کریں');
+        $this->assertStringContainsString('data-pay-upgrade="1"', $page->getContent());
+        $this->assertFalse($starterTailoring->isUpgradeFrom($starter));
+        $this->assertTrue($pro->isUpgradeFrom($starter));
+
+        $this->actingAs($owner)->post(route('admin.subscription.request', $pro))
+            ->assertSessionHasErrors('upgrade_reason');
+        $this->assertSame(0, $business->planRequests()->pending()->count());
+
+        $this->actingAs($owner)->post(route('admin.subscription.request', $pro), [
+            'upgrade_reason' => 'We need the online shop and more staff.',
+        ])->assertSessionHasNoErrors();
+        $request = $business->pendingPlanRequest()->firstOrFail();
+        $this->assertTrue($request->is_upgrade);
+        $this->assertSame('We need the online shop and more staff.', $request->upgrade_reason);
+
+        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))
+            ->assertOk()
+            ->assertSee('Upgrade reason')
+            ->assertSee('We need the online shop and more staff.');
+
+        // A same-price switch goes through without a reason.
+        $this->actingAs($owner)->post(route('admin.subscription.request', $starterTailoring))->assertSessionHasNoErrors();
+        $this->assertFalse($business->pendingPlanRequest()->firstOrFail()->is_upgrade);
+    }
+
     public function test_archived_plan_cannot_be_requested(): void
     {
         [, $owner, $business] = $this->accounts();

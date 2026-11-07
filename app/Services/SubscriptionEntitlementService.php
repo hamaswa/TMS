@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Business;
+use App\Models\Customers;
 use App\Models\Tailor;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
@@ -39,6 +40,42 @@ class SubscriptionEntitlementService
                 'employee_limit' => "آپ کے موجودہ پلان میں {$limit} فعال ملازمین کی اجازت ہے۔ مزید ملازم کے لیے پلان اپ گریڈ کریں۔",
             ]);
         }
+    }
+
+    /**
+     * Customers count per shop: main customers only. Family profiles share a
+     * customer's phone and walk-in placeholders are not real customers.
+     */
+    public function assertCanAddCustomer(int $ownerUserId): void
+    {
+        if ($limit = $this->customerLimitReached($ownerUserId)) {
+            throw ValidationException::withMessages([
+                'customer_limit' => self::customerLimitMessage($limit),
+            ]);
+        }
+    }
+
+    /** The shop's customer limit when it is already full, otherwise null. */
+    public function customerLimitReached(int $ownerUserId): ?int
+    {
+        $business = Business::where('owner_user_id', $ownerUserId)->first();
+        $limit = $business ? $this->limit($business, 'max_customers') : null;
+        if ($limit === null) {
+            return null;
+        }
+
+        $used = Customers::query()
+            ->where('user_id', $ownerUserId)
+            ->whereNull('parent_id')
+            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
+            ->count();
+
+        return $used >= $limit ? $limit : null;
+    }
+
+    public static function customerLimitMessage(int $limit): string
+    {
+        return "آپ کے موجودہ پلان میں {$limit} گاہکوں کی اجازت ہے۔ مزید گاہک شامل کرنے کے لیے پلان اپ گریڈ کریں۔";
     }
 
     public function assertCanAddRole(Business $business): void

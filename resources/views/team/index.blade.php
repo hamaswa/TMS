@@ -7,7 +7,7 @@
         $employeeLimitReached = $employeeLimit !== null && $activeEmployeeCount >= $employeeLimit;
         $tailorLimit = $business->subscriptionLimit('max_tailors');
         $tailorLimitReached = $tailorLimit !== null && $tailors->count() >= $tailorLimit;
-        $canCreateStaff = $business->roles->isNotEmpty() || $business->clothing_enabled;
+        $canCreateStaff = $business->roles->isNotEmpty() || $business->clothingAvailable();
         $selectedTab = request('tab', 'all');
         $oldPersonType = old('people_type', request('type', 'staff'));
     @endphp
@@ -543,11 +543,11 @@
             <header class="people-hero">
                 <div><span class="badge badge-light text-primary mb-2">افراد کا مرکزی انتظام</span>
                     <h1>ٹیم اور کاریگر</h1>
-                    <p>{{ $business->clothing_enabled ? 'سیلز عملہ، درزی اور تمام پروڈکشن کاریگر ایک ہی فہرست میں۔' : 'دفتری / کارخانے کا عملہ، درزی اور تمام کاریگر ایک ہی فہرست میں۔' }}
+                    <p>{{ $business->clothingAvailable() ? 'سیلز عملہ، درزی اور تمام پروڈکشن کاریگر ایک ہی فہرست میں۔' : 'دفتری / کارخانے کا عملہ، درزی اور تمام کاریگر ایک ہی فہرست میں۔' }}
                     </p>
                 </div>
                 <div class="people-actions">
-                    @if ($business->tailoring_enabled)
+                    @if ($business->tailoringAvailable())
                         <a class="btn btn-outline-light" href="{{ route('admin.order.total') }}"><i
                                 class="fas fa-calendar-week ml-1"></i> ٹیلرنگ ورک فلو</a>
                     @endif
@@ -577,7 +577,7 @@
                 </div>
                 <div class="people-stat"><i class="fas fa-cash-register"></i>
                     <div>
-                        <strong>{{ $business->clothing_enabled ? $business->members->filter(fn($member) => $member->businessRole?->hasPermission('clothing.sales'))->count() : $business->members->count() }}</strong><small>{{ $business->clothing_enabled ? 'سیلز عملہ' : 'دفتری / کارخانے کا عملہ' }}</small>
+                        <strong>{{ $business->clothingAvailable() ? $business->members->filter(fn($member) => $member->businessRole?->hasPermission('clothing.sales'))->count() : $business->members->count() }}</strong><small>{{ $business->clothingAvailable() ? 'سیلز عملہ' : 'دفتری / کارخانے کا عملہ' }}</small>
                     </div>
                 </div>
                 <div class="people-stat"><i class="fas fa-user-tie"></i>
@@ -591,10 +591,10 @@
                 <div class="people-toolbar">
                     <div class="people-tabs" role="tablist"><button class="people-tab" type="button" data-filter="all">تمام
                             افراد</button><button class="people-tab" type="button"
-                            data-filter="staff">{{ $business->clothing_enabled ? 'سیلز اور دفتری عملہ' : 'دفتری / کارخانے کا عملہ' }}</button>
-                        @if ($business->clothing_enabled)
+                            data-filter="staff">{{ $business->clothingAvailable() ? 'سیلز اور دفتری عملہ' : 'دفتری / کارخانے کا عملہ' }}</button>
+                        @if ($business->clothingAvailable())
                             <button class="people-tab" type="button" data-filter="sales">صرف سیلز</button>
-                            @endif @if ($business->tailoring_enabled)
+                            @endif @if ($business->tailoringAvailable())
                                 <button class="people-tab" type="button" data-filter="tailors">درزی</button><button
                                     class="people-tab" type="button" data-filter="production">دیگر کاریگر</button>
                             @endif
@@ -615,7 +615,7 @@
                         </thead>
                         <tbody id="peopleRows">
                             @foreach ($business->members as $employee)
-                                @php($isSales = $business->clothing_enabled && $employee->businessRole?->hasPermission('clothing.sales'))
+                                @php($isSales = $business->clothingAvailable() && $employee->businessRole?->hasPermission('clothing.sales'))
                                 <tr class="person-row" data-kinds="staff {{ $isSales ? 'sales' : '' }}"
                                     data-search="{{ mb_strtolower($employee->name . ' ' . $employee->phone . ' ' . $employee->email . ' ' . $employee->job_title . ' ' . ($employee->businessRole?->name ?? '')) }}">
                                     <td data-label="نام">
@@ -731,9 +731,9 @@
                 </div>
                 <div class="people-kind-picker"><label class="people-kind" data-kind="staff"><input type="radio"
                             name="person_kind" value="staff"><i
-                            class="fas fa-cash-register"></i><span><strong>{{ $business->clothing_enabled ? 'سیلز / دفتری عملہ' : 'دفتری / کارخانے کا عملہ' }}</strong><small>لاگ
+                            class="fas fa-cash-register"></i><span><strong>{{ $business->clothingAvailable() ? 'سیلز / دفتری عملہ' : 'دفتری / کارخانے کا عملہ' }}</strong><small>لاگ
                                 اِن اور اجازتوں کے ساتھ</small></span></label>
-                    @if ($business->tailoring_enabled)
+                    @if ($business->tailoringAvailable())
                         <label class="people-kind" data-kind="tailor"><input type="radio" name="person_kind"
                                 value="tailor"><i class="fas fa-user-tie"></i><span><strong>درزی</strong><small>سلائی،
                                     اجرت اور پورٹل</small></span></label><label class="people-kind"
@@ -761,7 +761,7 @@
                                 <div class="form-group"><label for="personEmployeeRole">رول / اجازت</label><select
                                         id="personEmployeeRole" class="form-control" name="business_role_id" required>
                                         <option value="">رول منتخب کریں</option>
-                                        @if ($business->clothing_enabled)
+                                        @if ($business->clothingAvailable())
                                             <option value="preset:salesperson" @selected($oldPersonType === 'staff' && old('business_role_id') === 'preset:salesperson')>سیلز پرسن — تیار
                                                 رول</option>
                                             @endif @foreach ($business->roles as $role)
@@ -770,7 +770,7 @@
                                             @endforeach
                                     </select>
                                     <small
-                                        class="form-text text-muted">{{ $business->clothing_enabled ? 'تیار سیلز رول منتخب کرنے پر ضروری اجازتیں خود بن جائیں گی۔' : 'عملے کے کام کے مطابق رول اور اجازتیں منتخب کریں۔' }}</small>
+                                        class="form-text text-muted">{{ $business->clothingAvailable() ? 'تیار سیلز رول منتخب کرنے پر ضروری اجازتیں خود بن جائیں گی۔' : 'عملے کے کام کے مطابق رول اور اجازتیں منتخب کریں۔' }}</small>
                                 </div>
                                 <div class="form-group"><label for="personEmployeeUsername">یوزر نیم</label><input
                                         id="personEmployeeUsername" class="form-control" name="username" dir="ltr"
@@ -804,7 +804,7 @@
                         </div>
                     </div>
                 </form>
-                @if ($business->tailoring_enabled)
+                @if ($business->tailoringAvailable())
                     <form class="people-form-pane" data-form-kind="tailor" method="POST"
                         action="{{ route('admin.Tailor.store') }}">@csrf<input type="hidden" name="people_type"
                             value="tailor"><input type="hidden" name="return_to" value="people">

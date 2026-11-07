@@ -129,11 +129,14 @@ class Business extends Model
 
     public function activeSubscription()
     {
+        // The date filters must sit inside ofMany(): outside it, a queued future
+        // subscription wins "latest ends_on" and then fails the filter, hiding today's plan.
         return $this->hasOne(BusinessSubscription::class)
-            ->whereNull('cancelled_at')
-            ->whereDate('starts_on', '<=', now()->toDateString())
-            ->whereDate('ends_on', '>=', now()->toDateString())
-            ->ofMany('ends_on', 'max');
+            ->ofMany(['ends_on' => 'max', 'id' => 'max'], function ($query) {
+                $query->whereNull('cancelled_at')
+                    ->whereDate('starts_on', '<=', now()->toDateString())
+                    ->whereDate('ends_on', '>=', now()->toDateString());
+            });
     }
 
     public function subscriptionPayments()
@@ -199,6 +202,18 @@ class Business extends Model
             User::MODULE_CLOTHING => $this->clothing_enabled,
             default => false,
         };
+    }
+
+    /** Tailoring is switched on for the shop and included in its plan. */
+    public function tailoringAvailable(): bool
+    {
+        return $this->tailoring_enabled && $this->subscriptionAllowsFeature('allow_tailoring');
+    }
+
+    /** Clothing is switched on for the shop and included in its plan. */
+    public function clothingAvailable(): bool
+    {
+        return $this->clothing_enabled && $this->subscriptionAllowsFeature('allow_clothing');
     }
 
     public function usesDetailedTailoringWorkflow(): bool

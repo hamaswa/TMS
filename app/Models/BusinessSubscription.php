@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class BusinessSubscription extends Model
 {
     use HasFactory;
+    /** Written on a period that an upgrade replaced. */
+    public const UPGRADE_REPLACED_NOTE = 'Replaced by upgrade to';
+
 
     public const EXPIRY_WARNING_DAYS = 14;
 
@@ -94,6 +97,60 @@ class BusinessSubscription extends Model
     public function cancelledBy()
     {
         return $this->belongsTo(User::class, 'cancelled_by_user_id');
+    }
+
+    /** The shop's plan request that created this period, if any. */
+    public function planRequest()
+    {
+        return $this->hasOne(SubscriptionPlanRequest::class, 'business_subscription_id');
+    }
+
+    /** Started from an approved upgrade request. */
+    public function isUpgrade(): bool
+    {
+        return (bool) $this->planRequest?->is_upgrade;
+    }
+
+    /** Ended early or cancelled because the shop upgraded. */
+    public function wasReplacedByUpgrade(): bool
+    {
+        $marker = self::UPGRADE_REPLACED_NOTE;
+
+        return str_contains((string) $this->cancellation_reason, $marker) || str_contains((string) $this->notes, $marker);
+    }
+
+    /** The "Replaced by upgrade to …" line written when this period was replaced. */
+    public function upgradeReplacedNote(): ?string
+    {
+        foreach ([$this->cancellation_reason, ...explode("\n", (string) $this->notes)] as $line) {
+            if (str_contains((string) $line, self::UPGRADE_REPLACED_NOTE)) {
+                return trim($line);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Label for the admin history: [key, label, Bootstrap colour, icon].
+     *
+     * @return array{0: string, 1: string, 2: string, 3: string}
+     */
+    public function historyStatus(): array
+    {
+        if ($this->wasReplacedByUpgrade()) {
+            return ['upgraded', 'Upgraded away', 'info', 'fa-level-up-alt'];
+        }
+
+        return match (true) {
+            (bool) $this->cancelled_at => ['cancelled', 'Cancelled', 'danger', 'fa-ban'],
+            $this->starts_on->isAfter(now()->endOfDay()) => ['upcoming', 'Upcoming', 'primary', 'fa-hourglass-start'],
+            default => match ($this->state()) {
+                'expired' => ['expired', 'Expired', 'secondary', 'fa-history'],
+                'expiring' => ['expiring', 'Expiring soon', 'warning', 'fa-exclamation-triangle'],
+                default => ['active', 'Active', 'success', 'fa-check-circle'],
+            },
+        };
     }
 
     public function amountPaid(): float

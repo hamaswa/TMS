@@ -27,7 +27,7 @@ class BusinessTeamController extends Controller
         $productionWorkers = collect();
         $workTypes = collect();
 
-        if ($business->tailoring_enabled) {
+        if ($business->tailoringAvailable()) {
             $workTypes = app(ProductionWorkTypeDefaultsService::class)->forOwner($ownerId);
             $tailors = Tailor::where('user_id', $ownerId)
                 ->with(['productionWorker.skills', 'tailorsalary'])

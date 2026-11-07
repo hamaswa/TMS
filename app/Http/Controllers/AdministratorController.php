@@ -208,11 +208,15 @@ class AdministratorController extends Controller
             'storefront_orders' => $business->storefront?->orders()->count() ?? 0,
         ];
         $subscriptions = $business->subscriptions()
-            ->with(['payments.recordedBy', 'payments.reversedBy', 'createdBy', 'cancelledBy'])
+            ->with(['payments.recordedBy', 'payments.reversedBy', 'createdBy', 'cancelledBy', 'planRequest'])
             ->withSum('activePayments', 'amount')
-            ->latest('ends_on')
+            ->latest('starts_on')
+            ->latest('id')
             ->get();
-        $currentSubscription = $subscriptions->first(fn ($subscription) => ! $subscription->cancelled_at);
+        // The plan running today, else the last one that already started. Queued plans are not "current".
+        $runningId = $business->currentSubscription()?->id;
+        $currentSubscription = $subscriptions->firstWhere('id', $runningId)
+            ?? $subscriptions->first(fn ($subscription) => ! $subscription->cancelled_at && $subscription->starts_on->lte(now()));
         $subscriptionPlans = SubscriptionPlan::where('is_active', true)->orderBy('name')->get();
 
         return view('Administrator.show', compact(

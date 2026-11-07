@@ -109,7 +109,7 @@
                     <a class="dropdown-item" href="{{ route('admin.inventory-valuation.index') }}"><i class="fas fa-balance-scale fa-fw ml-2 text-info"></i>اسٹاک کی مالیت</a>
                     @endif
                     @if($canShopSales)<a class="dropdown-item" href="{{ route('admin.counter-orders.create') }}"><i class="fas fa-cash-register fa-fw ml-2 text-info"></i>نیا آرڈر</a><a class="dropdown-item" href="{{ route('admin.sales-sessions.index') }}"><i class="fas fa-inbox fa-fw ml-2 text-warning"></i>سیلز اِن باکس @if($salesOpenCount)<span class="badge badge-danger">{{ min($salesOpenCount,99) }}</span>@endif</a>@endif
-                    @if($canShopSales && Auth::user()->business?->storefront)<a class="dropdown-item" href="{{ route('admin.storefront.orders.index') }}"><i class="fas fa-shopping-bag fa-fw ml-2 text-info"></i>آن لائن آرڈرز</a>@endif
+                    @if($canShopSales && Auth::user()->business?->storefront && Auth::user()->business->subscriptionAllowsFeature('allow_storefront'))<a class="dropdown-item" href="{{ route('admin.storefront.orders.index') }}"><i class="fas fa-shopping-bag fa-fw ml-2 text-info"></i>آن لائن آرڈرز</a>@endif
                     @if($canShopPurchases)<a class="dropdown-item" href="{{ route('admin.purchases.index') }}"><i class="fas fa-truck-loading fa-fw ml-2 text-info"></i>خریداری</a>@endif
                     @if($canShopSuppliers)<a class="dropdown-item" href="{{ route('admin.suppliers.index') }}"><i class="fas fa-building fa-fw ml-2 text-info"></i>سپلائرز</a>@endif
                 </div></li>

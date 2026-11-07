@@ -74,6 +74,40 @@ class SubscriptionEntitlementTest extends TestCase
         $this->assertFalse($elite->is_public);
     }
 
+    public function test_customer_limit_blocks_new_main_customers_but_not_family_profiles_or_walk_ins(): void
+    {
+        [, $owner, $business] = $this->accounts();
+        $this->subscription($business, ['max_customers' => 2]);
+
+        $first = \App\Models\Customers::create(['name' => 'One', 'phone_number1' => '03001110001', 'user_id' => $owner->id]);
+        \App\Models\Customers::create(['name' => 'Two', 'phone_number1' => '03001110002', 'user_id' => $owner->id]);
+
+        // Family profiles and the walk-in placeholder do not use up the limit.
+        \App\Models\Customers::create(['name' => 'Son', 'phone_number1' => '03001110001', 'user_id' => $owner->id, 'parent_id' => $first->id]);
+        \App\Models\Customers::create(['name' => 'Walk-in Customer', 'phone_number1' => '', 'user_id' => $owner->id, 'is_walk_in' => true]);
+
+        try {
+            \App\Models\Customers::create(['name' => 'Three', 'phone_number1' => '03001110003', 'user_id' => $owner->id]);
+            $this->fail('A third main customer should be refused.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->assertArrayHasKey('customer_limit', $e->errors());
+        }
+        $this->assertSame(0, \App\Models\Customers::where('name', 'Three')->count());
+
+        // The shop's own customer form shows the error instead of saving.
+        $this->actingAs($owner)->post(route('admin.Customers.store'), [
+            'name' => 'Four', 'contact' => '03001110004', 'basic_save' => 1,
+        ])->assertSessionHasErrors('customer_limit');
+
+        // The quick sale-customer form refuses too, and the page says why.
+        $this->actingAs($owner)->post(route('admin.addcustomers.sale'), [
+            'customer_name' => 'Five', 'customer_num' => '03001110005',
+        ])->assertSessionHasErrors('customer_limit');
+        $this->actingAs($owner)->get(route('admin.customers.sale'))
+            ->assertOk()
+            ->assertSeeText('2 گاہکوں کی اجازت ہے');
+    }
+
     public function test_expired_subscription_restricts_owner_employee_and_tailor_but_preserves_renewal_access(): void
     {
         [, $owner, $business] = $this->accounts();

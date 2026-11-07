@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Relations\HasManyByText;
 use App\Services\CustomerSerialNumberService;
+use App\Services\SubscriptionEntitlementService;
 use App\Support\PakistanPhoneNumber;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -93,6 +94,11 @@ class Customers extends Authenticatable
     protected static function booted(): void
     {
         static::creating(function (Customers $customer) {
+            // Every way a customer is added (forms, counter sales, storefront, CSV) goes through here.
+            if ($customer->user_id && $customer->parent_id === null && ! $customer->is_walk_in) {
+                app(SubscriptionEntitlementService::class)->assertCanAddCustomer((int) $customer->user_id);
+            }
+
             if (! $customer->serial_number && $customer->user_id) {
                 $customer->serial_number = app(CustomerSerialNumberService::class)
                     ->nextFor((int) $customer->user_id);

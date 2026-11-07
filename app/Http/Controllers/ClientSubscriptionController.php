@@ -24,7 +24,9 @@ class ClientSubscriptionController extends Controller
             ->withSum('activePayments', 'amount')
             ->latest('ends_on')
             ->get();
-        $currentSubscription = $subscriptions->first(fn ($subscription) => ! $subscription->cancelled_at);
+        // The plan running today; otherwise the last one that already started (to show it expired). Queued plans are not "current".
+        $currentSubscription = $business->currentSubscription()
+            ?? $subscriptions->first(fn ($subscription) => ! $subscription->cancelled_at && $subscription->starts_on->lte(now()));
         $plans = $this->availablePlans();
 
         return view('subscriptions.client', [
@@ -35,6 +37,8 @@ class ClientSubscriptionController extends Controller
             'yearlySavings' => $this->yearlySavings($plans),
             'popularPlanIds' => $this->popularPlanIds($plans),
             'easypaisa' => PlatformSetting::easypaisa(),
+            // Plans pricier than this one are shown as upgrades and ask for a reason.
+            'currentPlan' => $business->currentSubscription()?->plan,
         ]);
     }
 
@@ -45,12 +49,21 @@ class ClientSubscriptionController extends Controller
         // With Easypaisa set up, the shop pays first and sends the transaction ID; otherwise it is a plain request.
         $paying = PlatformSetting::easypaisa() !== null && (float) $plan->price > 0;
         $request->merge(['payment_reference' => is_string($request->input('payment_reference')) ? trim($request->input('payment_reference')) : $request->input('payment_reference')]);
+        $business = Auth::user()->ownedBusiness()->firstOrFail();
+        $upgrading = $plan->isUpgradeFrom($business->currentSubscription()?->plan);
         $validator = Validator::make($request->all(), [
-            'payment_reference' => [$paying ? 'required' : 'nullable', 'string', 'regex:/^[A-Za-z0-9]{6,30}$/'],
+            'upgrade_reason' => [$upgrading ? 'required' : 'nullable', 'string', 'min:5', 'max:1000'],
+            // Easypaisa/JazzCash IDs are digits; SadaPay/Raast IDs look like RAAST-45372891.
+            'payment_reference' => [$paying ? 'required' : 'nullable', 'string', 'min:6', 'max:40', 'regex:/^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/'],
             'payment_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], [
+            'upgrade_reason.required' => 'پلان اپ گریڈ کرنے کی وجہ لکھیں۔',
+            'upgrade_reason.min' => 'اپ گریڈ کی وجہ تھوڑی تفصیل سے لکھیں۔',
+            'upgrade_reason.max' => 'اپ گریڈ کی وجہ 1000 حروف سے زیادہ نہیں ہو سکتی۔',
             'payment_reference.required' => 'ادائیگی کی ٹرانزیکشن آئی ڈی درج کریں۔',
-            'payment_reference.regex' => 'درست ٹرانزیکشن آئی ڈی درج کریں۔ یہ ادائیگی کے ایس ایم ایس میں لکھی ہوتی ہے۔',
+            'payment_reference.min' => 'ٹرانزیکشن آئی ڈی کم از کم 6 حروف کی ہوتی ہے۔',
+            'payment_reference.max' => 'ٹرانزیکشن آئی ڈی 40 حروف سے زیادہ نہیں ہو سکتی۔',
+            'payment_reference.regex' => 'درست ٹرانزیکشن آئی ڈی درج کریں: صرف حروف، ہندسے اور ڈیش (-)، جیسے 12345678901 یا RAAST-45372891۔',
             'payment_proof.mimes' => 'اسکرین شاٹ تصویر یا پی ڈی ایف فائل ہونا چاہیے۔',
             'payment_proof.max' => 'اسکرین شاٹ کا سائز زیادہ سے زیادہ پانچ ایم بی ہو سکتا ہے۔',
         ]);
@@ -63,11 +76,12 @@ class ClientSubscriptionController extends Controller
         $user = Auth::user();
         try {
             $requests->submit(
-                $user->ownedBusiness()->firstOrFail(),
+                $business,
                 $user,
                 $plan,
                 $paying ? $request->input('payment_reference') : null,
                 $paying ? $request->file('payment_proof') : null,
+                $upgrading ? trim((string) $request->input('upgrade_reason')) : null,
             );
         } catch (ValidationException $exception) {
             return $toPlans->withErrors($exception->errors())->withInput($request->except('payment_proof'));

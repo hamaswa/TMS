@@ -12,6 +12,15 @@ class PlanRequestReviewController extends Controller
 {
     public function __construct(private readonly SubscriptionPlanRequestService $requests) {}
 
+    /** Polled by the super admin pages: new plan requests since the last alert. */
+    public function unannounced()
+    {
+        return response()->json([
+            'requests' => SubscriptionPlanRequest::takeUnannouncedFor(Auth::user())
+                ->map(fn (SubscriptionPlanRequest $request) => $request->alertData())->values(),
+        ]);
+    }
+
     public function approve(SubscriptionPlanRequest $planRequest)
     {
         $subscription = $this->requests->approve($planRequest, Auth::user());

@@ -159,6 +159,7 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
     Route::put('/subscription-plans/{plan}', [SubscriptionPlanController::class, 'update'])->name('subscription-plans.update');
     Route::get('/payment-settings', [PlatformPaymentSettingsController::class, 'edit'])->name('payment-settings.edit');
     Route::put('/payment-settings', [PlatformPaymentSettingsController::class, 'update'])->name('payment-settings.update');
+    Route::get('/plan-requests/unannounced', [PlanRequestReviewController::class, 'unannounced'])->name('plan-requests.unannounced');
     Route::post('/plan-requests/{planRequest}/approve', [PlanRequestReviewController::class, 'approve'])->name('plan-requests.approve');
     Route::post('/plan-requests/{planRequest}/reject', [PlanRequestReviewController::class, 'reject'])->name('plan-requests.reject');
     Route::get('/plan-requests/{planRequest}/proof', [PlanRequestReviewController::class, 'proof'])->name('plan-requests.proof');
@@ -293,7 +294,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::get('/storefront/inquiries/{inquiry}/job-sheet', [AdminStorefrontTailoringController::class, 'bookingJobSheet'])
             ->name('storefront.inquiries.job-sheet');
     });
-    Route::middleware('business.permission:clothing.sales')->group(function () {
+    Route::middleware(['business.permission:clothing.sales', 'subscription.feature:allow_storefront'])->group(function () {
         Route::get('/storefront/orders', [AdminStorefrontOrderController::class, 'index'])->name('storefront.orders.index');
         Route::patch('/storefront/orders/{order}', [AdminStorefrontOrderController::class, 'update'])->name('storefront.orders.update');
         Route::patch('/storefront/orders/{order}/collect-payment', [AdminStorefrontOrderController::class, 'collectPayment'])

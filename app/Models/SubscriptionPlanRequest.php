@@ -20,6 +20,8 @@ class SubscriptionPlanRequest extends Model
     protected $fillable = [
         'business_id',
         'subscription_plan_id',
+        'is_upgrade',
+        'upgrade_reason',
         'requested_by_user_id',
         'amount',
         'payment_method',
@@ -38,6 +40,7 @@ class SubscriptionPlanRequest extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'is_upgrade' => 'boolean',
             'reviewed_at' => 'datetime',
         ];
     }
@@ -70,6 +73,40 @@ class SubscriptionPlanRequest extends Model
     public function isPending(): bool
     {
         return $this->status === self::STATUS_PENDING;
+    }
+
+    /**
+     * Pending requests the super admin has not been alerted about yet, and marks them as announced.
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function takeUnannouncedFor(User $admin): \Illuminate\Support\Collection
+    {
+        $requests = self::query()->pending()
+            ->when($admin->plan_requests_seen_id, fn ($query, $seenId) => $query->where('id', '>', $seenId))
+            ->with(['business', 'plan'])
+            ->orderBy('id')
+            ->get();
+
+        if ($requests->isNotEmpty()) {
+            $admin->forceFill(['plan_requests_seen_id' => $requests->max('id')])->saveQuietly();
+        }
+
+        return $requests;
+    }
+
+    /** Plain data for the super admin popup. */
+    public function alertData(): array
+    {
+        return [
+            'shop' => $this->business?->name ?? 'Shop',
+            'plan' => $this->plan?->name ?? 'Plan',
+            'upgrade' => (bool) $this->is_upgrade,
+            'amount' => number_format((float) $this->amount),
+            'reference' => $this->payment_reference,
+            'reason' => $this->upgrade_reason,
+            'url' => $this->business ? route('administrator.clients.show', $this->business->owner_user_id).'#plan-request' : null,
+        ];
     }
 
     public function scopePending($query)
