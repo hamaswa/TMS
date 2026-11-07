@@ -1,6 +1,7 @@
 <?php
 
 use App\Events\NotificationEvent;
+use App\Http\Controllers\AdminPasswordController;
 use App\Http\Controllers\AdministratorController;
 use App\Http\Controllers\AdministratorSubscriptionController;
 use App\Http\Controllers\AdminStorefrontClothingController;
@@ -152,6 +153,8 @@ Route::get('/platform/easypaisa-qr', [PlatformPaymentSettingsController::class, 
 Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:administrative'], 'as' => 'administrator.'], function () {
 
     Route::get('/', [AdministratorController::class, 'showData'])->name('index');
+    Route::get('/password', [AdminPasswordController::class, 'edit'])->name('password.edit');
+    Route::put('/password', [AdminPasswordController::class, 'update'])->middleware('throttle:6,1')->name('password.update');
     Route::get('/marketplace', [AdministratorController::class, 'marketplace'])->name('marketplace.index');
     Route::get('/subscriptions', [AdministratorSubscriptionController::class, 'index'])->name('subscriptions.index');
     Route::get('/subscription-plans', [SubscriptionPlanController::class, 'index'])->name('subscription-plans.index');
