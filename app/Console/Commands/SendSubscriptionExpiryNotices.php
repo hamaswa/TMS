@@ -26,7 +26,8 @@ class SendSubscriptionExpiryNotices extends Command
                 foreach ($businesses as $business) {
                     $subscription = $business->latestSubscription;
                     $owner = $business->owner;
-                    if (! $subscription || ! $owner) {
+                    // No renewal reminders once the shop has cancelled.
+                    if (! $subscription || ! $owner || $subscription->isEndingByShopRequest()) {
                         continue;
                     }
 

@@ -266,6 +266,54 @@ class ShopPlanRequestTest extends TestCase
         $this->assertTrue($owner->fresh()->hasModule(User::MODULE_CLOTHING));
     }
 
+    public function test_owner_cancels_plan_which_runs_to_its_end_date_and_can_undo(): void
+    {
+        [$admin, $owner, $business] = $this->accounts();
+        $starter = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+        $current = $business->subscriptions()->create([
+            'subscription_plan_id' => $starter->id, 'plan_name' => $starter->name, 'fee' => 1200,
+            'starts_on' => now()->subDays(3)->toDateString(), 'ends_on' => now()->addDays(26)->toDateString(),
+            ...$starter->entitlementSnapshot(),
+        ]);
+        $queued = $business->subscriptions()->create([
+            'subscription_plan_id' => $starter->id, 'plan_name' => $starter->name, 'fee' => 1200,
+            'starts_on' => now()->addDays(27)->toDateString(), 'ends_on' => now()->addDays(56)->toDateString(),
+            ...$starter->entitlementSnapshot(),
+        ]);
+
+        $this->actingAs($owner)->get(route('admin.subscription.index'))
+            ->assertOk()->assertSee('id="cancel-plan-modal"', false);
+
+        $this->actingAs($owner)->post(route('admin.subscription.cancel'), ['cancel_reason' => 'قیمت زیادہ ہے'])
+            ->assertSessionHasErrors('cancel_confirm');
+        $this->assertNull($current->fresh()->cancel_requested_at);
+
+        $this->actingAs($owner)->post(route('admin.subscription.cancel'), ['cancel_reason' => 'قیمت زیادہ ہے', 'cancel_confirm' => 1])
+            ->assertRedirect(route('admin.subscription.index'))->assertSessionHasNoErrors();
+
+        // Still working today, the queued renewal is cancelled.
+        $this->assertTrue($current->fresh()->isEndingByShopRequest());
+        $this->assertSame($current->id, $business->fresh()->currentSubscription()?->id);
+        $this->assertTrue($owner->fresh()->hasModule(User::MODULE_CLOTHING));
+        $this->assertNotNull($queued->fresh()->cancelled_at);
+        $this->actingAs($owner)->get(route('admin.subscription.index'))
+            ->assertSee('آپ نے سبسکرپشن منسوخ کر دی ہے۔')
+            ->assertSee('منسوخی واپس لیں')
+            ->assertDontSee('id="cancel-plan-modal"', false);
+
+        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))
+            ->assertOk()->assertSee('Cancelled by the shop')->assertSee('قیمت زیادہ ہے');
+
+        $this->actingAs($owner)->delete(route('admin.subscription.cancel.undo'))->assertSessionHasNoErrors();
+        $this->assertFalse($current->fresh()->isEndingByShopRequest());
+
+        // After the end date the plan stops like any expired plan.
+        $this->actingAs($owner)->post(route('admin.subscription.cancel'), ['cancel_reason' => 'Closing the shop', 'cancel_confirm' => 1]);
+        $this->travelTo(now()->addDays(27));
+        $this->assertNull($business->fresh()->currentSubscription());
+        $this->actingAs($owner->fresh())->get(route('admin.home'))->assertRedirect(route('admin.subscription.required'));
+    }
+
     public function test_super_admin_is_alerted_once_about_each_new_plan_request(): void
     {
         [$admin, $owner] = $this->accounts();

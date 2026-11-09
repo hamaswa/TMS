@@ -79,6 +79,13 @@ class StandardSubscriptionPlansTest extends TestCase
             }
         }
 
+        // Whatever the workspace, the owner sees "My plan" with the plan name in the sidebar.
+        $this->actingAs($owner)->get(route('admin.subscription.index'))
+            ->assertOk()
+            ->assertSee('data-side-plan', false)
+            ->assertSee('میرا پلان')
+            ->assertSee($plan->name);
+
         // Online orders follow the online shop feature, even when an old storefront still exists.
         $status = $this->actingAs($owner)->get(route('admin.storefront.orders.index'))->status();
         $expected['storefront'] ? $this->assertNotSame(403, $status) : $this->assertSame(403, $status, "online orders should be blocked on {$code}");

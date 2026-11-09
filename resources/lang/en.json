@@ -3608,5 +3608,8 @@
     "ادائیگی کی تفصیلات (ایزی پیسہ):": "Payment details (Easypaisa):",
     "پلان اپ گریڈ کریں۔": "Upgrade your plan.",
     "رقم بھیجنے کے بعد ایپ یا ایس ایم ایس سے ٹرانزیکشن آئی ڈی (TID) درج کریں — ایزی پیسہ، جاز کیش، سادہ پے یا راست": "After paying, enter the transaction ID (TID) from the app or SMS — Easypaisa, JazzCash, SadaPay or Raast",
-    "درست ٹرانزیکشن آئی ڈی درج کریں: صرف حروف، ہندسے اور ڈیش (-)، جیسے 12345678901 یا RAAST-45372891۔": "Enter a valid transaction ID: letters, digits and dashes (-) only, e.g. 12345678901 or RAAST-45372891."
+    "درست ٹرانزیکشن آئی ڈی درج کریں: صرف حروف، ہندسے اور ڈیش (-)، جیسے 12345678901 یا RAAST-45372891۔": "Enter a valid transaction ID: letters, digits and dashes (-) only, e.g. 12345678901 or RAAST-45372891.",
+    "میرا پلان": "My plan",
+    "کوئی پلان نہیں": "No plan",
+    "پلان منتخب کریں": "Choose a plan"
 }

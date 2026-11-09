@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PlatformSetting;
 use App\Models\SubscriptionPlan;
+use App\Services\ShopSubscriptionCancellationService;
 use App\Services\SubscriptionPlanRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -90,6 +91,31 @@ class ClientSubscriptionController extends Controller
         return redirect()->to(route('admin.subscription.index').'#plans')->with('plan_requested', $paying
             ? 'آپ کی ادائیگی کی تفصیل سپر ایڈمن کو بھیج دی گئی ہے۔ تصدیق کے بعد آپ کا پلان فعال ہو جائے گا۔'
             : 'آپ کی درخواست سپر ایڈمن کو بھیج دی گئی ہے۔ وہ پلان فعال کرنے کے لیے آپ سے رابطہ کریں گے۔');
+    }
+
+    /** The owner stops the plan: it keeps working until its end date and is not renewed. */
+    public function cancel(Request $request, ShopSubscriptionCancellationService $cancellations)
+    {
+        $validated = $request->validate([
+            'cancel_reason' => ['required', 'string', 'min:3', 'max:1000'],
+            'cancel_confirm' => ['accepted'],
+        ], [
+            'cancel_reason.required' => 'منسوخی کی وجہ لکھیں۔',
+            'cancel_reason.min' => 'منسوخی کی وجہ تھوڑی تفصیل سے لکھیں۔',
+            'cancel_confirm.accepted' => 'منسوخی کی تصدیق کے لیے خانے پر نشان لگائیں۔',
+        ]);
+        $user = Auth::user();
+        $subscription = $cancellations->cancelAtPeriodEnd($user->ownedBusiness()->firstOrFail(), $user, trim($validated['cancel_reason']));
+
+        return redirect()->route('admin.subscription.index')->with('plan_requested',
+            'آپ کی سبسکرپشن منسوخ کر دی گئی ہے۔ آپ کا پلان '.\App\Support\DisplayDate::long($subscription->ends_on).' تک چلتا رہے گا، اس کے بعد تجدید نہیں ہوگی۔');
+    }
+
+    public function undoCancel(ShopSubscriptionCancellationService $cancellations)
+    {
+        $cancellations->undo(Auth::user()->ownedBusiness()->firstOrFail());
+
+        return redirect()->route('admin.subscription.index')->with('plan_requested', 'منسوخی واپس لے لی گئی۔ آپ کا پلان معمول کے مطابق جاری ہے۔');
     }
 
     public function required()

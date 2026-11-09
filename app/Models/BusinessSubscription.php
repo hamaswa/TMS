@@ -42,6 +42,9 @@ class BusinessSubscription extends Model
         'cancelled_at',
         'cancelled_by_user_id',
         'cancellation_reason',
+        'cancel_requested_at',
+        'cancel_requested_by_user_id',
+        'cancel_request_reason',
     ];
 
     protected function casts(): array
@@ -66,6 +69,7 @@ class BusinessSubscription extends Model
             'allow_activity_log' => 'boolean',
             'allowed_permissions' => 'array',
             'cancelled_at' => 'datetime',
+            'cancel_requested_at' => 'datetime',
         ];
     }
 
@@ -103,6 +107,17 @@ class BusinessSubscription extends Model
     public function planRequest()
     {
         return $this->hasOne(SubscriptionPlanRequest::class, 'business_subscription_id');
+    }
+
+    /** The shop asked to stop at the end of this period. */
+    public function isEndingByShopRequest(): bool
+    {
+        return $this->cancel_requested_at !== null && ! $this->cancelled_at;
+    }
+
+    public function cancelRequestedBy()
+    {
+        return $this->belongsTo(User::class, 'cancel_requested_by_user_id');
     }
 
     /** Started from an approved upgrade request. */
@@ -144,6 +159,7 @@ class BusinessSubscription extends Model
 
         return match (true) {
             (bool) $this->cancelled_at => ['cancelled', 'Cancelled', 'danger', 'fa-ban'],
+            $this->isEndingByShopRequest() && ! $this->ends_on->isBefore(now()->startOfDay()) => ['ending', 'Ends '.$this->ends_on->format('d M'), 'warning', 'fa-door-open'],
             $this->starts_on->isAfter(now()->endOfDay()) => ['upcoming', 'Upcoming', 'primary', 'fa-hourglass-start'],
             default => match ($this->state()) {
                 'expired' => ['expired', 'Expired', 'secondary', 'fa-history'],

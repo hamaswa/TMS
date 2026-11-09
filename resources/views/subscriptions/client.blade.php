@@ -129,7 +129,26 @@
                 </div>
                 <div><div class="small text-muted">بقایا رقم</div><div class="h4 mb-0">روپے {{ number_format($currentSubscription->balanceDue()) }}</div></div>
             </div>
-            @if($state === 'expiring')<div class="alert alert-warning mt-3 mb-0">آپ کی سبسکرپشن {{ $currentSubscription->daysRemaining() }} دن میں ختم ہوگی۔ تجدید کے لیے نیچے سے پلان منتخب کریں۔</div>@endif
+            @if($currentSubscription->isEndingByShopRequest() && $state !== 'expired')
+                {{-- The owner cancelled: the plan runs to its end date, then stops. --}}
+                <div class="alert alert-warning mt-3 mb-0 d-flex flex-wrap justify-content-between align-items-center" style="gap:.75rem" role="status">
+                    <div>
+                        <strong><i class="fas fa-door-open" aria-hidden="true"></i> آپ نے سبسکرپشن منسوخ کر دی ہے۔</strong>
+                        <div>آپ کا پلان {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} تک ({{ $currentSubscription->daysRemaining() }} دن) چلتا رہے گا، اس کے بعد بند ہو جائے گا۔ آپ کا ڈیٹا محفوظ رہے گا۔</div>
+                        @if($currentSubscription->cancel_request_reason)<div class="small text-muted mt-1">وجہ: {{ $currentSubscription->cancel_request_reason }}</div>@endif
+                    </div>
+                    <form method="POST" action="{{ route('admin.subscription.cancel.undo') }}">@csrf @method('DELETE')
+                        <button class="btn btn-success btn-sm"><i class="fas fa-undo" aria-hidden="true"></i> منسوخی واپس لیں</button>
+                    </form>
+                </div>
+            @else
+                @if($state === 'expiring')<div class="alert alert-warning mt-3 mb-0">آپ کی سبسکرپشن {{ $currentSubscription->daysRemaining() }} دن میں ختم ہوگی۔ تجدید کے لیے نیچے سے پلان منتخب کریں۔</div>@endif
+                @if(in_array($state, ['active', 'expiring'], true))
+                    <div class="text-left mt-3">
+                        <button type="button" class="btn btn-link btn-sm text-danger p-0" data-toggle="modal" data-target="#cancel-plan-modal"><i class="fas fa-times-circle" aria-hidden="true"></i> سبسکرپشن منسوخ کریں</button>
+                    </div>
+                @endif
+            @endif
             @if($state === 'expired')<div class="alert alert-danger mt-3 mb-0">آپ کی سبسکرپشن کی میعاد ختم ہو چکی ہے۔ آپ کا کاروباری ڈیٹا محفوظ ہے؛ تجدید کے لیے نیچے سے پلان منتخب کریں۔</div>@endif
         </div>
     @endif
@@ -240,6 +259,57 @@
     </table></div></div>
 </div></section>
 
+@if($currentSubscription && in_array($currentSubscription->state(), ['active', 'expiring'], true) && ! $currentSubscription->isEndingByShopRequest())
+    <div class="modal fade" id="cancel-plan-modal" tabindex="-1" role="dialog" aria-labelledby="cancel-plan-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <form class="modal-content" method="POST" action="{{ route('admin.subscription.cancel') }}" style="border:0;border-radius:1rem;overflow:hidden">@csrf
+                <div class="modal-header text-white border-0" style="background:linear-gradient(120deg,#b91c1c,#ef4444)">
+                    <h5 class="modal-title" id="cancel-plan-title"><i class="fas fa-door-open" aria-hidden="true"></i> سبسکرپشن منسوخ کریں</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">آپ کا پلان <strong>{{ $currentSubscription->plan_name }}</strong> <strong>{{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }}</strong> تک چلتا رہے گا۔ اس کے بعد:</p>
+                    <ul class="small mb-3">
+                        <li>پلان کی تجدید نہیں ہوگی اور ایپ کا استعمال رک جائے گا۔</li>
+                        <li>آپ کا سارا ڈیٹا (گاہک، آرڈر، اسٹاک) محفوظ رہے گا۔ دوبارہ پلان لینے پر سب واپس مل جائے گا۔</li>
+                        <li>ادا شدہ رقم واپس نہیں ہوگی۔</li>
+                        <li>تاریخ سے پہلے آپ منسوخی واپس لے سکتے ہیں۔</li>
+                    </ul>
+                    <div class="form-group">
+                        <label for="cancel_reason" class="font-weight-bold">منسوخی کی وجہ</label>
+                        <select class="form-control mb-2" id="cancel_reason_pick" aria-label="عام وجوہات">
+                            <option value="">وجہ منتخب کریں یا نیچے لکھیں…</option>
+                            <option>قیمت زیادہ ہے</option>
+                            <option>کاروبار بند کر رہے ہیں</option>
+                            <option>ضرورت کی سہولت موجود نہیں</option>
+                            <option>کوئی اور ایپ استعمال کریں گے</option>
+                            <option>استعمال میں مشکل ہے</option>
+                        </select>
+                        <textarea id="cancel_reason" name="cancel_reason" class="form-control @error('cancel_reason') is-invalid @enderror" rows="2" minlength="3" maxlength="1000" required>{{ old('cancel_reason') }}</textarea>
+                        @error('cancel_reason')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="cancel_confirm" name="cancel_confirm" value="1" required>
+                        <label class="custom-control-label" for="cancel_confirm">میں سمجھتا/سمجھتی ہوں کہ {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} کے بعد پلان بند ہو جائے گا۔</label>
+                        @error('cancel_confirm')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-dismiss="modal">پلان جاری رکھیں</button>
+                    <button class="btn btn-danger"><i class="fas fa-door-open" aria-hidden="true"></i> سبسکرپشن منسوخ کریں</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @push('scripts')
+    <script>
+        $(function () {
+            $('#cancel_reason_pick').on('change', function () { if (this.value) { $('#cancel_reason').val(this.value); } });
+            @if($errors->hasAny(['cancel_reason', 'cancel_confirm']))$('#cancel-plan-modal').modal('show');@endif
+        });
+    </script>
+    @endpush
+@endif
 @if($planGroups->isNotEmpty())
     @php($oldPayPlan = old('plan_id') ? $planGroups->flatMap(fn ($group) => $group['plans'])->firstWhere('id', (int) old('plan_id')) : null)
     <div class="modal fade" id="pay-modal" tabindex="-1" role="dialog" aria-labelledby="pay-modal-title" aria-hidden="true">

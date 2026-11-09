@@ -203,6 +203,8 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
 Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', 'password.changed', 'role:shop_owner'], 'as' => 'admin.'], function () {
     Route::get('/subscription', [ClientSubscriptionController::class, 'index'])->name('subscription.index');
     Route::post('/subscription/plans/{plan}/request', [ClientSubscriptionController::class, 'requestPlan'])->name('subscription.request');
+    Route::post('/subscription/cancel', [ClientSubscriptionController::class, 'cancel'])->name('subscription.cancel');
+    Route::delete('/subscription/cancel', [ClientSubscriptionController::class, 'undoCancel'])->name('subscription.cancel.undo');
     Route::get('/subscription-required', [ClientSubscriptionController::class, 'required'])->name('subscription.required');
     Route::get('/notifications', [NotificationController::class, 'showNotifications'])->name('notifications.index');
     Route::post('/mark-as-read/{id}', [NotificationController::class, 'readNotifications'])->name('notification.read');

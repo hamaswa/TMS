@@ -37,6 +37,8 @@
     .sub-note { margin-top: .6rem; padding: .45rem .7rem; border-radius: .5rem; font-size: .85rem; }
     .sub-note-upgrade { background: #f5f3ff; color: #5b21b6; }
     .sub-note-info { background: #e0f2fe; color: #075985; }
+    .sub-note-ending { background: #fef3c7; color: #92400e; }
+    .sub-item.is-ending .sub-card { border-left: 4px solid #f59e0b; }
     .sub-note-danger { background: #fee2e2; color: #991b1b; }
     .sub-limits { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
     .sub-limits span { padding: .15rem .55rem; border-radius: 999px; background: #f1f5f9; color: #475569; font-size: .78rem; }
@@ -150,7 +152,7 @@
                     <button class="btn btn-primary">Create subscription</button>
                 </form>
                 <div class="sub-history-head"><h6 class="mb-0">Subscription history</h6>
-                    <div class="sub-legend small text-muted"><span><i class="dot bg-success"></i>Active</span><span><i class="dot bg-primary"></i>Upcoming</span><span><i class="dot bg-info"></i>Upgraded away</span><span><i class="dot bg-danger"></i>Cancelled</span><span><i class="dot bg-secondary"></i>Expired</span></div>
+                    <div class="sub-legend small text-muted"><span><i class="dot bg-success"></i>Active</span><span><i class="dot bg-primary"></i>Upcoming</span><span><i class="dot bg-warning"></i>Cancelled by shop (ending)</span><span><i class="dot bg-info"></i>Upgraded away</span><span><i class="dot bg-danger"></i>Cancelled</span><span><i class="dot bg-secondary"></i>Expired</span></div>
                 </div>
                 <div class="sub-timeline">
                 @forelse($subscriptions as $subscription)
@@ -178,6 +180,9 @@
 
                             @if($subscription->isUpgrade() && $subscription->planRequest?->upgrade_reason)
                                 <div class="sub-note sub-note-upgrade"><i class="fas fa-arrow-up" aria-hidden="true"></i> <strong>Upgrade reason:</strong> {{ $subscription->planRequest->upgrade_reason }}</div>
+                            @endif
+                            @if($subscription->isEndingByShopRequest())
+                                <div class="sub-note sub-note-ending"><i class="fas fa-door-open" aria-hidden="true"></i> <strong>Cancelled by the shop</strong> on {{ $subscription->cancel_requested_at->format('d M Y') }}@if($subscription->cancelRequestedBy) by {{ $subscription->cancelRequestedBy->name }}@endif — runs until {{ $subscription->ends_on->format('d M Y') }}, then stops. @if($subscription->cancel_request_reason)<br><strong>Reason:</strong> {{ $subscription->cancel_request_reason }}@endif</div>
                             @endif
                             @if($statusKey === 'upgraded')
                                 <div class="sub-note sub-note-info"><i class="fas fa-level-up-alt" aria-hidden="true"></i> {{ $subscription->upgradeReplacedNote() }}</div>

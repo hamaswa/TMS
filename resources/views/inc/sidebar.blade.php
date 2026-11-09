@@ -411,6 +411,12 @@
                             class="fas fa-users-cog"></i></span><span class="tms-side-label">ٹیم اور کاریگر</span></a>
             @endif
             @if (Auth::user()->isBusinessOwner())
+                {{-- Every shop owner (tailoring, clothing or both) can see and change their plan. --}}
+                @php($sidePlan = Auth::user()->business?->currentSubscription())
+                <a class="tms-side-link {{ request()->routeIs('admin.subscription.*') ? 'is-active' : '' }}"
+                    href="{{ route('admin.subscription.index') }}" data-side-plan
+                    title="{{ $sidePlan ? $sidePlan->plan_name.' · '.$sidePlan->daysRemaining().' دن باقی' : 'پلان منتخب کریں' }}"><span class="tms-side-icon"><i
+                            class="fas fa-crown" style="{{ $sidePlan ? 'color:#fbbf24' : '' }}"></i></span><span class="tms-side-label">میرا پلان@if ($sidePlan)<small class="d-block" style="font-size:.72rem;opacity:.8" dir="ltr">{{ $sidePlan->plan_name }}</small>@else<small class="d-block text-warning" style="font-size:.72rem">کوئی پلان نہیں</small>@endif</span></a>
                 <a class="tms-side-link {{ request()->routeIs('admin.setting.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.setting.index') }}"><span class="tms-side-icon"><i
                             class="fas fa-cog"></i></span><span class="tms-side-label">سیٹنگز</span></a>
