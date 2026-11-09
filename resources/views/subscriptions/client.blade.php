@@ -36,7 +36,7 @@
     .pay-head { position: relative; flex: 0 0 auto; padding: 1rem 1.5rem 1.9rem; background: linear-gradient(120deg, #1546b8 0%, #2563eb 55%, #3b82f6 100%); color: #fff; overflow: hidden; }
     .pay-head::after { content: ""; position: absolute; inset-inline: -5%; bottom: -26px; height: 44px; background: #fff; border-radius: 50% 50% 0 0 / 100% 100% 0 0; }
     .pay-head .pay-rocket { position: absolute; inset-inline-end: 1.75rem; top: .7rem; font-size: 2.2rem; color: #fff; transform: rotate(-12deg); text-shadow: 0 6px 16px rgba(0, 0, 0, .25); }
-    .pay-head h5 { position: relative; z-index: 1; margin: 0; font-size: 1.5rem; font-weight: 700; text-align: center; padding-inline: 3rem; }
+    .pay-head h5 { position: relative; z-index: 1; margin: 0; color: #fff; font-size: 1.5rem; font-weight: 700; text-align: center; padding-inline: 3rem; }
     .pay-head .pay-close { position: absolute; z-index: 2; inset-inline-start: .9rem; top: .75rem; width: 2.3rem; height: 2.3rem; border: 0; border-radius: 50%; background: #fff; color: #1d4ed8; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); }
     .pay-head .pay-close:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 2px; }
     #pay-modal .modal-body { padding: .25rem 1.5rem 1rem; }
@@ -89,6 +89,39 @@
         .pay-price strong { font-size: 2.1rem; }
         .pay-account { flex-direction: column; text-align: center; }
         .pay-account .pay-details { padding-inline-start: 0; border-inline-start: 0; }
+    }
+    /* Cancel subscription popup */
+    #cancel-plan-modal .modal-dialog { max-width: 600px; }
+    #cancel-plan-modal .modal-content { border: 0; border-radius: 1.25rem; overflow: hidden; box-shadow: 0 24px 60px rgba(16, 42, 67, .35); background: #fff; }
+    #cancel-plan-modal .pay-head h5 { font-size: 1.45rem; }
+    #cancel-plan-modal .cancel-subtitle { position: relative; z-index: 1; margin: .35rem 0 0; padding-inline: 3rem; text-align: center; font-size: .92rem; color: #dbeafe; }
+    #cancel-plan-modal .modal-body { padding: .25rem 1.5rem .75rem; }
+    .cancel-plan-card { padding: .6rem 1rem; margin-bottom: .75rem; border-radius: 1rem; background: #e8f0fe; text-align: center; }
+    .cancel-plan-name { font-size: 1.15rem; font-weight: 700; color: #1e3a8a; }
+    .cancel-plan-name .fa-crown { color: #f5b301; margin-inline-end: .25rem; }
+    .cancel-plan-card .pay-price { padding: 0; margin: .15rem 0 0; border: 0; }
+    .cancel-plan-card .pay-price strong { font-size: 2.1rem; }
+    #cancel-plan-modal .cancel-points { margin-bottom: .75rem; }
+    #cancel-plan-modal .cancel-points li { font-size: .9rem; align-items: flex-start; }
+    #cancel-plan-modal .cancel-points li i { margin-top: .3rem; }
+    .cancel-label { margin-bottom: .4rem; font-weight: 700; font-size: .95rem; color: #1f2937; }
+    .cancel-reasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; margin-bottom: .5rem; }
+    .cancel-reason { position: relative; display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 2.5rem; margin: 0; padding: .3rem .75rem; border: 1px solid #dbe7fb; border-radius: .75rem; background: #f5f8ff; font-size: .86rem; cursor: pointer; }
+    .cancel-reason input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .cancel-reason i { flex: 0 0 auto; color: #16a34a; visibility: hidden; }
+    .cancel-reason:has(input:checked) { border-color: #16a34a; background: #f0fdf4; box-shadow: 0 0 0 1px #16a34a; }
+    .cancel-reason:has(input:checked) i { visibility: visible; }
+    .cancel-reason:has(input:focus-visible) { outline: 2px solid #2563eb; outline-offset: 2px; }
+    #cancel_reason { border-radius: .75rem; font-size: .9rem; resize: vertical; }
+    .cancel-confirm { margin-top: .6rem; font-size: .88rem; }
+    #cancel-plan-modal .modal-footer { justify-content: center; gap: .75rem; border-top: 0; padding: .4rem 1.5rem 1.1rem; background: linear-gradient(180deg, #fff 0%, #e6efff 100%); }
+    #cancel-plan-modal .modal-footer > * { margin: 0; }
+    .cancel-submit { flex: 1 1 58%; padding: .7rem 1.25rem; border: 0; border-radius: 999px; font-size: 1.05rem; font-weight: 700; color: #fff; background: linear-gradient(180deg, #2f80ff 0%, #1565e0 100%); box-shadow: 0 6px 16px rgba(21, 101, 224, .35); }
+    .cancel-submit:hover, .cancel-submit:focus { color: #fff; filter: brightness(1.05); }
+    .cancel-keep { flex: 1 1 32%; padding: .7rem 1rem; border: 1px solid #e2e8f0; border-radius: 999px; background: #f8fafc; color: #1f2937; font-size: 1rem; }
+    @media (max-width: 575.98px) {
+        .cancel-reasons { grid-template-columns: minmax(0, 1fr); }
+        #cancel-plan-modal .modal-footer { flex-direction: column-reverse; align-items: stretch; }
     }
 </style>
 @endpush
@@ -260,43 +293,57 @@
 </div></section>
 
 @if($currentSubscription && in_array($currentSubscription->state(), ['active', 'expiring'], true) && ! $currentSubscription->isEndingByShopRequest())
+    @php($cancelDays = (int) ($currentSubscription->plan?->billing_period_days ?? ($currentSubscription->starts_on->diffInDays($currentSubscription->ends_on) + 1)))
+    @php($cancelEnd = \App\Support\DisplayDate::long($currentSubscription->ends_on))
     <div class="modal fade" id="cancel-plan-modal" tabindex="-1" role="dialog" aria-labelledby="cancel-plan-title" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <form class="modal-content" method="POST" action="{{ route('admin.subscription.cancel') }}" style="border:0;border-radius:1rem;overflow:hidden">@csrf
-                <div class="modal-header text-white border-0" style="background:linear-gradient(120deg,#b91c1c,#ef4444)">
-                    <h5 class="modal-title" id="cancel-plan-title"><i class="fas fa-door-open" aria-hidden="true"></i> سبسکرپشن منسوخ کریں</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="بند کریں"><span aria-hidden="true">&times;</span></button>
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+            <form class="modal-content" method="POST" action="{{ route('admin.subscription.cancel') }}">@csrf
+                <div class="pay-head">
+                    <i class="fas fa-rocket pay-rocket" aria-hidden="true"></i>
+                    <h5 id="cancel-plan-title">سبسکرپشن منسوخ کریں</h5>
+                    <p class="cancel-subtitle">آپ کا پلان {{ $cancelEnd }} تک چلتا رہے گا</p>
+                    <button type="button" class="pay-close" data-dismiss="modal" aria-label="بند کریں"><i class="fas fa-times" aria-hidden="true"></i></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-2">آپ کا پلان <strong>{{ $currentSubscription->plan_name }}</strong> <strong>{{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }}</strong> تک چلتا رہے گا۔ اس کے بعد:</p>
-                    <ul class="small mb-3">
-                        <li>پلان کی تجدید نہیں ہوگی اور ایپ کا استعمال رک جائے گا۔</li>
-                        <li>آپ کا سارا ڈیٹا (گاہک، آرڈر، اسٹاک) محفوظ رہے گا۔ دوبارہ پلان لینے پر سب واپس مل جائے گا۔</li>
-                        <li>ادا شدہ رقم واپس نہیں ہوگی۔</li>
-                        <li>تاریخ سے پہلے آپ منسوخی واپس لے سکتے ہیں۔</li>
+                    <div class="cancel-plan-card">
+                        <div class="cancel-plan-name"><i class="fas fa-crown" aria-hidden="true"></i> <span dir="ltr" translate="no">{{ $currentSubscription->plan_name }}</span></div>
+                        <div class="pay-price">
+                            <span>روپے</span>
+                            <strong dir="ltr">{{ number_format((float) $currentSubscription->fee) }}</strong>
+                            <span>/ {{ $periodName($cancelDays) }}</span>
+                        </div>
+                    </div>
+
+                    <ul class="pay-features cancel-points">
+                        <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>{{ $cancelEnd }} کے بعد پلان کی تجدید نہیں ہوگی اور ایپ کا استعمال رک جائے گا</span></li>
+                        <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>آپ کا سارا ڈیٹا محفوظ رہے گا اور دوبارہ پلان لینے پر واپس مل جائے گا</span></li>
+                        <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>ادا شدہ رقم واپس نہیں ہوگی</span></li>
+                        <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>تاریخ سے پہلے آپ منسوخی واپس لے سکتے ہیں</span></li>
                     </ul>
-                    <div class="form-group">
-                        <label for="cancel_reason" class="font-weight-bold">منسوخی کی وجہ</label>
-                        <select class="form-control mb-2" id="cancel_reason_pick" aria-label="عام وجوہات">
-                            <option value="">وجہ منتخب کریں یا نیچے لکھیں…</option>
-                            <option>قیمت زیادہ ہے</option>
-                            <option>کاروبار بند کر رہے ہیں</option>
-                            <option>ضرورت کی سہولت موجود نہیں</option>
-                            <option>کوئی اور ایپ استعمال کریں گے</option>
-                            <option>استعمال میں مشکل ہے</option>
-                        </select>
-                        <textarea id="cancel_reason" name="cancel_reason" class="form-control @error('cancel_reason') is-invalid @enderror" rows="2" minlength="3" maxlength="1000" required>{{ old('cancel_reason') }}</textarea>
-                        @error('cancel_reason')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+
+                    <div class="cancel-label">منسوخی کی وجہ منتخب کریں</div>
+                    <div class="cancel-reasons" role="group" aria-label="منسوخی کی وجہ">
+                        @foreach(['قیمت زیادہ ہے', 'کاروبار بند کر رہے ہیں', 'ضرورت کی سہولت موجود نہیں', 'کوئی اور ایپ استعمال کریں گے', 'استعمال میں مشکل ہے', 'کوئی اور وجہ'] as $pick)
+                            <label class="cancel-reason">
+                                <input type="radio" name="cancel_reason_pick" value="{{ $loop->last ? '' : $pick }}">
+                                <span>{{ $pick }}</span>
+                                <i class="fas fa-check-circle" aria-hidden="true"></i>
+                            </label>
+                        @endforeach
                     </div>
-                    <div class="custom-control custom-checkbox">
+                    <label for="cancel_reason" class="sr-only">منسوخی کی وجہ</label>
+                    <textarea id="cancel_reason" name="cancel_reason" class="form-control @error('cancel_reason') is-invalid @enderror" rows="2" minlength="3" maxlength="1000" required placeholder="وجہ یہاں لکھیں…">{{ old('cancel_reason') }}</textarea>
+                    @error('cancel_reason')<div class="pay-error" role="alert">{{ $message }}</div>@enderror
+
+                    <div class="custom-control custom-checkbox cancel-confirm">
                         <input type="checkbox" class="custom-control-input" id="cancel_confirm" name="cancel_confirm" value="1" required>
-                        <label class="custom-control-label" for="cancel_confirm">میں سمجھتا/سمجھتی ہوں کہ {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} کے بعد پلان بند ہو جائے گا۔</label>
-                        @error('cancel_confirm')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        <label class="custom-control-label" for="cancel_confirm">مجھے معلوم ہے کہ {{ $cancelEnd }} کے بعد پلان بند ہو جائے گا۔</label>
                     </div>
+                    @error('cancel_confirm')<div class="pay-error text-center" role="alert">{{ $message }}</div>@enderror
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light" data-dismiss="modal">پلان جاری رکھیں</button>
-                    <button class="btn btn-danger"><i class="fas fa-door-open" aria-hidden="true"></i> سبسکرپشن منسوخ کریں</button>
+                <div class="modal-footer">
+                    <button class="btn cancel-submit">منسوخی کی تصدیق کریں <i class="fas fa-arrow-left" aria-hidden="true"></i></button>
+                    <button type="button" class="btn cancel-keep" data-dismiss="modal"><i class="fas fa-times" aria-hidden="true"></i> پلان جاری رکھیں</button>
                 </div>
             </form>
         </div>
@@ -304,7 +351,7 @@
     @push('scripts')
     <script>
         $(function () {
-            $('#cancel_reason_pick').on('change', function () { if (this.value) { $('#cancel_reason').val(this.value); } });
+            $('[name=cancel_reason_pick]').on('change', function () { $('#cancel_reason').val(this.value); if (!this.value) { $('#cancel_reason').trigger('focus'); } });
             @if($errors->hasAny(['cancel_reason', 'cancel_confirm']))$('#cancel-plan-modal').modal('show');@endif
         });
     </script>
