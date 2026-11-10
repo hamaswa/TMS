@@ -69,7 +69,7 @@
                     $('<span class="badge">').addClass(request.upgrade ? 'badge-success' : 'badge-primary')
                         .text(request.upgrade ? 'Upgrade' : 'New subscription').appendTo(head);
                     if (request.reference) {
-                        $('<div class="small mt-1">').text('TID: ').append($('<code>').text(request.reference)).appendTo(li);
+                        $('<div class="small mt-1">').text((request.method ? request.method + ' · ' : '') + 'TID: ').append($('<code>').text(request.reference)).appendTo(li);
                     }
                     if (request.reason) {
                         $('<div class="small mt-1">').text('Reason: ' + request.reason).appendTo(li);

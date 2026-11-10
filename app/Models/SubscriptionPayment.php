@@ -15,6 +15,7 @@ class SubscriptionPayment extends Model
         'easypaisa' => 'EasyPaisa',
         'jazzcash' => 'JazzCash',
         'raast' => 'Raast',
+        'sadapay' => 'SadaPay',
         'other' => 'Other',
     ];
 
@@ -24,6 +25,7 @@ class SubscriptionPayment extends Model
         'easypaisa' => 'ایزی پیسہ',
         'jazzcash' => 'جاز کیش',
         'raast' => 'راست',
+        'sadapay' => 'سادہ پے',
         'other' => 'دیگر',
     ];
 

@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\PlatformSetting;
 use App\Models\SubscriptionPlan;
+use App\Models\SubscriptionPlanRequest;
 use App\Services\ShopSubscriptionCancellationService;
 use App\Services\SubscriptionPlanRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ClientSubscriptionController extends Controller
@@ -55,12 +57,15 @@ class ClientSubscriptionController extends Controller
         $validator = Validator::make($request->all(), [
             'upgrade_reason' => [$upgrading ? 'required' : 'nullable', 'string', 'min:5', 'max:1000'],
             // Easypaisa/JazzCash IDs are digits; SadaPay/Raast IDs look like RAAST-45372891.
+            'payment_method' => [$paying ? 'required' : 'nullable', Rule::in(array_keys(SubscriptionPlanRequest::ONLINE_METHODS))],
             'payment_reference' => [$paying ? 'required' : 'nullable', 'string', 'min:6', 'max:40', 'regex:/^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/'],
             'payment_proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], [
             'upgrade_reason.required' => 'پلان اپ گریڈ کرنے کی وجہ لکھیں۔',
             'upgrade_reason.min' => 'اپ گریڈ کی وجہ تھوڑی تفصیل سے لکھیں۔',
             'upgrade_reason.max' => 'اپ گریڈ کی وجہ 1000 حروف سے زیادہ نہیں ہو سکتی۔',
+            'payment_method.required' => 'ادائیگی کا طریقہ منتخب کریں۔',
+            'payment_method.in' => 'ادائیگی کا درست طریقہ منتخب کریں۔',
             'payment_reference.required' => 'ادائیگی کی ٹرانزیکشن آئی ڈی درج کریں۔',
             'payment_reference.min' => 'ٹرانزیکشن آئی ڈی کم از کم 6 حروف کی ہوتی ہے۔',
             'payment_reference.max' => 'ٹرانزیکشن آئی ڈی 40 حروف سے زیادہ نہیں ہو سکتی۔',
@@ -87,6 +92,7 @@ class ClientSubscriptionController extends Controller
                 $paying ? $request->input('payment_reference') : null,
                 $paying ? $request->file('payment_proof') : null,
                 $upgrading ? trim((string) $request->input('upgrade_reason')) : null,
+                $paying ? $request->input('payment_method') : null,
             );
         } catch (ValidationException $exception) {
             return $toPlans->withErrors($exception->errors())->withInput($request->except('payment_proof'))->with('proof_reattach', $proofAttached);

@@ -30,6 +30,7 @@ class SubscriptionPlanRequestService
         ?string $reference,
         ?UploadedFile $proof,
         ?string $upgradeReason = null,
+        ?string $method = null,
     ): SubscriptionPlanRequest {
         $reference = $reference !== null ? strtoupper(trim($reference)) : null;
         if ($reference && $this->referenceAlreadyUsed($reference)) {
@@ -41,7 +42,7 @@ class SubscriptionPlanRequestService
         $stored = $proof ? $this->storeProof($proof, $business) : [];
 
         try {
-            return DB::transaction(function () use ($business, $owner, $plan, $reference, $stored, $upgradeReason) {
+            return DB::transaction(function () use ($business, $owner, $plan, $reference, $stored, $upgradeReason, $method) {
                 Business::query()->lockForUpdate()->findOrFail($business->id);
                 // One open request per shop: a new choice replaces the previous one.
                 $business->planRequests()->pending()->get()
@@ -53,7 +54,7 @@ class SubscriptionPlanRequestService
                     'upgrade_reason' => $upgradeReason,
                     'requested_by_user_id' => $owner->id,
                     'amount' => $plan->price,
-                    'payment_method' => $reference ? SubscriptionPlanRequest::METHOD_EASYPAISA : null,
+                    'payment_method' => $reference ? ($method ?? SubscriptionPlanRequest::METHOD_EASYPAISA) : null,
                     'payment_reference' => $reference,
                     ...$stored,
                     'status' => SubscriptionPlanRequest::STATUS_PENDING,
@@ -208,7 +209,7 @@ class SubscriptionPlanRequestService
             ->exists()
             || DB::table('subscription_payments')
                 ->whereNull('reversed_at')
-                ->where('payment_method', SubscriptionPlanRequest::METHOD_EASYPAISA)
+                ->whereIn('payment_method', array_keys(SubscriptionPlanRequest::ONLINE_METHODS))
                 ->where('reference', $reference)
                 ->exists();
     }

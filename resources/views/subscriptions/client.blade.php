@@ -54,6 +54,14 @@
     .pay-upgrade { margin-top: .9rem; text-align: start; }
     .pay-upgrade label { font-weight: 700; color: #166534; font-size: .92rem; margin-bottom: .3rem; }
     .pay-upgrade .form-control { border-radius: .75rem; font-size: .92rem; resize: vertical; }
+    .pay-methods { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .35rem; }
+    .pay-method { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; min-height: 3.3rem; margin: 0; padding: .3rem .2rem; border: 1px solid #dbe7fb; border-radius: .7rem; background: #f8fbff; color: #1e3a8a; font-size: .78rem; text-align: center; cursor: pointer; }
+    .pay-method input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .pay-method i { font-size: 1.05rem; color: #2563eb; }
+    .pay-method:has(input:checked) { border-color: #16a34a; background: #f0fdf4; box-shadow: 0 0 0 1px #16a34a; color: #166534; }
+    .pay-method:has(input:checked) i { color: #16a34a; }
+    .pay-method:has(input:focus-visible) { outline: 2px solid #2563eb; outline-offset: 2px; }
+    @media (max-width: 575.98px) { .pay-methods { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     .pay-error { margin-top: .35rem; color: #b91c1c; font-size: .85rem; font-weight: 600; }
     .pay-account { display: flex; align-items: center; gap: 1rem; padding: .8rem; margin-bottom: .8rem; border: 1px solid #dbe7fb; border-radius: 1rem; background: #eff5ff; }
     .pay-account .pay-qr { flex: 0 0 auto; padding: .35rem; border-radius: .75rem; background: #fff; text-align: center; box-shadow: 0 2px 8px rgba(16, 42, 67, .08); }
@@ -407,7 +415,19 @@
                         </div>
                     </div>
 
-                    <label for="payment_reference" class="pay-hint d-block"><i class="fas fa-info-circle" aria-hidden="true"></i> رقم بھیجنے کے بعد ایپ یا ایس ایم ایس سے ٹرانزیکشن آئی ڈی (TID) درج کریں — ایزی پیسہ، جاز کیش، سادہ پے یا راست</label>
+                    <div class="pay-hint mb-1">آپ نے ادائیگی کس طریقے سے کی؟</div>
+                    <div class="pay-methods" role="radiogroup" aria-label="ادائیگی کا طریقہ">
+                        @foreach(\App\Models\SubscriptionPlanRequest::ONLINE_METHODS as $methodKey => [$methodLabel, $methodIcon])
+                            <label class="pay-method">
+                                <input type="radio" name="payment_method" value="{{ $methodKey }}" required @checked(old('payment_method') === $methodKey)>
+                                <i class="fas {{ $methodIcon }}" aria-hidden="true"></i>
+                                <span>{{ $methodLabel }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('payment_method')<div class="pay-error" role="alert">{{ $message }}</div>@enderror
+
+                    <label for="payment_reference" class="pay-hint d-block mt-2"><i class="fas fa-info-circle" aria-hidden="true"></i> رقم بھیجنے کے بعد ایپ یا ایس ایم ایس سے ٹرانزیکشن آئی ڈی (TID) درج کریں</label>
                     <div class="pay-tid">
                         <input id="payment_reference" name="payment_reference" class="form-control @error('payment_reference') is-invalid @enderror" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" required placeholder="e.g. 12345678901 / RAAST-45372891" value="{{ old('payment_reference') }}">
                         <i class="fas fa-mobile-alt" aria-hidden="true"></i>
@@ -477,6 +497,7 @@
         };
         $(document).on('click', '[data-pay-plan]', function () {
             $('#payment_reference, #upgrade_reason').val('').removeClass('is-invalid');
+            $('[name=payment_method]').prop('checked', false);
             $('#payment_proof').val('').trigger('change');
             $('#pay-modal .pay-error').remove();
             $('#pay-modal .is-invalid').removeClass('is-invalid');

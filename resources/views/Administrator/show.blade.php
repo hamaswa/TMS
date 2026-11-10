@@ -123,7 +123,8 @@
                                     <dt class="col-5">Plan</dt><dd class="col-7">{{ $planRequest->plan?->name }}@if($planRequest->is_upgrade) <span class="badge badge-success"><i class="fas fa-arrow-up"></i> Upgrade</span>@endif</dd>
                                     @if($planRequest->upgrade_reason)<dt class="col-5">Upgrade reason</dt><dd class="col-7" style="white-space:pre-line">{{ $planRequest->upgrade_reason }}</dd>@endif
                                     <dt class="col-5">Amount</dt><dd class="col-7"><strong>Rs {{ number_format((float) $planRequest->amount) }}</strong></dd>
-                                    <dt class="col-5">Easypaisa TID</dt><dd class="col-7">@if($planRequest->payment_reference)<code class="h6">{{ $planRequest->payment_reference }}</code>@else<span class="text-muted">Not paid yet (plan request only)</span>@endif</dd>
+                                    <dt class="col-5">Paid with</dt><dd class="col-7">@if($planRequest->payment_method)<span class="badge badge-info">{{ \App\Models\SubscriptionPayment::METHODS[$planRequest->payment_method] ?? $planRequest->payment_method }}</span>@else<span class="text-muted">—</span>@endif</dd>
+                                    <dt class="col-5">Transaction ID</dt><dd class="col-7">@if($planRequest->payment_reference)<code class="h6">{{ $planRequest->payment_reference }}</code>@else<span class="text-muted">Not paid yet (plan request only)</span>@endif</dd>
                                     <dt class="col-5">Sent</dt><dd class="col-7">{{ $planRequest->created_at->format('d M Y, h:i A') }} by {{ $planRequest->requestedBy?->name ?? 'shop owner' }}</dd>
                                 </dl>
                             </div>
@@ -134,7 +135,7 @@
                                 </a>
                             @endif
                         </div>
-                        <p class="small text-muted mt-3 mb-2">Check the TID against your Easypaisa SMS or app before approving. Approving starts the plan and records the payment.</p>
+                        <p class="small text-muted mt-3 mb-2">Check the transaction ID and amount in the app the shop paid with before approving. Approving starts the plan and records the payment.</p>
                         @if($rejectBag->any())<div class="alert alert-danger py-2 small">{{ $rejectBag->first() }}</div>@endif
                         <div class="d-flex flex-wrap align-items-start" style="gap:.5rem">
                             <form method="POST" action="{{ route('administrator.plan-requests.approve', $planRequest) }}" data-confirm="Approve this payment and start {{ $planRequest->plan?->name }}?">@csrf<button class="btn btn-success"><i class="fas fa-check"></i> Approve and activate</button></form>

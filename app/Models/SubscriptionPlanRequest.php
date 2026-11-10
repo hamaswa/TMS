@@ -17,6 +17,15 @@ class SubscriptionPlanRequest extends Model
 
     public const METHOD_EASYPAISA = 'easypaisa';
 
+    /** Ways a shop can pay online for a plan: [key => [Urdu label, icon]]. */
+    public const ONLINE_METHODS = [
+        'easypaisa' => ['ایزی پیسہ', 'fa-mobile-alt'],
+        'jazzcash' => ['جاز کیش', 'fa-wallet'],
+        'sadapay' => ['سادہ پے', 'fa-credit-card'],
+        'raast' => ['راست', 'fa-bolt'],
+        'bank_transfer' => ['بینک ٹرانسفر', 'fa-university'],
+    ];
+
     protected $fillable = [
         'business_id',
         'subscription_plan_id',
@@ -104,6 +113,7 @@ class SubscriptionPlanRequest extends Model
             'upgrade' => (bool) $this->is_upgrade,
             'amount' => number_format((float) $this->amount),
             'reference' => $this->payment_reference,
+            'method' => $this->payment_method ? (SubscriptionPayment::METHODS[$this->payment_method] ?? $this->payment_method) : null,
             'reason' => $this->upgrade_reason,
             'url' => $this->business ? route('administrator.clients.show', $this->business->owner_user_id).'#plan-request' : null,
         ];

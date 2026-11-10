@@ -93,7 +93,7 @@ class ShopPlanRequestTest extends TestCase
 
         $this->actingAs($owner)->post(route('admin.subscription.request', $plan), [
             'plan_id' => $plan->id,
-            'payment_reference' => ' 12345678901 ',
+            'payment_method' => 'easypaisa', 'payment_reference' => ' 12345678901 ',
             'payment_proof' => UploadedFile::fake()->image('receipt.png', 400, 800),
         ])->assertSessionHasNoErrors()->assertSessionHas('plan_requested');
 
@@ -141,7 +141,7 @@ class ShopPlanRequestTest extends TestCase
         // The same transaction ID cannot pay for a second plan.
         $this->actingAs($owner)->post(route('admin.subscription.request', $plan), [
             'plan_id' => $plan->id,
-            'payment_reference' => '12345678901',
+            'payment_method' => 'easypaisa', 'payment_reference' => '12345678901',
         ])->assertSessionHasErrors('payment_reference');
     }
 
@@ -151,7 +151,7 @@ class ShopPlanRequestTest extends TestCase
         $this->setUpEasypaisa();
         $plan = SubscriptionPlan::where('code', 'starter-tailoring-monthly')->firstOrFail();
 
-        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_reference' => 'ABC123456'])
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_method' => 'easypaisa', 'payment_reference' => 'ABC123456'])
             ->assertSessionHasNoErrors();
         $request = $business->pendingPlanRequest()->firstOrFail();
 
@@ -166,7 +166,7 @@ class ShopPlanRequestTest extends TestCase
             ->assertSee('آپ کی ادائیگی کی تصدیق نہیں ہو سکی۔')
             ->assertSee('TID not found');
 
-        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_reference' => 'ABC123456'])
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_method' => 'easypaisa', 'payment_reference' => 'ABC123456'])
             ->assertSessionHasNoErrors();
         $this->assertSame(1, $business->planRequests()->pending()->count());
     }
@@ -178,8 +178,8 @@ class ShopPlanRequestTest extends TestCase
         $starter = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
         $pro = SubscriptionPlan::where('code', 'business-pro-monthly')->firstOrFail();
 
-        $this->actingAs($owner)->post(route('admin.subscription.request', $starter), ['payment_reference' => '11111111111']);
-        $this->actingAs($owner)->post(route('admin.subscription.request', $pro), ['payment_reference' => '22222222222']);
+        $this->actingAs($owner)->post(route('admin.subscription.request', $starter), ['payment_method' => 'easypaisa', 'payment_reference' => '11111111111']);
+        $this->actingAs($owner)->post(route('admin.subscription.request', $pro), ['payment_method' => 'easypaisa', 'payment_reference' => '22222222222']);
         $this->assertSame(1, $business->planRequests()->pending()->count());
         $this->assertSame($pro->id, $business->pendingPlanRequest()->first()->subscription_plan_id);
         $this->assertSame(1, $business->planRequests()->where('status', SubscriptionPlanRequest::STATUS_CLOSED)->count());
@@ -200,11 +200,11 @@ class ShopPlanRequestTest extends TestCase
         $plan = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
 
         foreach (['RAAST 4537', 'RAAST--45372891', '-RAAST45372891', 'TID#123456'] as $bad) {
-            $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_reference' => $bad])
+            $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_method' => 'easypaisa', 'payment_reference' => $bad])
                 ->assertSessionHasErrors('payment_reference');
         }
 
-        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_reference' => 'raast-45372891'])
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_method' => 'easypaisa', 'payment_reference' => 'raast-45372891'])
             ->assertSessionHasNoErrors();
         $this->assertSame('RAAST-45372891', $business->pendingPlanRequest()->firstOrFail()->payment_reference);
     }
@@ -224,7 +224,7 @@ class ShopPlanRequestTest extends TestCase
         $old = $business->subscriptions()->firstOrFail();
 
         $this->actingAs($owner)->post(route('admin.subscription.request', $pro), [
-            'payment_reference' => 'RAAST-45372891',
+            'payment_method' => 'easypaisa', 'payment_reference' => 'RAAST-45372891',
             'upgrade_reason' => 'Need the online shop.',
         ])->assertSessionHasNoErrors();
         $this->actingAs($admin)->post(route('administrator.plan-requests.approve', $business->pendingPlanRequest()->firstOrFail()))
@@ -266,6 +266,36 @@ class ShopPlanRequestTest extends TestCase
         $this->assertTrue($owner->fresh()->hasModule(User::MODULE_CLOTHING));
     }
 
+    public function test_shop_picks_how_it_paid_and_the_payment_keeps_that_method(): void
+    {
+        [$admin, $owner, $business] = $this->accounts();
+        $this->setUpEasypaisa();
+        $plan = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+
+        $this->actingAs($owner)->get(route('admin.subscription.index'))
+            ->assertOk()
+            ->assertSee('name="payment_method" value="sadapay"', false)
+            ->assertSee('name="payment_method" value="bank_transfer"', false);
+
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_reference' => 'RAAST-55556666'])
+            ->assertSessionHasErrors('payment_method');
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_method' => 'cash', 'payment_reference' => 'RAAST-55556666'])
+            ->assertSessionHasErrors('payment_method');
+
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_method' => 'sadapay', 'payment_reference' => 'RAAST-55556666'])
+            ->assertSessionHasNoErrors();
+        $request = $business->pendingPlanRequest()->firstOrFail();
+        $this->assertSame('sadapay', $request->payment_method);
+        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))->assertSee('SadaPay');
+
+        $subscription = app(\App\Services\SubscriptionPlanRequestService::class)->approve($request, $admin);
+        $this->assertSame('sadapay', $subscription->payments()->firstOrFail()->payment_method);
+
+        // The same ID cannot be reused with another method.
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), ['payment_method' => 'raast', 'payment_reference' => 'RAAST-55556666'])
+            ->assertSessionHasErrors('payment_reference');
+    }
+
     public function test_receipt_stays_visible_to_super_admin_after_approval(): void
     {
         [$admin, $owner, $business] = $this->accounts();
@@ -274,12 +304,12 @@ class ShopPlanRequestTest extends TestCase
 
         // A form error drops the attached file, so the shop is asked to attach it again.
         $this->actingAs($owner)->post(route('admin.subscription.request', $plan), [
-            'payment_reference' => 'BAD ID',
+            'payment_method' => 'easypaisa', 'payment_reference' => 'BAD ID',
             'payment_proof' => UploadedFile::fake()->image('receipt.png', 300, 600),
         ])->assertSessionHas('proof_reattach', true);
 
         $this->actingAs($owner)->post(route('admin.subscription.request', $plan), [
-            'payment_reference' => 'RAAST-11112222',
+            'payment_method' => 'easypaisa', 'payment_reference' => 'RAAST-11112222',
             'payment_proof' => UploadedFile::fake()->image('receipt.png', 300, 600),
         ])->assertSessionHasNoErrors();
         $request = $business->pendingPlanRequest()->firstOrFail();
