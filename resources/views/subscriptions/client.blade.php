@@ -419,6 +419,7 @@
                         <span class="pay-proof-name" data-proof-name>اختیاری — تصدیق جلدی ہو جاتی ہے</span>
                     </div>
                     @error('payment_proof')<div class="pay-error" role="alert">{{ $message }}</div>@enderror
+                    @if(session('proof_reattach') && ! $errors->has('payment_proof'))<div class="pay-error" role="alert"><i class="fas fa-paperclip" aria-hidden="true"></i> اسکرین شاٹ دوبارہ لگائیں — غلطی کی وجہ سے لگائی گئی فائل ہٹ گئی ہے۔</div>@endif
                     </div>
                     @endif
                 </div>

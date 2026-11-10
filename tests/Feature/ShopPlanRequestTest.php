@@ -266,6 +266,33 @@ class ShopPlanRequestTest extends TestCase
         $this->assertTrue($owner->fresh()->hasModule(User::MODULE_CLOTHING));
     }
 
+    public function test_receipt_stays_visible_to_super_admin_after_approval(): void
+    {
+        [$admin, $owner, $business] = $this->accounts();
+        $this->setUpEasypaisa();
+        $plan = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+
+        // A form error drops the attached file, so the shop is asked to attach it again.
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), [
+            'payment_reference' => 'BAD ID',
+            'payment_proof' => UploadedFile::fake()->image('receipt.png', 300, 600),
+        ])->assertSessionHas('proof_reattach', true);
+
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), [
+            'payment_reference' => 'RAAST-11112222',
+            'payment_proof' => UploadedFile::fake()->image('receipt.png', 300, 600),
+        ])->assertSessionHasNoErrors();
+        $request = $business->pendingPlanRequest()->firstOrFail();
+        $this->actingAs($admin)->post(route('administrator.plan-requests.approve', $request))->assertSessionHasNoErrors();
+
+        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))
+            ->assertOk()
+            ->assertSee('RAAST-11112222')
+            ->assertSee('View receipt')
+            ->assertSee(route('administrator.plan-requests.proof', $request), false);
+        $this->actingAs($admin)->get(route('administrator.plan-requests.proof', $request))->assertOk();
+    }
+
     public function test_owner_cancels_plan_which_runs_to_its_end_date_and_can_undo(): void
     {
         [$admin, $owner, $business] = $this->accounts();

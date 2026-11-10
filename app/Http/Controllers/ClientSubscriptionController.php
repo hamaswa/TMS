@@ -66,12 +66,16 @@ class ClientSubscriptionController extends Controller
             'payment_reference.max' => 'ٹرانزیکشن آئی ڈی 40 حروف سے زیادہ نہیں ہو سکتی۔',
             'payment_reference.regex' => 'درست ٹرانزیکشن آئی ڈی درج کریں: صرف حروف، ہندسے اور ڈیش (-)، جیسے 12345678901 یا RAAST-45372891۔',
             'payment_proof.mimes' => 'اسکرین شاٹ تصویر یا پی ڈی ایف فائل ہونا چاہیے۔',
+            'payment_proof.uploaded' => 'اسکرین شاٹ اپ لوڈ نہیں ہو سکا۔ چھوٹی تصویر لگائیں۔',
+            'payment_proof.file' => 'اسکرین شاٹ اپ لوڈ نہیں ہو سکا۔ چھوٹی تصویر لگائیں۔',
             'payment_proof.max' => 'اسکرین شاٹ کا سائز زیادہ سے زیادہ پانچ ایم بی ہو سکتا ہے۔',
         ]);
         // Always return to the plans page (not "back"), so the payment popup reopens with the errors.
         $toPlans = redirect()->to(route('admin.subscription.index').'#plans');
+        // Browsers drop an attached file when the form comes back with an error, so ask for it again.
+        $proofAttached = $request->files->has('payment_proof');
         if ($validator->fails()) {
-            return $toPlans->withErrors($validator)->withInput($request->except('payment_proof'));
+            return $toPlans->withErrors($validator)->withInput($request->except('payment_proof'))->with('proof_reattach', $proofAttached);
         }
 
         $user = Auth::user();
@@ -85,7 +89,7 @@ class ClientSubscriptionController extends Controller
                 $upgrading ? trim((string) $request->input('upgrade_reason')) : null,
             );
         } catch (ValidationException $exception) {
-            return $toPlans->withErrors($exception->errors())->withInput($request->except('payment_proof'));
+            return $toPlans->withErrors($exception->errors())->withInput($request->except('payment_proof'))->with('proof_reattach', $proofAttached);
         }
 
         return redirect()->to(route('admin.subscription.index').'#plans')->with('plan_requested', $paying
