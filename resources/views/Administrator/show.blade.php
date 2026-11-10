@@ -92,6 +92,7 @@
                                     <span class="sub-current-name">{{ $currentSubscription->plan_name }}</span>
                                     <span class="badge badge-pill badge-{{ $curColor }}"><i class="fas {{ $curIcon }}"></i> {{ $curLabel }}</span>
                                     @if($currentSubscription->isUpgrade())<span class="badge badge-pill badge-upgrade"><i class="fas fa-arrow-up"></i> Upgraded</span>@endif
+                                    @if($currentSubscription->is_trial)<span class="badge badge-pill badge-info"><i class="fas fa-gift"></i> Free trial · payment due {{ $currentSubscription->ends_on->copy()->addDay()->format('d M Y') }}</span>@endif
                                 </div>
                                 <div class="sub-dates mt-1">{{ $currentSubscription->starts_on->format('d M Y') }} &rarr; {{ $currentSubscription->ends_on->format('d M Y') }}@if(in_array($curKey, ['active', 'expiring'], true)) · <strong>{{ $currentSubscription->daysRemaining() }} days left</strong>@endif</div>
                             </div>
@@ -147,12 +148,18 @@
                 @endif
                 <form method="POST" action="{{ route('administrator.subscriptions.store',$user) }}" class="border rounded p-3 mb-4">@csrf
                     <div class="form-row">
-                        <div class="form-group col-md-4"><label for="subscription_plan_id">Plan with limits</label><select id="subscription_plan_id" name="subscription_plan_id" class="form-control"><option value="">Custom / unlimited legacy terms</option>@foreach($subscriptionPlans as $plan)<option value="{{ $plan->id }}" data-price="{{ (float) $plan->price }}" data-days="{{ $plan->billing_period_days }}" @selected($formPlan?->id === $plan->id)>{{ $plan->name }} · Rs {{ number_format((float)$plan->price,2) }} · {{ $plan->billing_period_days }} days</option>@endforeach</select><small class="form-text text-muted"><a href="{{ route('administrator.subscription-plans.index') }}">Create or edit plans</a></small></div>
+                        <div class="form-group col-md-4"><label for="subscription_plan_id">Plan with limits</label><select id="subscription_plan_id" name="subscription_plan_id" class="form-control"><option value="">Custom / unlimited legacy terms</option>@foreach($subscriptionPlans as $plan)<option value="{{ $plan->id }}" data-price="{{ (float) $plan->price }}" data-days="{{ $plan->billing_period_days }}" data-trial="{{ (int) $plan->trial_days }}" @selected($formPlan?->id === $plan->id)>{{ $plan->name }} · Rs {{ number_format((float)$plan->price,2) }} · {{ $plan->billing_period_days }} days</option>@endforeach</select><small class="form-text text-muted"><a href="{{ route('administrator.subscription-plans.index') }}">Create or edit plans</a></small></div>
                         <div class="form-group col-md-2"><label for="plan_name">Custom plan name</label><input id="plan_name" name="plan_name" value="{{ old('plan_name') }}" class="form-control" maxlength="100" placeholder="Only without a plan"></div>
                         <div class="form-group col-md-2"><label for="starts_on">Starts on</label><input id="starts_on" type="date" name="starts_on" value="{{ $formStart }}" class="form-control" required></div>
                         <div class="form-group col-md-2"><label for="ends_on">Ends on</label><input id="ends_on" type="date" name="ends_on" value="{{ old('ends_on', $formPlan ? \Illuminate\Support\Carbon::parse($formStart)->addDays($formPlan->billing_period_days - 1)->toDateString() : ($currentSubscription?->ends_on?->copy()->addYear()->toDateString() ?? now()->addYear()->toDateString())) }}" class="form-control" required></div>
                         <div class="form-group col-md-2"><label for="subscription_fee">Fee</label><input id="subscription_fee" type="number" name="fee" value="{{ old('fee', $formPlan ? (float) $formPlan->price : null) }}" class="form-control" min="0" step="0.01" required></div>
                     </div>
+                    @if($business->trial_eligible && $subscriptions->isEmpty())
+                        <div class="custom-control custom-checkbox mb-3 p-3 pl-5 rounded border" style="background:#f0fdf4;border-color:#bbf7d0!important">
+                            <input type="checkbox" class="custom-control-input" id="start_trial" name="start_trial" value="1" @checked(old('start_trial', true))>
+                            <label class="custom-control-label" for="start_trial"><strong><i class="fas fa-gift text-success"></i> Start with the plan's free trial</strong><span class="d-block small text-muted">New client: the plan starts as a free trial (<span data-trial-days>its trial days</span>), fee Rs 0. When the trial ends the shop must pay to keep using the app. Untick to start the paid period now.</span></label>
+                        </div>
+                    @endif
                     <div class="form-group"><label for="subscription_notes">Notes</label><textarea id="subscription_notes" name="notes" class="form-control" rows="2" maxlength="2000">{{ old('notes') }}</textarea></div>
                     <button class="btn btn-primary">Create subscription</button>
                 </form>
@@ -172,6 +179,7 @@
                                         <strong class="sub-plan">{{ $subscription->plan_name }}</strong>
                                         <span class="badge badge-pill badge-{{ $statusColor }}"><i class="fas {{ $statusIcon }}" aria-hidden="true"></i> {{ $statusLabel }}</span>
                                         @if($subscription->isUpgrade())<span class="badge badge-pill badge-upgrade"><i class="fas fa-arrow-up" aria-hidden="true"></i> Upgrade</span>@endif
+                                        @if($subscription->is_trial)<span class="badge badge-pill badge-info"><i class="fas fa-gift" aria-hidden="true"></i> Free trial</span>@endif
                                         @if($currentSubscription?->id === $subscription->id && in_array($statusKey, ['active', 'expiring'], true))<span class="badge badge-pill badge-light border">Current</span>@endif
                                     </div>
                                     <div class="sub-dates"><i class="far fa-calendar" aria-hidden="true"></i> {{ $subscription->starts_on->format('d M Y') }} &rarr; {{ $subscription->ends_on->format('d M Y') }} <span class="text-muted">· {{ $subscription->starts_on->diffInDays($subscription->ends_on) + 1 }} days</span>@if($subscription->plan_code) <code class="ml-1">{{ $subscription->plan_code }}</code>@endif</div>
@@ -266,6 +274,14 @@
             }
         };
         $('#subscription_plan_id, #starts_on').on('change', fill);
+
+        // New clients: show how long the selected plan's free trial is.
+        var trialText = function () {
+            var trial = parseInt($('#subscription_plan_id option:selected').data('trial'), 10) || 0;
+            $('[data-trial-days]').text(trial > 0 ? trial + ' days' : 'this plan has no trial, so it starts as paid');
+        };
+        $('#subscription_plan_id').on('change', trialText);
+        trialText();
     });
 </script>
 @endpush

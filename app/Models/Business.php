@@ -47,6 +47,7 @@ class Business extends Model
         'status_reason',
         'password_expiry_days',
         'password_policy_updated_at',
+        'trial_eligible',
     ];
 
     protected static function booted(): void
@@ -67,6 +68,7 @@ class Business extends Model
     {
         return [
             'tailoring_enabled' => 'boolean',
+            'trial_eligible' => 'boolean',
             'clothing_enabled' => 'boolean',
             'is_demo' => 'boolean',
             'self_registered_at' => 'datetime',
@@ -202,6 +204,18 @@ class Business extends Model
             User::MODULE_CLOTHING => $this->clothing_enabled,
             default => false,
         };
+    }
+
+    /**
+     * A new client's first plan starts as a free trial; payment is asked when it ends.
+     * Shops registered before trials existed, or that already had any period, go straight to paid.
+     */
+    public function startsWithFreeTrial(?SubscriptionPlan $plan): bool
+    {
+        return $plan !== null
+            && (int) $plan->trial_days > 0
+            && (bool) $this->trial_eligible
+            && ! $this->subscriptions()->exists();
     }
 
     /** Tailoring is switched on for the shop and included in its plan. */

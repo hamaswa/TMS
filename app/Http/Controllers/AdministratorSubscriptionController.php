@@ -86,6 +86,22 @@ class AdministratorSubscriptionController extends Controller
             ? SubscriptionPlan::where('is_active', true)->findOrFail($validated['subscription_plan_id'])
             : null;
 
+        // A new client's first plan starts with the plan's free trial; payment is asked when it ends.
+        $trial = $request->boolean('start_trial') && $business->startsWithFreeTrial($plan);
+        if ($trial) {
+            $trialStart = \Illuminate\Support\Carbon::parse($validated['starts_on'])->startOfDay();
+            $trialEnd = $trialStart->copy()->addDays($plan->trial_days - 1);
+            $validated = [
+                ...$validated,
+                'ends_on' => $trialEnd->toDateString(),
+                'fee' => 0,
+                'is_trial' => true,
+                'trial_started_at' => $trialStart,
+                'trial_ends_at' => $trialEnd->copy()->endOfDay(),
+                'notes' => trim('Free trial assigned by the super admin. '.($validated['notes'] ?? '')),
+            ];
+        }
+
         DB::transaction(function () use ($business, $validated, $plan) {
             $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
             $overlap = $lockedBusiness->subscriptions()
@@ -118,7 +134,9 @@ class AdministratorSubscriptionController extends Controller
         });
 
         return redirect()->route('administrator.clients.show', $user)
-            ->with('success', 'Subscription period created. You can now record its payment.');
+            ->with('success', $trial
+                ? "Free trial of {$plan->trial_days} days started. The shop is asked to pay when it ends on ".\Illuminate\Support\Carbon::parse($validated['ends_on'])->format('d M Y').'.'
+                : 'Subscription period created. You can now record its payment.');
     }
 
     public function storePayment(Request $request, int $id, BusinessSubscription $subscription)

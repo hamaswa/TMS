@@ -53,7 +53,9 @@ class ClientSubscriptionController extends Controller
         $paying = PlatformSetting::easypaisa() !== null && (float) $plan->price > 0;
         $request->merge(['payment_reference' => is_string($request->input('payment_reference')) ? trim($request->input('payment_reference')) : $request->input('payment_reference')]);
         $business = Auth::user()->ownedBusiness()->firstOrFail();
-        $upgrading = $plan->isUpgradeFrom($business->currentSubscription()?->plan);
+        // Moving off a free trial is a first payment, not an upgrade.
+        $running = $business->currentSubscription();
+        $upgrading = ! $running?->is_trial && $plan->isUpgradeFrom($running?->plan);
         $validator = Validator::make($request->all(), [
             'upgrade_reason' => [$upgrading ? 'required' : 'nullable', 'string', 'min:5', 'max:1000'],
             // Easypaisa/JazzCash IDs are digits; SadaPay/Raast IDs look like RAAST-45372891.

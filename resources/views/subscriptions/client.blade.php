@@ -165,6 +165,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start" style="gap:1rem">
                 <div>
                     <span class="badge badge-{{ $stateColors[$state] ?? 'secondary' }} mb-2">{{ $stateLabels[$state] ?? $state }}</span>
+                    @if($currentSubscription->is_trial)<span class="badge badge-info mb-2"><i class="fas fa-gift" aria-hidden="true"></i> مفت آزمائش</span>@endif
                     <h2 class="h5 mb-1">موجودہ پلان: {{ $currentSubscription->plan_name }}</h2>
                     <p class="mb-0 text-muted">{{ \App\Support\DisplayDate::long($currentSubscription->starts_on) }} تا {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }}</p>
                 </div>
@@ -182,6 +183,11 @@
                         <button class="btn btn-success btn-sm"><i class="fas fa-undo" aria-hidden="true"></i> منسوخی واپس لیں</button>
                     </form>
                 </div>
+            @elseif($currentSubscription->is_trial && $state !== 'expired')
+                <div class="alert alert-info mt-3 mb-0" role="status">
+                    <strong><i class="fas fa-gift" aria-hidden="true"></i> آپ مفت آزمائش پر ہیں۔</strong>
+                    آزمائش {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} کو ختم ہوگی ({{ $currentSubscription->daysRemaining() }} دن باقی)۔ اس کے بعد ایپ کا استعمال جاری رکھنے کے لیے نیچے سے پلان کی ادائیگی کریں۔
+                </div>
             @else
                 @if($state === 'expiring')<div class="alert alert-warning mt-3 mb-0">آپ کی سبسکرپشن {{ $currentSubscription->daysRemaining() }} دن میں ختم ہوگی۔ تجدید کے لیے نیچے سے پلان منتخب کریں۔</div>@endif
                 @if(in_array($state, ['active', 'expiring'], true))
@@ -190,7 +196,7 @@
                     </div>
                 @endif
             @endif
-            @if($state === 'expired')<div class="alert alert-danger mt-3 mb-0">آپ کی سبسکرپشن کی میعاد ختم ہو چکی ہے۔ آپ کا کاروباری ڈیٹا محفوظ ہے؛ تجدید کے لیے نیچے سے پلان منتخب کریں۔</div>@endif
+            @if($state === 'expired' && $currentSubscription->is_trial)<div class="alert alert-danger mt-3 mb-0"><strong>آپ کی مفت آزمائش ختم ہو چکی ہے۔</strong> آپ کا ڈیٹا محفوظ ہے۔ کام جاری رکھنے کے لیے نیچے سے پلان منتخب کر کے ادائیگی کریں۔</div>@elseif($state === 'expired')<div class="alert alert-danger mt-3 mb-0">آپ کی سبسکرپشن کی میعاد ختم ہو چکی ہے۔ آپ کا کاروباری ڈیٹا محفوظ ہے؛ تجدید کے لیے نیچے سے پلان منتخب کریں۔</div>@endif
         </div>
     @endif
 
@@ -241,7 +247,7 @@
                         @php($isPopular = in_array($plan->id, $popularPlanIds, true))
                         <div class="col-sm-6 col-xl-3 mb-4">
                             <div @class(['plan-card', 'is-popular' => $isPopular && ! $isCurrent, 'is-current' => $isCurrent])>
-                                @if($isCurrent)<span class="plan-ribbon">موجودہ پلان</span>
+                                @if($isCurrent)<span class="plan-ribbon">{{ $currentSubscription?->is_trial ? 'موجودہ پلان (آزمائش)' : 'موجودہ پلان' }}</span>
                                 @elseif($isPopular)<span class="plan-ribbon">مقبول</span>@endif
                                 <h3>{{ preg_replace('/\s*\((Annual|Yearly|Monthly)\)$/i', '', $plan->name) }}</h3>
                                 <div class="plan-price">روپے <strong>{{ number_format((float) $plan->price) }}</strong> <span class="text-muted">/ {{ $periodUnit((int) $plan->billing_period_days) }}</span></div>
@@ -258,13 +264,14 @@
                                     @if($plan->trial_days > 0 && ! $currentSubscription)<li class="text-success"><i class="fas fa-gift" aria-hidden="true"></i> {{ $plan->trial_days }} دن مفت آزمائش</li>@endif
                                 </ul>
                                 <div class="plan-action">
-                                    @if($isCurrent)
+                                    @if($isCurrent && ! $currentSubscription?->is_trial)
                                         <button type="button" class="btn btn-success btn-block" disabled>موجودہ پلان</button>
                                     @elseif($isRequested)
                                         <button type="button" class="btn btn-outline-info btn-block" disabled><i class="fas fa-hourglass-half" aria-hidden="true"></i> {{ $pendingRequest->payment_reference ? 'ادائیگی زیر جائزہ' : 'درخواست بھیج دی گئی' }}</button>
                                     @else
                                         {{-- Always confirm in a popup first: payment details when Easypaisa is set up, otherwise a plain request. --}}
-                                        @php($isUpgrade = $plan->isUpgradeFrom($currentPlan))
+                                        @php($isUpgrade = ! $currentSubscription?->is_trial && $plan->isUpgradeFrom($currentPlan))
+                                        @php($payForTrial = $isCurrent && $currentSubscription?->is_trial)
                                         <button type="button" class="btn btn-block {{ $isUpgrade ? 'btn-success' : ($isPopular ? 'btn-primary' : 'btn-outline-primary') }}"
                                             data-pay-upgrade="{{ $isUpgrade ? 1 : 0 }}"
                                             data-pay-plan="{{ $plan->id }}"
@@ -272,7 +279,7 @@
                                             data-pay-name="{{ preg_replace('/\s*\((Annual|Yearly|Monthly)\)$/i', '', $plan->name) }}"
                                             data-pay-period="{{ $periodName((int) $plan->billing_period_days) }}"
                                             data-pay-amount="{{ number_format((float) $plan->price) }}"
-                                            data-pay-online="{{ $easypaisa && (float) $plan->price > 0 ? 1 : 0 }}">@if($isUpgrade)<i class="fas fa-arrow-up" aria-hidden="true"></i> اپ گریڈ کریں@elseمنتخب کریں@endif</button>
+                                            data-pay-online="{{ $easypaisa && (float) $plan->price > 0 ? 1 : 0 }}">@if($payForTrial)<i class="fas fa-wallet" aria-hidden="true"></i> ادائیگی کریں@elseif($isUpgrade)<i class="fas fa-arrow-up" aria-hidden="true"></i> اپ گریڈ کریں@elseمنتخب کریں@endif</button>
                                     @endif
                                 </div>
                             </div>
