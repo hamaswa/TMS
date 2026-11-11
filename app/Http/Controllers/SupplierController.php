@@ -25,14 +25,16 @@ class SupplierController extends Controller
         return view('suppliers.index', compact('suppliers', 'purchaseOptions'));
     }
 
+    /** The new-supplier form is a popup on the list; old links open it there. */
     public function create()
     {
-        return view('suppliers.create');
+        return redirect()->route('admin.suppliers.index', ['create' => 1]);
     }
 
     public function store(Request $request)
     {
-        Supplier::create($this->validated($request) + ['user_id' => Auth::user()->businessOwnerId()]);
+        // Errors go to their own bag so the popup reopens with them, not the edit popups.
+        Supplier::create($this->validated($request, null, 'createSupplier') + ['user_id' => Auth::user()->businessOwnerId()]);
 
         return redirect()->route('admin.suppliers.index')->with('success', 'سپلائر کامیابی سے شامل کر دیا گیا ہے۔');
     }
@@ -139,9 +141,9 @@ class SupplierController extends Controller
             ->where('status', 'received')->findOrFail($purchaseId)->id;
     }
 
-    private function validated(Request $request, ?int $supplier = null): array
+    private function validated(Request $request, ?int $supplier = null, ?string $errorBag = null): array
     {
-        return $request->validate([
+        $rules = [
             'name' => ['required', 'string', 'max:255', Rule::unique('suppliers')->where('user_id', Auth::user()->businessOwnerId())->ignore($supplier)],
             'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
@@ -149,7 +151,9 @@ class SupplierController extends Controller
             'address' => ['nullable', 'string', 'max:1000'],
             'opening_balance' => ['nullable', 'numeric', 'min:0'],
             'active' => ['nullable', 'boolean'],
-        ]);
+        ];
+
+        return $errorBag ? $request->validateWithBag($errorBag, $rules) : $request->validate($rules);
     }
 
     private function owned(int $id): Supplier

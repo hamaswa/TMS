@@ -193,6 +193,29 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($employee)->get(route('admin.OptionType.index'))->assertForbidden();
     }
 
+    public function test_new_supplier_is_added_from_a_popup_on_the_supplier_list(): void
+    {
+        [$owner] = $this->business(false, true);
+        Supplier::create(['user_id' => $owner->id, 'name' => 'Existing Supplier', 'active' => true]);
+
+        $this->actingAs($owner)->get(route('admin.suppliers.index'))
+            ->assertOk()
+            ->assertSee('id="createSupplier"', false)
+            ->assertSee('data-target="#createSupplier"', false);
+        // Old links to the create page open the list with the popup.
+        $this->actingAs($owner)->get(route('admin.suppliers.create'))
+            ->assertRedirect(route('admin.suppliers.index', ['create' => 1]));
+
+        // A duplicate name comes back to the list with the popup's own errors.
+        $this->actingAs($owner)->from(route('admin.suppliers.index'))->post(route('admin.suppliers.store'), ['name' => 'Existing Supplier'])
+            ->assertRedirect(route('admin.suppliers.index'))
+            ->assertSessionHasErrorsIn('createSupplier', 'name');
+
+        $this->actingAs($owner)->post(route('admin.suppliers.store'), ['name' => 'Popup Supplier', 'phone' => '03001234567', 'opening_balance' => 50])
+            ->assertRedirect(route('admin.suppliers.index'))->assertSessionHasNoErrors();
+        $this->assertSame(50.0, (float) Supplier::where('name', 'Popup Supplier')->value('opening_balance'));
+    }
+
     public function test_shop_employee_sees_owner_tenant_records_not_another_business(): void
     {
         [$owner, $business] = $this->business(false, true);
