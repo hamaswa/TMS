@@ -155,6 +155,7 @@
                         <div class="form-group col-md-2"><label for="subscription_fee">Fee</label><input id="subscription_fee" type="number" name="fee" value="{{ old('fee', $formPlan ? (float) $formPlan->price : null) }}" class="form-control" min="0" step="0.01" required></div>
                     </div>
                     @if($business->trial_eligible && $subscriptions->isEmpty())
+                        <p class="small text-success mb-2" data-trial-lock style="display:none"><i class="fas fa-lock"></i> End date and fee are set by the free trial. Untick the box below to enter a paid period instead.</p>
                         <div class="custom-control custom-checkbox mb-3 p-3 pl-5 rounded border" style="background:#f0fdf4;border-color:#bbf7d0!important">
                             <input type="checkbox" class="custom-control-input" id="start_trial" name="start_trial" value="1" @checked(old('start_trial', true))>
                             <label class="custom-control-label" for="start_trial"><strong><i class="fas fa-gift text-success"></i> Start with the plan's free trial</strong><span class="d-block small text-muted">New client: the plan starts as a free trial (<span data-trial-days>its trial days</span>), fee Rs 0. When the trial ends the shop must pay to keep using the app. Untick to start the paid period now.</span></label>
@@ -258,30 +259,37 @@
 
 @push('scripts')
 <script>
-    // Picking a plan fills its fee and an end date one billing period after the start date.
+    // Picking a plan fills its fee and end date. With the free-trial box ticked the trial
+    // decides both (plan's trial days, Rs 0), so those two fields are locked.
     $(function () {
+        var pad = function (n) { return String(n).padStart(2, '0'); };
+        var endAfter = function (days) {
+            var start = $('#starts_on').val();
+            if (!start || !days) { return ''; }
+            var end = new Date(start + 'T00:00:00');
+            end.setDate(end.getDate() + days - 1);
+            return end.getFullYear() + '-' + pad(end.getMonth() + 1) + '-' + pad(end.getDate());
+        };
         var fill = function () {
             var option = $('#subscription_plan_id option:selected');
-            var days = parseInt(option.data('days'), 10);
-            if (!days) { return; }
-            $('#subscription_fee').val(option.data('price'));
-            var start = $('#starts_on').val();
-            if (start) {
-                var end = new Date(start + 'T00:00:00');
-                end.setDate(end.getDate() + days - 1);
-                var pad = function (n) { return String(n).padStart(2, '0'); };
-                $('#ends_on').val(end.getFullYear() + '-' + pad(end.getMonth() + 1) + '-' + pad(end.getDate()));
+            var days = parseInt(option.data('days'), 10) || 0;
+            var trial = parseInt(option.data('trial'), 10) || 0;
+            var onTrial = $('#start_trial').length && $('#start_trial').is(':checked') && trial > 0;
+
+            $('[data-trial-days]').text(trial > 0 ? trial + ' days' : 'this plan has no trial, so it starts as paid');
+            $('#ends_on, #subscription_fee').prop('readonly', onTrial).toggleClass('bg-light', onTrial);
+            $('[data-trial-lock]').toggle(onTrial);
+
+            if (onTrial) {
+                $('#ends_on').val(endAfter(trial));
+                $('#subscription_fee').val(0);
+            } else if (days) {
+                $('#ends_on').val(endAfter(days));
+                $('#subscription_fee').val(option.data('price'));
             }
         };
-        $('#subscription_plan_id, #starts_on').on('change', fill);
-
-        // New clients: show how long the selected plan's free trial is.
-        var trialText = function () {
-            var trial = parseInt($('#subscription_plan_id option:selected').data('trial'), 10) || 0;
-            $('[data-trial-days]').text(trial > 0 ? trial + ' days' : 'this plan has no trial, so it starts as paid');
-        };
-        $('#subscription_plan_id').on('change', trialText);
-        trialText();
+        $('#subscription_plan_id, #starts_on, #start_trial').on('change', fill);
+        if ($('#start_trial').length) { fill(); }
     });
 </script>
 @endpush
