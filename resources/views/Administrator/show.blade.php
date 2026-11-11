@@ -37,6 +37,13 @@
     .sub-note { margin-top: .6rem; padding: .45rem .7rem; border-radius: .5rem; font-size: .85rem; }
     .sub-note-upgrade { background: #f5f3ff; color: #5b21b6; }
     .sub-note-info { background: #e0f2fe; color: #075985; }
+    .sub-note-trial { background: #ecfdf5; color: #065f46; }
+    .trial-ext-head { display: flex; align-items: center; gap: .85rem; padding: 1.1rem 1.4rem; border-bottom: 1px solid #e5eaf2; }
+    .trial-ext-icon { flex: 0 0 auto; width: 3rem; height: 3rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #059669, #10b981); color: #fff; font-size: 1.2rem; }
+    .trial-ext-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .trial-ext-chips .btn { border-radius: 2rem; min-width: 5.5rem; }
+    .trial-ext-chips .btn.active { background: #059669; border-color: #059669; color: #fff; }
+    .trial-ext-summary { border-radius: .6rem; background: #f8fafc; border: 1px dashed #cbd5e1; padding: .6rem .8rem; font-size: .9rem; }
     .sub-note-ending { background: #fef3c7; color: #92400e; }
     .sub-item.is-ending .sub-card { border-left: 4px solid #f59e0b; }
     .sub-note-danger { background: #fee2e2; color: #991b1b; }
@@ -95,6 +102,9 @@
                                     @if($currentSubscription->is_trial)<span class="badge badge-pill badge-info"><i class="fas fa-gift"></i> Free trial · payment due {{ $currentSubscription->ends_on->copy()->addDay()->format('d M Y') }}</span>@endif
                                 </div>
                                 <div class="sub-dates mt-1">{{ $currentSubscription->starts_on->format('d M Y') }} &rarr; {{ $currentSubscription->ends_on->format('d M Y') }}@if(in_array($curKey, ['active', 'expiring'], true)) · <strong>{{ $currentSubscription->daysRemaining() }} days left</strong>@endif</div>
+                                @if($currentSubscription->is_trial && ! $currentSubscription->cancelled_at)
+                                    <button type="button" class="btn btn-sm btn-success mt-2" data-toggle="modal" data-target="#extendTrial"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Extend trial</button>
+                                @endif
                             </div>
                             <div class="sub-money">
                                 <div><small>Fee</small><strong>Rs {{ number_format((float)$currentSubscription->fee) }}</strong></div>
@@ -198,6 +208,9 @@
                             @if($subscription->isEndingByShopRequest())
                                 <div class="sub-note sub-note-ending"><i class="fas fa-door-open" aria-hidden="true"></i> <strong>Cancelled by the shop</strong> on {{ $subscription->cancel_requested_at->format('d M Y') }}@if($subscription->cancelRequestedBy) by {{ $subscription->cancelRequestedBy->name }}@endif — runs until {{ $subscription->ends_on->format('d M Y') }}, then stops. @if($subscription->cancel_request_reason)<br><strong>Reason:</strong> {{ $subscription->cancel_request_reason }}@endif</div>
                             @endif
+                            @foreach($subscription->trialExtensionNotes() as $extension)
+                                <div class="sub-note sub-note-trial"><i class="fas fa-calendar-plus" aria-hidden="true"></i> {{ $extension }}</div>
+                            @endforeach
                             @if($statusKey === 'upgraded')
                                 <div class="sub-note sub-note-info"><i class="fas fa-level-up-alt" aria-hidden="true"></i> {{ $subscription->upgradeReplacedNote() }}</div>
                             @elseif($subscription->cancelled_at)
@@ -255,6 +268,44 @@
         </div></div></div>
     </div>
 </div></section>
+@if($currentSubscription?->is_trial && ! $currentSubscription->cancelled_at)
+    @php($extendErrors = $errors->getBag('extendTrial'))
+    @php($extendBase = $currentSubscription->trialExtensionBase())
+    <div class="modal fade" id="extendTrial" tabindex="-1" role="dialog" aria-labelledby="extendTrialTitle" aria-hidden="true"><div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content" style="border:0;border-radius:1rem;overflow:hidden">
+        <div class="trial-ext-head">
+            <span class="trial-ext-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
+            <div class="flex-grow-1">
+                <h5 class="mb-0 font-weight-bold" id="extendTrialTitle">Extend free trial</h5>
+                <small class="text-muted">{{ $business->name }} · trial {{ $currentSubscription->ends_on->isPast() && ! $currentSubscription->ends_on->isToday() ? 'ended' : 'ends' }} {{ $currentSubscription->ends_on->format('d M Y') }}</small>
+            </div>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+        </div>
+        <form method="POST" action="{{ route('administrator.subscriptions.extend-trial', [$user, $currentSubscription]) }}" data-extend-trial data-base="{{ $extendBase->toDateString() }}">@csrf @method('PATCH')
+            <div class="modal-body">
+                @if($extendErrors->any())<div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach($extendErrors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+                <label class="font-weight-bold d-block">Add days</label>
+                <div class="trial-ext-chips mb-3">
+                    @foreach([7 => '7 days', 14 => '14 days', 30 => '1 month', 60 => '2 months'] as $days => $label)
+                        <button type="button" class="btn btn-outline-success" data-extend-days="{{ $days }}">+ {{ $label }}</button>
+                    @endforeach
+                </div>
+                <div class="form-group">
+                    <label for="new_ends_on" class="font-weight-bold">Or pick the new end date</label>
+                    <input id="new_ends_on" type="date" name="new_ends_on" class="form-control {{ $extendErrors->has('new_ends_on') ? 'is-invalid' : '' }}" min="{{ $extendBase->copy()->addDay()->toDateString() }}" max="{{ $extendBase->copy()->addYear()->toDateString() }}" value="{{ $extendErrors->any() ? old('new_ends_on') : $extendBase->copy()->addDays(7)->toDateString() }}" required>
+                </div>
+                <div class="trial-ext-summary mb-3" data-extend-summary></div>
+                <div class="form-group mb-0">
+                    <label for="extension_reason" class="font-weight-bold">Reason <span class="text-muted font-weight-normal">(optional)</span></label>
+                    <input id="extension_reason" name="extension_reason" class="form-control" maxlength="500" value="{{ $extendErrors->any() ? old('extension_reason') : '' }}" placeholder="e.g. Shop asked for more time to set up">
+                </div>
+                @if($currentSubscription->daysRemaining() < 0)
+                    <p class="small text-success mt-3 mb-0"><i class="fas fa-unlock" aria-hidden="true"></i> The trial already ended, so the extra days count from today and the shop is reopened.</p>
+                @endif
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">Close</button><button class="btn btn-success"><i class="fas fa-calendar-plus" aria-hidden="true"></i> Extend trial</button></div>
+        </form>
+    </div></div></div>
+@endif
 @endsection
 
 @push('scripts')
@@ -290,6 +341,37 @@
         };
         $('#subscription_plan_id, #starts_on, #start_trial').on('change', fill);
         if ($('#start_trial').length) { fill(); }
+    });
+
+    // Extend-trial popup: the day chips fill the end date; the summary shows what the shop gets.
+    $(function () {
+        var form = $('[data-extend-trial]');
+        if (!form.length) { return; }
+        var base = new Date(form.data('base') + 'T00:00:00');
+        var input = $('#new_ends_on');
+        var pad = function (n) { return String(n).padStart(2, '0'); };
+        var iso = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+        var nice = function (d) { return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); };
+        var summary = function () {
+            var end = input.val() ? new Date(input.val() + 'T00:00:00') : null;
+            var days = end ? Math.round((end - base) / 86400000) : 0;
+            form.find('[data-extend-days]').each(function () { $(this).toggleClass('active', parseInt($(this).data('extend-days'), 10) === days); });
+            var pay = end ? new Date(end.getTime() + 86400000) : null;
+            form.find('[data-extend-summary]').html(days > 0
+                ? '<i class="fas fa-info-circle text-success"></i> <strong>+' + days + ' days</strong> · trial ends ' + nice(end) + ' · payment asked from ' + nice(pay)
+                : '<span class="text-danger">Pick a date after ' + nice(base) + '.</span>');
+        };
+        form.on('click', '[data-extend-days]', function () {
+            var end = new Date(base.getTime());
+            end.setDate(end.getDate() + parseInt($(this).data('extend-days'), 10));
+            input.val(iso(end));
+            summary();
+        });
+        input.on('change input', summary);
+        summary();
+        @if($errors->getBag('extendTrial')->any())
+        $('#extendTrial').modal('show');
+        @endif
     });
 </script>
 @endpush

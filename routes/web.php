@@ -170,6 +170,7 @@ Route::group(['prefix' => 'administrator', 'middleware' => ['auth', 'role:admini
     Route::post('/clients/{id}/subscriptions/{subscription}/payments', [AdministratorSubscriptionController::class, 'storePayment'])->name('subscription-payments.store');
     Route::patch('/clients/{id}/subscription-payments/{payment}/reverse', [AdministratorSubscriptionController::class, 'reversePayment'])->name('subscription-payments.reverse');
     Route::patch('/clients/{id}/subscriptions/{subscription}/cancel', [AdministratorSubscriptionController::class, 'cancelSubscription'])->name('subscriptions.cancel');
+    Route::patch('/clients/{id}/subscriptions/{subscription}/extend-trial', [AdministratorSubscriptionController::class, 'extendTrial'])->name('subscriptions.extend-trial');
     Route::patch('/marketplace/{storefront}/moderation', [AdministratorController::class, 'updateMarketplaceModeration'])
         ->name('marketplace.moderation');
     Route::get('/create', [AdministratorController::class, 'index'])->name('create');

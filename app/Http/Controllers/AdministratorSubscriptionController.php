@@ -223,6 +223,65 @@ class AdministratorSubscriptionController extends Controller
             ->with('success', 'Subscription cancelled without deleting its payment history.');
     }
 
+    /**
+     * Give a free trial more days. Plans already queued after the trial move forward by the
+     * same days so they keep their full length, and a shop blocked by an ended trial reopens.
+     */
+    public function extendTrial(Request $request, int $id, BusinessSubscription $subscription)
+    {
+        $user = $this->client($id);
+        $business = $user->ownedBusiness()->firstOrFail();
+        abort_unless($subscription->business_id === $business->id && $subscription->is_trial && ! $subscription->cancelled_at, 404);
+        $base = $subscription->trialExtensionBase();
+        $validated = $request->validateWithBag('extendTrial', [
+            'new_ends_on' => ['required', 'date', 'after:'.$base->toDateString(), 'before_or_equal:'.$base->copy()->addYear()->toDateString()],
+            'extension_reason' => ['nullable', 'string', 'max:500'],
+        ], [
+            'new_ends_on.after' => 'The new end date must be after '.$base->format('d M Y').'.',
+            'new_ends_on.before_or_equal' => 'A trial can be extended by at most one year at a time.',
+        ]);
+
+        $newEnd = \Illuminate\Support\Carbon::parse($validated['new_ends_on'])->startOfDay();
+        $days = DB::transaction(function () use ($business, $subscription, $newEnd, $validated) {
+            $trial = BusinessSubscription::query()->where('business_id', $business->id)->lockForUpdate()->findOrFail($subscription->id);
+            $oldEnd = $trial->ends_on->copy()->startOfDay();
+            $later = $business->subscriptions()
+                ->whereNull('cancelled_at')
+                ->whereKeyNot($trial->id)
+                ->whereDate('starts_on', '>', $oldEnd->toDateString())
+                ->lockForUpdate()
+                ->get();
+            if ($later->contains(fn (BusinessSubscription $plan) => $plan->starts_on->lte(now()))) {
+                throw ValidationException::withMessages([
+                    'new_ends_on' => 'This shop is already on a paid plan after the trial, so the trial cannot be extended.',
+                ])->errorBag('extendTrial');
+            }
+
+            $shift = (int) $oldEnd->diffInDays($newEnd);
+            $added = (int) $trial->trialExtensionBase()->diffInDays($newEnd);
+            foreach ($later as $plan) {
+                $plan->forceFill([
+                    'starts_on' => $plan->starts_on->copy()->addDays($shift),
+                    'ends_on' => $plan->ends_on->copy()->addDays($shift),
+                ])->save();
+            }
+
+            $note = BusinessSubscription::TRIAL_EXTENDED_NOTE." by {$added} days on ".now()->format('d M Y')
+                .' ('.$oldEnd->format('d M Y').' → '.$newEnd->format('d M Y').') by '.Auth::user()->name
+                .(filled($validated['extension_reason'] ?? null) ? ': '.trim($validated['extension_reason']) : '');
+            $trial->forceFill([
+                'ends_on' => $newEnd->toDateString(),
+                'trial_ends_at' => $newEnd->copy()->endOfDay(),
+                'notes' => trim(trim((string) $trial->notes)."\n".$note),
+            ])->save();
+
+            return $added;
+        });
+
+        return redirect()->route('administrator.clients.show', $user)
+            ->with('success', "Free trial extended by {$days} days. It now ends on ".$newEnd->format('d M Y').' and payment is asked after that.');
+    }
+
     private function client(int|string $id): User
     {
         return User::role('shop_owner')->findOrFail($id);

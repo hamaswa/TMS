@@ -134,6 +134,24 @@ class BusinessSubscription extends Model
         return str_contains((string) $this->cancellation_reason, $marker) || str_contains((string) $this->notes, $marker);
     }
 
+    /** Notes line prefix written each time the super admin extends a free trial. */
+    public const TRIAL_EXTENDED_NOTE = 'Trial extended';
+
+    /** The "Trial extended …" lines, oldest first. */
+    public function trialExtensionNotes(): array
+    {
+        return array_values(array_filter(
+            array_map('trim', explode("\n", (string) $this->notes)),
+            fn (string $line) => str_starts_with($line, self::TRIAL_EXTENDED_NOTE)
+        ));
+    }
+
+    /** The date a trial extension counts from: its end date, or yesterday when it already ended. */
+    public function trialExtensionBase(): \Illuminate\Support\Carbon
+    {
+        return $this->ends_on->copy()->max(now()->subDay()->startOfDay());
+    }
+
     /** The "Replaced by upgrade to …" line written when this period was replaced. */
     public function upgradeReplacedNote(): ?string
     {

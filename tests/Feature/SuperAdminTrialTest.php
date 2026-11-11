@@ -93,6 +93,107 @@ class SuperAdminTrialTest extends TestCase
         $this->assertSame(1200.0, (float) $business->subscriptions()->latest('id')->firstOrFail()->fee);
     }
 
+    public function test_super_admin_extends_a_running_trial(): void
+    {
+        [$admin, $owner, $business] = $this->accounts(trialEligible: true);
+        $plan = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+        $this->assign($admin, $owner, $plan, trial: true);
+        $trial = $business->subscriptions()->firstOrFail();
+
+        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))
+            ->assertOk()->assertSee('Extend free trial');
+
+        $newEnd = $trial->ends_on->copy()->addDays(30)->toDateString();
+        $this->actingAs($admin)->patch(route('administrator.subscriptions.extend-trial', [$owner, $trial]), [
+            'new_ends_on' => $newEnd,
+            'extension_reason' => 'Needs time to set up',
+        ])->assertSessionHasNoErrors()
+            ->assertSessionHas('success', fn ($message) => str_contains($message, 'extended by 30 days'));
+
+        $trial->refresh();
+        $this->assertTrue($trial->is_trial);
+        $this->assertSame($newEnd, $trial->ends_on->toDateString());
+        $this->assertSame($newEnd, $trial->trial_ends_at->toDateString());
+        $this->assertStringContainsString('Needs time to set up', $trial->trialExtensionNotes()[0]);
+
+        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))
+            ->assertOk()->assertSee('Trial extended by 30 days', false);
+
+        // Still open on the old end date + 1, blocked after the new one.
+        $this->travelTo(now()->addDays(14));
+        $this->actingAs($owner->fresh())->get(route('admin.subscription.index'))->assertOk();
+        $this->travelTo(\Illuminate\Support\Carbon::parse($newEnd)->addDay());
+        $this->actingAs($owner->fresh())->get(route('admin.home'))->assertRedirect(route('admin.subscription.required'));
+    }
+
+    public function test_extending_an_ended_trial_reopens_the_shop_from_today(): void
+    {
+        [$admin, $owner, $business] = $this->accounts(trialEligible: true);
+        $plan = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+        $this->assign($admin, $owner, $plan, trial: true);
+        $trial = $business->subscriptions()->firstOrFail();
+
+        $this->travelTo(now()->addDays(20));
+        $this->actingAs($owner->fresh())->get(route('admin.home'))->assertRedirect(route('admin.subscription.required'));
+
+        // Counted from today, so 7 days means today and the next 6.
+        $this->actingAs($admin)->patch(route('administrator.subscriptions.extend-trial', [$owner, $trial]), [
+            'new_ends_on' => now()->addDays(6)->toDateString(),
+        ])->assertSessionHasNoErrors()
+            ->assertSessionHas('success', fn ($message) => str_contains($message, 'extended by 7 days'));
+
+        $this->assertSame(now()->addDays(6)->toDateString(), $trial->fresh()->ends_on->toDateString());
+        $this->assertTrue($business->fresh()->hasActiveSubscriptionAccess());
+
+        // A date that adds nothing is refused.
+        $this->actingAs($admin)->patch(route('administrator.subscriptions.extend-trial', [$owner, $trial]), [
+            'new_ends_on' => now()->addDays(3)->toDateString(),
+        ])->assertSessionHasErrors('new_ends_on', null, 'extendTrial');
+    }
+
+    public function test_a_plan_paid_during_the_trial_moves_after_the_extension(): void
+    {
+        [$admin, $owner, $business] = $this->accounts(trialEligible: true);
+        $plan = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+        $this->assign($admin, $owner, $plan, trial: true);
+        $trial = $business->subscriptions()->firstOrFail();
+        PlatformSetting::put(PlatformSetting::EASYPAISA_ACCOUNT_NAME, 'BuyNStitch Payments');
+        PlatformSetting::put(PlatformSetting::EASYPAISA_NUMBER, '0300-1234567');
+        $this->actingAs($owner)->post(route('admin.subscription.request', $plan), [
+            'payment_method' => 'easypaisa', 'payment_reference' => '12345678901',
+        ])->assertSessionHasNoErrors();
+        $paid = app(SubscriptionPlanRequestService::class)->approve($business->pendingPlanRequest()->firstOrFail(), $admin);
+        $paidDays = $paid->starts_on->diffInDays($paid->ends_on);
+
+        $this->actingAs($admin)->patch(route('administrator.subscriptions.extend-trial', [$owner, $trial]), [
+            'new_ends_on' => $trial->ends_on->copy()->addDays(10)->toDateString(),
+        ])->assertSessionHasNoErrors();
+
+        $paid->refresh();
+        $this->assertSame($trial->ends_on->copy()->addDays(11)->toDateString(), $paid->starts_on->toDateString());
+        $this->assertSame($paidDays, $paid->starts_on->diffInDays($paid->ends_on));
+
+        // Once the paid plan has started the trial can no longer be extended.
+        $this->travelTo($paid->starts_on->copy()->addDay());
+        $this->actingAs($admin)->patch(route('administrator.subscriptions.extend-trial', [$owner, $trial]), [
+            'new_ends_on' => now()->addDays(5)->toDateString(),
+        ])->assertSessionHasErrors('new_ends_on', null, 'extendTrial');
+    }
+
+    public function test_only_trials_can_be_extended(): void
+    {
+        [$admin, $owner, $business] = $this->accounts(trialEligible: false);
+        $plan = SubscriptionPlan::where('code', 'starter-clothing-monthly')->firstOrFail();
+        $this->assign($admin, $owner, $plan, trial: false);
+        $subscription = $business->subscriptions()->firstOrFail();
+
+        $this->actingAs($admin)->get(route('administrator.clients.show', $owner))
+            ->assertOk()->assertDontSee('Extend free trial');
+        $this->actingAs($admin)->patch(route('administrator.subscriptions.extend-trial', [$owner, $subscription]), [
+            'new_ends_on' => now()->addDays(60)->toDateString(),
+        ])->assertNotFound();
+    }
+
     private function assign(User $admin, User $owner, SubscriptionPlan $plan, bool $trial)
     {
         return $this->actingAs($admin)->post(route('administrator.subscriptions.store', $owner), [
