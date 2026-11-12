@@ -12,10 +12,11 @@ use Illuminate\Validation\ValidationException;
 class SubscriptionEntitlementService
 {
     /**
-     * Customers that a clothing sale created (counter, stock sell, sales agent, or
-     * old sale data). They count toward the plan only once they become regulars.
+     * Customers that a sale screen created (counter sale, counter order, stock sell,
+     * sales agent, or old sale data). They count toward the plan only once they
+     * become regulars; a tailoring order on the counter order makes them one.
      */
-    public const SALE_BUYER_SOURCES = ['counter_sale', 'sales_agent', 'existing_data'];
+    public const SALE_BUYER_SOURCES = ['counter_sale', 'counter_order', 'sales_agent', 'existing_data'];
 
     /** A sale-created customer is not checked against the limit when saved: one cash purchase doesn't count. */
     public static function skipsLimitOnCreate(Customers $customer): bool
@@ -85,6 +86,38 @@ class SubscriptionEntitlementService
     /** How many of the shop's customers use up its plan's customer limit. */
     public function countedCustomers(int $ownerUserId): int
     {
+        return $this->countedCustomersQuery($ownerUserId)->count();
+    }
+
+    /**
+     * Of the given customers, the sale-created one-time buyers that are not regulars yet.
+     * The customer list marks these as walk-in.
+     *
+     * @param  array<int, int>  $customerIds
+     * @return array<int, int>
+     */
+    public function oneTimeBuyerIds(int $ownerUserId, array $customerIds): array
+    {
+        if ($customerIds === []) {
+            return [];
+        }
+        $candidates = Customers::query()
+            ->where('user_id', $ownerUserId)
+            ->whereIn('id', $customerIds)
+            ->whereIn('acquisition_source', self::SALE_BUYER_SOURCES)
+            ->pluck('id');
+        if ($candidates->isEmpty()) {
+            return [];
+        }
+        $regulars = $this->countedCustomersQuery($ownerUserId)
+            ->whereIn('customers.id', $candidates->all())
+            ->pluck('customers.id');
+
+        return $candidates->diff($regulars)->map(fn ($id) => (int) $id)->values()->all();
+    }
+
+    private function countedCustomersQuery(int $ownerUserId)
+    {
         // One grouped pass over the shop's sales; ids are text in transactions/orders.
         $sales = DB::table('transactions')
             ->where('userId', (string) $ownerUserId)
@@ -104,8 +137,7 @@ class SubscriptionEntitlementService
                 ->orWhere('customer_sales.sale_count', '>=', 2)
                 ->orWhere('customer_sales.on_credit', 1)
                 ->orWhereExists(fn ($orders) => $orders->selectRaw('1')->from('orders')
-                    ->whereRaw('orders.customerId = CAST(customers.id AS CHAR)')))
-            ->count();
+                    ->whereRaw('orders.customerId = CAST(customers.id AS CHAR)')));
     }
 
     public static function customerLimitMessage(int $limit): string

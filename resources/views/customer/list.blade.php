@@ -283,6 +283,7 @@
         }
 
         .customer-link:hover { color: var(--customer-blue); text-decoration: underline; }
+        .customer-walk-in-badge { display: inline-block; margin-inline-start: 6px; padding: 0 8px; border-radius: 999px; background: #fff4e0; color: #9a5b00; font-size: .72rem; font-weight: 600; line-height: 1.8; vertical-align: middle; }
         .customer-link small { display: block; margin-top: 2px; color: #8794a7; font-size: .78rem; font-weight: 500; line-height: 2; }
 
         .customer-phone { direction: ltr; display: inline-block; color: #334b69; font-size: 1.05rem; font-weight: 700; }

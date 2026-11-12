@@ -152,8 +152,34 @@ class SubscriptionEntitlementTest extends TestCase
         $tailoring = \App\Models\Customers::create(['name' => 'Stitching', 'phone_number1' => '', 'user_id' => $owner->id, 'acquisition_source' => 'sales_agent']);
         \App\Models\Order::create(['suitQuantity' => 1, 'totalPayment' => 1500, 'userId' => $owner->id, 'customerId' => $tailoring->id]);
         \App\Models\Customers::create(['name' => 'Old cash buyer', 'phone_number1' => '', 'user_id' => $owner->id, 'acquisition_source' => 'existing_data']);
+        \App\Models\Customers::create(['name' => 'Counter order buyer', 'phone_number1' => '', 'user_id' => $owner->id, 'acquisition_source' => 'counter_order']);
 
         $this->assertSame(2, $service->countedCustomers($owner->id));
+    }
+
+    public function test_shared_walk_in_record_has_no_serial_and_is_hidden_from_the_customer_list(): void
+    {
+        [, $owner, $business] = $this->accounts();
+        $this->subscription($business, ['max_customers' => 10]);
+        $walkIn = \App\Models\Customers::create(['name' => 'Walk-in Customer', 'phone_number1' => '', 'user_id' => $owner->id, 'is_walk_in' => true]);
+        \App\Models\Customers::create(['name' => 'Named Buyer', 'phone_number1' => '03001110001', 'user_id' => $owner->id]);
+
+        $this->assertNull($walkIn->fresh()->serial_number);
+        $this->actingAs($owner)->get(route('admin.Customers.index'))
+            ->assertOk()
+            ->assertSeeText('Named Buyer')
+            ->assertDontSeeText('Walk-in Customer')
+            ->assertDontSee('class="customer-walk-in-badge"', false);
+
+        // A named one-time buyer stays in the list, marked walk-in until they become a regular.
+        $buyer = \App\Models\Customers::create(['name' => 'Feroz', 'phone_number1' => '03001110002', 'user_id' => $owner->id, 'acquisition_source' => 'counter_order']);
+        $this->actingAs($owner)->get(route('admin.Customers.index'))
+            ->assertSeeText('Feroz')
+            ->assertSee('class="customer-walk-in-badge"', false);
+        \App\Models\Transaction::create(['customerId' => $buyer->id, 'userId' => $owner->id, 'Order_type' => 'Sale', 'remainingBalance' => 300, 'recivedPayment' => 0]);
+        $this->actingAs($owner)->get(route('admin.Customers.index'))
+            ->assertSeeText('Feroz')
+            ->assertDontSee('class="customer-walk-in-badge"', false);
     }
 
     public function test_expired_subscription_restricts_owner_employee_and_tailor_but_preserves_renewal_access(): void

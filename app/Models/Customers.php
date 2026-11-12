@@ -101,7 +101,8 @@ class Customers extends Authenticatable
                 app(SubscriptionEntitlementService::class)->assertCanAddCustomer((int) $customer->user_id);
             }
 
-            if (! $customer->serial_number && $customer->user_id) {
+            // The shared walk-in record is not a customer, so it doesn't take a serial number.
+            if (! $customer->serial_number && $customer->user_id && ! $customer->is_walk_in) {
                 $customer->serial_number = app(CustomerSerialNumberService::class)
                     ->nextFor((int) $customer->user_id);
             }

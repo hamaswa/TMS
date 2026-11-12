@@ -1224,6 +1224,8 @@ class CustomerController extends Controller
         return Customers::query()
             ->where('user_id', $ownerId)
             ->whereNull('parent_id')
+            // The shared walk-in record holds anonymous cash sales; it is not a customer.
+            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
             ->with(['familyMeasurementProfiles' => fn($query) => $query
                 ->with('measurementTemplate')])
             ->when($search !== '', function ($query) use ($search, $familyParentIds) {
@@ -1246,6 +1248,13 @@ class CustomerController extends Controller
         $ownerId = Auth::user()->businessOwnerId();
         $pageCustomers = $customers->getCollection();
         $customerIds = $pageCustomers->pluck('id')->map(fn($id) => (string) $id)->all();
+
+        // One-time buyers from sale screens show a walk-in badge until they become regulars.
+        $oneTimeBuyerIds = app(\App\Services\SubscriptionEntitlementService::class)
+            ->oneTimeBuyerIds((int) $ownerId, $pageCustomers->pluck('id')->map(fn($id) => (int) $id)->all());
+        foreach ($pageCustomers as $customer) {
+            $customer->setAttribute('is_one_time_buyer', in_array((int) $customer->id, $oneTimeBuyerIds, true));
+        }
 
         if ($canViewBalances && $customerIds !== []) {
             $balances = Transaction::query()
@@ -1290,7 +1299,8 @@ class CustomerController extends Controller
     private function customerDirectoryStats(bool $canViewBalances): array
     {
         $ownerId = Auth::user()->businessOwnerId();
-        $customerCount = Customers::where('user_id', $ownerId)->whereNull('parent_id')->count();
+        $customerCount = Customers::where('user_id', $ownerId)->whereNull('parent_id')
+            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))->count();
 
         if (! $canViewBalances) {
             return compact('customerCount') + [
