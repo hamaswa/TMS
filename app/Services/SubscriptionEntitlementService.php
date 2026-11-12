@@ -6,10 +6,23 @@ use App\Models\Business;
 use App\Models\Customers;
 use App\Models\Tailor;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SubscriptionEntitlementService
 {
+    /**
+     * Customers that a clothing sale created (counter, stock sell, sales agent, or
+     * old sale data). They count toward the plan only once they become regulars.
+     */
+    public const SALE_BUYER_SOURCES = ['counter_sale', 'sales_agent', 'existing_data'];
+
+    /** A sale-created customer is not checked against the limit when saved: one cash purchase doesn't count. */
+    public static function skipsLimitOnCreate(Customers $customer): bool
+    {
+        return in_array($customer->acquisition_source, self::SALE_BUYER_SOURCES, true);
+    }
+
     public function limit(Business $business, string $column): ?int
     {
         if (! $business->subscriptionIsManaged()) {
@@ -44,7 +57,9 @@ class SubscriptionEntitlementService
 
     /**
      * Customers count per shop: main customers only. Family profiles share a
-     * customer's phone and walk-in placeholders are not real customers.
+     * customer's phone and walk-in placeholders are not real customers. A buyer
+     * a clothing sale created counts only once they are a regular: they bought
+     * on udhaar, came back for a second sale, or have a tailoring order.
      */
     public function assertCanAddCustomer(int $ownerUserId): void
     {
@@ -64,13 +79,33 @@ class SubscriptionEntitlementService
             return null;
         }
 
-        $used = Customers::query()
-            ->where('user_id', $ownerUserId)
-            ->whereNull('parent_id')
-            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
-            ->count();
+        return $this->countedCustomers($ownerUserId) >= $limit ? $limit : null;
+    }
 
-        return $used >= $limit ? $limit : null;
+    /** How many of the shop's customers use up its plan's customer limit. */
+    public function countedCustomers(int $ownerUserId): int
+    {
+        // One grouped pass over the shop's sales; ids are text in transactions/orders.
+        $sales = DB::table('transactions')
+            ->where('userId', (string) $ownerUserId)
+            ->where('Order_type', 'Sale')
+            ->whereNotNull('customerId')
+            ->groupBy('customerId')
+            ->selectRaw('customerId AS sale_customer_id, COUNT(*) AS sale_count, MAX(CASE WHEN CAST(remainingBalance AS DECIMAL(12,2)) > 0 THEN 1 ELSE 0 END) AS on_credit');
+
+        return Customers::query()
+            ->where('customers.user_id', $ownerUserId)
+            ->whereNull('customers.parent_id')
+            ->where(fn ($query) => $query->where('customers.is_walk_in', false)->orWhereNull('customers.is_walk_in'))
+            ->leftJoinSub($sales, 'customer_sales', fn ($join) => $join->whereRaw('customer_sales.sale_customer_id = CAST(customers.id AS CHAR)'))
+            ->where(fn ($query) => $query
+                ->whereNull('customers.acquisition_source')
+                ->orWhereNotIn('customers.acquisition_source', self::SALE_BUYER_SOURCES)
+                ->orWhere('customer_sales.sale_count', '>=', 2)
+                ->orWhere('customer_sales.on_credit', 1)
+                ->orWhereExists(fn ($orders) => $orders->selectRaw('1')->from('orders')
+                    ->whereRaw('orders.customerId = CAST(customers.id AS CHAR)')))
+            ->count();
     }
 
     public static function customerLimitMessage(int $limit): string

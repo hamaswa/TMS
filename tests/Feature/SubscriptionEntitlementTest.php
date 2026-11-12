@@ -108,6 +108,54 @@ class SubscriptionEntitlementTest extends TestCase
             ->assertSeeText('2 گاہکوں کی اجازت ہے');
     }
 
+    public function test_one_time_cash_buyers_from_clothing_sales_do_not_use_up_the_customer_limit(): void
+    {
+        [, $owner, $business] = $this->accounts();
+        $this->subscription($business, ['max_customers' => 2]);
+        $service = app(\App\Services\SubscriptionEntitlementService::class);
+        $buyer = fn (string $name) => \App\Models\Customers::create([
+            'name' => $name, 'phone_number1' => '', 'user_id' => $owner->id, 'acquisition_source' => 'counter_sale',
+        ]);
+        $sale = fn ($customer, float $due) => \App\Models\Transaction::create([
+            'customerId' => $customer->id, 'userId' => $owner->id, 'Order_type' => 'Sale',
+            'remainingBalance' => $due, 'recivedPayment' => 1000,
+        ]);
+
+        \App\Models\Customers::create(['name' => 'Added by hand', 'phone_number1' => '03001110001', 'user_id' => $owner->id]);
+        // Cash buyers are saved even with the shop near its limit and don't count.
+        foreach (['Cash A', 'Cash B', 'Cash C'] as $name) {
+            $sale($buyer($name), 0);
+        }
+        $this->assertSame(1, $service->countedCustomers($owner->id));
+
+        // Coming back for a second sale makes a buyer a regular.
+        $returning = \App\Models\Customers::where('name', 'Cash A')->first();
+        $sale($returning, 0);
+        $this->assertSame(2, $service->countedCustomers($owner->id));
+        $this->assertSame(2, $service->customerLimitReached($owner->id));
+
+        // At the limit, a new cash buyer is still allowed but one added by hand is refused.
+        $sale($buyer('Cash D'), 0);
+        $this->assertSame(2, $service->countedCustomers($owner->id));
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        \App\Models\Customers::create(['name' => 'Refused', 'phone_number1' => '03001110009', 'user_id' => $owner->id]);
+    }
+
+    public function test_sale_buyers_on_udhaar_or_with_tailoring_orders_count_toward_the_limit(): void
+    {
+        [, $owner, $business] = $this->accounts();
+        $this->subscription($business, ['max_customers' => 5]);
+        $service = app(\App\Services\SubscriptionEntitlementService::class);
+
+        $onCredit = \App\Models\Customers::create(['name' => 'Udhaar', 'phone_number1' => '', 'user_id' => $owner->id, 'acquisition_source' => 'counter_sale']);
+        \App\Models\Transaction::create(['customerId' => $onCredit->id, 'userId' => $owner->id, 'Order_type' => 'Sale', 'remainingBalance' => 500, 'recivedPayment' => 500]);
+        $tailoring = \App\Models\Customers::create(['name' => 'Stitching', 'phone_number1' => '', 'user_id' => $owner->id, 'acquisition_source' => 'sales_agent']);
+        \App\Models\Order::create(['suitQuantity' => 1, 'totalPayment' => 1500, 'userId' => $owner->id, 'customerId' => $tailoring->id]);
+        \App\Models\Customers::create(['name' => 'Old cash buyer', 'phone_number1' => '', 'user_id' => $owner->id, 'acquisition_source' => 'existing_data']);
+
+        $this->assertSame(2, $service->countedCustomers($owner->id));
+    }
+
     public function test_expired_subscription_restricts_owner_employee_and_tailor_but_preserves_renewal_access(): void
     {
         [, $owner, $business] = $this->accounts();

@@ -1073,6 +1073,10 @@ class ClothStockController extends Controller
         $existingCustomer = $customerMode === 'regular'
             ? Customers::where('user_id', $ownerId)->findOrFail($existingCustomerId)
             : null;
+        // A new buyer on udhaar is a regular from the start, so the plan's customer limit applies.
+        if ($customerMode === 'random' && $remainingBalance > 0) {
+            app(\App\Services\SubscriptionEntitlementService::class)->assertCanAddCustomer((int) $ownerId);
+        }
 
         [$firstSale, $customer] = DB::transaction(function () use ($validated, $existingCustomer, $customerMode, $itemCount, $remainingBalance, $ownerId, $perMeters) {
             $inventory = app(InventoryService::class);
@@ -1084,6 +1088,7 @@ class ClothStockController extends Controller
                     'name' => trim($validated['random_customer_name']),
                     'phone_number1' => trim($validated['random_customer_phone'] ?? ''),
                     'user_id' => $ownerId,
+                    'acquisition_source' => 'counter_sale',
                 ]);
             }
             $receipt = CounterSaleReceipt::create([

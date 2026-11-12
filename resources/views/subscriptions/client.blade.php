@@ -256,7 +256,7 @@
                                 </div>
                                 <ul>
                                     <li><i class="fas fa-check-circle" aria-hidden="true"></i> {{ ['tailoring' => 'صرف ٹیلرنگ', 'clothing' => 'صرف کپڑا', 'both' => 'ٹیلرنگ اور کپڑا'][$plan->workspace()] ?? '—' }}</li>
-                                    <li><i class="fas fa-check-circle" aria-hidden="true"></i> <span>زیادہ سے زیادہ گاہک</span> <strong>{{ $plan->max_customers === null ? 'لامحدود' : number_format($plan->max_customers) }}</strong></li>
+                                    <li><i class="fas fa-check-circle" aria-hidden="true"></i> <span>زیادہ سے زیادہ گاہک</span> <strong>{{ $plan->max_customers === null ? 'لامحدود' : number_format($plan->max_customers) }}</strong>@if($plan->max_customers !== null)<small class="d-block text-muted">واک اِن اور ایک بار نقد خریدنے والے گاہک شمار نہیں ہوتے</small>@endif</li>
                                     <li><i class="fas fa-check-circle" aria-hidden="true"></i> <span>زیادہ سے زیادہ ملازمین</span> <strong>{{ $plan->max_employees === null ? 'لامحدود' : number_format($plan->max_employees) }}</strong></li>
                                     @foreach(['allow_storefront' => 'آن لائن دکان', 'allow_financial_reports' => 'مالی رپورٹس', 'allow_activity_log' => 'ملازمین کی سرگرمی'] as $feature => $label)
                                         <li @class(['is-off' => ! $plan->{$feature}])><i class="fas {{ $plan->{$feature} ? 'fa-check-circle' : 'fa-times-circle' }}" aria-hidden="true"></i> {{ $label }}</li>

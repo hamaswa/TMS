@@ -95,7 +95,9 @@ class Customers extends Authenticatable
     {
         static::creating(function (Customers $customer) {
             // Every way a customer is added (forms, counter sales, storefront, CSV) goes through here.
-            if ($customer->user_id && $customer->parent_id === null && ! $customer->is_walk_in) {
+            // A buyer a clothing sale creates only counts once they become a regular.
+            if ($customer->user_id && $customer->parent_id === null && ! $customer->is_walk_in
+                && ! SubscriptionEntitlementService::skipsLimitOnCreate($customer)) {
                 app(SubscriptionEntitlementService::class)->assertCanAddCustomer((int) $customer->user_id);
             }
 

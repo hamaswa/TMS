@@ -127,6 +127,10 @@ class CounterSaleService
             && Customers::findByPhoneForOwner($ownerId, (string) $validated['random_customer_phone'])) {
             throw ValidationException::withMessages(['random_customer_phone' => 'یہ فون نمبر پہلے سے موجود ہے۔ موجودہ گاہک منتخب کریں۔']);
         }
+        // A new buyer on udhaar is a regular from the start, so the plan's customer limit applies.
+        if ($customerMode === 'new' && $remainingBalance > 0) {
+            app(SubscriptionEntitlementService::class)->assertCanAddCustomer((int) $ownerId);
+        }
 
         return DB::transaction(function () use ($validated, $existingCustomer, $customerMode, $itemCount, $remainingBalance, $ownerId, $perMeters, $itemTotals) {
             $firstSale = null;
