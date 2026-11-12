@@ -193,6 +193,7 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertDontSee('images/setting/', false);
         $this->actingAs($owner)->get(route('admin.counter-orders.print', $counterOrder))
             ->assertOk()
+            ->assertSee('class="order-tracking-qr"', false)
             ->assertSeeText($counterOrder->reference)
             ->assertSeeText('Summer')
             ->assertSeeText('Simple Suit')
@@ -651,16 +652,19 @@ class CounterOrderWorkflowTest extends TestCase
         $this->assertSame('ORD-000050-02', $second->item_serial);
         $this->assertSame('ORD-000050-03', $third->item_serial);
         $order->recalculate();
+        // A clothing-only order has no stitching to track, so its receipts carry no tracking QR.
         $this->actingAs($owner)->get(route('admin.counter-orders.print', $order))
             ->assertOk()
             ->assertSeeText('ORD-000050')
             ->assertSeeText('ORD-000050-02')
-            ->assertSeeText('ORD-261007-TECH1');
+            ->assertSeeText('ORD-261007-TECH1')
+            ->assertDontSee('class="order-tracking-qr"', false);
         $this->actingAs($owner)->get(route('admin.counter-orders.items.print', [$order, $second]))
             ->assertOk()
             ->assertSeeText('ORD-000050-02')
             ->assertSeeText('آئٹم کی رقم')
-            ->assertDontSeeText('ORD-000050-03');
+            ->assertDontSeeText('ORD-000050-03')
+            ->assertDontSee('class="order-tracking-qr"', false);
 
         $legacy = CounterOrder::create([
             'reference' => 'ORD-261001-LEGACY',

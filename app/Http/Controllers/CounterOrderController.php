@@ -241,7 +241,10 @@ class CounterOrderController extends Controller
         );
 
         $printConfig = $documents->make($setting, request(), 'tailor-order-copy', $counterOrder->id);
-        [$trackingUrl, $trackingQrSvg] = $this->trackingQr($counterOrder, $documents);
+        // The tracking QR is for stitching progress; a clothing-only receipt leaves it out.
+        $hasStitching = $counterOrder->items->contains(fn (CounterOrderItem $item) => $item->type === CounterOrderItem::TYPE_TAILORING
+            && $item->status === CounterOrderItem::STATUS_CONFIRMED);
+        [$trackingUrl, $trackingQrSvg] = $hasStitching ? $this->trackingQr($counterOrder, $documents) : [null, null];
         $returnedItems = $this->returnedOrderItems($counterOrder, $request->user()->businessOwnerId());
         $returnBalanceReduction = (float) CounterSaleReturn::where('user_id', $request->user()->businessOwnerId())
             ->whereIn('counter_sale_receipt_id', $counterOrder->items
@@ -354,7 +357,8 @@ class CounterOrderController extends Controller
             $item->item_serial ?: $counterOrder->reference . '-' . $item->id,
         );
         $singleItem = $item;
-        [$trackingUrl, $trackingQrSvg] = $this->trackingQr($counterOrder, $documents);
+        // Only cloth items reach here, and there is no stitching status to track.
+        [$trackingUrl, $trackingQrSvg] = [null, null];
 
         return view('counter-orders.print', compact(
             'counterOrder',
