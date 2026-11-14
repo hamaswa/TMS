@@ -145,14 +145,8 @@ class CounterSaleService
                     'acquisition_source' => 'counter_sale',
                 ]);
             } elseif ($customerMode === 'walk_in') {
-                $customer = Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', true)->first()
-                    ?? Customers::create([
-                        'name' => 'Walk-in Customer',
-                        'phone_number1' => '',
-                        'user_id' => $ownerId,
-                        'is_walk_in' => true,
-                        'acquisition_source' => 'walk_in',
-                    ]);
+                // Each walk-in sale gets its own record so different buyers never share a ledger.
+                $customer = Customers::newWalkIn((int) $ownerId);
             } elseif (! $customer->first_sale_at) {
                 $customer->forceFill([
                     'first_sale_at' => $soldAt,

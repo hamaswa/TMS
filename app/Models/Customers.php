@@ -121,6 +121,23 @@ class Customers extends Authenticatable
         });
     }
 
+    /**
+     * A new walk-in record for one anonymous sale, so each sale and any dues stay apart.
+     * Walk-ins have no serial number and never count toward the plan's customer limit.
+     */
+    public static function newWalkIn(int $ownerId): self
+    {
+        $number = static::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', true)->count() + 1;
+
+        return static::create([
+            'name' => 'Walk-in #'.$number,
+            'phone_number1' => '',
+            'user_id' => $ownerId,
+            'is_walk_in' => true,
+            'acquisition_source' => 'walk_in',
+        ]);
+    }
+
     public static function findByPhoneForOwner(int $ownerId, string $phone): ?self
     {
         $normalized = PakistanPhoneNumber::normalize($phone);

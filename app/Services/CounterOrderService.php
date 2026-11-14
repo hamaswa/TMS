@@ -365,11 +365,8 @@ class CounterOrderService
             ]);
         }
 
-        return Customers::where('user_id', $session->user_id)->whereNull('parent_id')->where('is_walk_in', true)->first()
-            ?? Customers::create([
-                'name' => 'Walk-in Customer', 'phone_number1' => '', 'user_id' => $session->user_id,
-                'is_walk_in' => true, 'acquisition_source' => 'walk_in',
-            ]);
+        // Each walk-in sale gets its own record, so its dues are never mixed with other buyers'.
+        return Customers::newWalkIn((int) $session->user_id);
     }
 
     private function reference(): string

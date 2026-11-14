@@ -157,7 +157,7 @@ class SubscriptionEntitlementTest extends TestCase
         $this->assertSame(2, $service->countedCustomers($owner->id));
     }
 
-    public function test_shared_walk_in_record_has_no_serial_and_is_pinned_first_in_the_customer_list(): void
+    public function test_walk_in_records_have_no_serial_and_show_in_the_customer_list(): void
     {
         [, $owner, $business] = $this->accounts();
         $this->subscription($business, ['max_customers' => 10]);
@@ -166,10 +166,11 @@ class SubscriptionEntitlementTest extends TestCase
         $badges = fn ($response) => substr_count($response->getContent(), 'class="customer-walk-in-badge"');
 
         $this->assertNull($walkIn->fresh()->serial_number);
-        // The walk-in record is listed first (above newer customers) and marked walk-in.
+        // The walk-in record is listed and marked walk-in.
         $response = $this->actingAs($owner)->get(route('admin.Customers.index'))
             ->assertOk()
-            ->assertSeeTextInOrder(['Walk-in Customer', 'Named Buyer']);
+            ->assertSeeText('Walk-in Customer')
+            ->assertSeeText('Named Buyer');
         $this->assertSame(1, $badges($response));
 
         // A named one-time buyer is marked walk-in too, until they become a regular.
@@ -177,6 +178,23 @@ class SubscriptionEntitlementTest extends TestCase
         $this->assertSame(2, $badges($this->actingAs($owner)->get(route('admin.Customers.index'))->assertSeeText('Feroz')));
         \App\Models\Transaction::create(['customerId' => $buyer->id, 'userId' => $owner->id, 'Order_type' => 'Sale', 'remainingBalance' => 300, 'recivedPayment' => 0]);
         $this->assertSame(1, $badges($this->actingAs($owner)->get(route('admin.Customers.index'))->assertSeeText('Feroz')));
+    }
+
+    public function test_each_walk_in_sale_gets_its_own_uncounted_record(): void
+    {
+        [, $owner, $business] = $this->accounts();
+        $this->subscription($business, ['max_customers' => 1]);
+        \App\Models\Customers::create(['name' => 'Regular', 'phone_number1' => '03001110001', 'user_id' => $owner->id]);
+
+        // At the limit, walk-in sales still get their own numbered records.
+        $first = \App\Models\Customers::newWalkIn($owner->id);
+        $second = \App\Models\Customers::newWalkIn($owner->id);
+
+        $this->assertNotSame($first->id, $second->id);
+        $this->assertSame(['Walk-in #1', 'Walk-in #2'], [$first->name, $second->name]);
+        $this->assertTrue($second->fresh()->is_walk_in);
+        $this->assertNull($second->fresh()->serial_number);
+        $this->assertSame(1, app(\App\Services\SubscriptionEntitlementService::class)->countedCustomers($owner->id));
     }
 
     public function test_expired_subscription_restricts_owner_employee_and_tailor_but_preserves_renewal_access(): void
