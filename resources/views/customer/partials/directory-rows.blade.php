@@ -6,7 +6,7 @@
         $familySearchText = $familyProfiles->pluck('name')->implode(' ');
     @endphp
     <tr data-customer-row="{{ $customer->id }}" @class(['customer-account-row', 'has-family' => $familyProfiles->isNotEmpty()])>
-        <td class="customer_serial customer-serial-cell" data-label="نمبر" data-order="{{ $customer->id }}">{{ $customer->serial_number ?? $customer->id }}</td>
+        <td class="customer_serial customer-serial-cell" data-label="نمبر" data-order="{{ $customer->id }}">{{ $customer->is_walk_in ? '—' : ($customer->serial_number ?? $customer->id) }}</td>
         <td class="customer-name-cell" data-label="گاہک">
             <div class="customer-identity">
                 @if($familyProfiles->isNotEmpty())
@@ -19,7 +19,7 @@
                     class="customer-link"
                     aria-label="{{ $customer->name }} کا پروفائل اور کھاتہ کھولیں">
                     {{ $customer->name }}
-                    @if($customer->is_one_time_buyer)
+                    @if($customer->is_walk_in || $customer->is_one_time_buyer)
                         <span class="customer-walk-in-badge" title="ایک بار نقد خریداری — پلان کی حد میں شمار نہیں">واک اِن</span>
                     @endif
                     <small>پروفائل اور کھاتہ دیکھیں @if($familyProfiles->isNotEmpty()) · {{ $familyProfiles->count() }} خاندانی فرد @endif</small>

@@ -1224,8 +1224,8 @@ class CustomerController extends Controller
         return Customers::query()
             ->where('user_id', $ownerId)
             ->whereNull('parent_id')
-            // The shared walk-in record holds anonymous cash sales; it is not a customer.
-            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
+            // The shared walk-in record holds anonymous cash sales; pin it first so its ledger is easy to open.
+            ->orderByRaw('COALESCE(is_walk_in, 0) DESC')
             ->with(['familyMeasurementProfiles' => fn($query) => $query
                 ->with('measurementTemplate')])
             ->when($search !== '', function ($query) use ($search, $familyParentIds) {
