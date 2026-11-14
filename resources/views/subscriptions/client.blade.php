@@ -176,7 +176,12 @@
                 <div class="alert alert-warning mt-3 mb-0 d-flex flex-wrap justify-content-between align-items-center" style="gap:.75rem" role="status">
                     <div>
                         <strong><i class="fas fa-door-open" aria-hidden="true"></i> آپ نے سبسکرپشن منسوخ کر دی ہے۔</strong>
-                        <div>آپ کا پلان {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} تک ({{ $currentSubscription->daysRemaining() }} دن) چلتا رہے گا، اس کے بعد بند ہو جائے گا۔ آپ کا ڈیٹا محفوظ رہے گا۔</div>
+                        {{-- The date sits mid-sentence, so English gets its own word order. --}}
+                        @if(($uiLocale ?? 'ur') === 'en')
+                            <div>Your plan keeps working until {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} ({{ $currentSubscription->daysRemaining() }} days) and then stops. Your data stays safe.</div>
+                        @else
+                            <div>آپ کا پلان {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} تک ({{ $currentSubscription->daysRemaining() }} دن) چلتا رہے گا، اس کے بعد بند ہو جائے گا۔ آپ کا ڈیٹا محفوظ رہے گا۔</div>
+                        @endif
                         @if($currentSubscription->cancel_request_reason)<div class="small text-muted mt-1">وجہ: {{ $currentSubscription->cancel_request_reason }}</div>@endif
                     </div>
                     <form method="POST" action="{{ route('admin.subscription.cancel.undo') }}">@csrf @method('DELETE')
@@ -186,7 +191,11 @@
             @elseif($currentSubscription->is_trial && $state !== 'expired')
                 <div class="alert alert-info mt-3 mb-0" role="status">
                     <strong><i class="fas fa-gift" aria-hidden="true"></i> آپ مفت آزمائش پر ہیں۔</strong>
-                    آزمائش {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} کو ختم ہوگی ({{ $currentSubscription->daysRemaining() }} دن باقی)۔ اس کے بعد ایپ کا استعمال جاری رکھنے کے لیے نیچے سے پلان کی ادائیگی کریں۔
+                    @if(($uiLocale ?? 'ur') === 'en')
+                        The trial ends on {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} ({{ $currentSubscription->daysRemaining() }} days left). To keep using the app after that, pay for a plan below.
+                    @else
+                        آزمائش {{ \App\Support\DisplayDate::long($currentSubscription->ends_on) }} کو ختم ہوگی ({{ $currentSubscription->daysRemaining() }} دن باقی)۔ اس کے بعد ایپ کا استعمال جاری رکھنے کے لیے نیچے سے پلان کی ادائیگی کریں۔
+                    @endif
                 </div>
             @else
                 @if($state === 'expiring')<div class="alert alert-warning mt-3 mb-0">آپ کی سبسکرپشن {{ $currentSubscription->daysRemaining() }} دن میں ختم ہوگی۔ تجدید کے لیے نیچے سے پلان منتخب کریں۔</div>@endif

@@ -16,6 +16,9 @@
         .tms-lang-switch--floating { position: fixed; top: 14px; left: 14px; z-index: 1080; border-color: #d5dfeb; background: #fff; box-shadow: 0 6px 18px rgba(16, 42, 67, .12); }
         [dir="ltr"] .tms-lang-switch--floating { right: 14px; left: auto; }
         .tms-lang-switch--floating a { color: #40566f; }
+        /* The floating switch is white, so the default white hover text would vanish. */
+        .tms-lang-switch--floating a:not(.is-active):hover,
+        .tms-lang-switch--floating a:not(.is-active):focus { background: #e8f1fa; color: #174f78; }
         .tms-lang-switch--floating a.is-active { background: #174f78; color: #fff; }
     </style>
 @endonce

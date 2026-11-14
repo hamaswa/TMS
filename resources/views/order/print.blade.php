@@ -258,6 +258,35 @@
             font-weight: 900 !important;
         }
 
+        /* Long labels wrap inside their column instead of running past the slip. */
+        .measurement-row .col-6 {
+            min-width: 0;
+        }
+
+        .measurement-row .measurement-label {
+            max-width: 65%;
+            flex-shrink: 1 !important;
+            white-space: normal !important;
+        }
+
+        /* Right column: the number takes only its own width, so the label has room to stay on one line. */
+        .measurement-row .col-6 > div > .measurement-value:first-child:not(.measurement-preference-value) {
+            width: auto !important;
+            flex: 0 0 auto;
+        }
+
+        .measurement-row .col-6 > div > .measurement-value:first-child:not(.measurement-preference-value) + .measurement-label {
+            width: auto !important;
+            max-width: none;
+            flex: 1 1 auto;
+        }
+
+        /* English labels are longer than the Urdu ones, so print them a little smaller. */
+        html[lang="en"] .measurement-row .measurement-label {
+            font-size: 17px !important;
+            line-height: 1.25 !important;
+        }
+
         .measurement-value {
             color: #000 !important;
             font-weight: 900 !important;

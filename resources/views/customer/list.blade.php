@@ -731,8 +731,11 @@
 
             $(document).on('click', '#customerPagination a', function (event) {
                 event.preventDefault();
-                var url = $(this).attr('href');
-                if (url) loadCustomerDirectory(url);
+                var href = $(this).attr('href');
+                if (!href) return;
+                // First-load links point at the full page, which returns HTML; always ask the JSON search URL for that page.
+                var query = new URL(href, window.location.href).search;
+                loadCustomerDirectory(customerTable.data('search-url') + query);
             });
 
             $('#myModalpayment form').on('submit', function (event) {

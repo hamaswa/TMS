@@ -680,6 +680,87 @@
                 font-size: 1.45rem
             }
         }
+
+        /* English mode: a Latin font and tighter lines (Nastaliq spacing is too tall for English). */
+        html[lang="en"] .auth-page,
+        html[lang="en"] .auth-brand small {
+            font-family: "Segoe UI", Inter, Roboto, Arial, sans-serif;
+            line-height: 1.55
+        }
+
+        html[lang="en"] .auth-page p,
+        html[lang="en"] .auth-page label,
+        html[lang="en"] .auth-page small,
+        html[lang="en"] .auth-page .btn,
+        html[lang="en"] .auth-page .form-control {
+            line-height: 1.55 !important
+        }
+
+        html[lang="en"] .auth-brand small {
+            font-size: .72rem;
+            letter-spacing: .01em
+        }
+
+        html[lang="en"] .auth-story h1 {
+            margin: 1.1rem 0 1rem;
+            font-size: clamp(2.4rem, 4.2vw, 4.25rem);
+            line-height: 1.08 !important;
+            letter-spacing: -.02em
+        }
+
+        html[lang="en"] .auth-card h2 {
+            line-height: 1.2 !important;
+            letter-spacing: -.01em
+        }
+
+        html[lang="en"] .auth-copy {
+            max-width: 54%
+        }
+
+        html[lang="en"] .auth-copy>p {
+            line-height: 1.65
+        }
+
+        html[lang="en"] .auth-label {
+            min-height: 0;
+            font-size: .86rem
+        }
+
+        html[lang="en"] .flow-step strong {
+            font-size: .82rem;
+            line-height: 1.35
+        }
+
+        html[lang="en"] .flow-step small {
+            margin-top: .3rem;
+            font-size: .68rem;
+            line-height: 1.35
+        }
+
+        html[lang="en"] .story-tagline {
+            letter-spacing: .01em
+        }
+
+        /* The text reads from the left in English, so the laptop picture moves to the right. */
+        html[lang="en"] .scene {
+            left: auto;
+            right: 3%;
+            top: 20%;
+            width: 40%;
+            transform: perspective(900px) rotateY(5deg)
+        }
+
+        @media(max-width:1400px) {
+            html[lang="en"] .auth-copy {
+                max-width: 680px
+            }
+        }
+
+        @media(min-width:861px) and (max-height:900px) {
+            html[lang="en"] .auth-story h1 {
+                font-size: clamp(2.1rem, min(3.6vw, 6.5vh), 3.5rem)
+            }
+        }
     </style>
 @endpush
 
