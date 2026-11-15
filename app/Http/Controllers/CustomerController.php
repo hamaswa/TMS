@@ -1224,6 +1224,7 @@ class CustomerController extends Controller
         return Customers::query()
             ->where('user_id', $ownerId)
             ->whereNull('parent_id')
+            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
             ->with(['familyMeasurementProfiles' => fn($query) => $query
                 ->with('measurementTemplate')])
             ->when($search !== '', function ($query) use ($search, $familyParentIds) {
