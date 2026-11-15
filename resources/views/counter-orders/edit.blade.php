@@ -1200,7 +1200,7 @@
                     </p>
                 </div><span class="co-status">{{ $statusLabels[$counterOrder->status] ?? $counterOrder->status }}</span>
             </header>
-            @if ($counterOrder)
+            @if ($counterOrder && !$counterOrder->customer?->is_walk_in)
                 <div class="co-closed-actions">
                     @include('customer.partials.action-menu', [
                 'customer' => $counterOrder->customer,
@@ -1222,7 +1222,7 @@
                     ایڈمن ڈیسک کے پاس ہے۔</div>
             @endif
             <div class="co-summary">
-                <div><small>گاہک</small><strong>{{ $counterOrder->customer?->name }}</strong></div>
+                <div><small>گاہک</small><strong>{{ $counterOrder->customer?->is_walk_in ? 'واک اِن (بغیر شناخت)' : $counterOrder->customer?->name }}</strong></div>
                 <div><small>کل آرڈر</small><strong id="co-summary-subtotal" dir="ltr">Rs.
                         {{ number_format((float) $counterOrder->subtotal, 2) }}</strong></div>
                 <div><small>وصول شدہ</small><strong id="co-summary-paid" dir="ltr">Rs.
@@ -1256,7 +1256,7 @@
                                             aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> کپڑا شامل کریں</button>
                                         @endif @if ($canAddTailoring)
                                             <button class="co-btn is-tailor" data-toggle="modal"
-                                                data-target="#tailoringItemModal"><i class="fas fa-plus"></i> سلائی شامل کریں</button>
+                                                data-target="{{ $counterOrder->customer?->is_walk_in ? '#identifyCustomerModal' : '#tailoringItemModal' }}"><i class="fas fa-plus"></i> سلائی شامل کریں</button>
                                         @endif
                                     @endif
                         </div>
@@ -1396,6 +1396,26 @@
             </div>
         </div>
     </section>
+
+    @if ($counterOrder->customer?->is_walk_in && !$counterOrder->isClosed() && $confirmedItems->isEmpty())
+        <div class="modal fade" id="identifyCustomerModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered"><div class="modal-content" dir="rtl">
+                <div class="modal-header"><h2 class="modal-title h5">سلائی کے لیے گاہک منتخب کریں</h2><button class="close" type="button" data-dismiss="modal">&times;</button></div>
+                <form method="POST" action="{{ route('admin.counter-orders.customer.identify', $counterOrder) }}">@csrf
+                    <div class="modal-body">
+                        <p class="text-muted">موجودہ گاہک منتخب کریں یا نئے گاہک کا نام اور فون درج کریں۔ اس کے بعد ناپ اور سلائی شامل کی جا سکتی ہے۔</p>
+                        <div class="form-group"><label>موجودہ گاہک</label><select class="form-control" name="existing_customer_id" id="identify-existing-customer"><option value="">نیا گاہک / منتخب نہیں</option>
+                            @foreach (\App\Models\Customers::where('user_id', auth()->user()->businessOwnerId())->whereNull('parent_id')->selectableForSales()->orderBy('name')->get(['id','name','phone_number1']) as $buyer)
+                                <option value="{{ $buyer->id }}">{{ $buyer->name }} · {{ $buyer->phone_number1 }}</option>
+                            @endforeach
+                        </select></div>
+                        <div class="form-group"><label>نئے گاہک کا نام</label><input class="form-control" name="name" maxlength="255"></div>
+                        <div class="form-group"><label>موبائل نمبر</label><input class="form-control" name="phone" maxlength="50" inputmode="tel"></div>
+                    </div><div class="modal-footer"><button class="co-btn" type="button" data-dismiss="modal">منسوخ</button><button class="co-btn is-primary" type="submit">گاہک محفوظ کریں</button></div>
+                </form>
+            </div></div>
+        </div>
+    @endif
 
     @if ($canAddTailoring && !$counterOrder->isClosed())
         <div class="modal fade" id="tailoringItemModal" tabindex="-1" role="dialog" aria-hidden="true">
