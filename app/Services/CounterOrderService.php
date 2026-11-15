@@ -136,6 +136,12 @@ class CounterOrderService
                 throw ValidationException::withMessages(['order' => 'تصدیق کے لیے کوئی نیا آئٹم موجود نہیں ہے۔']);
             }
             $draftTotal = round((float) $draftItems->sum('line_total'), 2);
+            if ($order->customer?->is_walk_in && (
+                $draftItems->contains('type', CounterOrderItem::TYPE_TAILORING)
+                || round($payment, 2) !== $draftTotal
+            )) {
+                throw ValidationException::withMessages(['payment' => 'واک اِن فروخت کے لیے پوری ادائیگی لازم ہے؛ سلائی یا ادھار کے لیے پہلے گاہک منتخب کریں۔']);
+            }
             $order->recalculate();
             $previousDue = $this->previousDue($order);
             if ($payment < 0 || $payment > round($draftTotal + $previousDue, 2)) {
@@ -169,13 +175,18 @@ class CounterOrderService
                     )->all(),
                     'suit_quantity' => $clothItems->map(fn ($item) => (float) $item->quantity)->all(),
                     'suit_unit_price' => $clothItems->map(fn ($item) => (float) $item->unit_price)->all(),
-                    'customer_mode' => 'regular',
-                    'existing_customer_id' => $order->customer_id,
+                    'customer_mode' => $order->customer?->is_walk_in ? 'walk_in' : 'regular',
+                    'existing_customer_id' => $order->customer?->is_walk_in ? null : $order->customer_id,
                     'payment' => $clothPayment,
                     'payment_method' => $method,
                     'payment_reference' => $reference,
                     'paid_on' => now()->toDateString(),
                 ]);
+                // A walk-in receipt has its own isolated ledger identity. Keep the order
+                // and receipt on that same identity for reporting and returns.
+                if ($order->customer?->is_walk_in && $result['customer']->id !== $order->customer_id) {
+                    $order->update(['customer_id' => $result['customer']->id]);
+                }
                 $clothItems->each->update([
                     'status' => CounterOrderItem::STATUS_CONFIRMED,
                     'source_record_type' => 'counter_sale_receipt',
