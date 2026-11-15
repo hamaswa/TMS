@@ -130,6 +130,7 @@ class CustomerController extends Controller
     {
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
             ->whereNull('parent_id')
+            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
             ->withSum([
                 'transactions as current_balance' => fn($transactions) => $transactions
                     ->where('userId', (string) Auth::user()->businessOwnerId()),
