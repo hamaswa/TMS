@@ -1256,7 +1256,7 @@
                                             aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> کپڑا شامل کریں</button>
                                         @endif @if ($canAddTailoring)
                                             <button class="co-btn is-tailor" data-toggle="modal"
-                                                data-target="{{ $counterOrder->customer?->is_walk_in ? '#identifyCustomerModal' : '#tailoringItemModal' }}"><i class="fas fa-plus"></i> سلائی شامل کریں</button>
+                                                data-target="{{ $counterOrder->customer?->is_walk_in && $confirmedItems->isEmpty() ? '#identifyCustomerModal' : ($counterOrder->customer?->is_walk_in ? '#walkInClosedModal' : '#tailoringItemModal') }}"><i class="fas fa-plus"></i> سلائی شامل کریں</button>
                                         @endif
                                     @endif
                         </div>
@@ -1396,6 +1396,10 @@
             </div>
         </div>
     </section>
+
+    @if ($counterOrder->customer?->is_walk_in && $confirmedItems->isNotEmpty() && !$counterOrder->isClosed())
+        <div class="modal fade" id="walkInClosedModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" dir="rtl"><div class="modal-header"><h2 class="modal-title h5">سلائی کے لیے نیا آرڈر</h2><button class="close" type="button" data-dismiss="modal">&times;</button></div><div class="modal-body">یہ واک اِن فروخت پہلے مکمل ہو چکی ہے۔ سلائی کے لیے گاہک منتخب یا رجسٹر کرکے نیا آرڈر شروع کریں۔</div><div class="modal-footer"><a class="co-btn is-primary" href="{{ route('admin.counter-orders.create') }}">نیا آرڈر</a></div></div></div></div>
+    @endif
 
     @if ($counterOrder->customer?->is_walk_in && !$counterOrder->isClosed() && $confirmedItems->isEmpty())
         <div class="modal fade" id="identifyCustomerModal" tabindex="-1" role="dialog" aria-hidden="true">
