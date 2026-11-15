@@ -16,15 +16,15 @@
             <form method="POST" action="{{ route('admin.counter-orders.store') }}">@csrf
                 <input type="hidden" name="profile_id" value="{{ old('profile_id',$selectedProfileId) }}">
                 <div class="form-group co-picker" id="co-customer-picker">
-                    <div class="co-customer-head"><label class="co-label mb-0" for="customer_search">گاہک</label><button class="co-quick" type="button" data-toggle="modal" data-target="#quickCustomerModal"><i class="fas fa-user-plus ml-1"></i> نیا / واک اِن گاہک</button></div>
-                    <input type="hidden" id="customer_id" name="customer_id" value="{{ old('customer_id',$selectedCustomer?->id) }}" required>
+                    <div class="co-customer-head"><label class="co-label mb-0" for="customer_search">گاہک</label><button class="co-quick" type="button" data-toggle="modal" data-target="#quickCustomerModal"><i class="fas fa-user-plus ml-1"></i> نیا گاہک</button></div>
+                    <input type="hidden" id="customer_id" name="customer_id" value="{{ old('customer_id',$selectedCustomer?->id) }}">
                     <input class="co-control" id="customer_search" type="search" autocomplete="off" placeholder="نام، فون یا گاہک نمبر سے تلاش کریں" aria-controls="customer_search_results" aria-autocomplete="list">
                     <div id="customer_selected" class="co-picker__selected" @if(!$selectedCustomer) hidden @endif><strong id="customer_selected_text">@if($selectedCustomer){{ $selectedCustomer->name }} · {{ $selectedCustomer->phone_number1 }}@endif</strong><button type="button" id="customer_clear" aria-label="منتخب گاہک ہٹائیں"><i class="fas fa-times"></i></button></div>
                     <div id="customer_search_results" class="co-picker__results" role="listbox" hidden></div>
                 </div>
                 <div class="form-group mb-0"><label class="co-label" for="note">ابتدائی نوٹ <small class="text-muted">(اختیاری)</small></label><textarea class="co-control" id="note" name="note" rows="3" maxlength="2000" placeholder="مثلاً تقریب کی تاریخ یا خاص ہدایت">{{ old('note') }}</textarea></div>
-                <div class="co-note"><i class="fas fa-info-circle ml-1"></i> ابھی کوئی رقم یا اسٹاک تبدیل نہیں ہوگا۔ آئٹمز شامل کرنے کے بعد ایڈمن ڈیسک سے تصدیق ہوگی۔</div>
-                <div class="co-actions"><button class="co-primary" type="submit"><i class="fas fa-arrow-left ml-1"></i> آرڈر شروع کریں</button><a class="co-secondary" href="{{ route('admin.Customers.index') }}">منسوخ</a></div>
+                <div class="co-note"><i class="fas fa-info-circle ml-1"></i> گاہک منتخب کیے بغیر آگے بڑھ سکتے ہیں؛ کپڑا فروخت ہو سکے گا۔ سلائی یا ادھار کے لیے پہلے گاہک کی شناخت ضروری ہے۔ ابھی کوئی رقم یا اسٹاک تبدیل نہیں ہوگا۔</div>
+                <div class="co-actions"><button class="co-primary" type="submit"><i class="fas fa-arrow-left ml-1"></i> <span id="co-start-label">آرڈر شروع کریں</span></button><a class="co-secondary" href="{{ route('admin.Customers.index') }}">منسوخ</a></div>
             </form>
         </div>
     </div>
@@ -62,9 +62,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedText = document.getElementById('customer_selected_text');
     const initialCustomers = @json($customerPickerOptions);
     let timer;
+    const startLabel = document.getElementById('co-start-label');
+    function updateStartLabel() { startLabel.textContent = idInput.value ? 'آرڈر شروع کریں' : 'واک اِن کے طور پر جاری رکھیں'; }
+    updateStartLabel();
 
     function choose(customer) {
         idInput.value = customer.id;
+        updateStartLabel();
         selectedText.textContent = customer.name + ' · ' + (customer.phone_number1 || 'فون موجود نہیں');
         selected.hidden = false;
         results.hidden = true;
@@ -94,6 +98,7 @@ document.addEventListener('DOMContentLoaded', function () {
     input.addEventListener('focus', function () { if (!input.value.trim()) render(initialCustomers); });
     input.addEventListener('input', function () {
         idInput.value = '';
+        updateStartLabel();
         selected.hidden = true;
         clearTimeout(timer);
         timer = setTimeout(async function () {
@@ -101,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (response.ok) render((await response.json()).customers || []);
         }, 250);
     });
-    document.getElementById('customer_clear').addEventListener('click', function () { idInput.value=''; selected.hidden=true; input.focus(); render(initialCustomers); });
+    document.getElementById('customer_clear').addEventListener('click', function () { idInput.value=''; updateStartLabel(); selected.hidden=true; input.focus(); render(initialCustomers); });
     document.addEventListener('click', function (event) { if (!document.getElementById('co-customer-picker').contains(event.target)) results.hidden=true; });
 
     document.getElementById('quick_customer_form').addEventListener('submit', async function (event) {
