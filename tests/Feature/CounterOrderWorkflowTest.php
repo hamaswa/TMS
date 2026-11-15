@@ -703,7 +703,7 @@ class CounterOrderWorkflowTest extends TestCase
         $this->actingAs($owner)->get(route('admin.counter-orders.create'))
             ->assertOk()
             ->assertSee('id="customer_search"', false)
-            ->assertSeeText('نیا / واک اِن گاہک')
+            ->assertSeeText('نیا گاہک')
             ->assertDontSeeText('Picker Customer 5');
 
         $this->actingAs($owner)->getJson(route('admin.counter-orders.customers.search', ['q' => 'Picker Customer 1']))
@@ -822,6 +822,51 @@ class CounterOrderWorkflowTest extends TestCase
         $this->assertDatabaseHas('transactions', [
             'customerId' => $customer->id, 'Order_type' => 'Payment', 'recivedPayment' => 600,
         ]);
+    }
+
+    public function test_anonymous_walk_in_can_start_and_buy_cloth_without_customer_registration(): void
+    {
+        [$owner, $customer, $cloth, $stock] = $this->fixture();
+        $this->actingAs($owner)->post(route('admin.counter-orders.store'), [
+            'note' => 'Anonymous cloth buyer',
+        ])->assertSessionHasNoErrors();
+        $order = CounterOrder::latest('id')->firstOrFail();
+        $this->assertTrue($order->customer->is_walk_in);
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()->assertSeeText('واک اِن (بغیر شناخت)');
+        $this->actingAs($owner)->get(route('admin.Customers.index'))
+            ->assertOk()->assertDontSeeText($order->customer->name);
+
+        $this->actingAs($owner)->post(route('admin.counter-orders.cloth-items.store', $order), [
+            'cloth_id' => $cloth->id, 'color' => $stock->color, 'length' => 2, 'total_price' => 600,
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $order), [
+            'payment' => 300, 'payment_method' => 'cash',
+        ])->assertSessionHasErrors('payment');
+        $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $order), [
+            'payment' => 600, 'payment_method' => 'cash',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame($order->customer_id, $order->fresh()->customer_id);
+        $this->assertDatabaseHas('counter_sale_receipts', [
+            'customer_id' => $order->customer_id, 'status' => 'completed',
+        ]);
+    }
+
+    public function test_anonymous_walk_in_must_be_identified_before_stitching(): void
+    {
+        [$owner, $customer, $cloth, $stock, $template] = $this->fixture();
+        $this->actingAs($owner)->post(route('admin.counter-orders.store'), [])->assertSessionHasNoErrors();
+        $order = CounterOrder::latest('id')->firstOrFail();
+        $this->actingAs($owner)->post(route('admin.counter-orders.tailoring-items.store', $order), [
+            'measurement_profile_id' => $customer->id, 'measurement_template_id' => $template->id,
+            'quantity' => 1, 'unit_price' => 1000, 'due_date' => now()->addDay()->toDateString(),
+        ])->assertSessionHasErrors('customer_id');
+        $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), [
+            'existing_customer_id' => $customer->id,
+        ])->assertSessionHasNoErrors();
+        $this->assertSame($customer->id, $order->fresh()->customer_id);
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()->assertSeeText($customer->name);
     }
 
     private function fixture(): array
