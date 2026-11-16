@@ -266,7 +266,7 @@
 
             @if ($canShopSales || $canTailorOrders)
                 <a class="tms-side-link {{ request()->routeIs('admin.counter-orders.*') ? 'is-active' : '' }}"
-                    href="{{ route('admin.counter-orders.create') }}"><span class="tms-side-icon"><i
+                    href="{{ route('admin.counter-orders.start') }}"><span class="tms-side-icon"><i
                             class="fas fa-cash-register"></i></span><span class="tms-side-label">نیا آرڈر</span></a>
             @endif
             @if ($canTailorCustomers || $canShopSales)

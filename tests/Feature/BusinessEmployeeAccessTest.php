@@ -261,7 +261,7 @@ class BusinessEmployeeAccessTest extends TestCase
         $this->actingAs($employee)->get(route('admin.dashboard.clothing'))
             ->assertOk()
             ->assertSeeText('نیا آرڈر')
-            ->assertSee(route('admin.counter-orders.create'), false)
+            ->assertSee(route('admin.counter-orders.start'), false)
             ->assertDontSee(route('admin.stock.index'), false)
             ->assertDontSee(route('admin.purchases.index'), false)
             ->assertDontSee(route('admin.suppliers.index'), false);

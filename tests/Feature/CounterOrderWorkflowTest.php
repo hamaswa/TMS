@@ -869,6 +869,66 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertOk()->assertSeeText($customer->name);
     }
 
+    public function test_new_order_shortcut_opens_a_walk_in_draft_and_reuses_an_untouched_one(): void
+    {
+        [$owner, $customer, $cloth, $stock] = $this->fixture();
+
+        $response = $this->actingAs($owner)->get(route('admin.counter-orders.start'));
+        $order = CounterOrder::latest('id')->firstOrFail();
+        $response->assertRedirect(route('admin.counter-orders.edit', $order));
+        $this->assertTrue($order->customer->is_walk_in);
+        $this->assertSame(CounterOrder::STATUS_DRAFT, $order->status);
+
+        // Walk-in is preselected in a searchable customer dropdown; the popup is only for new customers.
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()
+            ->assertSee('id="co-customer-picker"', false)
+            ->assertSee('id="co-customer-search"', false)
+            ->assertSee('<span>واک اِن (بغیر شناخت)</span>', false)
+            ->assertSee('data-target="#newCustomerModal"', false)
+            ->assertSee('data-auto-open="0"', false)
+            ->assertSee('id="co-add-cloth-button"', false)
+            ->assertDontSee('data-target="#tailoringItemModal"', false);
+
+        // Clicking "New order" again without touching the draft does not pile up empties.
+        $this->actingAs($owner)->get(route('admin.counter-orders.start'))
+            ->assertRedirect(route('admin.counter-orders.edit', $order));
+        $this->assertSame(1, CounterOrder::count());
+
+        // Once the draft has an item, the next "New order" starts a fresh one.
+        $this->actingAs($owner)->post(route('admin.counter-orders.cloth-items.store', $order), [
+            'cloth_id' => $cloth->id, 'color' => $stock->color, 'length' => 1, 'total_price' => 300,
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($owner)->get(route('admin.counter-orders.start'));
+        $this->assertSame(2, CounterOrder::count());
+
+        // Picking a customer on the order screen attaches them and hides the picker.
+        $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), [
+            'existing_customer_id' => $customer->id,
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()
+            ->assertSeeText($customer->name)
+            ->assertDontSee('id="co-customer-picker"', false)
+            ->assertDontSee('id="newCustomerModal"', false)
+            ->assertSee('id="co-add-cloth-button"', false)
+            ->assertSee('data-target="#tailoringItemModal"', false);
+    }
+
+    public function test_new_customer_popup_registers_and_attaches_the_customer(): void
+    {
+        [$owner] = $this->fixture();
+        $this->actingAs($owner)->get(route('admin.counter-orders.start'));
+        $order = CounterOrder::latest('id')->firstOrFail();
+
+        $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), [
+            'name' => 'Popup Customer', 'phone' => '03005556677',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('Popup Customer', $order->fresh()->customer->name);
+        $this->assertFalse((bool) $order->fresh()->customer->is_walk_in);
+    }
+
     private function fixture(): array
     {
         $role = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

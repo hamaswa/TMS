@@ -79,6 +79,30 @@ class CounterOrderController extends Controller
         ));
     }
 
+    /**
+     * "New order" shortcut: open a walk-in draft straight away so the counter can add
+     * cloth or stitching immediately. The customer can be picked on the order screen.
+     * An untouched walk-in draft by the same user is reused to avoid piling up empties.
+     */
+    public function start(Request $request, CounterOrderService $service): RedirectResponse
+    {
+        $this->authorizeAnyOrderAccess($request);
+        $ownerId = (int) $request->user()->businessOwnerId();
+
+        $order = CounterOrder::where('user_id', $ownerId)
+            ->where('created_by_user_id', $request->user()->id)
+            ->where('status', CounterOrder::STATUS_DRAFT)
+            ->whereNull('sale_session_id')
+            ->whereNull('note')
+            ->whereDoesntHave('items')
+            ->whereHas('customer', fn($query) => $query->where('is_walk_in', true))
+            ->latest('id')
+            ->first()
+            ?? $service->create($request->user(), Customers::newWalkIn($ownerId));
+
+        return redirect()->route('admin.counter-orders.edit', $order);
+    }
+
     public function searchCustomers(Request $request): JsonResponse
     {
         $this->authorizeAnyOrderAccess($request);

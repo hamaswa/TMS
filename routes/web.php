@@ -238,6 +238,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/activity-log/export', [BusinessActivityController::class, 'export'])->middleware('business.permission:activity.view')->name('activity.export');
 
     Route::middleware('business.permission:tailoring.orders|clothing.sales')->group(function () {
+        Route::get('/counter-orders/start', [CounterOrderController::class, 'start'])->name('counter-orders.start');
         Route::get('/counter-orders/create', [CounterOrderController::class, 'create'])->name('counter-orders.create');
         Route::get('/counter-orders/customers/search', [CounterOrderController::class, 'searchCustomers'])->name('counter-orders.customers.search');
         Route::post('/counter-orders/customers', [CounterOrderController::class, 'storeCustomer'])->name('counter-orders.customers.store');
