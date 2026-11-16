@@ -130,6 +130,7 @@ class CustomerController extends Controller
     {
         $customers = Customers::where('user_id', Auth::user()->businessOwnerId())
             ->whereNull('parent_id')
+            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
             ->withSum([
                 'transactions as current_balance' => fn($transactions) => $transactions
                     ->where('userId', (string) Auth::user()->businessOwnerId()),
@@ -1224,6 +1225,7 @@ class CustomerController extends Controller
         return Customers::query()
             ->where('user_id', $ownerId)
             ->whereNull('parent_id')
+            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
             ->with(['familyMeasurementProfiles' => fn($query) => $query
                 ->with('measurementTemplate')])
             ->when($search !== '', function ($query) use ($search, $familyParentIds) {

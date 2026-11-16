@@ -79,6 +79,30 @@ class CounterOrderController extends Controller
         ));
     }
 
+    /**
+     * "New order" shortcut: open a walk-in draft straight away so the counter can add
+     * cloth or stitching immediately. The customer can be picked on the order screen.
+     * An untouched walk-in draft by the same user is reused to avoid piling up empties.
+     */
+    public function start(Request $request, CounterOrderService $service): RedirectResponse
+    {
+        $this->authorizeAnyOrderAccess($request);
+        $ownerId = (int) $request->user()->businessOwnerId();
+
+        $order = CounterOrder::where('user_id', $ownerId)
+            ->where('created_by_user_id', $request->user()->id)
+            ->where('status', CounterOrder::STATUS_DRAFT)
+            ->whereNull('sale_session_id')
+            ->whereNull('note')
+            ->whereDoesntHave('items')
+            ->whereHas('customer', fn($query) => $query->where('is_walk_in', true))
+            ->latest('id')
+            ->first()
+            ?? $service->create($request->user(), Customers::newWalkIn($ownerId));
+
+        return redirect()->route('admin.counter-orders.edit', $order);
+    }
+
     public function searchCustomers(Request $request): JsonResponse
     {
         $this->authorizeAnyOrderAccess($request);
@@ -134,12 +158,15 @@ class CounterOrderController extends Controller
     {
         $this->authorizeAnyOrderAccess($request);
         $validated = $request->validate([
-            'customer_id' => ['required', 'integer'],
+            'customer_id' => ['nullable', 'integer'],
             'profile_id' => ['nullable', 'integer'],
             'note' => ['nullable', 'string', 'max:2000'],
         ]);
-        $customer = Customers::where('user_id', $request->user()->businessOwnerId())
-            ->whereNull('parent_id')->findOrFail($validated['customer_id']);
+        $ownerId = $request->user()->businessOwnerId();
+        $customer = ! empty($validated['customer_id'])
+            ? Customers::where('user_id', $ownerId)->whereNull('parent_id')
+                ->selectableForSales()->findOrFail($validated['customer_id'])
+            : Customers::newWalkIn((int) $ownerId);
         $order = $service->create($request->user(), $customer, $validated['note'] ?? null);
 
         return redirect()->route('admin.counter-orders.edit', [
@@ -147,6 +174,36 @@ class CounterOrderController extends Controller
             'profile' => $validated['profile_id'] ?? null,
         ])
             ->with('success', 'نیا آرڈر شروع ہو گیا ہے۔ اب کپڑا یا سلائی شامل کریں۔');
+    }
+
+    /** Identify an anonymous order before adding stitching or extending credit. */
+    public function identifyCustomer(Request $request, CounterOrder $counterOrder): RedirectResponse
+    {
+        $this->authorizeOrder($request, $counterOrder);
+        abort_if($counterOrder->isClosed(), 409, 'This order is closed.');
+        abort_unless($counterOrder->customer?->is_walk_in, 409, 'Customer is already identified.');
+        abort_if($counterOrder->items()->where('status', CounterOrderItem::STATUS_CONFIRMED)->exists(), 409,
+            'A confirmed anonymous sale cannot be reassigned.');
+
+        $ownerId = $request->user()->businessOwnerId();
+        $validated = $request->validate([
+            'existing_customer_id' => ['nullable', 'integer', 'required_without:name'],
+            'name' => ['nullable', 'string', 'max:255', 'required_without:existing_customer_id'],
+            'phone' => ['nullable', 'string', 'max:50', 'required_with:name', new PakistanMobileNumber, new UniqueCustomerPhone($ownerId)],
+        ]);
+        $customer = ! empty($validated['existing_customer_id'])
+            ? Customers::where('user_id', $ownerId)->whereNull('parent_id')
+                ->selectableForSales()->findOrFail($validated['existing_customer_id'])
+            : Customers::create([
+                'name' => trim($validated['name']),
+                'phone_number1' => trim($validated['phone']),
+                'user_id' => $ownerId,
+                'acquisition_source' => 'counter_order',
+            ]);
+        $counterOrder->update(['customer_id' => $customer->id]);
+
+        return redirect()->route('admin.counter-orders.edit', ['counterOrder' => $counterOrder, 'profile' => $customer->id])
+            ->with('success', 'گاہک منتخب ہو گیا ہے؛ اب سلائی اور ناپ شامل کیے جا سکتے ہیں۔');
     }
 
     public function edit(Request $request, CounterOrder $counterOrder): View
@@ -708,6 +765,9 @@ class CounterOrderController extends Controller
         abort_unless($this->canManageTailoring($request), 403);
         abort_if($counterOrder->isClosed(), 409, 'This order is closed.');
         $ownerId = $request->user()->businessOwnerId();
+        if ($counterOrder->customer?->is_walk_in) {
+            throw ValidationException::withMessages(['customer_id' => 'سلائی کے لیے پہلے گاہک کا نام اور فون درج کریں۔']);
+        }
         $validated = $request->validate([
             'measurement_profile_id' => ['required', 'integer'],
             'measurement_template_id' => ['required', 'integer', Rule::exists('measurement_templates', 'id')->where('user_id', $ownerId)->where('is_active', true)],

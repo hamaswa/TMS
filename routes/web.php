@@ -238,10 +238,12 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
     Route::get('/activity-log/export', [BusinessActivityController::class, 'export'])->middleware('business.permission:activity.view')->name('activity.export');
 
     Route::middleware('business.permission:tailoring.orders|clothing.sales')->group(function () {
+        Route::get('/counter-orders/start', [CounterOrderController::class, 'start'])->name('counter-orders.start');
         Route::get('/counter-orders/create', [CounterOrderController::class, 'create'])->name('counter-orders.create');
         Route::get('/counter-orders/customers/search', [CounterOrderController::class, 'searchCustomers'])->name('counter-orders.customers.search');
         Route::post('/counter-orders/customers', [CounterOrderController::class, 'storeCustomer'])->name('counter-orders.customers.store');
         Route::post('/counter-orders', [CounterOrderController::class, 'store'])->name('counter-orders.store');
+        Route::post('/counter-orders/{counterOrder}/identify-customer', [CounterOrderController::class, 'identifyCustomer'])->name('counter-orders.customer.identify');
         Route::get('/counter-orders/{counterOrder}/edit', [CounterOrderController::class, 'edit'])->name('counter-orders.edit');
         Route::get('/counter-orders/{counterOrder}/print', [CounterOrderController::class, 'print'])->name('counter-orders.print');
         Route::get('/counter-orders/{counterOrder}/items/{item}/print', [CounterOrderController::class, 'printItem'])->name('counter-orders.items.print');

@@ -94,7 +94,7 @@
                     </div>
 
                     <div class="stock-header-actions">
-                        <a href="{{ route('admin.counter-orders.create') }}" class="stock-sale-button">
+                        <a href="{{ route('admin.counter-orders.start') }}" class="stock-sale-button">
                             <i class="fas fa-cash-register" aria-hidden="true"></i>
                             <span>نیا آرڈر</span>
                         </a>

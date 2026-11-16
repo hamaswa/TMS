@@ -18,12 +18,17 @@
                 : ($canAddCloth
                     ? 'کپڑے کی فروخت کا آرڈر'
                     : 'سلائی کا آرڈر');
+        // Stitching needs a known customer, so a walk-in order only offers cloth until one is picked.
+        $isWalkInOrder = (bool) $counterOrder->customer?->is_walk_in;
+        $canOfferTailoring = $canAddTailoring && !$isWalkInOrder;
+        // A walk-in draft can still be handed to a known customer until something is confirmed.
+        $canPickCustomer = $isWalkInOrder && !$counterOrder->isClosed() && $confirmedItems->isEmpty();
         $emptyOrderHint =
-            $canAddCloth && $canAddTailoring
+            $canAddCloth && $canOfferTailoring
                 ? 'اوپر سے کپڑا یا سلائی شامل کریں۔'
                 : ($canAddCloth
-                    ? 'اوپر سے فروخت ہونے والا کپڑا شامل کریں۔'
-                    : 'اوپر سے سلائی شامل کریں۔');
+                    ? ($canAddTailoring ? 'اوپر سے کپڑا شامل کریں؛ سلائی کے لیے پہلے گاہک منتخب کریں۔' : 'اوپر سے فروخت ہونے والا کپڑا شامل کریں۔')
+                    : ($canOfferTailoring ? 'اوپر سے سلائی شامل کریں۔' : 'سلائی کے لیے پہلے گاہک منتخب کریں۔'));
         $confirmationHint =
             $canAddCloth && $canAddTailoring
                 ? 'تصدیق پر کپڑا اسٹاک سے کم ہوگا اور سلائی ورکشاپ آرڈر بنے گا۔'
@@ -103,6 +108,116 @@
 
         .co-summary strong {
             font-size: 1.02rem
+        }
+
+        .co-cust-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 5px
+        }
+
+        .co-cust-head small {
+            margin-bottom: 0 !important
+        }
+
+        .co-cust-new-link {
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: #1769e0;
+            font-size: .82rem;
+            font-weight: 700;
+            cursor: pointer
+        }
+
+        .co-cust-picker {
+            position: relative
+        }
+
+        .co-cust-toggle {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            min-height: 40px;
+            padding: 7px 11px;
+            border: 1px solid #d4deeb;
+            border-radius: 9px;
+            background: #fff;
+            color: inherit;
+            font-weight: 700;
+            text-align: right;
+            cursor: pointer
+        }
+
+        .co-cust-toggle i {
+            color: #7a8ba0;
+            font-size: .8rem
+        }
+
+        .co-cust-panel {
+            position: absolute;
+            z-index: 40;
+            top: 100%;
+            right: 0;
+            left: 0;
+            min-width: 260px;
+            margin-top: 5px;
+            padding: 8px;
+            border: 1px solid #d4deeb;
+            border-radius: 11px;
+            background: #fff;
+            box-shadow: 0 15px 35px rgba(20, 50, 85, .14)
+        }
+
+        .co-cust-panel[hidden] {
+            display: none
+        }
+
+        .co-cust-list {
+            max-height: 240px;
+            margin-top: 6px;
+            overflow: auto
+        }
+
+        .co-cust-option {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 10px;
+            border: 0;
+            border-radius: 8px;
+            background: #fff;
+            text-align: right;
+            cursor: pointer
+        }
+
+        .co-cust-option:hover,
+        .co-cust-option:focus {
+            background: #f4f8ff
+        }
+
+        .co-cust-option.is-selected {
+            background: #ecfdf3;
+            color: #14532d
+        }
+
+        .co-cust-option small {
+            direction: ltr;
+            margin: 0 !important;
+            color: #64748b
+        }
+
+        .co-cust-empty {
+            padding: 10px;
+            color: #718096;
+            text-align: center;
+            font-size: .85rem
         }
 
         .co-main {
@@ -1200,7 +1315,7 @@
                     </p>
                 </div><span class="co-status">{{ $statusLabels[$counterOrder->status] ?? $counterOrder->status }}</span>
             </header>
-            @if ($counterOrder)
+            @if ($counterOrder && !$counterOrder->customer?->is_walk_in)
                 <div class="co-closed-actions">
                     @include('customer.partials.action-menu', [
                 'customer' => $counterOrder->customer,
@@ -1222,7 +1337,28 @@
                     ایڈمن ڈیسک کے پاس ہے۔</div>
             @endif
             <div class="co-summary">
-                <div><small>گاہک</small><strong>{{ $counterOrder->customer?->name }}</strong></div>
+                @if ($canPickCustomer)
+                    <div>
+                        <div class="co-cust-head"><small>گاہک</small><button type="button" class="co-cust-new-link"
+                                data-toggle="modal" data-target="#newCustomerModal"><i class="fas fa-user-plus"></i> نیا گاہک</button></div>
+                        <div class="co-cust-picker" id="co-customer-picker">
+                            <button type="button" class="co-cust-toggle" id="co-customer-toggle" aria-haspopup="listbox"
+                                aria-expanded="false" aria-controls="co-customer-panel"><span>واک اِن (بغیر شناخت)</span><i
+                                    class="fas fa-chevron-down"></i></button>
+                            <div class="co-cust-panel" id="co-customer-panel" hidden>
+                                <input type="search" class="form-control" id="co-customer-search" autocomplete="off"
+                                    placeholder="نام، فون یا گاہک نمبر سے تلاش کریں">
+                                <div class="co-cust-list" id="co-customer-list" role="listbox"></div>
+                            </div>
+                            <form method="POST" id="co-customer-choose-form"
+                                action="{{ route('admin.counter-orders.customer.identify', $counterOrder) }}" hidden>@csrf
+                                <input type="hidden" name="existing_customer_id" id="co-customer-choose-id">
+                            </form>
+                        </div>
+                    </div>
+                @else
+                    <div><small>گاہک</small><strong>{{ $isWalkInOrder ? 'واک اِن (بغیر شناخت)' : $counterOrder->customer?->name }}</strong></div>
+                @endif
                 <div><small>کل آرڈر</small><strong id="co-summary-subtotal" dir="ltr">Rs.
                         {{ number_format((float) $counterOrder->subtotal, 2) }}</strong></div>
                 <div><small>وصول شدہ</small><strong id="co-summary-paid" dir="ltr">Rs.
@@ -1241,7 +1377,7 @@
                     <div class="co-panel-head">
                         <div>
                             <h2>آرڈر کے آئٹمز</h2><small
-                                class="text-muted">{{ $canAddCloth ? 'کپڑا اسی فہرست میں شامل یا تبدیل کریں؛ سلائی کی تفصیل الگ فارم میں کھلے گی۔' : 'سلائی کی تفصیل شامل یا تبدیل کرنے کے لیے فارم کھولیں۔' }}</small>
+                                class="text-muted">{{ $canAddCloth ? ($canOfferTailoring ? 'کپڑا اسی فہرست میں شامل یا تبدیل کریں؛ سلائی کی تفصیل الگ فارم میں کھلے گی۔' : 'کپڑا اسی فہرست میں شامل یا تبدیل کریں۔') : 'سلائی کی تفصیل شامل یا تبدیل کرنے کے لیے فارم کھولیں۔' }}</small>
                         </div>
                         <div class="co-adds">
                             @if ($confirmedItems->isNotEmpty())
@@ -1254,7 +1390,7 @@
                                         <button id="co-add-cloth-button" class="co-btn is-primary co-add-row-button"
                                             type="button" aria-expanded="{{ old('cloth_id') ? 'true' : 'false' }}"
                                             aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> کپڑا شامل کریں</button>
-                                        @endif @if ($canAddTailoring)
+                                        @endif @if ($canOfferTailoring)
                                             <button class="co-btn is-tailor" data-toggle="modal"
                                                 data-target="#tailoringItemModal"><i class="fas fa-plus"></i> سلائی شامل کریں</button>
                                         @endif
@@ -1396,6 +1532,21 @@
             </div>
         </div>
     </section>
+
+    @if ($canPickCustomer)
+        <div class="modal fade" id="newCustomerModal" tabindex="-1" role="dialog" aria-hidden="true"
+            data-auto-open="{{ $errors->hasAny(['name', 'phone']) ? '1' : '0' }}">
+            <div class="modal-dialog modal-dialog-centered"><div class="modal-content" dir="rtl">
+                <div class="modal-header"><h2 class="modal-title h5">نیا گاہک شامل کریں</h2><button class="close" type="button" data-dismiss="modal">&times;</button></div>
+                <form method="POST" action="{{ route('admin.counter-orders.customer.identify', $counterOrder) }}">@csrf
+                    <div class="modal-body">
+                        <div class="form-group"><label for="new-customer-name">نام</label><input class="form-control" id="new-customer-name" name="name" maxlength="255" value="{{ old('name') }}" required></div>
+                        <div class="form-group mb-0"><label for="new-customer-phone">موبائل نمبر</label><input class="form-control" id="new-customer-phone" name="phone" maxlength="50" inputmode="tel" placeholder="03001234567" value="{{ old('phone') }}" required></div>
+                    </div><div class="modal-footer"><button class="co-btn" type="button" data-dismiss="modal">منسوخ</button><button class="co-btn is-primary" type="submit">محفوظ اور منتخب کریں</button></div>
+                </form>
+            </div></div>
+        </div>
+    @endif
 
     @if ($canAddTailoring && !$counterOrder->isClosed())
         <div class="modal fade" id="tailoringItemModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -1566,6 +1717,103 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                (function() {
+                    var picker = document.getElementById('co-customer-picker');
+                    if (!picker) return;
+                    var toggle = document.getElementById('co-customer-toggle'),
+                        panel = document.getElementById('co-customer-panel'),
+                        search = document.getElementById('co-customer-search'),
+                        list = document.getElementById('co-customer-list'),
+                        form = document.getElementById('co-customer-choose-form'),
+                        chosenId = document.getElementById('co-customer-choose-id'),
+                        searchUrl = @json(route('admin.counter-orders.customers.search')),
+                        timer = null,
+                        requestNo = 0;
+
+                    function close() {
+                        panel.hidden = true;
+                        toggle.setAttribute('aria-expanded', 'false');
+                        search.value = '';
+                    }
+
+                    function option(label, meta, selected, onPick) {
+                        var button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'co-cust-option' + (selected ? ' is-selected' : '');
+                        button.setAttribute('role', 'option');
+                        button.setAttribute('aria-selected', selected ? 'true' : 'false');
+                        var name = document.createElement('strong');
+                        name.textContent = label;
+                        button.appendChild(name);
+                        if (meta) {
+                            var small = document.createElement('small');
+                            small.textContent = meta;
+                            button.appendChild(small);
+                        }
+                        button.addEventListener('click', onPick);
+                        return button;
+                    }
+
+                    function render(customers, loading) {
+                        list.innerHTML = '';
+                        // Walk-in is always the first, already-selected choice.
+                        list.appendChild(option('واک اِن (بغیر شناخت)', '', true, close));
+                        if (!customers.length && !loading) {
+                            var empty = document.createElement('div');
+                            empty.className = 'co-cust-empty';
+                            empty.textContent = 'کوئی گاہک نہیں ملا۔ اوپر سے نیا گاہک شامل کریں۔';
+                            list.appendChild(empty);
+                            return;
+                        }
+                        customers.forEach(function(customer) {
+                            var meta = (customer.phone_number1 || 'فون موجود نہیں') +
+                                (customer.serial_number ? ' · #' + customer.serial_number : '');
+                            list.appendChild(option(customer.name, meta, false, function() {
+                                chosenId.value = customer.id;
+                                toggle.querySelector('span').textContent = customer.name;
+                                toggle.disabled = true;
+                                close();
+                                form.submit();
+                            }));
+                        });
+                    }
+
+                    function load() {
+                        var mine = ++requestNo;
+                        fetch(searchUrl + '?q=' + encodeURIComponent(search.value.trim()), {
+                            headers: { 'Accept': 'application/json' }
+                        }).then(function(response) {
+                            return response.ok ? response.json() : { customers: [] };
+                        }).then(function(payload) {
+                            if (mine === requestNo) render(payload.customers || [], false);
+                        });
+                    }
+
+                    toggle.addEventListener('click', function() {
+                        if (!panel.hidden) return close();
+                        panel.hidden = false;
+                        toggle.setAttribute('aria-expanded', 'true');
+                        render([], true);
+                        load();
+                        search.focus();
+                    });
+                    search.addEventListener('input', function() {
+                        clearTimeout(timer);
+                        timer = setTimeout(load, 250);
+                    });
+                    search.addEventListener('keydown', function(event) {
+                        if (event.key === 'Escape') close();
+                    });
+                    document.addEventListener('click', function(event) {
+                        if (!picker.contains(event.target)) close();
+                    });
+
+                    var newModal = document.getElementById('newCustomerModal');
+                    if (newModal && newModal.dataset.autoOpen === '1' && window.jQuery) {
+                        window.jQuery(newModal).modal('show');
+                    }
+                })();
+
                 var cloth = document.getElementById('co-cloth-select'),
                     color = document.getElementById('co-cloth-color'),
                     price = document.getElementById('co-cloth-price'),

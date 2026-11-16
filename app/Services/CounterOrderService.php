@@ -136,6 +136,12 @@ class CounterOrderService
                 throw ValidationException::withMessages(['order' => 'تصدیق کے لیے کوئی نیا آئٹم موجود نہیں ہے۔']);
             }
             $draftTotal = round((float) $draftItems->sum('line_total'), 2);
+            if ($order->customer?->is_walk_in && (
+                $draftItems->contains('type', CounterOrderItem::TYPE_TAILORING)
+                || round($payment, 2) !== $draftTotal
+            )) {
+                throw ValidationException::withMessages(['payment' => 'واک اِن فروخت کے لیے پوری ادائیگی لازم ہے؛ سلائی یا ادھار کے لیے پہلے گاہک منتخب کریں۔']);
+            }
             $order->recalculate();
             $previousDue = $this->previousDue($order);
             if ($payment < 0 || $payment > round($draftTotal + $previousDue, 2)) {
