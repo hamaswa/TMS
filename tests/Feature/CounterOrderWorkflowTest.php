@@ -888,7 +888,8 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertSee('data-target="#newCustomerModal"', false)
             ->assertSee('data-auto-open="0"', false)
             ->assertSee('id="co-add-cloth-button"', false)
-            ->assertDontSee('data-target="#tailoringItemModal"', false);
+            // Stitching stays hidden for a walk-in; the page reveals it once a customer is picked.
+            ->assertSee('data-target="#tailoringItemModal" hidden', false);
 
         // Clicking "New order" again without touching the draft does not pile up empties.
         $this->actingAs($owner)->get(route('admin.counter-orders.start'))
@@ -902,17 +903,17 @@ class CounterOrderWorkflowTest extends TestCase
         $this->actingAs($owner)->get(route('admin.counter-orders.start'));
         $this->assertSame(2, CounterOrder::count());
 
-        // Picking a customer on the order screen attaches them and hides the picker.
+        // Picking a customer attaches them; the picker stays so a wrong pick can be changed.
         $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), [
             'existing_customer_id' => $customer->id,
         ])->assertSessionHasNoErrors();
         $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
             ->assertOk()
-            ->assertSeeText($customer->name)
-            ->assertDontSee('id="co-customer-picker"', false)
-            ->assertDontSee('id="newCustomerModal"', false)
+            ->assertSee('<span>'.e($customer->name).'</span>', false)
+            ->assertSee('id="co-customer-picker"', false)
             ->assertSee('id="co-add-cloth-button"', false)
-            ->assertSee('data-target="#tailoringItemModal"', false);
+            ->assertSee('data-target="#tailoringItemModal"', false)
+            ->assertDontSee('data-target="#tailoringItemModal" hidden', false);
     }
 
     public function test_new_customer_popup_registers_and_attaches_the_customer(): void
@@ -927,6 +928,74 @@ class CounterOrderWorkflowTest extends TestCase
 
         $this->assertSame('Popup Customer', $order->fresh()->customer->name);
         $this->assertFalse((bool) $order->fresh()->customer->is_walk_in);
+    }
+
+    public function test_customer_can_be_changed_or_cleared_back_to_walk_in_until_stitching_or_confirmation(): void
+    {
+        [$owner, $customer, $cloth, $stock, $template] = $this->fixture();
+        $other = Customers::create(['name' => 'Second Buyer', 'phone_number1' => '03007770001', 'user_id' => $owner->id]);
+        $this->actingAs($owner)->get(route('admin.counter-orders.start'));
+        $order = CounterOrder::latest('id')->firstOrFail();
+        $walkInId = $order->customer_id;
+
+        // A wrong pick can be corrected and the dropdown stays available.
+        $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), ['existing_customer_id' => $customer->id])
+            ->assertSessionHasNoErrors();
+        $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), ['existing_customer_id' => $other->id])
+            ->assertSessionHasNoErrors();
+        $this->assertSame($other->id, $order->fresh()->customer_id);
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()
+            ->assertSee('id="co-customer-picker"', false)
+            ->assertSee('<span>Second Buyer</span>', false);
+
+        // Back to walk-in reuses the unused walk-in record instead of creating another.
+        $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), ['existing_customer_id' => 'walk_in'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame($walkInId, $order->fresh()->customer_id);
+        $this->assertSame(1, Customers::where('user_id', $owner->id)->where('is_walk_in', true)->count());
+
+        // A drafted stitching item locks the customer.
+        $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), ['existing_customer_id' => $customer->id]);
+        $order->items()->create([
+            'item_sequence' => 1, 'type' => CounterOrderItem::TYPE_TAILORING, 'status' => CounterOrderItem::STATUS_DRAFT,
+            'measurement_profile_id' => $customer->id, 'measurement_template_id' => $template->id,
+            'quantity' => 1, 'unit_price' => 1000, 'line_total' => 1000,
+        ]);
+        $this->actingAs($owner)->post(route('admin.counter-orders.customer.identify', $order), ['existing_customer_id' => $other->id])
+            ->assertStatus(409);
+        $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
+            ->assertOk()->assertDontSee('id="co-customer-picker"', false);
+    }
+
+    public function test_customer_can_be_switched_in_place_over_ajax(): void
+    {
+        [$owner, $customer] = $this->fixture();
+        $this->actingAs($owner)->get(route('admin.counter-orders.start'));
+        $order = CounterOrder::latest('id')->firstOrFail();
+
+        $this->actingAs($owner)->postJson(route('admin.counter-orders.customer.identify', $order), [
+            'existing_customer_id' => $customer->id,
+        ])->assertOk()
+            ->assertJsonPath('customer.id', $customer->id)
+            ->assertJsonPath('customer.is_walk_in', false)
+            ->assertJsonPath('customer.label', $customer->name)
+            ->assertJson(fn ($json) => $json
+                ->where('profile_options', fn ($html) => str_contains($html, 'value="'.$customer->id.'"'))
+                ->where('customer_actions', fn ($html) => $html !== '')
+                ->etc());
+
+        $this->actingAs($owner)->postJson(route('admin.counter-orders.customer.identify', $order), [
+            'existing_customer_id' => 'walk_in',
+        ])->assertOk()
+            ->assertJsonPath('customer.is_walk_in', true)
+            ->assertJsonPath('customer.label', 'واک اِن (بغیر شناخت)')
+            ->assertJsonPath('customer_actions', '');
+
+        $this->actingAs($owner)->postJson(route('admin.counter-orders.customer.identify', $order), [
+            'name' => 'Ajax Buyer', 'phone' => 'not-a-phone',
+        ])->assertStatus(422)->assertJsonValidationErrors('phone');
+        $this->assertTrue($order->fresh()->customer->is_walk_in);
     }
 
     private function fixture(): array

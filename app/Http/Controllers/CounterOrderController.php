@@ -176,16 +176,30 @@ class CounterOrderController extends Controller
             ->with('success', 'نیا آرڈر شروع ہو گیا ہے۔ اب کپڑا یا سلائی شامل کریں۔');
     }
 
-    /** Identify an anonymous order before adding stitching or extending credit. */
-    public function identifyCustomer(Request $request, CounterOrder $counterOrder): RedirectResponse
+    /**
+     * Pick, change or clear (back to walk-in) the order's customer. Allowed until anything is
+     * confirmed, and only while no stitching item is drafted, because those carry the
+     * customer's measurement profile.
+     */
+    public function identifyCustomer(Request $request, CounterOrder $counterOrder): RedirectResponse|JsonResponse
     {
         $this->authorizeOrder($request, $counterOrder);
         abort_if($counterOrder->isClosed(), 409, 'This order is closed.');
-        abort_unless($counterOrder->customer?->is_walk_in, 409, 'Customer is already identified.');
         abort_if($counterOrder->items()->where('status', CounterOrderItem::STATUS_CONFIRMED)->exists(), 409,
-            'A confirmed anonymous sale cannot be reassigned.');
+            'A confirmed order cannot be reassigned.');
+        abort_if($counterOrder->items()->where('type', CounterOrderItem::TYPE_TAILORING)
+            ->where('status', CounterOrderItem::STATUS_DRAFT)->exists(), 409,
+            'Remove the stitching items before changing the customer.');
 
-        $ownerId = $request->user()->businessOwnerId();
+        $ownerId = (int) $request->user()->businessOwnerId();
+        if ($request->input('existing_customer_id') === 'walk_in') {
+            if (! $counterOrder->customer?->is_walk_in) {
+                $counterOrder->update(['customer_id' => $this->unusedWalkIn($ownerId)->id]);
+            }
+
+            return $this->customerChanged($request, $counterOrder, 'آرڈر واک اِن گاہک پر کر دیا گیا ہے۔');
+        }
+
         $validated = $request->validate([
             'existing_customer_id' => ['nullable', 'integer', 'required_without:name'],
             'name' => ['nullable', 'string', 'max:255', 'required_without:existing_customer_id'],
@@ -202,8 +216,76 @@ class CounterOrderController extends Controller
             ]);
         $counterOrder->update(['customer_id' => $customer->id]);
 
-        return redirect()->route('admin.counter-orders.edit', ['counterOrder' => $counterOrder, 'profile' => $customer->id])
-            ->with('success', 'گاہک منتخب ہو گیا ہے؛ اب سلائی اور ناپ شامل کیے جا سکتے ہیں۔');
+        return $this->customerChanged($request, $counterOrder, 'گاہک منتخب ہو گیا ہے؛ اب سلائی اور ناپ شامل کیے جا سکتے ہیں۔');
+    }
+
+    /**
+     * The order screen swaps the customer in place, so an AJAX call gets back the pieces of the
+     * page that depend on the customer instead of a reload.
+     */
+    private function customerChanged(Request $request, CounterOrder $counterOrder, string $message): RedirectResponse|JsonResponse
+    {
+        $counterOrder->load('customer');
+        $customer = $counterOrder->customer;
+        $isWalkIn = (bool) $customer?->is_walk_in;
+        if (! $request->expectsJson()) {
+            return redirect()->route('admin.counter-orders.edit', array_filter([
+                'counterOrder' => $counterOrder,
+                'profile' => $isWalkIn ? null : $customer?->id,
+            ]))->with('success', $message);
+        }
+
+        [$profiles, $profileTemplateIds] = $this->measurementProfiles($request, $counterOrder);
+
+        return response()->json([
+            'message' => $message,
+            'customer' => [
+                'id' => $customer?->id,
+                'name' => $customer?->name,
+                'is_walk_in' => $isWalkIn,
+                'label' => $isWalkIn ? 'واک اِن (بغیر شناخت)' : $customer?->name,
+            ],
+            'profile_options' => view('counter-orders.partials.profile-options', [
+                'counterOrder' => $counterOrder,
+                'profiles' => $profiles,
+                'profileTemplateIds' => $profileTemplateIds,
+                'selectedProfileId' => $customer?->id,
+            ])->render(),
+            'customer_actions' => $isWalkIn ? '' : view('customer.partials.action-menu', [
+                'customer' => $customer,
+                'selectedCustomer' => $customer,
+            ])->render(),
+        ]);
+    }
+
+    /** The order customer and their family members, each with the measurement templates offered. */
+    private function measurementProfiles(Request $request, CounterOrder $counterOrder): array
+    {
+        $ownerId = $request->user()->businessOwnerId();
+        $profiles = Customers::where('user_id', $ownerId)
+            ->where(fn($query) => $query->whereKey($counterOrder->customer_id)->orWhere('parent_id', $counterOrder->customer_id === null ? null : (string) $counterOrder->customer_id))
+            ->orderByRaw('parent_id is not null')->orderBy('name')->get();
+        $templateIds = $this->canManageTailoring($request)
+            ? MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
+                ->orderByDesc('is_default')->orderBy('name')->pluck('id')->map(fn($id) => (int) $id)->values()->all()
+            : [];
+
+        return [$profiles, $profiles->mapWithKeys(fn(Customers $profile) => [$profile->id => $templateIds])];
+    }
+
+    /** A walk-in record no order, receipt or ledger entry uses yet, so toggling back doesn't pile them up. */
+    private function unusedWalkIn(int $ownerId): Customers
+    {
+        return Customers::where('user_id', $ownerId)->whereNull('parent_id')->where('is_walk_in', true)
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('counter_orders')
+                ->whereColumn('counter_orders.customer_id', 'customers.id'))
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('counter_sale_receipts')
+                ->whereColumn('counter_sale_receipts.customer_id', 'customers.id'))
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('transactions')
+                ->whereRaw('transactions.customerId = CAST(customers.id AS CHAR)'))
+            ->orderBy('id')
+            ->first()
+            ?? Customers::newWalkIn($ownerId);
     }
 
     public function edit(Request $request, CounterOrder $counterOrder): View
@@ -227,23 +309,12 @@ class CounterOrderController extends Controller
         $canManageAllItems = $counterOrder->items->where('status', '!=', CounterOrderItem::STATUS_CANCELLED)
             ->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item));
         $cloths = $canAddCloth ? Cloth::where('user_id', $ownerId)->with(['brand', 'type', 'colors', 'category.parent'])->orderBy('id')->get() : collect();
-        $profiles = Customers::where('user_id', $ownerId)
-            ->where(fn($query) => $query->whereKey($counterOrder->customer_id)->orWhere('parent_id', $counterOrder->customer_id === null ? null : (string) $counterOrder->customer_id))
-            ->orderByRaw('parent_id is not null')->orderBy('name')->get();
+        [$profiles, $profileTemplateIds] = $this->measurementProfiles($request, $counterOrder);
         $selectedProfileId = $profiles->contains('id', $request->integer('profile'))
             ? $request->integer('profile')
             : $profiles->first()?->id;
         $templates = $canAddTailoring ? MeasurementTemplate::where('user_id', $ownerId)->where('is_active', true)
             ->orderByDesc('is_default')->orderBy('name')->get() : collect();
-
-        $allTemplateIds = $templates->pluck('id')
-            ->map(fn($id) => (int) $id)
-            ->values()
-            ->all();
-
-        $profileTemplateIds = $profiles->mapWithKeys(function (Customers $profile) use ($allTemplateIds) {
-            return [$profile->id => $allTemplateIds];
-        });
 
         $paymentMethods = PaymentMethods::LABELS;
         $previousDue = app(CounterOrderService::class)->previousDue($counterOrder);

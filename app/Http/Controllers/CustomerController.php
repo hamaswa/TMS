@@ -1222,10 +1222,11 @@ class CustomerController extends Controller
                 ->values();
         }
 
+        // Walk-ins and one-time sale buyers are not customer accounts; they join once they're regulars.
         return Customers::query()
             ->where('user_id', $ownerId)
             ->whereNull('parent_id')
-            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))
+            ->whereIn('id', app(\App\Services\SubscriptionEntitlementService::class)->regularCustomerIdsQuery((int) $ownerId))
             ->with(['familyMeasurementProfiles' => fn($query) => $query
                 ->with('measurementTemplate')])
             ->when($search !== '', function ($query) use ($search, $familyParentIds) {
@@ -1248,13 +1249,6 @@ class CustomerController extends Controller
         $ownerId = Auth::user()->businessOwnerId();
         $pageCustomers = $customers->getCollection();
         $customerIds = $pageCustomers->pluck('id')->map(fn($id) => (string) $id)->all();
-
-        // One-time buyers from sale screens show a walk-in badge until they become regulars.
-        $oneTimeBuyerIds = app(\App\Services\SubscriptionEntitlementService::class)
-            ->oneTimeBuyerIds((int) $ownerId, $pageCustomers->pluck('id')->map(fn($id) => (int) $id)->all());
-        foreach ($pageCustomers as $customer) {
-            $customer->setAttribute('is_one_time_buyer', in_array((int) $customer->id, $oneTimeBuyerIds, true));
-        }
 
         if ($canViewBalances && $customerIds !== []) {
             $balances = Transaction::query()
@@ -1299,8 +1293,8 @@ class CustomerController extends Controller
     private function customerDirectoryStats(bool $canViewBalances): array
     {
         $ownerId = Auth::user()->businessOwnerId();
-        $customerCount = Customers::where('user_id', $ownerId)->whereNull('parent_id')
-            ->where(fn ($query) => $query->where('is_walk_in', false)->orWhereNull('is_walk_in'))->count();
+        $customerCount = app(\App\Services\SubscriptionEntitlementService::class)
+            ->countedCustomers((int) $ownerId);
 
         if (! $canViewBalances) {
             return compact('customerCount') + [

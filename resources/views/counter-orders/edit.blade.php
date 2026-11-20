@@ -21,14 +21,30 @@
         // Stitching needs a known customer, so a walk-in order only offers cloth until one is picked.
         $isWalkInOrder = (bool) $counterOrder->customer?->is_walk_in;
         $canOfferTailoring = $canAddTailoring && !$isWalkInOrder;
-        // A walk-in draft can still be handed to a known customer until something is confirmed.
-        $canPickCustomer = $isWalkInOrder && !$counterOrder->isClosed() && $confirmedItems->isEmpty();
-        $emptyOrderHint =
-            $canAddCloth && $canOfferTailoring
+        // The customer can be changed (or cleared back to walk-in) until something is confirmed.
+        // Drafted stitching carries the customer's measurements, so it locks the choice.
+        $hasDraftTailoring = $draftItems->contains('type', 'tailoring');
+        $canPickCustomer = !$counterOrder->isClosed() && $confirmedItems->isEmpty() && !$hasDraftTailoring;
+        $currentCustomerLabel = $isWalkInOrder ? 'واک اِن (بغیر شناخت)' : $counterOrder->customer?->name;
+        // Texts for both states, so picking a customer can switch them without a reload.
+        $emptyHints = [
+            'customer' => $canAddCloth && $canAddTailoring
                 ? 'اوپر سے کپڑا یا سلائی شامل کریں۔'
-                : ($canAddCloth
-                    ? ($canAddTailoring ? 'اوپر سے کپڑا شامل کریں؛ سلائی کے لیے پہلے گاہک منتخب کریں۔' : 'اوپر سے فروخت ہونے والا کپڑا شامل کریں۔')
-                    : ($canOfferTailoring ? 'اوپر سے سلائی شامل کریں۔' : 'سلائی کے لیے پہلے گاہک منتخب کریں۔'));
+                : ($canAddCloth ? 'اوپر سے فروخت ہونے والا کپڑا شامل کریں۔' : 'اوپر سے سلائی شامل کریں۔'),
+            'walk_in' => $canAddCloth
+                ? ($canAddTailoring ? 'اوپر سے کپڑا شامل کریں؛ سلائی کے لیے پہلے گاہک منتخب کریں۔' : 'اوپر سے فروخت ہونے والا کپڑا شامل کریں۔')
+                : 'سلائی کے لیے پہلے گاہک منتخب کریں۔',
+        ];
+        $itemsHints = [
+            'customer' => $canAddCloth
+                ? ($canAddTailoring ? 'کپڑا اسی فہرست میں شامل یا تبدیل کریں؛ سلائی کی تفصیل الگ فارم میں کھلے گی۔' : 'کپڑا اسی فہرست میں شامل یا تبدیل کریں۔')
+                : 'سلائی کی تفصیل شامل یا تبدیل کرنے کے لیے فارم کھولیں۔',
+            'walk_in' => $canAddCloth
+                ? 'کپڑا اسی فہرست میں شامل یا تبدیل کریں۔'
+                : 'سلائی کی تفصیل شامل یا تبدیل کرنے کے لیے فارم کھولیں۔',
+        ];
+        $customerState = $isWalkInOrder ? 'walk_in' : 'customer';
+        $emptyOrderHint = $emptyHints[$customerState];
         $confirmationHint =
             $canAddCloth && $canAddTailoring
                 ? 'تصدیق پر کپڑا اسٹاک سے کم ہوگا اور سلائی ورکشاپ آرڈر بنے گا۔'
@@ -108,6 +124,11 @@
 
         .co-summary strong {
             font-size: 1.02rem
+        }
+
+        .co-adds [hidden],
+        .co-closed-actions[hidden] {
+            display: none !important
         }
 
         .co-cust-head {
@@ -1309,20 +1330,20 @@
             <header class="co-head">
                 <div class="co-title">
                     <h1>آرڈر {{ $counterOrder->displayNumber() }}</h1>
-                    <p>{{ $counterOrder->customer?->name }} · {{ $orderScopeText }}@if ($counterOrder->serial_number)
+                    <p><span id="co-head-customer">{{ $counterOrder->customer?->name }}</span> · {{ $orderScopeText }}@if ($counterOrder->serial_number)
                             · حوالہ {{ $counterOrder->reference }}
                         @endif
                     </p>
                 </div><span class="co-status">{{ $statusLabels[$counterOrder->status] ?? $counterOrder->status }}</span>
             </header>
-            @if ($counterOrder && !$counterOrder->customer?->is_walk_in)
-                <div class="co-closed-actions">
+            <div class="co-closed-actions" id="co-customer-actions" @if ($isWalkInOrder) hidden @endif>
+                @if (!$isWalkInOrder)
                     @include('customer.partials.action-menu', [
-                'customer' => $counterOrder->customer,
-                'selectedCustomer' => $counterOrder->customer,
-            ])
-                </div>
-            @endif
+                        'customer' => $counterOrder->customer,
+                        'selectedCustomer' => $counterOrder->customer,
+                    ])
+                @endif
+            </div>
             <div id="co-live-alert" class="alert co-alert" role="status" hidden></div>
             @if (session('success'))
                 <div class="alert alert-success co-alert">{{ session('success') }}</div>
@@ -1341,9 +1362,10 @@
                     <div>
                         <div class="co-cust-head"><small>گاہک</small><button type="button" class="co-cust-new-link"
                                 data-toggle="modal" data-target="#newCustomerModal"><i class="fas fa-user-plus"></i> نیا گاہک</button></div>
-                        <div class="co-cust-picker" id="co-customer-picker">
+                        <div class="co-cust-picker" id="co-customer-picker" data-walk-in="{{ $isWalkInOrder ? '1' : '0' }}"
+                            data-current-id="{{ $isWalkInOrder ? '' : $counterOrder->customer_id }}">
                             <button type="button" class="co-cust-toggle" id="co-customer-toggle" aria-haspopup="listbox"
-                                aria-expanded="false" aria-controls="co-customer-panel"><span>واک اِن (بغیر شناخت)</span><i
+                                aria-expanded="false" aria-controls="co-customer-panel"><span>{{ $currentCustomerLabel }}</span><i
                                     class="fas fa-chevron-down"></i></button>
                             <div class="co-cust-panel" id="co-customer-panel" hidden>
                                 <input type="search" class="form-control" id="co-customer-search" autocomplete="off"
@@ -1357,7 +1379,11 @@
                         </div>
                     </div>
                 @else
-                    <div><small>گاہک</small><strong>{{ $isWalkInOrder ? 'واک اِن (بغیر شناخت)' : $counterOrder->customer?->name }}</strong></div>
+                    <div><small>گاہک</small><strong>{{ $currentCustomerLabel }}</strong>
+                        @if ($hasDraftTailoring && $confirmedItems->isEmpty() && !$counterOrder->isClosed())
+                            <small class="d-block mt-1">گاہک بدلنے کے لیے پہلے سلائی کا آئٹم ہٹائیں۔</small>
+                        @endif
+                    </div>
                 @endif
                 <div><small>کل آرڈر</small><strong id="co-summary-subtotal" dir="ltr">Rs.
                         {{ number_format((float) $counterOrder->subtotal, 2) }}</strong></div>
@@ -1377,7 +1403,8 @@
                     <div class="co-panel-head">
                         <div>
                             <h2>آرڈر کے آئٹمز</h2><small
-                                class="text-muted">{{ $canAddCloth ? ($canOfferTailoring ? 'کپڑا اسی فہرست میں شامل یا تبدیل کریں؛ سلائی کی تفصیل الگ فارم میں کھلے گی۔' : 'کپڑا اسی فہرست میں شامل یا تبدیل کریں۔') : 'سلائی کی تفصیل شامل یا تبدیل کرنے کے لیے فارم کھولیں۔' }}</small>
+                                class="text-muted" id="co-items-hint" data-walk-in="{{ $itemsHints['walk_in'] }}"
+                                data-customer="{{ $itemsHints['customer'] }}">{{ $itemsHints[$customerState] }}</small>
                         </div>
                         <div class="co-adds">
                             @if ($confirmedItems->isNotEmpty())
@@ -1390,9 +1417,9 @@
                                         <button id="co-add-cloth-button" class="co-btn is-primary co-add-row-button"
                                             type="button" aria-expanded="{{ old('cloth_id') ? 'true' : 'false' }}"
                                             aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> کپڑا شامل کریں</button>
-                                        @endif @if ($canOfferTailoring)
-                                            <button class="co-btn is-tailor" data-toggle="modal"
-                                                data-target="#tailoringItemModal"><i class="fas fa-plus"></i> سلائی شامل کریں</button>
+                                        @endif @if ($canAddTailoring)
+                                            <button class="co-btn is-tailor" id="co-add-tailoring-button" data-toggle="modal"
+                                                data-target="#tailoringItemModal" {{ $canOfferTailoring ? '' : 'hidden' }}><i class="fas fa-plus"></i> سلائی شامل کریں</button>
                                         @endif
                                     @endif
                         </div>
@@ -1469,7 +1496,8 @@
                                 @include('counter-orders.partials.item-row', ['item' => $item])
                             @empty<div class="co-empty"><i class="fas fa-receipt"></i><strong>آرڈر ابھی خالی
                                         ہے</strong>
-                                    <div>{{ $emptyOrderHint }}</div>
+                                    <div id="co-empty-hint" data-walk-in="{{ $emptyHints['walk_in'] }}"
+                                        data-customer="{{ $emptyHints['customer'] }}">{{ $emptyOrderHint }}</div>
                                 </div>
                             @endforelse
                         </div>
@@ -1538,8 +1566,9 @@
             data-auto-open="{{ $errors->hasAny(['name', 'phone']) ? '1' : '0' }}">
             <div class="modal-dialog modal-dialog-centered"><div class="modal-content" dir="rtl">
                 <div class="modal-header"><h2 class="modal-title h5">نیا گاہک شامل کریں</h2><button class="close" type="button" data-dismiss="modal">&times;</button></div>
-                <form method="POST" action="{{ route('admin.counter-orders.customer.identify', $counterOrder) }}">@csrf
+                <form method="POST" action="{{ route('admin.counter-orders.customer.identify', $counterOrder) }}" id="co-new-customer-form">@csrf
                     <div class="modal-body">
+                        <div class="alert alert-danger" id="co-new-customer-error" role="alert" hidden></div>
                         <div class="form-group"><label for="new-customer-name">نام</label><input class="form-control" id="new-customer-name" name="name" maxlength="255" value="{{ old('name') }}" required></div>
                         <div class="form-group mb-0"><label for="new-customer-phone">موبائل نمبر</label><input class="form-control" id="new-customer-phone" name="phone" maxlength="50" inputmode="tel" placeholder="03001234567" value="{{ old('phone') }}" required></div>
                     </div><div class="modal-footer"><button class="co-btn" type="button" data-dismiss="modal">منسوخ</button><button class="co-btn is-primary" type="submit">محفوظ اور منتخب کریں</button></div>
@@ -1564,11 +1593,7 @@
                                             id="co-measurement-link" class="co-measurement-link" type="button"><i
                                                 class="fas fa-ruler-combined ml-1"></i> ناپ دیکھیں / تبدیل کریں</button></label><select id="co-profile" class="form-control"
                                         name="measurement_profile_id" required>
-                                        @foreach ($profiles as $profile)
-                                            <option value="{{ $profile->id }}" data-measurement-url="{{ route('admin.counter-orders.measurements.edit', [$counterOrder, $profile]) }}"
-                                                data-template-ids="{{ implode(',', $profileTemplateIds->get($profile->id, [])) }}"
-                                                @selected((int) $selectedProfileId === $profile->id)>{{ $profile->name }}</option>
-                                        @endforeach
+                                        @include('counter-orders.partials.profile-options')
                                     </select>
                                 </div>
                                 <div><label for="co-template">لباس / محفوظ پیمائش</label><select id="co-template"
@@ -1727,6 +1752,8 @@
                         form = document.getElementById('co-customer-choose-form'),
                         chosenId = document.getElementById('co-customer-choose-id'),
                         searchUrl = @json(route('admin.counter-orders.customers.search')),
+                        isWalkIn = picker.dataset.walkIn === '1',
+                        currentId = picker.dataset.currentId,
                         timer = null,
                         requestNo = 0;
 
@@ -1754,10 +1781,89 @@
                         return button;
                     }
 
+                    var toggleLabel = toggle.querySelector('span');
+
+                    function liveMessage(message, isError) {
+                        var alert = document.getElementById('co-live-alert');
+                        alert.hidden = false;
+                        alert.className = 'alert co-alert ' + (isError ? 'alert-danger' : 'alert-success');
+                        alert.textContent = message;
+                    }
+
+                    // Save the customer in the background and update the parts of the page that depend on it.
+                    function saveCustomer(targetForm, body) {
+                        return fetch(targetForm.action, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            body: body
+                        }).then(function(response) {
+                            return response.json().catch(function() { return {}; }).then(function(data) {
+                                if (!response.ok) {
+                                    var errors = data.errors ? Object.values(data.errors).flat() : [];
+                                    throw new Error(errors[0] || data.message || 'گاہک محفوظ نہیں ہو سکا۔ دوبارہ کوشش کریں۔');
+                                }
+                                return data;
+                            });
+                        }).then(function(data) {
+                            applyCustomer(data);
+                            return data;
+                        });
+                    }
+
+                    function applyCustomer(data) {
+                        var customer = data.customer || {},
+                            state = customer.is_walk_in ? 'walk_in' : 'customer';
+                        isWalkIn = Boolean(customer.is_walk_in);
+                        currentId = isWalkIn ? '' : String(customer.id);
+                        picker.dataset.walkIn = isWalkIn ? '1' : '0';
+                        picker.dataset.currentId = currentId;
+                        toggleLabel.textContent = customer.label;
+                        var head = document.getElementById('co-head-customer');
+                        if (head) head.textContent = customer.name;
+                        var actions = document.getElementById('co-customer-actions');
+                        if (actions) {
+                            actions.innerHTML = data.customer_actions || '';
+                            actions.hidden = isWalkIn;
+                        }
+                        var tailorButton = document.getElementById('co-add-tailoring-button');
+                        if (tailorButton) tailorButton.hidden = isWalkIn;
+                        ['co-items-hint', 'co-empty-hint'].forEach(function(id) {
+                            var hint = document.getElementById(id);
+                            if (hint) hint.textContent = state === 'walk_in' ? hint.dataset.walkIn : hint.dataset.customer;
+                        });
+                        var profileSelect = document.getElementById('co-profile');
+                        if (profileSelect && typeof data.profile_options === 'string') {
+                            profileSelect.innerHTML = data.profile_options;
+                            profileSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        if (window.history && window.history.replaceState) {
+                            var url = new URL(window.location.href);
+                            isWalkIn ? url.searchParams.delete('profile') : url.searchParams.set('profile', customer.id);
+                            window.history.replaceState(null, '', url.toString());
+                        }
+                        liveMessage(data.message, false);
+                    }
+
+                    function choose(id, label) {
+                        var previous = toggleLabel.textContent;
+                        chosenId.value = id;
+                        toggleLabel.textContent = label;
+                        toggle.disabled = true;
+                        close();
+                        saveCustomer(form, new FormData(form)).catch(function(error) {
+                            toggleLabel.textContent = previous;
+                            liveMessage(error.message, true);
+                        }).finally(function() {
+                            toggle.disabled = false;
+                        });
+                    }
+
                     function render(customers, loading) {
                         list.innerHTML = '';
-                        // Walk-in is always the first, already-selected choice.
-                        list.appendChild(option('واک اِن (بغیر شناخت)', '', true, close));
+                        // Walk-in is always first, so a wrong pick can be undone.
+                        list.appendChild(option('واک اِن (بغیر شناخت)', '', isWalkIn, isWalkIn ? close : function() {
+                            choose('walk_in', 'واک اِن (بغیر شناخت)');
+                        }));
                         if (!customers.length && !loading) {
                             var empty = document.createElement('div');
                             empty.className = 'co-cust-empty';
@@ -1768,12 +1874,9 @@
                         customers.forEach(function(customer) {
                             var meta = (customer.phone_number1 || 'فون موجود نہیں') +
                                 (customer.serial_number ? ' · #' + customer.serial_number : '');
-                            list.appendChild(option(customer.name, meta, false, function() {
-                                chosenId.value = customer.id;
-                                toggle.querySelector('span').textContent = customer.name;
-                                toggle.disabled = true;
-                                close();
-                                form.submit();
+                            var isCurrent = String(customer.id) === currentId;
+                            list.appendChild(option(customer.name, meta, isCurrent, isCurrent ? close : function() {
+                                choose(customer.id, customer.name);
                             }));
                         });
                     }
@@ -1808,9 +1911,28 @@
                         if (!picker.contains(event.target)) close();
                     });
 
-                    var newModal = document.getElementById('newCustomerModal');
+                    var newModal = document.getElementById('newCustomerModal'),
+                        newForm = document.getElementById('co-new-customer-form'),
+                        newError = document.getElementById('co-new-customer-error');
                     if (newModal && newModal.dataset.autoOpen === '1' && window.jQuery) {
                         window.jQuery(newModal).modal('show');
+                    }
+                    if (newForm) {
+                        newForm.addEventListener('submit', function(event) {
+                            event.preventDefault();
+                            var submit = newForm.querySelector('[type="submit"]');
+                            submit.disabled = true;
+                            newError.hidden = true;
+                            saveCustomer(newForm, new FormData(newForm)).then(function() {
+                                newForm.reset();
+                                if (window.jQuery) window.jQuery(newModal).modal('hide');
+                            }).catch(function(error) {
+                                newError.textContent = error.message;
+                                newError.hidden = false;
+                            }).finally(function() {
+                                submit.disabled = false;
+                            });
+                        });
                     }
                 })();
 

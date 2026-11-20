@@ -19,9 +19,6 @@
                     class="customer-link"
                     aria-label="{{ $customer->name }} کا پروفائل اور کھاتہ کھولیں">
                     {{ $customer->name }}
-                    @if($customer->is_walk_in || $customer->is_one_time_buyer)
-                        <span class="customer-walk-in-badge" title="ایک بار نقد خریداری — پلان کی حد میں شمار نہیں">واک اِن</span>
-                    @endif
                     <small>پروفائل اور کھاتہ دیکھیں @if($familyProfiles->isNotEmpty()) · {{ $familyProfiles->count() }} خاندانی فرد @endif</small>
                 </a>
             </div>

@@ -90,30 +90,12 @@ class SubscriptionEntitlementService
     }
 
     /**
-     * Of the given customers, the sale-created one-time buyers that are not regulars yet.
-     * The customer list marks these as walk-in.
-     *
-     * @param  array<int, int>  $customerIds
-     * @return array<int, int>
+     * Ids of the shop's real customer accounts: everyone except anonymous walk-ins and
+     * one-time sale buyers who haven't bought again, taken credit or ordered stitching.
      */
-    public function oneTimeBuyerIds(int $ownerUserId, array $customerIds): array
+    public function regularCustomerIdsQuery(int $ownerUserId)
     {
-        if ($customerIds === []) {
-            return [];
-        }
-        $candidates = Customers::query()
-            ->where('user_id', $ownerUserId)
-            ->whereIn('id', $customerIds)
-            ->whereIn('acquisition_source', self::SALE_BUYER_SOURCES)
-            ->pluck('id');
-        if ($candidates->isEmpty()) {
-            return [];
-        }
-        $regulars = $this->countedCustomersQuery($ownerUserId)
-            ->whereIn('customers.id', $candidates->all())
-            ->pluck('customers.id');
-
-        return $candidates->diff($regulars)->map(fn ($id) => (int) $id)->values()->all();
+        return $this->countedCustomersQuery($ownerUserId)->select('customers.id');
     }
 
     private function countedCustomersQuery(int $ownerUserId)

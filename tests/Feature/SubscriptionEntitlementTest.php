@@ -157,7 +157,7 @@ class SubscriptionEntitlementTest extends TestCase
         $this->assertSame(2, $service->countedCustomers($owner->id));
     }
 
-    public function test_walk_in_records_have_no_serial_and_show_in_the_customer_list(): void
+    public function test_walk_in_records_have_no_serial_and_stay_out_of_the_customer_list(): void
     {
         [, $owner, $business] = $this->accounts();
         $this->subscription($business, ['max_customers' => 10]);
@@ -166,18 +166,18 @@ class SubscriptionEntitlementTest extends TestCase
         $badges = fn ($response) => substr_count($response->getContent(), 'class="customer-walk-in-badge"');
 
         $this->assertNull($walkIn->fresh()->serial_number);
-        // The walk-in record is listed and marked walk-in.
+        // Anonymous walk-in records are not customer accounts, so the directory leaves them out.
         $response = $this->actingAs($owner)->get(route('admin.Customers.index'))
             ->assertOk()
-            ->assertSeeText('Walk-in Customer')
+            ->assertDontSeeText('Walk-in Customer')
             ->assertSeeText('Named Buyer');
-        $this->assertSame(1, $badges($response));
+        $this->assertSame(0, $badges($response));
 
-        // A named one-time buyer is marked walk-in too, until they become a regular.
+        // A named one-time sale buyer stays out too, until they become a regular (here: buying on credit).
         $buyer = \App\Models\Customers::create(['name' => 'Feroz', 'phone_number1' => '03001110002', 'user_id' => $owner->id, 'acquisition_source' => 'counter_order']);
-        $this->assertSame(2, $badges($this->actingAs($owner)->get(route('admin.Customers.index'))->assertSeeText('Feroz')));
+        $this->actingAs($owner)->get(route('admin.Customers.index'))->assertOk()->assertDontSeeText('Feroz');
         \App\Models\Transaction::create(['customerId' => $buyer->id, 'userId' => $owner->id, 'Order_type' => 'Sale', 'remainingBalance' => 300, 'recivedPayment' => 0]);
-        $this->assertSame(1, $badges($this->actingAs($owner)->get(route('admin.Customers.index'))->assertSeeText('Feroz')));
+        $this->actingAs($owner)->get(route('admin.Customers.index'))->assertOk()->assertSeeText('Feroz');
     }
 
     public function test_each_walk_in_sale_gets_its_own_uncounted_record(): void
