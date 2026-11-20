@@ -134,6 +134,55 @@ class MeasurementTemplateTest extends TestCase
             ->assertSeeText('گھٹنے کی چوڑائی');
     }
 
+    public function test_dragged_layout_order_columns_and_column_count_are_saved(): void
+    {
+        $owner = $this->owner();
+        $template = app(TailoringOptionDefaultsService::class)->seedMeasurementTemplateForOwner($owner->id);
+        $payload = fn (int $columns, array $right, array $left) => [
+            'name' => $template->name,
+            'system_fields' => ['length', 'arms', 'chuta', 'Daaman', 'jeab'],
+            'layout_columns' => $columns,
+            'field_layout' => array_merge(
+                array_map(fn ($source, $i) => ['source' => $source, 'column' => 'right', 'order' => ($i + 1) * 10], $right, array_keys($right)),
+                array_map(fn ($source, $i) => ['source' => $source, 'column' => 'left', 'order' => ($i + 1) * 10], $left, array_keys($left)),
+            ),
+        ];
+        $savedColumn = fn (string $column) => collect($template->fresh()->field_layout)
+            ->where('column', $column)->sortBy('order')->pluck('source')->values()->all();
+
+        // Drag chuta to the top of the right column and jeab above Daaman on the left.
+        $this->actingAs($owner)->put(route('admin.measurement-templates.update', $template),
+            $payload(2, ['system.chuta', 'system.length', 'system.arms'], ['system.jeab', 'system.Daaman']))
+            ->assertRedirect(route('admin.measurement-templates.edit', $template));
+
+        $this->assertSame(['system.chuta', 'system.length', 'system.arms'], $savedColumn('right'));
+        $this->assertSame(['system.jeab', 'system.Daaman'], $savedColumn('left'));
+        $this->assertSame(2, $template->fresh()->layout_columns);
+
+        // Move arms to the left column with the arrow, then reorder again.
+        $this->actingAs($owner)->put(route('admin.measurement-templates.update', $template),
+            $payload(2, ['system.length', 'system.chuta'], ['system.Daaman', 'system.arms', 'system.jeab']))
+            ->assertRedirect();
+
+        $this->assertSame(['system.length', 'system.chuta'], $savedColumn('right'));
+        $this->assertSame(['system.Daaman', 'system.arms', 'system.jeab'], $savedColumn('left'));
+
+        // The builder rebuilds its preview from the saved order and re-syncs it on submit.
+        $this->actingAs($owner)->get(route('admin.measurement-templates.edit', $template))
+            ->assertOk()
+            ->assertSeeInOrder(['layout["system.length"]', 'layout["system.Daaman"]', 'layout["system.chuta"]', 'layout["system.arms"]', 'layout["system.jeab"]'], false)
+            ->assertSee("builder.addEventListener('submit', syncLayout)", false);
+
+        // One-column mode stacks everything in a single saved column.
+        $this->actingAs($owner)->put(route('admin.measurement-templates.update', $template),
+            $payload(1, ['system.jeab', 'system.length', 'system.Daaman', 'system.chuta', 'system.arms'], []))
+            ->assertRedirect();
+
+        $this->assertSame(1, $template->fresh()->layout_columns);
+        $this->assertSame(['system.jeab', 'system.length', 'system.Daaman', 'system.chuta', 'system.arms'], $savedColumn('right'));
+        $this->assertSame([], $savedColumn('left'));
+    }
+
     public function test_builtin_template_field_stays_removed_after_reseeding(): void
     {
         $owner = $this->owner();

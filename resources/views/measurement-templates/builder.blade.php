@@ -459,9 +459,14 @@
                 item.appendChild(sourceInput);
                 item.appendChild(columnInput);
                 item.appendChild(orderInput);
-                item.addEventListener('dragstart', function() {
+                item.addEventListener('dragstart', function(event) {
                     dragged = item;
                     item.classList.add('is-dragging');
+                    if (event.dataTransfer) {
+                        event.dataTransfer.effectAllowed = 'move';
+                        // Firefox only starts a drag when some data is set.
+                        event.dataTransfer.setData('text/plain', item.dataset.source);
+                    }
                 });
                 item.addEventListener('dragend', function() {
                     item.classList.remove('is-dragging');
@@ -509,7 +514,12 @@
                             return event.clientY < item.getBoundingClientRect().top + item
                                 .offsetHeight / 2;
                         });
-                    list.insertBefore(dragged, after || null);
+                    if (dragged.parentElement !== list || dragged.nextElementSibling !== (after || null)) {
+                        list.insertBefore(dragged, after || null);
+                        // The card moves live while dragging; keep the posted payload in step,
+                        // since drop/dragend do not reliably fire for a node moved mid-drag.
+                        syncLayout();
+                    }
                 });
                 list.addEventListener('drop', function(event) {
                     event.preventDefault();
@@ -527,6 +537,8 @@
                 }
                 if (event.target.closest('.field-choice')) renderPreview();
             });
+            // Always post exactly what the preview shows, whatever drag events fired.
+            builder.addEventListener('submit', syncLayout);
             renderPreview();
 
             document.querySelectorAll('.template-field-modal').forEach(function(modal) {
