@@ -101,8 +101,10 @@ class Customers extends Authenticatable
                 app(SubscriptionEntitlementService::class)->assertCanAddCustomer((int) $customer->user_id);
             }
 
-            // The shared walk-in record is not a customer, so it doesn't take a serial number.
-            if (! $customer->serial_number && $customer->user_id && ! $customer->is_walk_in) {
+            // Serial numbers are for tailoring customers. Walk-ins never take one, and a buyer a
+            // sale screen created gets one only with their first tailoring order (ensureSerialNumber).
+            if (! $customer->serial_number && $customer->user_id && ! $customer->is_walk_in
+                && ! SubscriptionEntitlementService::skipsLimitOnCreate($customer)) {
                 $customer->serial_number = app(CustomerSerialNumberService::class)
                     ->nextFor((int) $customer->user_id);
             }
@@ -119,6 +121,20 @@ class Customers extends Authenticatable
                 }
             }
         });
+    }
+
+    /**
+     * Give a sale-only buyer the shop's next serial number once they become a tailoring
+     * customer. Walk-ins and customers who already have a number are left as they are.
+     */
+    public function ensureSerialNumber(): self
+    {
+        if (! $this->serial_number && $this->user_id && ! $this->is_walk_in) {
+            $this->serial_number = app(CustomerSerialNumberService::class)->nextFor((int) $this->user_id);
+            $this->saveQuietly();
+        }
+
+        return $this;
     }
 
     /**

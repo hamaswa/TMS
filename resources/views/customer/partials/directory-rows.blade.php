@@ -6,7 +6,7 @@
         $familySearchText = $familyProfiles->pluck('name')->implode(' ');
     @endphp
     <tr data-customer-row="{{ $customer->id }}" @class(['customer-account-row', 'has-family' => $familyProfiles->isNotEmpty()])>
-        <td class="customer_serial customer-serial-cell" data-label="نمبر" data-order="{{ $customer->id }}">{{ $customer->is_walk_in ? '—' : ($customer->serial_number ?? $customer->id) }}</td>
+        <td class="customer_serial customer-serial-cell" data-label="نمبر" data-order="{{ $customer->id }}">{{ $customer->is_walk_in ? '—' : ($customer->serial_number ?? '—') }}</td>
         <td class="customer-name-cell" data-label="گاہک">
             <div class="customer-identity">
                 @if($familyProfiles->isNotEmpty())

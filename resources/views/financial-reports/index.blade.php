@@ -305,6 +305,7 @@
                 <div class="rp-panel-head"><h4>تمام فروخت</h4>
                     <form class="rp-filter" method="GET">@foreach($keep(['tab' => 'all-sales']) as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
                         <select name="sales_category" class="form-control" onchange="this.form.submit()"><option value="">تمام کیٹیگریز</option>@foreach($report['category_options'] as $category)<option value="{{ $category->id }}" @selected((int) ($filters['sales_category'] ?? 0) === $category->id)>{{ $category->fullName() }}</option>@endforeach</select>
+                        @if(Auth::user()->hasBusinessPermission('clothing.sales'))<a class="rp-more" href="{{ route('admin.sales.all', array_filter(['sales_category' => $filters['sales_category'] ?? null] + $period)) }}"><i class="fas fa-external-link-alt"></i> الگ صفحے پر سب ریکارڈ</a>@endif
                     </form></div>
                 <div class="table-responsive"><table class="rp-table"><thead><tr><th>تاریخ</th><th>سیٹ</th><th>کیٹیگری</th><th>مقدار</th><th>رقم</th><th>گاہک</th></tr></thead><tbody>
                     @forelse($report['lines'] as $line)

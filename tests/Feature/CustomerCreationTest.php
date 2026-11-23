@@ -129,6 +129,43 @@ class CustomerCreationTest extends TestCase
         $this->assertNotSame($secondCustomer->id, $secondCustomer->serial_number);
     }
 
+    public function test_sale_only_buyers_take_a_serial_only_with_their_first_tailoring_order(): void
+    {
+        $owner = User::factory()->create();
+        $create = fn (string $name, array $extra = []) => Customers::create($extra + [
+            'user_id' => $owner->id, 'name' => $name, 'phone_number1' => '0300'.random_int(1000000, 9999999),
+        ]);
+
+        $regular = $create('Tailoring Customer');
+        $saleBuyers = collect(['counter_sale', 'counter_order', 'sales_agent'])
+            ->map(fn (string $source) => $create('Buyer '.$source, ['acquisition_source' => $source]));
+        $walkIn = Customers::newWalkIn($owner->id);
+        $next = $create('Next Tailoring Customer');
+
+        // Cloth buyers and walk-ins don't use up numbers, so tailoring customers stay consecutive.
+        $this->assertSame(1, $regular->serial_number);
+        $saleBuyers->each(fn (Customers $buyer) => $this->assertNull($buyer->fresh()->serial_number));
+        $this->assertNull($walkIn->fresh()->serial_number);
+        $this->assertSame(2, $next->serial_number);
+
+        // Their first stitching order makes them a tailoring customer and prints the new serial.
+        $buyer = $saleBuyers->first();
+        $order = Order::create([
+            'customerId' => $buyer->id, 'sub_customer' => $buyer->id, 'suitQuantity' => 1, 'totalPayment' => 1500,
+            'returnDate' => now()->addWeek()->toDateString(), 'userId' => $owner->id, 'suitNum' => (string) $buyer->id,
+        ]);
+        $this->assertSame(3, $buyer->fresh()->serial_number);
+        $this->assertSame('3', $order->fresh()->suitNum);
+
+        // A second order keeps the same number.
+        Order::create([
+            'customerId' => $buyer->id, 'sub_customer' => $buyer->id, 'suitQuantity' => 1, 'totalPayment' => 900,
+            'returnDate' => now()->addWeek()->toDateString(), 'userId' => $owner->id, 'suitNum' => '3',
+        ]);
+        $this->assertSame(3, $buyer->fresh()->serial_number);
+        $this->assertSame(4, $create('Later Customer')->serial_number);
+    }
+
     public function test_restored_customers_with_missing_or_stale_serials_are_repaired_in_record_order(): void
     {
         $owner = User::factory()->create();

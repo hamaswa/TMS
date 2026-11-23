@@ -50,6 +50,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PlanRequestReviewController;
 use App\Http\Controllers\PlatformPaymentSettingsController;
 use App\Http\Controllers\PushNotificationController;
+use App\Http\Controllers\AllSalesController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleCustomerController;
 use App\Http\Controllers\SaleSessionController;
@@ -589,6 +590,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::delete('/dlt/{id}', [ClothStockController::class, 'dlt'])->name('dlt');
         Route::post('SaleDirectPayment', [CustomerController::class, 'SaleDirectPayment'])->middleware('business.permission:customers.balances')->name('sale-direct-payment');
 
+        Route::get('/all-sales', [AllSalesController::class, 'index'])->name('sales.all');
         Route::get('/total_sale', [ClothStockController::class, 'totalSales'])->name('sales.total');
         Route::get('/total_earning', [ClothStockController::class, 'totalEarning'])->name('earning.total');
 

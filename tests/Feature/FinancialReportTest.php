@@ -333,6 +333,43 @@ class FinancialReportTest extends TestCase
         $this->assertEquals(0, $report['summary']['receivables']);
     }
 
+    public function test_all_sales_page_lists_every_record_with_row_actions_and_report_tab_stays(): void
+    {
+        [$owner, $customer, , $cloth, $color] = $this->baseData();
+        $otherOwner = $this->userWithRole('shop_owner');
+        $line = fn (User $user, string $name, string $date, array $extra = []) => SaleStock::create($extra + [
+            'user_id' => $user->id, 'cloth_id' => $cloth->id, 'cloth_color_id' => $color->id,
+            'cloth_type_id' => $cloth->cloth_type_id, 'cloth_brand_id' => $cloth->cloth_brand_id, 'color' => 'Blue',
+            'length' => 2, 'selling_price' => 150, 'cost_per_meter' => 80, 'cost_total' => 160,
+            'c_name' => $name, 'sellDate' => $date, 'created_at' => $date,
+        ]);
+        $old = $line($owner, 'Old Buyer', now()->subYears(2)->toDateString());
+        $recent = $line($owner, $customer->name, now()->toDateString(), ['c_id' => $customer->id, 'phone' => '03009990000']);
+        $line($otherOwner, 'Other Shop Buyer', now()->toDateString());
+
+        // No dates: every record, newest first, only this shop's.
+        $this->actingAs($owner)->get(route('admin.sales.all'))
+            ->assertOk()
+            ->assertViewHas('lines', fn ($lines) => $lines->total() === 2)
+            ->assertSeeInOrder([$customer->name, 'Old Buyer'])
+            ->assertDontSeeText('Other Shop Buyer')
+            ->assertSee('fa-ellipsis-v', false)
+            ->assertSee(route('admin.printStock', ['id' => $recent->id, 'customerId' => $customer->id]), false)
+            ->assertSee(route('admin.customer.orders', ['customer' => $customer->id, 'tab' => 'sales']), false)
+            ->assertSee('href="'.route('admin.sales.all').'"', false);
+
+        $this->actingAs($owner)->get(route('admin.sales.all', ['q' => '0300999']))
+            ->assertOk()->assertViewHas('lines', fn ($lines) => $lines->total() === 1 && $lines->first()['id'] === $recent->id);
+        $this->actingAs($owner)->get(route('admin.sales.all', ['start_date' => now()->subYears(3)->toDateString(), 'end_date' => now()->subYear()->toDateString()]))
+            ->assertOk()->assertViewHas('lines', fn ($lines) => $lines->total() === 1 && $lines->first()['id'] === $old->id);
+
+        // The reports page keeps its own all-sales tab and links to the full page.
+        $this->actingAs($owner)->get(route('admin.financial-reports.index', ['view' => 'sales', 'tab' => 'all-sales']))
+            ->assertOk()
+            ->assertSee('id="rp-panel-all-sales"', false)
+            ->assertSee(route('admin.sales.all'), false);
+    }
+
     private function baseData(): array
     {
         $owner = $this->userWithRole('shop_owner');

@@ -10,6 +10,26 @@ class Order extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        // A tailoring order makes a sale-only buyer a tailoring customer: give the account and
+        // the measurement profile their serial numbers now, and print that on the order.
+        static::creating(function (Order $order) {
+            if (! $order->userId) {
+                return;
+            }
+            $customers = Customers::where('user_id', (int) $order->userId)
+                ->whereIn('id', array_filter([(int) $order->customerId, (int) $order->sub_customer]))
+                ->get()->keyBy('id');
+            $customers->each(fn (Customers $customer) => $customer->ensureSerialNumber());
+
+            $profile = $customers->get((int) $order->sub_customer);
+            if ($profile?->serial_number && (string) $order->suitNum === (string) $profile->id) {
+                $order->suitNum = (string) $profile->serial_number;
+            }
+        });
+    }
+
     public const STATUSES = ['unassigned', 'assigned', 'cutting', 'stitching', 'trial', 'ready', 'delivered', 'cancelled'];
 
     public const STATUS_LABELS = [

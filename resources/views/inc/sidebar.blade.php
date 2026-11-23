@@ -269,6 +269,11 @@
                     href="{{ route('admin.counter-orders.start') }}"><span class="tms-side-icon"><i
                             class="fas fa-cash-register"></i></span><span class="tms-side-label">نیا آرڈر</span></a>
             @endif
+            @if ($canShopSales && Auth::user()->hasModule('clothing'))
+                <a class="tms-side-link {{ request()->routeIs('admin.sales.all') ? 'is-active' : '' }}"
+                    href="{{ route('admin.sales.all') }}"><span class="tms-side-icon"><i
+                            class="fas fa-receipt"></i></span><span class="tms-side-label">تمام فروخت</span></a>
+            @endif
             @if ($canTailorCustomers || $canShopSales)
                 <a class="tms-side-link {{ request()->routeIs('admin.Customers.*', 'admin.customers.statement') ? 'is-active' : '' }}"
                     href="{{ route('admin.Customers.index') }}"><span class="tms-side-icon"><i

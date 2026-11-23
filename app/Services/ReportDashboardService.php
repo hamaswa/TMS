@@ -121,21 +121,31 @@ class ReportDashboardService
     }
 
     /** Every cloth sale line in the period, optionally for one category (and its sub categories). */
-    public function salesLines(int $userId, CarbonInterface $start, CarbonInterface $end, ?int $categoryId, int $perPage = 15): LengthAwarePaginator
+    public function salesLines(int $userId, CarbonInterface $start, CarbonInterface $end, ?int $categoryId, int $perPage = 15, ?string $search = null): LengthAwarePaginator
     {
         $categories = ClothCategory::with('parent')->where('user_id', $userId)->get()->keyBy('id');
+        $search = trim((string) $search);
 
         return $this->keptSales($userId, $end)
             ->leftJoin('cloths', 'cloths.id', '=', 'sale_stocks.cloth_id')
             ->whereBetween('sale_stocks.sellDate', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
             ->when($categoryId, fn ($query) => $query->whereIn('cloths.cloth_category_id',
                 $categories->filter(fn ($category) => $category->id === $categoryId || $category->parent_id === $categoryId)->keys()))
+            ->when($search !== '', fn ($query) => $query->where(function ($match) use ($search) {
+                $like = '%'.addcslashes($search, '%_\\').'%';
+                $match->where('sale_stocks.c_name', 'like', $like)->orWhere('sale_stocks.phone', 'like', $like)
+                    ->orWhere('sale_stocks.color', 'like', $like)->orWhere('cloths.name', 'like', $like);
+            }))
             ->orderByDesc('sale_stocks.sellDate')->orderByDesc('sale_stocks.id')
-            ->select(['sale_stocks.id', 'sale_stocks.sellDate', 'sale_stocks.c_name', 'sale_stocks.color', 'sale_stocks.length', 'sale_stocks.selling_price'])
+            ->select(['sale_stocks.id', 'sale_stocks.sellDate', 'sale_stocks.c_name', 'sale_stocks.c_id', 'sale_stocks.phone', 'sale_stocks.counter_sale_receipt_id', 'sale_stocks.color', 'sale_stocks.length', 'sale_stocks.selling_price'])
             ->addSelect(['cloths.name AS cloth_name', 'cloths.stock_unit', 'cloths.cloth_category_id'])
             ->selectRaw('COALESCE(line_returns.returned_quantity, 0) AS returned_quantity, COALESCE(line_returns.returned_amount, 0) AS returned_amount')
             ->paginate($perPage, ['*'], 'sales_page')->withQueryString()
             ->through(fn ($line) => [
+                'id' => (int) $line->id,
+                'customer_id' => $line->c_id ? (int) $line->c_id : null,
+                'receipt_id' => $line->counter_sale_receipt_id ? (int) $line->counter_sale_receipt_id : null,
+                'phone' => $line->phone,
                 'date' => $line->sellDate,
                 'name' => $line->cloth_name ?: 'سیٹ',
                 'color' => $line->color,
