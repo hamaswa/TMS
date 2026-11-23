@@ -485,7 +485,7 @@ class InventoryLedgerTest extends TestCase
         $response = $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order));
 
         $response->assertOk()
-            ->assertSeeText('کپڑا شامل کریں')
+            ->assertSeeText('آئٹم شامل کریں')
             ->assertSeeText('میٹر / تعداد')
             ->assertSeeText('کل قیمت')
             ->assertSee('id="co-new-cloth-row"', false)

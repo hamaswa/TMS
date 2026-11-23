@@ -50,10 +50,16 @@ class Cloth extends Model
         return $this->sale_price_basis === self::SALE_PRICE_PER_SUIT;
     }
 
-    /** Packed suits are counted and sold whole; only meter stock is cut. */
-    public function countsSuits(): bool
+    /** Packed suits and pieces are counted and sold whole; only meter stock is cut. */
+    public function countsWholeItems(): bool
     {
-        return $this->stock_unit === ClothCategory::UNIT_SUIT;
+        return ClothCategory::isWholeUnit($this->stock_unit);
+    }
+
+    /** A non-cloth item such as a perfume or a cap. */
+    public function countsPieces(): bool
+    {
+        return $this->stock_unit === ClothCategory::UNIT_PIECE;
     }
 
     public function stockUnitLabel(): string

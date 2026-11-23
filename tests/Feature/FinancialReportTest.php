@@ -391,4 +391,11 @@ class FinancialReportTest extends TestCase
 
         return $user;
     }
+
+    public function test_walk_in_sales_show_as_plain_walk_in_in_reports(): void
+    {
+        $this->assertSame('Walk-in', \App\Services\ReportDashboardService::customerLabel('Walk-in #9'));
+        $this->assertSame('Ahmed', \App\Services\ReportDashboardService::customerLabel('Ahmed'));
+        $this->assertSame('عام گاہک', \App\Services\ReportDashboardService::customerLabel(null));
+    }
 }

@@ -25,7 +25,7 @@
             <div class="card-body">
                 <div class="d-flex flex-wrap justify-content-between align-items-start mb-4" style="gap:.75rem">
                     <div>
-                        <h1 class="h4 mb-1">{{ $sale->customer?->name ?? $sale->customer_name }} کی فروخت کی تفصیلات</h1>
+                        <h1 class="h4 mb-1">{{ \App\Services\ReportDashboardService::customerLabel($sale->customer?->name ?? $sale->customer_name) }} کی فروخت کی تفصیلات</h1>
                         <p class="text-muted mb-0">فروخت #{{ $sale->id }} · {{ $sale->created_at?->format('d-m-Y') }}</p>
                     </div>
                     <div class="d-flex flex-wrap" style="gap:.5rem">

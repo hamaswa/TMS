@@ -436,16 +436,21 @@
         $statusLabels = ['draft' => 'زیرِ تیاری', 'received' => 'وصول شدہ', 'cancelled' => 'منسوخ'];
         $statusLabel = $statusLabels[$purchase->status] ?? $purchase->status;
         $itemGroups = $purchase->items->groupBy('cloth_id');
-        // Packed women's suits are bought and counted whole; everything else is in meters.
-        $quantityText = fn ($quantity, bool $suits) => $suits
-            ? number_format((float) $quantity).' سوٹ'
+        // Purchases that include perfumes, caps and other pieces talk about items, not cloth sets.
+        $hasPieces = $purchase->items->contains(fn ($row) => $row->cloth?->countsPieces());
+        $allPieces = $hasPieces && $purchase->items->every(fn ($row) => $row->cloth?->countsPieces());
+        $setWord = $hasPieces ? 'آئٹم' : 'سیٹ';
+        $itemColumn = $allPieces ? 'آئٹم' : ($hasPieces ? 'کپڑا / آئٹم' : 'کپڑے کا سیٹ');
+        // Packed suits and pieces are bought and counted whole; cloth is in meters.
+        $quantityText = fn ($quantity, string $unit) => \App\Models\ClothCategory::isWholeUnit($unit)
+            ? number_format((float) $quantity).' '.\App\Models\ClothCategory::unitLabelFor($unit)
             : number_format((float) $quantity, 2).' میٹر';
-        // Totals keep meters and suits apart, e.g. "40.00 میٹر + 80 سوٹ".
+        // Totals keep each unit apart, e.g. "40.00 میٹر + 12 عدد + 80 سوٹ".
         $totalText = function (string $column) use ($purchase, $quantityText) {
-            return $purchase->items->groupBy(fn ($row) => $row->cloth->countsSuits() ? 'suit' : 'meter')
+            return $purchase->items->groupBy(fn ($row) => $row->cloth->stock_unit ?: 'meter')
                 ->sortKeys()
-                ->map(fn ($rows, $unit) => $quantityText($rows->sum($column), $unit === 'suit'))
-                ->implode(' + ') ?: $quantityText(0, false);
+                ->map(fn ($rows, $unit) => $quantityText($rows->sum($column), $unit))
+                ->implode(' + ') ?: $quantityText(0, 'meter');
         };
     @endphp
     <section class="main-content purchase-page" dir="rtl">
@@ -535,14 +540,14 @@
 
             <section class="purchase-panel purchase-detail-card">
                 <div class="purchase-detail-title">
-                    <h2>خریدے گئے سیٹ</h2><span class="purchase-breadcrumb">کل {{ $itemGroups->count() }} سیٹ</span>
+                    <h2>خریدے گئے {{ $setWord }}</h2><span class="purchase-breadcrumb">کل {{ $itemGroups->count() }} {{ $setWord }}</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table purchase-item-table">
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>کپڑے کا سیٹ</th>
+                                <th>{{ $itemColumn }}</th>
                                 <th>رنگ</th>
                                 <th>آرڈر شدہ</th>
                                 <th>وصول شدہ</th>
@@ -568,14 +573,19 @@
                                     $groupUnitCost =
                                         $groupQuantity > 0 ? (float) $items->sum('line_total') / $groupQuantity : 0;
                                     $showColors = $item->cloth->tracksColors() && $items->count() > 1;
-                                    $suits = $item->cloth->countsSuits();
-                                    $unit = $suits ? 'سوٹ' : 'میٹر';
+                                    $suits = $item->cloth->countsWholeItems();
+                                    $unit = $item->cloth->stockUnitLabel();
+                                    $unitKey = $item->cloth->stock_unit ?: 'meter';
                                 @endphp
                                 <tr>
                                     <td data-label="#">{{ $loop->iteration }}</td>
-                                    <td data-label="کپڑے کا سیٹ" class="purchase-item-name">
-                                        <strong>{{ $item->cloth->name ?: 'نام درج نہیں' }}</strong><small>{{ $item->cloth->brand->name ?? 'برانڈ' }}
-                                            / {{ $item->cloth->type->name ?? 'قسم' }}</small></td>
+                                    <td data-label="{{ $itemColumn }}" class="purchase-item-name">
+                                        <strong>{{ $item->cloth->name ?: 'نام درج نہیں' }}</strong>@if ($item->cloth->countsPieces())
+                                            {{-- A piece has no cloth type and its brand is optional. --}}
+                                            @if ($item->cloth->brand)<small>{{ $item->cloth->brand->name }}</small>@endif
+                                            @if ($item->cloth->category)<small>{{ $item->cloth->category->fullName() }}</small>@endif
+                                        @else<small>{{ $item->cloth->brand->name ?? 'برانڈ' }}
+                                            / {{ $item->cloth->type->name ?? 'قسم' }}</small>@endif</td>
                                     <td data-label="رنگ">
                                         @if ($showColors)
                                             <details class="purchase-color-breakdown">
@@ -583,21 +593,21 @@
                                                 <div class="purchase-color-list">
                                                     @foreach ($items as $colorItem)
                                                         <div class="purchase-color-line">
-                                                            <strong>{{ $colorItem->color }}</strong><span>{{ $quantityText($colorItem->quantity, $suits) }}</span></div>
+                                                            <strong>{{ $colorItem->color }}</strong><span>{{ $quantityText($colorItem->quantity, $unitKey) }}</span></div>
                                                     @endforeach
                                                 </div>
                                             </details>
                                         @elseif($item->cloth->tracksColors())
-                                            {{ $item->color }}@else<span class="text-muted">رنگ کی تقسیم نہیں</span>
+                                            {{ $item->color }}@else<span class="text-muted">{{ $item->cloth->countsPieces() ? 'ایک ہی اسٹاک' : 'رنگ کی تقسیم نہیں' }}</span>
                                         @endif
                                     </td>
                                     <td data-label="آرڈر شدہ"><span
-                                            class="purchase-quantity">{{ $quantityText($groupQuantity, $suits) }}</span>
+                                            class="purchase-quantity">{{ $quantityText($groupQuantity, $unitKey) }}</span>
                                     </td>
                                     <td data-label="وصول شدہ"><span
-                                            class="purchase-quantity is-received">{{ $quantityText($groupReceived, $suits) }}</span></td>
+                                            class="purchase-quantity is-received">{{ $quantityText($groupReceived, $unitKey) }}</span></td>
                                     <td data-label="واپس شدہ"><span
-                                            class="purchase-quantity is-returned">{{ $quantityText($groupReturned, $suits) }}</span></td>
+                                            class="purchase-quantity is-returned">{{ $quantityText($groupReturned, $unitKey) }}</span></td>
                                     <td data-label="حسابی لاگت">روپے {{ number_format($groupUnitCost, 2) }} / {{ $unit }}</td>
                                     <td data-label="واپسی کے بعد رقم">روپے {{ number_format($groupTotal, 2) }}</td>
                                     @if ($purchase->status === 'received')
@@ -636,7 +646,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="purchase-totals-strip"><span>کل سیٹ:<strong>{{ $itemGroups->count() }}</strong></span><span
+                <div class="purchase-totals-strip"><span>کل {{ $setWord }}:<strong>{{ $itemGroups->count() }}</strong></span><span
                         class="total-primary">آرڈر شدہ:<strong>{{ $totalText('quantity') }}</strong></span><span
                         class="total-success">وصول شدہ:<strong>{{ $totalText('received_quantity') }}</strong></span><span
                         class="total-danger">واپس شدہ:<strong>{{ $totalText('returned_quantity') }}</strong></span></div>

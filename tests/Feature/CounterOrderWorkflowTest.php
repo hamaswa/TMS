@@ -101,8 +101,8 @@ class CounterOrderWorkflowTest extends TestCase
         $customer->update(['length' => 99]);
 
         $editor = $this->actingAs($owner)->get(route('admin.counter-orders.edit', $counterOrder));
-        $editor->assertOk()->assertSeeText('کپڑا اور سلائی ایک ہی آرڈر میں')
-            ->assertSeeText('کپڑا اسی فہرست میں شامل یا تبدیل کریں')
+        $editor->assertOk()->assertSeeText('آئٹمز اور سلائی ایک ہی آرڈر میں')
+            ->assertSeeText('آئٹم اسی فہرست میں شامل یا تبدیل کریں')
             ->assertSeeText('ناپ دیکھیں / تبدیل کریں')
             ->assertSeeText('کل سلائی رقم')
             ->assertSee('id="measurementProfileModal"', false)
@@ -526,7 +526,7 @@ class CounterOrderWorkflowTest extends TestCase
 
         $this->actingAs($owner)->get(route('admin.counter-orders.create'))
             ->assertOk()
-            ->assertSeeText('فروخت ہونے والا کپڑا شامل کریں')
+            ->assertSeeText('فروخت ہونے والا آئٹم شامل کریں')
             ->assertDontSeeText('کپڑا اور سلائی');
 
         $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
@@ -534,7 +534,7 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertSee('id="co-add-cloth-button"', false)
             ->assertSee('id="co-new-cloth-row"', false)
             ->assertDontSee('data-target="#tailoringItemModal"', false)
-            ->assertSeeText('کپڑے کی فروخت کا آرڈر')
+            ->assertSeeText('آئٹمز کی فروخت کا آرڈر')
             ->assertDontSeeText('سلائی شامل کریں');
 
         $this->actingAs($owner)->post(route('admin.counter-orders.tailoring-items.store', $order), [])
@@ -556,7 +556,7 @@ class CounterOrderWorkflowTest extends TestCase
         $this->actingAs($owner)->get(route('admin.counter-orders.create'))
             ->assertOk()
             ->assertSeeText('گاہک کا سلائی آرڈر شامل کریں')
-            ->assertDontSeeText('فروخت ہونے والا کپڑا');
+            ->assertDontSeeText('فروخت ہونے والا آئٹم');
 
         $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))
             ->assertOk()
@@ -564,7 +564,7 @@ class CounterOrderWorkflowTest extends TestCase
             ->assertDontSee('id="co-new-cloth-row"', false)
             ->assertSee('data-target="#tailoringItemModal"', false)
             ->assertSeeText('سلائی کا آرڈر')
-            ->assertDontSeeText('کپڑا شامل کریں');
+            ->assertDontSeeText('آئٹم شامل کریں');
 
         $this->actingAs($owner)->post(route('admin.counter-orders.cloth-items.store', $order), [])
             ->assertForbidden();
@@ -850,6 +850,10 @@ class CounterOrderWorkflowTest extends TestCase
         $this->assertDatabaseHas('counter_sale_receipts', [
             'customer_id' => $order->customer_id, 'status' => 'completed',
         ]);
+
+        // The receipt names the buyer plainly, without the walk-in record's running number.
+        $this->actingAs($owner)->get(route('admin.counter-orders.print', $order))
+            ->assertOk()->assertSee('<strong>Walk-in</strong>', false)->assertDontSeeText($order->customer->name);
     }
 
     public function test_anonymous_walk_in_must_be_identified_before_stitching(): void

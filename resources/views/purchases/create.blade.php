@@ -714,6 +714,11 @@
                         <strong id="purchase-suit-count">0</strong>
                     </div>
 
+                    <div class="d-flex justify-content-between text-muted mb-2">
+                        <span>کل عدد</span>
+                        <strong id="purchase-piece-count">0</strong>
+                    </div>
+
                     <hr>
 
                     <small class="text-muted d-block mb-2">کل خریداری</small>
@@ -852,7 +857,7 @@
                 </div>
 
                 <div class="purchase-field">
-                    <label>سیٹ کا نام</label>
+                    <label class="new-name-label">سیٹ کا نام</label>
                     <input class="form-control new-name"
                         maxlength="100"
                         placeholder="مثلاً دلبر"
@@ -870,7 +875,7 @@
                     </select>
                 </div>
 
-                <div class="purchase-field">
+                <div class="purchase-field new-type-field">
                     <label>کپڑے کی قسم</label>
                     <select class="form-control new-type" aria-label="کپڑے کی قسم" required>
                         <option value="">قسم منتخب کریں</option>
@@ -885,7 +890,7 @@
                     <label>اسٹاک کا طریقہ</label>
                     <select class="form-control new-tracking">
                         <option value="none" class="purchase-shared-option">مشترکہ میٹر</option>
-                        <option value="per_color">رنگ الگ الگ</option>
+                        <option value="per_color" class="purchase-split-option">رنگ الگ الگ</option>
                     </select>
                 </div>
 
@@ -920,7 +925,7 @@
                 </div>
 
                 <div class="purchase-field">
-                    <label>فی سوٹ فروختی قیمت</label>
+                    <label class="new-suit-price-label">فی سوٹ فروختی قیمت</label>
                     <input type="number"
                         step="0.01"
                         min="0"
@@ -1104,10 +1109,13 @@
                 });
             });
 
-            // Meter stock is cut from a roll; women's packed suits are counted whole.
-            const unitInfo = row => row && row.dataset.unit === 'suit'
-                ? { name: 'سوٹ', short: ' سوٹ', step: '1', min: '1', placeholder: '0', digits: 0 }
-                : { name: 'میٹر', short: ' m', step: '0.01', min: '0.01', placeholder: '0.00', digits: 2 };
+            // Meter stock is cut from a roll; women's packed suits and pieces (perfume, cap) are counted whole.
+            const wholeUnits = {
+                suit: { name: 'سوٹ', short: ' سوٹ', step: '1', min: '1', placeholder: '0', digits: 0 },
+                piece: { name: 'عدد', short: ' عدد', step: '1', min: '1', placeholder: '0', digits: 0 }
+            };
+            const unitInfo = row => (row && wholeUnits[row.dataset.unit])
+                || { name: 'میٹر', short: ' m', step: '0.01', min: '0.01', placeholder: '0.00', digits: 2 };
             const formatQty = (row, value) => {
                 const unit = unitInfo(row);
                 return Number(value || 0).toFixed(unit.digits) + unit.short;
@@ -1116,7 +1124,8 @@
             // Apply the row's unit to the fields that renderNewStock/renderExisting don't rebuild.
             const applyUnit = row => {
                 const unit = unitInfo(row),
-                    suit = row.dataset.unit === 'suit';
+                    suit = row.dataset.unit in wholeUnits,
+                    piece = row.dataset.unit === 'piece';
 
                 row.querySelectorAll('.purchase-color-quantity').forEach(input => {
                     input.step = unit.step;
@@ -1125,8 +1134,16 @@
                 });
                 row.querySelectorAll('.purchase-unit-name').forEach(label => label.textContent = unit.name);
 
+                // A perfume or a cap has one stock, or a separate stock per colour / variety.
                 const shared = row.querySelector('.purchase-shared-option');
-                if (shared) shared.textContent = 'مشترکہ ' + unit.name;
+                if (shared) shared.textContent = piece ? 'ایک ہی اسٹاک' : 'مشترکہ ' + unit.name;
+                const split = row.querySelector('.purchase-split-option');
+                if (split) split.textContent = piece ? 'رنگ / قسم الگ الگ' : 'رنگ الگ الگ';
+                const nameLabel = row.querySelector('.new-name-label');
+                if (nameLabel) {
+                    nameLabel.textContent = piece ? 'آئٹم کا نام' : 'سیٹ کا نام';
+                    row.querySelector('.new-name').placeholder = piece ? 'مثلاً عود پرفیوم' : 'مثلاً دلبر';
+                }
 
                 const lengthField = row.querySelector('.new-length-field');
                 if (lengthField) {
@@ -1134,6 +1151,15 @@
                     lengthField.hidden = suit;
                     lengthInput.required = !suit;
                     if (suit) lengthInput.value = '';
+                }
+
+                // A perfume or a cap is not cloth: no cloth type, and the brand is optional.
+                const typeField = row.querySelector('.new-type-field');
+                if (typeField) {
+                    typeField.hidden = piece;
+                    typeField.querySelector('.new-type').required = !piece;
+                    row.querySelector('.new-brand').required = !piece;
+                    row.querySelector('.new-suit-price-label').textContent = 'فی ' + (piece ? 'عدد' : 'سوٹ') + ' فروختی قیمت';
                 }
             };
 
@@ -1286,6 +1312,7 @@
                 let grand = 0,
                     meters = 0,
                     suits = 0,
+                    pieces = 0,
                     selected = 0;
 
                 sets.querySelectorAll('.purchase-set-card').forEach((row, index) => {
@@ -1303,14 +1330,14 @@
                             .reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0),
                         total = parseFloat(row.querySelector('.purchase-set-total').value) || 0;
 
-                    const suitRow = row.dataset.unit === 'suit';
+                    const suitRow = row.dataset.unit in wholeUnits;
                     row.querySelector('.purchase-set-meters').textContent = formatQty(row, qty);
 
                     row.querySelector('.purchase-unit-cost-preview').textContent =
                         'Rs. ' + (qty ? total / qty : 0).toLocaleString(undefined, {
                             minimumFractionDigits: suitRow ? 2 : 4,
                             maximumFractionDigits: suitRow ? 2 : 4
-                        }) + (suitRow ? ' / سوٹ' : ' / m');
+                        }) + (suitRow ? ' /' + unitInfo(row).short : ' / m');
 
                     // Meter sets are priced per suit; show the per-meter rate it works out to.
                     const saleRate = row.querySelector('.new-sale-rate');
@@ -1324,7 +1351,9 @@
                             : '';
                     }
 
-                    if (suitRow) {
+                    if (row.dataset.unit === 'piece') {
+                        pieces += qty;
+                    } else if (suitRow) {
                         suits += qty;
                     } else {
                         meters += qty;
@@ -1335,6 +1364,7 @@
                 document.getElementById('purchase-item-count').textContent = selected;
                 document.getElementById('purchase-meter-count').textContent = meters.toFixed(2) + ' m';
                 document.getElementById('purchase-suit-count').textContent = suits.toFixed(0);
+                document.getElementById('purchase-piece-count').textContent = pieces.toFixed(0);
                 document.getElementById('purchase-grand-total').textContent = money(grand);
                 purchaseGrandTotal = grand;
                 updatePaymentPreview();

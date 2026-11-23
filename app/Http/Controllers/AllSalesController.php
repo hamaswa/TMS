@@ -42,6 +42,7 @@ class AllSalesController extends Controller
         $customerIds = Customers::where('user_id', $ownerId)
             ->whereIn('id', $lines->getCollection()->pluck('customer_id')->filter()->unique())
             ->pluck('id')->flip();
+            // dd($customerIds);
         $lines->setCollection($lines->getCollection()->map(fn (array $line) => $line + [
             'counter_order_id' => $line['receipt_id'] ? $counterOrders->get($line['receipt_id']) : null,
             'has_customer' => $line['customer_id'] && $customerIds->has($line['customer_id']),

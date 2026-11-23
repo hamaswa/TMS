@@ -112,10 +112,12 @@ class ClothController extends Controller
             default => $query->latest('cloths.id'),
         };
 
-        // Meters and packed suits can't be added together, so they are totalled separately.
-        $suitStock = (float) ClothColor::query()
-            ->whereIn('cloth_id', (clone $query)->reorder()->where('cloths.stock_unit', ClothCategory::UNIT_SUIT)->select('cloths.id'))
+        // Meters, packed suits and pieces can't be added together, so they are totalled separately.
+        $wholeStock = fn (string $unit) => (float) ClothColor::query()
+            ->whereIn('cloth_id', (clone $query)->reorder()->where('cloths.stock_unit', $unit)->select('cloths.id'))
             ->sum('length');
+        $suitStock = $wholeStock(ClothCategory::UNIT_SUIT);
+        $pieceStock = $wholeStock(ClothCategory::UNIT_PIECE);
 
         $cloths = $query
             ->with(['type', 'brand', 'category.parent', 'colors.latestCostedStockAddition', 'images', 'storefrontListings'])
@@ -132,8 +134,9 @@ class ClothController extends Controller
         $summary = [
             'sets' => $matchedSets,
             'colors' => (int) ($colorSummary->color_count ?? 0),
-            'meters' => (float) ($colorSummary->total_meters ?? 0) - $suitStock,
+            'meters' => (float) ($colorSummary->total_meters ?? 0) - $suitStock - $pieceStock,
             'suits' => $suitStock,
+            'pieces' => $pieceStock,
             'low_or_empty' => $lowOrEmptySets,
         ];
 
@@ -191,8 +194,8 @@ class ClothController extends Controller
             ]);
             $validated = $request->validate([
                 'name' => ['nullable', 'string', 'max:100'],
-                'cloth_type_id' => ['required', 'integer'],
-                'cloth_brand_id' => ['required', 'integer'],
+                'cloth_type_id' => [$category->countsPieces() ? 'nullable' : 'required', 'integer'],
+                'cloth_brand_id' => [$category->countsPieces() ? 'nullable' : 'required', 'integer'],
                 'length' => ['nullable', 'array'],
                 'length.*' => ['nullable', 'numeric', 'min:0'],
                 'length_colors' => ['nullable', 'array'],
@@ -233,7 +236,7 @@ class ClothController extends Controller
                 && (empty($validated['default_sale_length']) || empty($validated['suit_sale_price']))) {
                 throw ValidationException::withMessages(array_filter([
                     'default_sale_length' => empty($validated['default_sale_length']) ? 'فی سوٹ قیمت کے لیے سوٹ کی ڈیفالٹ لمبائی درج کریں۔' : null,
-                    'suit_sale_price' => empty($validated['suit_sale_price']) ? 'فی سوٹ قیمت درج کریں۔' : null,
+                    'suit_sale_price' => empty($validated['suit_sale_price']) ? ($category->countsPieces() ? 'فی عدد قیمت درج کریں۔' : 'فی سوٹ قیمت درج کریں۔') : null,
                 ]));
             }
             [$storefront, $canConfigureOnline] = $this->storefrontContext();
@@ -243,8 +246,7 @@ class ClothController extends Controller
                 $canConfigureOnline
             );
             // dd($validated);
-            ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
-            ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
+            $this->ensureOwnTypeAndBrand($validated);
             $trackingMode = $validated['color_tracking_mode'];
             $colors = array_values(
                                 array_filter(
@@ -365,8 +367,8 @@ class ClothController extends Controller
             DB::transaction(function () use ($request, $validated, $stockColors, $displayColors, $lengths, $trackingMode, $storefront, $canConfigureOnline, $colorCodeByName, $category) {
                 $cloth = Cloth::create([
                     'name' => trim((string) ($validated['name'] ?? '')) ?: null,
-                    'cloth_type_id' => $validated['cloth_type_id'],
-                    'cloth_brand_id' => $validated['cloth_brand_id'],
+                    'cloth_type_id' => $validated['cloth_type_id'] ?? null,
+                    'cloth_brand_id' => $validated['cloth_brand_id'] ?? null,
                     'cloth_category_id' => $category->id,
                     'stock_unit' => $category->stock_unit,
                     'price' => $validated['price'],
@@ -553,8 +555,8 @@ class ClothController extends Controller
             $request->merge(['sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT]);
             $validated = $request->validate([
                 'name' => ['nullable', 'string', 'max:100'],
-                'cloth_type_id' => ['required', 'integer'],
-                'cloth_brand_id' => ['required', 'integer'],
+                'cloth_type_id' => [$category->countsPieces() ? 'nullable' : 'required', 'integer'],
+                'cloth_brand_id' => [$category->countsPieces() ? 'nullable' : 'required', 'integer'],
                 'length' => ['required', 'numeric', 'min:0'],
                 'price' => ['required', 'numeric', 'min:0'],
                 'sale_price' => ['required', 'numeric', 'min:0'],
@@ -577,7 +579,7 @@ class ClothController extends Controller
                 && (empty($validated['default_sale_length']) || empty($validated['suit_sale_price']))) {
                 throw ValidationException::withMessages(array_filter([
                     'default_sale_length' => empty($validated['default_sale_length']) ? 'فی سوٹ قیمت کے لیے سوٹ کی ڈیفالٹ لمبائی درج کریں۔' : null,
-                    'suit_sale_price' => empty($validated['suit_sale_price']) ? 'فی سوٹ قیمت درج کریں۔' : null,
+                    'suit_sale_price' => empty($validated['suit_sale_price']) ? ($category->countsPieces() ? 'فی عدد قیمت درج کریں۔' : 'فی سوٹ قیمت درج کریں۔') : null,
                 ]));
             }
             if ($canConfigureOnline) {
@@ -587,8 +589,7 @@ class ClothController extends Controller
                     $canConfigureOnline
                 );
             }
-            ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
-            ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
+            $this->ensureOwnTypeAndBrand($validated);
 
             $displayColors = $cloth->display_colors ?? [];
             if ($cloth->usesDisplayOnlyColors()) {
@@ -607,8 +608,8 @@ class ClothController extends Controller
                 $inventory = app(InventoryService::class);
                 $cloth->update([
                     'name' => trim((string) ($validated['name'] ?? '')) ?: $cloth->name,
-                    'cloth_type_id' => $validated['cloth_type_id'],
-                    'cloth_brand_id' => $validated['cloth_brand_id'],
+                    'cloth_type_id' => $validated['cloth_type_id'] ?? null,
+                    'cloth_brand_id' => $validated['cloth_brand_id'] ?? null,
                     'cloth_category_id' => $category->id,
                     'price' => $validated['price'],
                     'sale_price' => $validated['sale_price'],
@@ -684,8 +685,8 @@ class ClothController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
-            'cloth_type_id' => ['required', 'integer'],
-            'cloth_brand_id' => ['required', 'integer'],
+            'cloth_type_id' => [$category->countsPieces() ? 'nullable' : 'required', 'integer'],
+            'cloth_brand_id' => [$category->countsPieces() ? 'nullable' : 'required', 'integer'],
             'price' => ['required', 'numeric', 'min:0'],
             'sale_price' => ['required', 'numeric', 'min:0'],
             'suit_sale_price' => ['nullable', 'numeric', 'min:0'],
@@ -717,7 +718,7 @@ class ClothController extends Controller
             && (empty($validated['default_sale_length']) || empty($validated['suit_sale_price']))) {
             throw ValidationException::withMessages(array_filter([
                 'default_sale_length' => empty($validated['default_sale_length']) ? 'فی سوٹ قیمت کے لیے سوٹ کی ڈیفالٹ لمبائی درج کریں۔' : null,
-                'suit_sale_price' => empty($validated['suit_sale_price']) ? 'فی سوٹ قیمت درج کریں۔' : null,
+                'suit_sale_price' => empty($validated['suit_sale_price']) ? ($category->countsPieces() ? 'فی عدد قیمت درج کریں۔' : 'فی سوٹ قیمت درج کریں۔') : null,
             ]));
         }
         if ($validated['color_tracking_mode'] === Cloth::COLOR_TRACKING_PER_COLOR
@@ -725,8 +726,7 @@ class ClothController extends Controller
             throw ValidationException::withMessages(['color_lengths' => 'ہر رنگ کی موجودہ لمبائی درج کریں۔']);
         }
 
-        ClothType::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_type_id']);
-        ClothBrand::where('user_id', Auth::user()->businessOwnerId())->findOrFail($validated['cloth_brand_id']);
+        $this->ensureOwnTypeAndBrand($validated);
         if ($canConfigureOnline) {
             $this->validateOnlineAvailability($validated['online_availability'], $storefront, $canConfigureOnline);
         }
@@ -761,8 +761,8 @@ class ClothController extends Controller
             $inventory = app(InventoryService::class);
             $cloth->update([
                 'name' => trim($validated['name']),
-                'cloth_type_id' => $validated['cloth_type_id'],
-                'cloth_brand_id' => $validated['cloth_brand_id'],
+                'cloth_type_id' => $validated['cloth_type_id'] ?? null,
+                'cloth_brand_id' => $validated['cloth_brand_id'] ?? null,
                 'cloth_category_id' => $category->id,
                 'price' => $validated['price'],
                 'sale_price' => $validated['sale_price'],
@@ -978,8 +978,8 @@ class ClothController extends Controller
     {
         $category = $this->resolveCategory($request, $cloth);
 
-        if ($category->countsSuits()) {
-            // A packed suit is one stock unit and is never cut, so each sale takes exactly 1.
+        if ($category->countsWholeItems()) {
+            // A packed suit or a piece is one stock unit and is never cut, so each sale takes exactly 1.
             $defaultLength = 1.0;
             $quantities = array_merge(
                 (array) $request->input('length', []),
@@ -988,7 +988,7 @@ class ClothController extends Controller
             );
             foreach ($quantities as $quantity) {
                 if (abs((float) $quantity - round((float) $quantity)) >= 0.00001) {
-                    throw ValidationException::withMessages(['shared_length' => 'سوٹ پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
+                    throw ValidationException::withMessages(['shared_length' => $category->unitLabel().' پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
                 }
             }
         } else {
@@ -1011,6 +1011,18 @@ class ClothController extends Controller
         ]);
 
         return $category;
+    }
+
+    /** Type and brand must belong to the shop; non-cloth piece items may leave them empty. */
+    private function ensureOwnTypeAndBrand(array $validated): void
+    {
+        $ownerId = Auth::user()->businessOwnerId();
+        if (! empty($validated['cloth_type_id'])) {
+            ClothType::where('user_id', $ownerId)->findOrFail($validated['cloth_type_id']);
+        }
+        if (! empty($validated['cloth_brand_id'])) {
+            ClothBrand::where('user_id', $ownerId)->findOrFail($validated['cloth_brand_id']);
+        }
     }
 
     /**

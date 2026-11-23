@@ -129,8 +129,9 @@ class PurchaseController extends Controller
             'unit_cost.*' => ['required', 'numeric', 'gt:0'],
             'new_sets' => ['nullable', 'array'],
             'new_sets.*.name' => ['required', 'string', 'max:100'],
-            'new_sets.*.cloth_brand_id' => ['required', 'integer'],
-            'new_sets.*.cloth_type_id' => ['required', 'integer'],
+            // Required for cloth; piece items (perfume, cap) may leave them empty, checked per set below.
+            'new_sets.*.cloth_brand_id' => ['nullable', 'integer'],
+            'new_sets.*.cloth_type_id' => ['nullable', 'integer'],
             'new_sets.*.cloth_category_id' => ['nullable', 'integer'],
             // New sets are priced per suit at the default suit length (e.g. 4.5 m for Rs 2200).
             // Packed women's suits have no cutting length, so it is only required for meter stock.
@@ -168,13 +169,11 @@ class PurchaseController extends Controller
         $categories = ClothCategory::selectableFor($ownerId)->keyBy('id');
         foreach ($existingColorIds as $index => $colorId) {
             $color = ClothColor::where('user_id', $ownerId)->with('cloth')->find($colorId);
-            if ($color?->cloth?->countsSuits() && ! $this->isWholeNumber($existingQuantities[$index] ?? 0)) {
-                throw ValidationException::withMessages(["quantity.{$index}" => 'سوٹ پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
+            if ($color?->cloth?->countsWholeItems() && ! $this->isWholeNumber($existingQuantities[$index] ?? 0)) {
+                throw ValidationException::withMessages(["quantity.{$index}" => $color->cloth->stockUnitLabel().' پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
             }
         }
         foreach ($newSets as $index => $set) {
-            ClothBrand::where('user_id', $ownerId)->findOrFail($set['cloth_brand_id']);
-            ClothType::where('user_id', $ownerId)->findOrFail($set['cloth_type_id']);
             // Without a category a new set goes to the shop's first meter category (Men), as before categories existed.
             $category = ! empty($set['cloth_category_id'])
                 ? $categories->get((int) $set['cloth_category_id'])
@@ -182,7 +181,18 @@ class PurchaseController extends Controller
             if (! $category) {
                 throw ValidationException::withMessages(["new_sets.{$index}.cloth_category_id" => 'درست کیٹیگری منتخب کریں۔']);
             }
-            $countsSuits = $category->countsSuits();
+            foreach (['cloth_brand_id' => 'برانڈ منتخب کریں۔', 'cloth_type_id' => 'کپڑے کی قسم منتخب کریں۔'] as $field => $message) {
+                if (empty($set[$field]) && ! $category->countsPieces()) {
+                    throw ValidationException::withMessages(["new_sets.{$index}.{$field}" => $message]);
+                }
+            }
+            if (! empty($set['cloth_brand_id'])) {
+                ClothBrand::where('user_id', $ownerId)->findOrFail($set['cloth_brand_id']);
+            }
+            if (! empty($set['cloth_type_id'])) {
+                ClothType::where('user_id', $ownerId)->findOrFail($set['cloth_type_id']);
+            }
+            $countsSuits = $category->countsWholeItems();
             if (! $countsSuits && empty($set['default_sale_length'])) {
                 throw ValidationException::withMessages(["new_sets.{$index}.default_sale_length" => 'ڈیفالٹ سوٹ لمبائی درج کریں۔']);
             }
@@ -190,11 +200,11 @@ class PurchaseController extends Controller
                 ? array_column(array_values($set['colors'] ?? []), 'quantity')
                 : [$set['quantity'] ?? 0];
             if ($countsSuits && collect($setQuantities)->contains(fn ($quantity) => ! $this->isWholeNumber($quantity))) {
-                throw ValidationException::withMessages(["new_sets.{$index}.quantity" => 'سوٹ پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
+                throw ValidationException::withMessages(["new_sets.{$index}.quantity" => $category->unitLabel().' پورے گنے جاتے ہیں، تعداد میں اعشاریہ نہ لکھیں۔']);
             }
             $duplicate = Cloth::where('user_id', $ownerId)
-                ->where('cloth_brand_id', $set['cloth_brand_id'])
-                ->where('cloth_type_id', $set['cloth_type_id'])
+                ->where('cloth_brand_id', $set['cloth_brand_id'] ?? null)
+                ->where('cloth_type_id', $set['cloth_type_id'] ?? null)
                 ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($set['name']))])
                 ->exists();
             if ($duplicate) {
@@ -262,12 +272,12 @@ class PurchaseController extends Controller
                 $setTotal = round((float) $set['total'], 2);
                 $unitCost = round($setTotal / $setQuantity, 4);
                 $category = $categories->get((int) $set['cloth_category_id']);
-                // A packed suit is one stock unit, so its "length" per sale is always 1.
-                $suitLength = $category->countsSuits() ? 1.0 : (float) $set['default_sale_length'];
+                // A packed suit or a piece is one stock unit, so its "length" per sale is always 1.
+                $suitLength = $category->countsWholeItems() ? 1.0 : (float) $set['default_sale_length'];
                 $cloth = Cloth::create([
                     'name' => trim($set['name']),
-                    'cloth_type_id' => $set['cloth_type_id'],
-                    'cloth_brand_id' => $set['cloth_brand_id'],
+                    'cloth_type_id' => $set['cloth_type_id'] ?? null,
+                    'cloth_brand_id' => $set['cloth_brand_id'] ?? null,
                     'cloth_category_id' => $category->id,
                     'stock_unit' => $category->stock_unit,
                     'price' => $unitCost,
@@ -380,7 +390,7 @@ class PurchaseController extends Controller
 
     public function show(int $purchase)
     {
-        $purchase = $this->ownedPurchase($purchase)->load(['supplier', 'items.cloth.brand', 'items.cloth.type', 'payments', 'returns.items']);
+        $purchase = $this->ownedPurchase($purchase)->load(['supplier', 'items.cloth.brand', 'items.cloth.type', 'items.cloth.category.parent', 'payments', 'returns.items']);
 
         // Existing allocations may predate the cached totals being synchronized.
         // Display the actual linked ledger, not stale purchase columns.
@@ -481,8 +491,8 @@ class PurchaseController extends Controller
             $purchase = Purchase::where('user_id', Auth::user()->businessOwnerId())->lockForUpdate()->findOrFail($purchase->id);
             $item = PurchaseItem::where('purchase_id', $purchase->id)->lockForUpdate()->findOrFail($validated['purchase_item_id']);
             $quantity = round((float) $validated['quantity'], 2);
-            if ($item->cloth?->countsSuits() && ! $this->isWholeNumber($quantity)) {
-                throw ValidationException::withMessages(['quantity' => 'سوٹ پورے واپس ہوتے ہیں، مثلاً 1 یا 2۔']);
+            if ($item->cloth?->countsWholeItems() && ! $this->isWholeNumber($quantity)) {
+                throw ValidationException::withMessages(['quantity' => $item->cloth->stockUnitLabel().' پورے واپس ہوتے ہیں، مثلاً 1 یا 2۔']);
             }
             $availableToReturn = (float) $item->received_quantity - (float) $item->returned_quantity;
             if ($quantity > $availableToReturn) {

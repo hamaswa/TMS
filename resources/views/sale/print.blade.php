@@ -173,7 +173,7 @@
                 <div class="mb-1">
                     <div style="width: 50%; display: inline-block;font-size: 14px">
                         <span style="font-weight: bold;position:relative;left:180%; "> : نام</span>
-                        <b style="position:absolute;left:10%">{{ $sale->customer?->name ?? $sale->customer_name }}</b>
+                        <b style="position:absolute;left:10%">{{ \App\Services\ReportDashboardService::customerLabel($sale->customer?->name ?? $sale->customer_name) }}</b>
                     </div>
                 </div>
 

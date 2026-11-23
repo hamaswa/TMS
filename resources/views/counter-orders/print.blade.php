@@ -432,7 +432,7 @@
                     class="receipt-number">{{ $receiptNumber }}</strong></div>
             <div><small>تاریخ</small><strong>{{ $counterOrder->created_at?->format('d-m-Y h:i A') }}</strong></div>
         </section>
-        <section class="customer"><small>گاہک</small><strong>{{ $counterOrder->customer?->name }}</strong></section>
+        <section class="customer"><small>گاہک</small><strong>{{ \App\Services\ReportDashboardService::customerLabel($counterOrder->customer?->name) }}</strong></section>
         @php
             $returnedItems = isset($singleItem) ? collect() : ($returnedItems ?? collect());
             $returnedTotal = (float) $returnedItems->sum('amount');
@@ -454,11 +454,12 @@
                             </div>
                         @endif
                         @if ($item->type === 'cloth')
-                            <div class="item-kind">کپڑے کی خریداری</div>
-                            <h2 dir="auto">{{ $item->cloth?->name }} — {{ $item->cloth?->brand?->name }} —
-                                {{ $item->cloth?->type?->name }}</h2>
+                            <div class="item-kind">{{ $item->cloth?->countsPieces() ? 'آئٹم کی خریداری' : 'کپڑے کی خریداری' }}</div>
+                            <h2 dir="auto">{{ collect([$item->cloth?->name, $item->cloth?->brand?->name, $item->cloth?->type?->name])->filter()->implode(' — ') }}</h2>
                             <p>{{ data_get($item->details, 'color') ?: 'رنگ لاگو نہیں' }} ·
-                                @if (data_get($item->details, 'sale_price_basis') === \App\Models\Cloth::SALE_PRICE_PER_SUIT)
+                                @if ($item->cloth?->countsWholeItems())
+                                    {{ (int) $item->quantity }} {{ $item->cloth->stockUnitLabel() }} · Rs. {{ number_format((float) $item->unit_price, 2) }} فی {{ $item->cloth->stockUnitLabel() }}
+                                @elseif (data_get($item->details, 'sale_price_basis') === \App\Models\Cloth::SALE_PRICE_PER_SUIT)
                                     {{ rtrim(rtrim(number_format((float) $item->quantity, 2), '0'), '.') }} سوٹ × {{ number_format((float) $item->length, 2) }} میٹر · Rs. {{ number_format((float) $item->unit_price, 2) }} فی سوٹ
                                 @else
                                     {{ number_format((float) $item->length, 2) }} میٹر · Rs. {{ number_format((float) $item->unit_price, 2) }} فی میٹر

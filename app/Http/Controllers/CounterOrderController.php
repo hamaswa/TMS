@@ -793,8 +793,8 @@ class CounterOrderController extends Controller
         if ($cloth->hasSelectableColors() && blank($validated['color'] ?? null)) {
             return back()->withErrors(['color' => 'اس کپڑے کے لیے رنگ منتخب کریں۔'])->withInput();
         }
-        if ($cloth->countsSuits()) {
-            // A packed suit is one stock unit; only the number of suits matters.
+        if ($cloth->countsWholeItems()) {
+            // A packed suit or a piece is one stock unit; only the count matters.
             $validated['length'] = 1;
         }
         $lineTotal = round((float) $validated['total_price'], 2);
@@ -932,7 +932,7 @@ class CounterOrderController extends Controller
             ) {
                 return back()->withErrors(['color' => 'منتخب رنگ اس کپڑے کے دستیاب رنگوں میں شامل نہیں ہے۔'])->withInput();
             }
-            if ($cloth->countsSuits()) {
+            if ($cloth->countsWholeItems()) {
                 $validated['length'] = 1;
             }
             $quantity = $cloth->sellsPerSuit() ? (int) ($validated['quantity'] ?? 1) : 1;
@@ -1190,7 +1190,7 @@ class CounterOrderController extends Controller
 
         if ($needed > $available) {
             $unit = $cloth->stockUnitLabel();
-            $digits = $cloth->countsSuits() ? 0 : 2;
+            $digits = $cloth->countsWholeItems() ? 0 : 2;
             throw ValidationException::withMessages([
                 'length' => $available <= 0
                     ? 'اس کپڑے کا اسٹاک ختم ہے۔'

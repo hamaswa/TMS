@@ -14,11 +14,11 @@
         ];
         $orderScopeText =
             $canAddCloth && $canAddTailoring
-                ? 'کپڑا اور سلائی ایک ہی آرڈر میں'
+                ? 'آئٹمز اور سلائی ایک ہی آرڈر میں'
                 : ($canAddCloth
-                    ? 'کپڑے کی فروخت کا آرڈر'
+                    ? 'آئٹمز کی فروخت کا آرڈر'
                     : 'سلائی کا آرڈر');
-        // Stitching needs a known customer, so a walk-in order only offers cloth until one is picked.
+        // Stitching needs a known customer, so a walk-in order only offers items until one is picked.
         $isWalkInOrder = (bool) $counterOrder->customer?->is_walk_in;
         $canOfferTailoring = $canAddTailoring && !$isWalkInOrder;
         // The customer can be changed (or cleared back to walk-in) until something is confirmed.
@@ -29,33 +29,33 @@
         // Texts for both states, so picking a customer can switch them without a reload.
         $emptyHints = [
             'customer' => $canAddCloth && $canAddTailoring
-                ? 'اوپر سے کپڑا یا سلائی شامل کریں۔'
-                : ($canAddCloth ? 'اوپر سے فروخت ہونے والا کپڑا شامل کریں۔' : 'اوپر سے سلائی شامل کریں۔'),
+                ? 'اوپر سے آئٹم یا سلائی شامل کریں۔'
+                : ($canAddCloth ? 'اوپر سے فروخت ہونے والا آئٹم شامل کریں۔' : 'اوپر سے سلائی شامل کریں۔'),
             'walk_in' => $canAddCloth
-                ? ($canAddTailoring ? 'اوپر سے کپڑا شامل کریں؛ سلائی کے لیے پہلے گاہک منتخب کریں۔' : 'اوپر سے فروخت ہونے والا کپڑا شامل کریں۔')
+                ? ($canAddTailoring ? 'اوپر سے آئٹم شامل کریں؛ سلائی کے لیے پہلے گاہک منتخب کریں۔' : 'اوپر سے فروخت ہونے والا آئٹم شامل کریں۔')
                 : 'سلائی کے لیے پہلے گاہک منتخب کریں۔',
         ];
         $itemsHints = [
             'customer' => $canAddCloth
-                ? ($canAddTailoring ? 'کپڑا اسی فہرست میں شامل یا تبدیل کریں؛ سلائی کی تفصیل الگ فارم میں کھلے گی۔' : 'کپڑا اسی فہرست میں شامل یا تبدیل کریں۔')
+                ? ($canAddTailoring ? 'آئٹم اسی فہرست میں شامل یا تبدیل کریں؛ سلائی کی تفصیل الگ فارم میں کھلے گی۔' : 'آئٹم اسی فہرست میں شامل یا تبدیل کریں۔')
                 : 'سلائی کی تفصیل شامل یا تبدیل کرنے کے لیے فارم کھولیں۔',
             'walk_in' => $canAddCloth
-                ? 'کپڑا اسی فہرست میں شامل یا تبدیل کریں۔'
+                ? 'آئٹم اسی فہرست میں شامل یا تبدیل کریں۔'
                 : 'سلائی کی تفصیل شامل یا تبدیل کرنے کے لیے فارم کھولیں۔',
         ];
         $customerState = $isWalkInOrder ? 'walk_in' : 'customer';
         $emptyOrderHint = $emptyHints[$customerState];
         $confirmationHint =
             $canAddCloth && $canAddTailoring
-                ? 'تصدیق پر کپڑا اسٹاک سے کم ہوگا اور سلائی ورکشاپ آرڈر بنے گا۔'
+                ? 'تصدیق پر آئٹم اسٹاک سے کم ہوگا اور سلائی ورکشاپ آرڈر بنے گا۔'
                 : ($canAddCloth
-                    ? 'تصدیق پر کپڑا اسٹاک سے کم ہوگا۔'
+                    ? 'تصدیق پر آئٹم اسٹاک سے کم ہوگا۔'
                     : 'تصدیق پر سلائی ورکشاپ آرڈر بنے گا۔');
         $moreItemsHint =
             $canAddCloth && $canAddTailoring
-                ? 'مزید کپڑا یا سلائی بعد میں بھی شامل ہو سکتی ہے۔'
+                ? 'مزید آئٹم یا سلائی بعد میں بھی شامل ہو سکتی ہے۔'
                 : ($canAddCloth
-                    ? 'مزید کپڑا بعد میں بھی شامل ہو سکتا ہے۔'
+                    ? 'مزید آئٹم بعد میں بھی شامل ہو سکتا ہے۔'
                     : 'مزید سلائی بعد میں بھی شامل ہو سکتی ہے۔');
     @endphp
     <style>
@@ -1416,7 +1416,7 @@
                                     @if ($canAddCloth)
                                         <button id="co-add-cloth-button" class="co-btn is-primary co-add-row-button"
                                             type="button" aria-expanded="{{ old('cloth_id') ? 'true' : 'false' }}"
-                                            aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> کپڑا شامل کریں</button>
+                                            aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> آئٹم شامل کریں</button>
                                         @endif @if ($canAddTailoring)
                                             <button class="co-btn is-tailor" id="co-add-tailoring-button" data-toggle="modal"
                                                 data-target="#tailoringItemModal" {{ $canOfferTailoring ? '' : 'hidden' }}><i class="fas fa-plus"></i> سلائی شامل کریں</button>
@@ -1432,8 +1432,8 @@
                                 action="{{ route('admin.counter-orders.cloth-items.store', $counterOrder) }}"
                                 data-old-color="{{ old('color') }}" @if (!old('cloth_id')) hidden @endif>@csrf
                                 <div class="co-cell-main" data-label="آئٹم"><select id="co-cloth-select"
-                                        class="form-control" name="cloth_id" aria-label="کپڑے کا سیٹ" required>
-                                        <option value="">کپڑا منتخب کریں</option>
+                                        class="form-control" name="cloth_id" aria-label="آئٹم" required>
+                                        <option value="">آئٹم منتخب کریں</option>
                                         {{-- Grouped by category so women's suits and men's cloth are easy to tell apart. --}}
                                         @foreach ($cloths->groupBy(fn ($cloth) => $cloth->category?->fullName() ?? 'دیگر') as $categoryName => $categoryCloths)
                                         <optgroup label="{{ $categoryName }}">
@@ -1461,7 +1461,7 @@
                                                 data-stock="{{ $clothStock }}"
                                                 data-color-stock='@json($colorStock)'
                                                 data-colors='@json($cloth->selectableColorNames())' @selected((int) old('cloth_id') === $cloth->id)>
-                                                {{ $cloth->name }} · {{ $cloth->brand?->name }} · {{ $cloth->type?->name }}</option>
+                                                {{ collect([$cloth->name, $cloth->brand?->name, $cloth->type?->name])->filter()->implode(' · ') }}</option>
                                         @endforeach
                                         </optgroup>
                                         @endforeach
@@ -2001,8 +2001,9 @@
                             quantity = form.querySelector('.co-cloth-quantity'),
                             suitOnly = form.querySelector('.co-suit-only'),
                             oldColor = preserveValues ? (form.dataset.oldColor || '') : '',
-                            // Women's packed suits are sold by count only; there is no length to cut.
-                            suitStock = o.dataset.unit === 'suit';
+                            // Packed suits and pieces (perfume, cap) are sold by count only; there is no length to cut.
+                            suitStock = o.dataset.unit === 'suit' || o.dataset.unit === 'piece',
+                            wholeLabel = o.dataset.unit === 'piece' ? ' عدد' : ' سوٹ';
                         try {
                             colors = JSON.parse(o.dataset.colors || '[]')
                         } catch (e) {}
@@ -2020,7 +2021,7 @@
                                 var x = document.createElement('option'),
                                     tracked = c in colorStock;
                                 x.value = c;
-                                x.textContent = tracked ? c + ' — ' + (suitStock ? Number(colorStock[c]).toFixed(0) + ' سوٹ' :
+                                x.textContent = tracked ? c + ' — ' + (suitStock ? Number(colorStock[c]).toFixed(0) + wholeLabel :
                                     Number(colorStock[c]).toFixed(2) + ' میٹر') : c;
                                 x.selected = oldColor ? oldColor === c : index === 0;
                                 color.appendChild(x)
@@ -2070,11 +2071,11 @@
                     trigger.className = 'co-picker-trigger';
                     trigger.setAttribute('aria-haspopup', 'listbox');
                     trigger.setAttribute('aria-expanded', 'false');
-                    trigger.setAttribute('aria-label', 'کپڑا منتخب کریں');
+                    trigger.setAttribute('aria-label', 'آئٹم منتخب کریں');
                     panel.className = 'co-picker-panel';
                     panel.hidden = true;
                     panel.innerHTML =
-                        '<div class="co-picker-search"><input type="search" autocomplete="off" placeholder="نام، برانڈ یا قسم سے تلاش کریں" aria-label="کپڑا تلاش کریں"><i class="fas fa-search"></i></div>' +
+                        '<div class="co-picker-search"><input type="search" autocomplete="off" placeholder="نام، برانڈ یا قسم سے تلاش کریں" aria-label="آئٹم تلاش کریں"><i class="fas fa-search"></i></div>' +
                         '<div class="co-picker-tabs" role="tablist" aria-label="مین کیٹیگری"></div>' +
                         '<div class="co-picker-subtabs" role="tablist" aria-label="سب کیٹیگری"></div>' +
                         '<div class="co-picker-list" role="listbox"></div>';
@@ -2109,7 +2110,7 @@
                                 sub: o.dataset.sub || '',
                                 unit: o.dataset.unit || 'meter',
                                 price: Number(o.dataset.price || 0),
-                                priceUnit: suit ? 'سوٹ' : 'میٹر'
+                                priceUnit: o.dataset.unit === 'piece' ? 'عدد' : (suit ? 'سوٹ' : 'میٹر')
                             };
                         });
                     }
@@ -2123,7 +2124,7 @@
                         trigger.innerHTML = (o && o.value
                             ? '<span class="co-picker-trigger-text"><strong>' + escapeHtml(o.dataset.name || o.textContent) +
                                 '</strong><small>' + escapeHtml(o.dataset.meta || '') + '</small></span>'
-                            : '<span class="co-picker-trigger-text co-picker-placeholder">کپڑا منتخب کریں</span>') +
+                            : '<span class="co-picker-trigger-text co-picker-placeholder">آئٹم منتخب کریں</span>') +
                             '<i class="fas fa-chevron-down co-picker-caret" aria-hidden="true"></i>';
                     }
 
@@ -2175,7 +2176,7 @@
                                 (item.price ? '<span class="co-picker-price">' + money(item.price) + ' / ' + item.priceUnit + '</span>' : '') +
                                 '</button>';
                         });
-                        list.innerHTML = html || '<div class="co-picker-empty"><i class="fas fa-box-open ml-1"></i> کوئی دستیاب کپڑا نہیں ملا</div>';
+                        list.innerHTML = html || '<div class="co-picker-empty"><i class="fas fa-box-open ml-1"></i> کوئی دستیاب آئٹم نہیں ملا</div>';
                         activeIndex = -1;
                     }
 

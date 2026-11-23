@@ -194,7 +194,7 @@
                                     <option value="{{ $unit }}" @selected(old('stock_unit', \App\Models\ClothCategory::UNIT_METER) === $unit)>{{ $label }}</option>
                                 @endforeach
                             </select>
-                            <small class="form-text text-muted" id="clothCategoryFormUnitHint">مردانہ کپڑا میٹر میں، زنانہ ٹو پیس / تھری پیس سوٹ میں۔</small>
+                            <small class="form-text text-muted" id="clothCategoryFormUnitHint">مردانہ کپڑا میٹر میں، زنانہ ٹو پیس / تھری پیس سوٹ میں، پرفیوم اور ٹوپی جیسی چیزیں عدد میں۔</small>
                         </div>
 
                         <div class="form-group mb-0">

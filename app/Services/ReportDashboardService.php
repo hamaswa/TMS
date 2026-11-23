@@ -91,11 +91,23 @@ class ReportDashboardService
             'revenue' => array_sum($revenue),
             'meters' => $categories['totals'][ClothCategory::UNIT_METER]['net'] ?? 0,
             'suits' => $categories['totals'][ClothCategory::UNIT_SUIT]['net'] ?? 0,
+            'pieces' => $categories['totals'][ClothCategory::UNIT_PIECE]['net'] ?? 0,
             'received' => $this->received($userId, $start, $end, 'sales'),
             'bills' => (int) $bills,
             'revenue_sources' => $revenue,
             'categories' => $categories,
         ];
+    }
+
+    /** Each walk-in sale keeps its own "Walk-in #9" record; reports just call them "Walk-in". */
+    public static function customerLabel(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return 'عام گاہک';
+        }
+
+        return preg_match('/^Walk-in #\d+$/', $name) ? 'Walk-in' : $name;
     }
 
     /** The latest sale bills: one row per counter receipt (or per sale without one). */
@@ -112,7 +124,7 @@ class ReportDashboardService
 
         return $bills->map(fn ($bill) => [
             'date' => $bill->sold_at,
-            'customer' => $bill->customer ?: 'عام گاہک',
+            'customer' => self::customerLabel($bill->customer),
             'items' => (int) $bill->items,
             'amount' => (float) $bill->amount,
             'returned' => (float) $bill->returned,
@@ -154,7 +166,7 @@ class ReportDashboardService
                 'unit' => $line->stock_unit ?: ClothCategory::UNIT_METER,
                 'amount' => (float) $line->selling_price * (float) $line->length - (float) $line->returned_amount,
                 'returned' => (float) $line->returned_quantity,
-                'customer' => $line->c_name ?: 'عام گاہک',
+                'customer' => self::customerLabel($line->c_name),
             ]);
     }
 
@@ -168,7 +180,7 @@ class ReportDashboardService
             ->havingRaw('SUM('.self::KEPT_AMOUNT.') > 0.009')
             ->orderByDesc('amount')->first();
 
-        return $row ? ['name' => $row->c_name, 'amount' => (float) $row->amount, 'count' => (int) $row->bills] : null;
+        return $row ? ['name' => self::customerLabel($row->c_name), 'amount' => (float) $row->amount, 'count' => (int) $row->bills] : null;
     }
 
     /** Stock on hand per category, in each category's unit. */

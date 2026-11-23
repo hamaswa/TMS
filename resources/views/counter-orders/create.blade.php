@@ -9,7 +9,7 @@
 <section class="main-content co-start">
     <div class="co-start__shell">
             @include('components.customer-limit-alert')
-        <header class="co-start__head"><h1>نیا آرڈر</h1><p>@if($canAddCloth && $canAddTailoring)ایک آرڈر شروع کریں، پھر اسی میں کپڑا اور سلائی ضرورت کے مطابق شامل کریں۔@elseif($canAddCloth)ایک آرڈر شروع کریں، پھر گاہک کے لیے فروخت ہونے والا کپڑا شامل کریں۔@else ایک آرڈر شروع کریں، پھر گاہک کا سلائی آرڈر شامل کریں۔@endif</p></header>
+        <header class="co-start__head"><h1>نیا آرڈر</h1><p>@if($canAddCloth && $canAddTailoring)ایک آرڈر شروع کریں، پھر اسی میں آئٹم اور سلائی ضرورت کے مطابق شامل کریں۔@elseif($canAddCloth)ایک آرڈر شروع کریں، پھر گاہک کے لیے فروخت ہونے والا آئٹم شامل کریں۔@else ایک آرڈر شروع کریں، پھر گاہک کا سلائی آرڈر شامل کریں۔@endif</p></header>
         @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
         @if($openOrders->isNotEmpty())<section class="co-open"><h2>اس گاہک کے کھلے آرڈرز</h2><p>نیا آرڈر بنانے سے پہلے دیکھیں کہ موجودہ آرڈر میں ہی آئٹم شامل کرنا تو بہتر نہیں۔</p>@foreach($openOrders as $openOrder)<div class="co-open__row"><div><strong>{{ $openOrder->displayNumber() }}</strong><small>@if($openOrder->serial_number)حوالہ {{ $openOrder->reference }} · @endif{{ $openOrder->draft_items_count }} نئے · {{ $openOrder->confirmed_items_count }} تصدیق شدہ آئٹمز · Rs. {{ number_format((float)$openOrder->balance_amount,2) }} بقایا</small></div><a class="co-secondary" href="{{ route('admin.counter-orders.edit',['counterOrder'=>$openOrder,'profile'=>$selectedProfileId]) }}">آرڈر کھولیں</a></div>@endforeach</section>@endif
         <div class="co-card">
@@ -23,7 +23,7 @@
                     <div id="customer_search_results" class="co-picker__results" role="listbox" hidden></div>
                 </div>
                 <div class="form-group mb-0"><label class="co-label" for="note">ابتدائی نوٹ <small class="text-muted">(اختیاری)</small></label><textarea class="co-control" id="note" name="note" rows="3" maxlength="2000" placeholder="مثلاً تقریب کی تاریخ یا خاص ہدایت">{{ old('note') }}</textarea></div>
-                <div class="co-note"><i class="fas fa-info-circle ml-1"></i> گاہک منتخب کیے بغیر آگے بڑھ سکتے ہیں؛ کپڑا فروخت ہو سکے گا۔ سلائی یا ادھار کے لیے پہلے گاہک کی شناخت ضروری ہے۔ ابھی کوئی رقم یا اسٹاک تبدیل نہیں ہوگا۔</div>
+                <div class="co-note"><i class="fas fa-info-circle ml-1"></i> گاہک منتخب کیے بغیر آگے بڑھ سکتے ہیں؛ آئٹم فروخت ہو سکے گا۔ سلائی یا ادھار کے لیے پہلے گاہک کی شناخت ضروری ہے۔ ابھی کوئی رقم یا اسٹاک تبدیل نہیں ہوگا۔</div>
                 <div class="co-actions"><button class="co-primary" type="submit"><i class="fas fa-arrow-left ml-1"></i> <span id="co-start-label">آرڈر شروع کریں</span></button><a class="co-secondary" href="{{ route('admin.Customers.index') }}">منسوخ</a></div>
             </form>
         </div>

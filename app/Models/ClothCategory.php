@@ -10,13 +10,17 @@ class ClothCategory extends Model
 {
     public const NAME_SEPARATOR = ' › ';
 
-    // Meter stock is cut from a roll; suit stock is a packed women's suit sold whole.
+    // Meter stock is cut from a roll; suit stock is a packed women's suit sold whole;
+    // piece stock is any other item sold whole (perfume, cap) that is not cloth at all.
     public const UNIT_METER = 'meter';
     public const UNIT_SUIT = 'suit';
-    public const UNITS = [self::UNIT_METER, self::UNIT_SUIT];
+    public const UNIT_PIECE = 'piece';
+    public const UNITS = [self::UNIT_METER, self::UNIT_SUIT, self::UNIT_PIECE];
+    public const WHOLE_UNITS = [self::UNIT_SUIT, self::UNIT_PIECE];
     public const UNIT_LABELS = [
         self::UNIT_METER => 'میٹر',
         self::UNIT_SUIT => 'سوٹ',
+        self::UNIT_PIECE => 'عدد',
     ];
 
     protected $fillable = [
@@ -88,9 +92,21 @@ class ClothCategory extends Model
         return self::unitLabelFor($this->stock_unit);
     }
 
-    public function countsSuits(): bool
+    /** Suits and pieces are counted whole and never cut; only meter stock has a length. */
+    public static function isWholeUnit(?string $unit): bool
     {
-        return $this->stock_unit === self::UNIT_SUIT;
+        return in_array($unit, self::WHOLE_UNITS, true);
+    }
+
+    public function countsWholeItems(): bool
+    {
+        return self::isWholeUnit($this->stock_unit);
+    }
+
+    /** Non-cloth items (perfume, cap) have no cloth type and need no brand. */
+    public function countsPieces(): bool
+    {
+        return $this->stock_unit === self::UNIT_PIECE;
     }
 
     /** "Women › Abayas" for a child, just "Women" for a parent. */

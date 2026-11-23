@@ -33,7 +33,7 @@
     $totalExpenses = collect($report['direct_costs'])->sum() + collect($report['operating_expenses'])->sum();
     $money = fn ($value) => 'Rs. '.number_format((float) $value, 2);
     // Suits are whole numbers; meters keep two decimals.
-    $qty = fn ($value, $unit) => $unit === \App\Models\ClothCategory::UNIT_SUIT ? number_format((float) $value) : number_format((float) $value, 2);
+    $qty = fn ($value, $unit) => \App\Models\ClothCategory::isWholeUnit($unit) ? number_format((float) $value) : number_format((float) $value, 2);
     $unitLabel = fn ($unit) => \App\Models\ClothCategory::unitLabelFor($unit);
     // % change against the same number of days just before the period; null when there is nothing to compare.
     $change = fn ($now, $before) => abs((float) $before) > 0.009 ? (int) round(((float) $now - (float) $before) / abs((float) $before) * 100) : null;
@@ -47,6 +47,11 @@
             ['color' => 'is-purple', 'icon' => 'fa-tshirt', 'title' => 'فروخت شدہ سوٹ', 'value' => $qty($current['suits'], 'suit').' <em>سوٹ</em>', 'change' => $change($current['suits'], $previous['suits'])],
             ['color' => 'is-orange', 'icon' => 'fa-hand-holding-usd', 'title' => 'وصول شدہ رقم', 'value' => $money($current['received']), 'change' => $change($current['received'], $previous['received'])],
         ];
+        // Shops that also sell pieces (perfume, cap) see them on the suits card, keeping the five-card row.
+        if (($current['pieces'] ?? 0) > 0 || ($previous['pieces'] ?? 0) > 0) {
+            $cards[2]['title'] = 'فروخت شدہ سوٹ / اشیاء';
+            $cards[2]['value'] .= ' + '.$qty($current['pieces'] ?? 0, 'piece').' <em>عدد</em>';
+        }
         $tabs = [
             'categories' => ['icon' => 'fa-layer-group', 'label' => 'کیٹیگری کے حساب سے', 'badge' => null],
             'all-sales' => ['icon' => 'fa-receipt', 'label' => 'تمام فروخت', 'badge' => $report['lines']->total() ?: null],
