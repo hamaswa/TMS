@@ -401,6 +401,11 @@
                 size: 80mm auto;
                 margin: 6mm 0 3mm
             }
+
+            /* The buttons are for the screen only; the paper shows just the receipt. */
+            .print-toolbar {
+                display: none !important
+            }
         }
     </style>
 </head>
@@ -413,10 +418,15 @@
                 <a href="{{ request()->fullUrlWithQuery(['paper' => $paper]) }}">{{ $label }}</a>
             @endforeach
         @endif
-        <button type="button"
-            onclick="window.close(); window.setTimeout(function () { window.history.back(); }, 100);">
-            رسید بند کریں
-        </button>
+        @if (request()->boolean('autoprint'))
+            {{-- Opened right after confirming: go back to the order rather than history. --}}
+            <a href="{{ route('admin.counter-orders.edit', $counterOrder) }}">آرڈر پر واپس جائیں</a>
+        @else
+            <button type="button"
+                onclick="window.close(); window.setTimeout(function () { window.history.back(); }, 100);">
+                رسید بند کریں
+            </button>
+        @endif
     </nav>
     <main class="receipt">
         <header class="brand">
@@ -513,6 +523,12 @@
             <p class="reference">{{ $counterOrder->serial_number ? 'TECHNICAL REF' : 'ORDER REF' }}: {{ $counterOrder->reference }}</p>
         </footer>
     </main>
+    @if (request()->boolean('autoprint'))
+        <script>
+            // The order was just confirmed: open the print dialog once the receipt (and its logo) has loaded.
+            window.addEventListener('load', function() { window.setTimeout(function() { window.print(); }, 300); });
+        </script>
+    @endif
 </body>
 
 </html>

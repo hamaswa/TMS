@@ -60,6 +60,7 @@ use App\Http\Controllers\StorefrontPaymentReconciliationController;
 use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TailorController;
+use App\Http\Controllers\OrderScreenSettingController;
 use App\Http\Controllers\TailoringWorkflowSettingController;
 use App\Http\Controllers\TailorJobController;
 use App\Http\Controllers\TailorRateController;
@@ -251,6 +252,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::get('/counter-orders/{counterOrder}/profiles/{profile}/measurements', [CounterOrderController::class, 'editMeasurements'])->name('counter-orders.measurements.edit');
         Route::patch('/counter-orders/{counterOrder}/profiles/{profile}/measurements', [CounterOrderController::class, 'updateMeasurements'])->name('counter-orders.measurements.update');
         Route::post('/counter-orders/{counterOrder}/cloth-items', [CounterOrderController::class, 'addCloth'])->name('counter-orders.cloth-items.store');
+        Route::post('/counter-orders/{counterOrder}/cloth-items/bulk', [CounterOrderController::class, 'addClothItems'])->name('counter-orders.cloth-items.bulk');
         Route::post('/counter-orders/{counterOrder}/tailoring-items', [CounterOrderController::class, 'addTailoring'])->name('counter-orders.tailoring-items.store');
         Route::patch('/counter-orders/{counterOrder}/items/{item}', [CounterOrderController::class, 'updateItem'])->name('counter-orders.items.update');
         Route::delete('/counter-orders/{counterOrder}/items/{item}', [CounterOrderController::class, 'removeItem'])->name('counter-orders.items.destroy');
@@ -327,6 +329,8 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::delete('setting/delete/{id}', [SettingController::class, 'delete'])->name('delete-setting');
         Route::patch('setting/active/{id}', [SettingController::class, 'active'])->name('active-setting');
         Route::patch('setting/deactive/{id}', [SettingController::class, 'deactive'])->name('deactive-setting');
+        Route::get('order-screen', [OrderScreenSettingController::class, 'edit'])->name('order-screen.edit');
+        Route::put('order-screen', [OrderScreenSettingController::class, 'update'])->name('order-screen.update');
     });
     Route::get('/user-details', [UserController::class, 'index'])->name('users');
     Route::get('/user-edit/{id}', [UserController::class, 'edit'])->name('user.edit');

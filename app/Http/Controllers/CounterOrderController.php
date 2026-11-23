@@ -308,7 +308,7 @@ class CounterOrderController extends Controller
             ->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item));
         $canManageAllItems = $counterOrder->items->where('status', '!=', CounterOrderItem::STATUS_CANCELLED)
             ->every(fn(CounterOrderItem $item) => $this->canManageItem($request, $item));
-        $cloths = $canAddCloth ? Cloth::where('user_id', $ownerId)->with(['brand', 'type', 'colors', 'category.parent'])->orderBy('id')->get() : collect();
+        $cloths = $canAddCloth ? Cloth::where('user_id', $ownerId)->with(['brand', 'type', 'colors', 'images', 'category.parent'])->orderBy('id')->get() : collect();
         [$profiles, $profileTemplateIds] = $this->measurementProfiles($request, $counterOrder);
         $selectedProfileId = $profiles->contains('id', $request->integer('profile'))
             ? $request->integer('profile')
@@ -317,6 +317,10 @@ class CounterOrderController extends Controller
             ->orderByDesc('is_default')->orderBy('name')->get() : collect();
 
         $paymentMethods = PaymentMethods::LABELS;
+        // The shop picks a dropdown row (default) or a box per item with a cart (Settings › Order screen).
+        $business = $request->user()->loadMissing(['business', 'ownedBusiness'])->business ?? $request->user()->ownedBusiness;
+        $itemBoxes = $canAddCloth && ! $counterOrder->isClosed()
+            && $business?->counter_order_layout === \App\Models\Business::ORDER_LAYOUT_GRID;
         $previousDue = app(CounterOrderService::class)->previousDue($counterOrder);
         $receiptLinks = CounterSaleReceipt::where('user_id', $ownerId)
             ->whereIn('id', $counterOrder->items->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id'))
@@ -338,7 +342,8 @@ class CounterOrderController extends Controller
             'canManageAllItems',
             'profileTemplateIds',
             'tailors',
-            'previousDue'
+            'previousDue',
+            'itemBoxes'
         ));
     }
 
@@ -826,6 +831,83 @@ class CounterOrderController extends Controller
         return back()->with('success', 'کپڑا آرڈر میں شامل ہو گیا ہے۔');
     }
 
+    /**
+     * Adds everything picked in the item-box screen's cart in one go. Each line follows the same rules
+     * as addCloth(); lines of the same stock are checked against it together.
+     */
+    public function addClothItems(
+        Request $request,
+        CounterOrder $counterOrder,
+        CounterOrderNumberService $numbers,
+    ): RedirectResponse|JsonResponse {
+        $this->authorizeOrder($request, $counterOrder);
+        abort_unless($this->canManageCloth($request), 403);
+        abort_if($counterOrder->isClosed(), 409, 'This order is closed.');
+        $validated = $request->validate([
+            'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.cloth_id' => ['required', 'integer'],
+            'items.*.color' => ['nullable', 'string', 'max:100'],
+            'items.*.quantity' => ['nullable', 'integer', 'min:1'],
+            'items.*.length' => ['nullable', 'numeric', 'gt:0'],
+            'items.*.total_price' => ['required', 'numeric', 'min:0'],
+        ]);
+        $cloths = Cloth::where('user_id', $request->user()->businessOwnerId())->with('colors')
+            ->findMany(collect($validated['items'])->pluck('cloth_id')->unique())->keyBy('id');
+
+        $lines = [];
+        $needed = [];
+        foreach ($validated['items'] as $index => $input) {
+            $cloth = $cloths->get((int) $input['cloth_id']) ?? abort(404);
+            $color = trim((string) ($input['color'] ?? '')) ?: null;
+            if ($cloth->hasSelectableColors() && ! $color) {
+                throw ValidationException::withMessages(["items.{$index}.color" => ($cloth->name ?: 'آئٹم').' کے لیے رنگ منتخب کریں۔']);
+            }
+            // Packed suits and pieces are one stock unit each; cloth is sold per suit or by the metre.
+            $length = $cloth->countsWholeItems() ? 1.0 : (float) ($input['length'] ?? ($cloth->default_sale_length ?: 0));
+            if ($length <= 0) {
+                throw ValidationException::withMessages(["items.{$index}.length" => 'میٹر درج کریں۔']);
+            }
+            $quantity = $cloth->sellsPerSuit() ? (int) ($input['quantity'] ?? 1) : 1;
+            $key = $cloth->id.'|'.($cloth->tracksColors() ? $color : '');
+            $needed[$key] = ($needed[$key] ?? 0) + ($cloth->sellsPerSuit() ? $length * $quantity : $length);
+            $lines[] = compact('cloth', 'color', 'length', 'quantity') + ['total' => round((float) $input['total_price'], 2), 'key' => $key];
+        }
+        foreach ($lines as $line) {
+            // The whole batch of one stock must fit, not just each line on its own.
+            $total = $needed[$line['key']];
+            $this->ensureClothStock($line['cloth'], $line['color'], $line['cloth']->sellsPerSuit() ? $total / $line['quantity'] : $total, $line['quantity']);
+        }
+
+        DB::transaction(function () use ($lines, $counterOrder, $numbers) {
+            foreach ($lines as $line) {
+                $cloth = $line['cloth'];
+                $numbers->createItem($counterOrder, [
+                    'type' => CounterOrderItem::TYPE_CLOTH,
+                    'status' => CounterOrderItem::STATUS_DRAFT,
+                    'cloth_id' => $cloth->id,
+                    'quantity' => $line['quantity'],
+                    'length' => $line['length'],
+                    'unit_price' => $cloth->sellsPerSuit()
+                        ? round($line['total'] / $line['quantity'], 2)
+                        : round($line['total'] / $line['length'], 2),
+                    'line_total' => $line['total'],
+                    'details' => [
+                        'color' => $line['color'],
+                        'sale_price_basis' => $cloth->sale_price_basis,
+                    ],
+                ]);
+            }
+            $counterOrder->recalculate();
+        });
+
+        $message = count($lines).' آئٹم آرڈر میں شامل ہو گئے ہیں۔';
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message, 'redirect' => route('admin.counter-orders.edit', $counterOrder)]);
+        }
+
+        return redirect()->route('admin.counter-orders.edit', $counterOrder)->with('success', $message);
+    }
+
     public function addTailoring(
         Request $request,
         CounterOrder $counterOrder,
@@ -1042,7 +1124,9 @@ class CounterOrderController extends Controller
             $validated['payment_reference'] ?? null,
         );
 
-        return back()->with('success', 'نئے آئٹمز تصدیق ہو گئے ہیں۔ کپڑا اسٹاک سے کم اور سلائی ورکشاپ میں شامل ہو گئی ہے۔');
+        // Straight to the receipt with the print dialog open; closing it returns to the order.
+        return redirect()->route('admin.counter-orders.print', [$counterOrder, 'autoprint' => 1])
+            ->with('success', 'نئے آئٹمز تصدیق ہو گئے ہیں۔ کپڑا اسٹاک سے کم اور سلائی ورکشاپ میں شامل ہو گئی ہے۔');
     }
 
 

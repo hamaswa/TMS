@@ -28,6 +28,10 @@ class Business extends Model
     public const TAILORING_STATUS_SIMPLE = 'simple';
     public const TAILORING_STATUS_DETAILED = 'detailed';
     public const TAILORING_STATUS_MODES = [self::TAILORING_STATUS_SIMPLE, self::TAILORING_STATUS_DETAILED];
+    /** Order page: one dropdown row per item (default), or a box per item with a cart beside it. */
+    public const ORDER_LAYOUT_LIST = 'list';
+    public const ORDER_LAYOUT_GRID = 'grid';
+    public const ORDER_LAYOUTS = [self::ORDER_LAYOUT_LIST, self::ORDER_LAYOUT_GRID];
 
     protected $fillable = [
         'name',
@@ -38,6 +42,7 @@ class Business extends Model
         'tailoring_enabled',
         'clothing_enabled',
         'tailoring_status_mode',
+        'counter_order_layout',
         'status',
         'is_demo',
         'approved_at',

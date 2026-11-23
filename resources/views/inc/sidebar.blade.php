@@ -425,6 +425,9 @@
                 <a class="tms-side-link {{ request()->routeIs('admin.setting.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.setting.index') }}"><span class="tms-side-icon"><i
                             class="fas fa-cog"></i></span><span class="tms-side-label">سیٹنگز</span></a>
+                <a class="tms-side-link {{ request()->routeIs('admin.order-screen.*') ? 'is-active' : '' }}"
+                    href="{{ route('admin.order-screen.edit') }}"><span class="tms-side-icon"><i
+                            class="fas fa-th-large"></i></span><span class="tms-side-label">آرڈر اسکرین</span></a>
             @endif
         </nav>
     </aside>

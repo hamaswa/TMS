@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ClothCategory;
 use App\Models\ClothColor;
+use App\Models\CounterOrderItem;
 use App\Models\Customers;
 use App\Models\OnlineOrder;
 use App\Models\Order;
@@ -132,42 +133,86 @@ class ReportDashboardService
         ]);
     }
 
-    /** Every cloth sale line in the period, optionally for one category (and its sub categories). */
+    /**
+     * Cloth sales in the period, one entry per bill (a counter receipt, or a sale without one), newest first,
+     * each with the items sold on it. Optionally only items of one category (and its sub categories) or
+     * matching a search. Paged by bill, so a bill is never split across pages.
+     */
     public function salesLines(int $userId, CarbonInterface $start, CarbonInterface $end, ?int $categoryId, int $perPage = 15, ?string $search = null): LengthAwarePaginator
     {
         $categories = ClothCategory::with('parent')->where('user_id', $userId)->get()->keyBy('id');
         $search = trim((string) $search);
-
-        return $this->keptSales($userId, $end)
+        $lines = fn () => $this->keptSales($userId, $end)
             ->leftJoin('cloths', 'cloths.id', '=', 'sale_stocks.cloth_id')
             ->whereBetween('sale_stocks.sellDate', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
             ->when($categoryId, fn ($query) => $query->whereIn('cloths.cloth_category_id',
                 $categories->filter(fn ($category) => $category->id === $categoryId || $category->parent_id === $categoryId)->keys()))
-            ->when($search !== '', fn ($query) => $query->where(function ($match) use ($search) {
+            ->when($search !== '', fn ($query) => $query->where(function ($match) use ($search, $userId) {
                 $like = '%'.addcslashes($search, '%_\\').'%';
                 $match->where('sale_stocks.c_name', 'like', $like)->orWhere('sale_stocks.phone', 'like', $like)
-                    ->orWhere('sale_stocks.color', 'like', $like)->orWhere('cloths.name', 'like', $like);
-            }))
-            ->orderByDesc('sale_stocks.sellDate')->orderByDesc('sale_stocks.id')
+                    ->orWhere('sale_stocks.color', 'like', $like)->orWhere('cloths.name', 'like', $like)
+                    // The order number (ORD-000094) or receipt number of the bill.
+                    ->orWhereIn('sale_stocks.counter_sale_receipt_id', DB::table('counter_order_items')
+                        ->join('counter_orders', 'counter_orders.id', '=', 'counter_order_items.counter_order_id')
+                        ->where('counter_orders.user_id', $userId)
+                        ->where('counter_order_items.source_record_type', 'counter_sale_receipt')
+                        ->where(fn ($number) => $number->where('counter_orders.serial_number', 'like', $like)
+                            ->orWhere('counter_orders.reference', 'like', $like))
+                        ->select('counter_order_items.source_record_id'))
+                    ->orWhereIn('sale_stocks.counter_sale_receipt_id', DB::table('counter_sale_receipts')
+                        ->where('user_id', $userId)->where('receipt_number', 'like', $like)->select('id'));
+            }));
+
+        $bills = $lines()
+            ->groupBy(DB::raw(self::BILL_KEY))
+            ->selectRaw(self::BILL_KEY.' AS bill_key, MAX(sale_stocks.sellDate) AS sold_at, MAX(sale_stocks.id) AS last_id')
+            ->orderByDesc('sold_at')->orderByDesc('last_id')
+            ->paginate($perPage, ['*'], 'sales_page')->withQueryString();
+
+        $items = $bills->isEmpty() ? collect() : $lines()
+            ->whereIn(DB::raw(self::BILL_KEY), $bills->getCollection()->pluck('bill_key'))
+            ->orderBy('sale_stocks.id')
             ->select(['sale_stocks.id', 'sale_stocks.sellDate', 'sale_stocks.c_name', 'sale_stocks.c_id', 'sale_stocks.phone', 'sale_stocks.counter_sale_receipt_id', 'sale_stocks.color', 'sale_stocks.length', 'sale_stocks.selling_price'])
+            ->selectRaw(self::BILL_KEY.' AS bill_key')
             ->addSelect(['cloths.name AS cloth_name', 'cloths.stock_unit', 'cloths.cloth_category_id'])
             ->selectRaw('COALESCE(line_returns.returned_quantity, 0) AS returned_quantity, COALESCE(line_returns.returned_amount, 0) AS returned_amount')
-            ->paginate($perPage, ['*'], 'sales_page')->withQueryString()
-            ->through(fn ($line) => [
-                'id' => (int) $line->id,
-                'customer_id' => $line->c_id ? (int) $line->c_id : null,
-                'receipt_id' => $line->counter_sale_receipt_id ? (int) $line->counter_sale_receipt_id : null,
-                'phone' => $line->phone,
-                'date' => $line->sellDate,
-                'name' => $line->cloth_name ?: 'سیٹ',
-                'color' => $line->color,
-                'category' => $categories->get($line->cloth_category_id)?->fullName() ?? '—',
-                'quantity' => (float) $line->length,
-                'unit' => $line->stock_unit ?: ClothCategory::UNIT_METER,
-                'amount' => (float) $line->selling_price * (float) $line->length - (float) $line->returned_amount,
-                'returned' => (float) $line->returned_quantity,
-                'customer' => self::customerLabel($line->c_name),
-            ]);
+            ->get()->groupBy('bill_key');
+        // The counter order each bill was confirmed from, for its order number.
+        $orders = CounterOrderItem::query()
+            ->where('source_record_type', 'counter_sale_receipt')
+            ->whereIn('source_record_id', $items->flatten(1)->pluck('counter_sale_receipt_id')->filter()->unique())
+            ->whereHas('counterOrder', fn ($query) => $query->where('user_id', $userId))
+            ->with('counterOrder:id,reference,serial_number')
+            ->get()->keyBy('source_record_id');
+
+        return $bills->through(function ($bill) use ($items, $categories, $orders) {
+            $lines = $items->get($bill->bill_key, collect());
+            $first = $lines->first();
+            $order = $first?->counter_sale_receipt_id ? $orders->get($first->counter_sale_receipt_id)?->counterOrder : null;
+
+            return [
+                // The first item's sale line; the old one-receipt-per-line print page takes it.
+                'id' => (int) $first?->id,
+                'customer_id' => $first?->c_id ? (int) $first->c_id : null,
+                'receipt_id' => $first?->counter_sale_receipt_id ? (int) $first->counter_sale_receipt_id : null,
+                'counter_order_id' => $order?->id,
+                'order_number' => $order?->displayNumber(),
+                'phone' => $first?->phone,
+                'date' => $bill->sold_at,
+                'customer' => self::customerLabel($first?->c_name),
+                'amount' => $lines->sum(fn ($line) => (float) $line->selling_price * (float) $line->length - (float) $line->returned_amount),
+                'items' => $lines->map(fn ($line) => [
+                    'id' => (int) $line->id,
+                    'name' => $line->cloth_name ?: 'سیٹ',
+                    'color' => $line->color,
+                    'category' => $categories->get($line->cloth_category_id)?->fullName() ?? '—',
+                    'quantity' => (float) $line->length,
+                    'unit' => $line->stock_unit ?: ClothCategory::UNIT_METER,
+                    'amount' => (float) $line->selling_price * (float) $line->length - (float) $line->returned_amount,
+                    'returned' => (float) $line->returned_quantity,
+                ])->values()->all(),
+            ];
+        });
     }
 
     /** Biggest cloth customer in the period. */

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClothCategory;
-use App\Models\CounterOrderItem;
 use App\Models\Customers;
+use App\Services\CustomerSalesHistoryService;
 use App\Services\ReportDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class AllSalesController extends Controller
 {
-    public function index(Request $request, ReportDashboardService $dashboard)
+    public function index(Request $request, ReportDashboardService $dashboard, CustomerSalesHistoryService $history)
     {
         $filters = $request->validate([
             'start_date' => ['nullable', 'date'],
@@ -32,20 +32,16 @@ class AllSalesController extends Controller
 
         $lines = $dashboard->salesLines($ownerId, $start, $end, $filters['sales_category'] ?? null, 25, $filters['q'] ?? null);
 
-        // Counter orders and customers behind this page's rows, for the receipt / customer actions.
-        $receiptIds = $lines->getCollection()->pluck('receipt_id')->filter()->unique();
-        $counterOrders = $receiptIds->isEmpty() ? collect() : CounterOrderItem::query()
-            ->where('source_record_type', 'counter_sale_receipt')
-            ->whereIn('source_record_id', $receiptIds)
-            ->whereHas('counterOrder', fn ($query) => $query->where('user_id', $ownerId))
-            ->pluck('counter_order_id', 'source_record_id');
-        $customerIds = Customers::where('user_id', $ownerId)
+        // Customers behind this page's bills, and the same receipt rows the customer page uses,
+        // so ⋮ › واپسی / منسوخی opens the return popup right here.
+        $customers = Customers::where('user_id', $ownerId)
             ->whereIn('id', $lines->getCollection()->pluck('customer_id')->filter()->unique())
-            ->pluck('id')->flip();
-            // dd($customerIds);
+            ->get()->keyBy('id');
+        $returnRows = $history->forReceipts($ownerId, $lines->getCollection()->pluck('receipt_id')->filter()->unique()->values());
         $lines->setCollection($lines->getCollection()->map(fn (array $line) => $line + [
-            'counter_order_id' => $line['receipt_id'] ? $counterOrders->get($line['receipt_id']) : null,
-            'has_customer' => $line['customer_id'] && $customerIds->has($line['customer_id']),
+            'has_customer' => $line['customer_id'] && $customers->has($line['customer_id']),
+            'customer_model' => $line['customer_id'] ? $customers->get($line['customer_id']) : null,
+            'return_row' => $line['receipt_id'] ? $returnRows->get($line['receipt_id']) : null,
         ]));
 
         $categoryOptions = ClothCategory::where('user_id', $ownerId)->topLevel()->ordered()

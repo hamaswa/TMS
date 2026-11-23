@@ -140,6 +140,27 @@
             white-space: nowrap
         }
 
+        /* A bill lists each item on its own line, lined up across the item columns. */
+        .as-table tr.as-bill td {
+            vertical-align: top
+        }
+
+        .as-bill-item {
+            min-height: 26px;
+            line-height: 26px;
+            white-space: nowrap
+        }
+
+        .as-order-no {
+            display: block;
+            margin-top: 3px;
+            color: #2563eb !important;
+            direction: ltr;
+            text-align: right;
+            font-size: .8rem;
+            font-weight: 800
+        }
+
         .as-empty {
             padding: 46px 10px !important;
             color: #94a3b8;
@@ -253,7 +274,7 @@
                 <form class="as-filters" method="GET" action="{{ route('admin.sales.all') }}">
                     <div><label for="as-q">تلاش</label><input id="as-q" name="q"
                             class="form-control as-search" maxlength="100" value="{{ $filters['q'] ?? '' }}"
-                            placeholder="گاہک، فون، سیٹ یا رنگ"></div>
+                            placeholder="آرڈر نمبر، گاہک، فون، سیٹ یا رنگ"></div>
                     <div><label for="as-category">کیٹیگری</label>
                         <select id="as-category" name="sales_category" class="form-control">
                             <option value="">تمام کیٹیگریز</option>
@@ -271,7 +292,7 @@
                     @if ($filtered)
                         <a class="btn btn-light as-clear" href="{{ route('admin.sales.all') }}">صاف کریں</a>
                     @endif
-                    <span class="as-count">کل <span class="as-num">{{ number_format($lines->total()) }}</span> فروخت</span>
+                    <span class="as-count">کل <span class="as-num">{{ number_format($lines->total()) }}</span> بل</span>
                 </form>
 
                 <div class="table-responsive">
@@ -288,8 +309,12 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {{-- One row per bill; items sold together are listed in it, one per line. --}}
                             @forelse($lines as $line)
                                 @php
+                                    $returnModalId = $line['return_row'] && $line['customer_model'] && $line['return_row']->status !== 'cancelled'
+                                        ? 'allSalesReturn' . $line['receipt_id']
+                                        : null;
                                     $receiptUrl = $line['counter_order_id']
                                         ? route('admin.counter-orders.print', $line['counter_order_id'])
                                         : ($line['has_customer']
@@ -308,22 +333,29 @@
                                             ])
                                             : route('admin.customers.statement', $line['customer_id']));
                                 @endphp
-                                <tr>
-                                    <td class="as-num">{{ \Carbon\Carbon::parse($line['date'])->format('Y-m-d') }}</td>
-                                    <td><strong>{{ $line['name'] }}</strong>
-                                        @if ($line['color'] && $line['color'] !== 'عام')
-                                            <div class="as-muted">{{ $line['color'] }}</div>
+                                <tr class="as-bill">
+                                    <td><span class="as-num">{{ \Carbon\Carbon::parse($line['date'])->format('Y-m-d') }}</span>
+                                        @if ($line['order_number'])
+                                            <a class="as-order-no" href="{{ route('admin.counter-orders.edit', $line['counter_order_id']) }}">{{ $line['order_number'] }}</a>
                                         @endif
                                     </td>
-                                    <td class="as-muted">{{ $line['category'] }}</td>
-                                    <td><span class="as-num">{{ $qty($line['quantity'], $line['unit']) }}</span>
-                                        {{ $unitLabel($line['unit']) }}@if ($line['returned'] > 0)
-                                            <div class="as-muted" style="color:#e11d48">واپسی: <span
-                                                    class="as-num">{{ $qty($line['returned'], $line['unit']) }}</span>
-                                            </div>
-                                        @endif
+                                    <td>
+                                        @foreach ($line['items'] as $item)
+                                            <div class="as-bill-item"><strong>{{ $item['name'] }}</strong>@if ($item['color'] && $item['color'] !== 'عام')<span class="as-muted"> · {{ $item['color'] }}</span>@endif</div>
+                                        @endforeach
                                     </td>
-                                    <td><span class="as-money">{{ $money($line['amount']) }}</span></td>
+                                    <td>
+                                        @foreach ($line['items'] as $item)
+                                            <div class="as-bill-item as-muted">{{ $item['category'] }}</div>
+                                        @endforeach
+                                    </td>
+                                    <td>
+                                        @foreach ($line['items'] as $item)
+                                            <div class="as-bill-item"><span class="as-num">{{ $qty($item['quantity'], $item['unit']) }}</span>
+                                                {{ $unitLabel($item['unit']) }}@if ($item['returned'] > 0)<span class="as-muted" style="color:#e11d48"> · واپسی <span class="as-num">{{ $qty($item['returned'], $item['unit']) }}</span></span>@endif</div>
+                                        @endforeach
+                                    </td>
+                                    <td><span class="as-money">{{ $money($line['amount']) }}</span>@if (count($line['items']) > 1)<div class="as-muted">{{ count($line['items']) }} آئٹمز</div>@endif</td>
                                     <td>{{ $line['customer'] }}@if ($line['phone'])
                                             <div class="as-muted as-num">{{ $line['phone'] }}</div>
                                         @endif
@@ -333,7 +365,7 @@
                                             <div class="sale-actions-dropdown">
                                                 <button type="button" class="btn btn-light btn-sm sale-actions-toggle"
                                                     aria-haspopup="true" aria-expanded="false"
-                                                    aria-label="{{ $line['name'] }} کے اختیارات"><i
+                                                    aria-label="{{ collect($line['items'])->pluck('name')->implode('، ') }} کے اختیارات"><i
                                                         class="fas fa-ellipsis-v"></i></button>
                                                 <div class="sale-actions-menu" role="menu" dir="rtl">
                                                     @if ($receiptUrl)
@@ -350,6 +382,13 @@
                                                         <a class="sale-action" role="menuitem"
                                                             href="{{ $customerUrl }}"><i class="fas fa-user"></i> گاہک کی
                                                             تمام خریداری</a>
+                                                    @endif
+                                                    @if ($returnModalId)
+                                                        {{-- Opens the return / cancel popup on this page. --}}
+                                                        <button type="button" class="sale-action sale-action--return" role="menuitem"
+                                                            data-toggle="modal" data-target="#{{ $returnModalId }}"><i class="fas fa-undo-alt"></i>
+                                                            واپسی / منسوخی</button>
+                                                    @elseif ($customerUrl)
                                                         <a class="sale-action sale-action--return" role="menuitem"
                                                             href="{{ $customerUrl }}"><i class="fas fa-undo-alt"></i>
                                                             واپسی / منسوخی</a>
@@ -371,6 +410,19 @@
                             </tbody>
                         </table>
                     </div>
+                    {{-- Return / cancel popups for this page's bills, outside the table. --}}
+                    @foreach ($lines as $line)
+                        @if ($line['return_row'] && $line['customer_model'] && $line['return_row']->status !== 'cancelled')
+                            @include('customer.partials.receipt-return-modal', [
+                                'sale' => $line['return_row'],
+                                'customer' => $line['customer_model'],
+                                'modalId' => 'allSalesReturn' . $line['receipt_id'],
+                                'printUrl' => $line['counter_order_id']
+                                    ? route('admin.counter-orders.print', $line['counter_order_id'])
+                                    : route('admin.printStock', ['id' => $line['id'], 'customerId' => $line['customer_id']]),
+                            ])
+                        @endif
+                    @endforeach
                     @if ($lines->hasPages())
                         <div class="as-pagination">{{ $lines->links() }}</div>
                     @endif

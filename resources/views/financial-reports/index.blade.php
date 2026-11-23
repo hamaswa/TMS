@@ -50,7 +50,7 @@
         // Shops that also sell pieces (perfume, cap) see them on the suits card, keeping the five-card row.
         if (($current['pieces'] ?? 0) > 0 || ($previous['pieces'] ?? 0) > 0) {
             $cards[2]['title'] = 'فروخت شدہ سوٹ / اشیاء';
-            $cards[2]['value'] .= ' + '.$qty($current['pieces'] ?? 0, 'piece').' <em>عدد</em>';
+            $cards[2]['value'] .= ' + '.$qty($current['pieces'] ?? 0, 'piece').' <em>آئٹمز</em>';
         }
         $tabs = [
             'categories' => ['icon' => 'fa-layer-group', 'label' => 'کیٹیگری کے حساب سے', 'badge' => null],
@@ -312,9 +312,16 @@
                         <select name="sales_category" class="form-control" onchange="this.form.submit()"><option value="">تمام کیٹیگریز</option>@foreach($report['category_options'] as $category)<option value="{{ $category->id }}" @selected((int) ($filters['sales_category'] ?? 0) === $category->id)>{{ $category->fullName() }}</option>@endforeach</select>
                         @if(Auth::user()->hasBusinessPermission('clothing.sales'))<a class="rp-more" href="{{ route('admin.sales.all', array_filter(['sales_category' => $filters['sales_category'] ?? null] + $period)) }}"><i class="fas fa-external-link-alt"></i> الگ صفحے پر سب ریکارڈ</a>@endif
                     </form></div>
+                <style>.rp-bill td{vertical-align:top}.rp-bill-item{min-height:26px;line-height:26px;white-space:nowrap}</style>
                 <div class="table-responsive"><table class="rp-table"><thead><tr><th>تاریخ</th><th>سیٹ</th><th>کیٹیگری</th><th>مقدار</th><th>رقم</th><th>گاہک</th></tr></thead><tbody>
-                    @forelse($report['lines'] as $line)
-                        <tr><td class="is-num">{{ \Carbon\Carbon::parse($line['date'])->format('Y-m-d') }}</td><td><strong>{{ $line['name'] }}</strong>@if($line['color'] && $line['color'] !== 'عام')<div class="rp-muted">{{ $line['color'] }}</div>@endif</td><td class="rp-muted">{{ $line['category'] }}</td><td><span class="rp-num">{{ $qty($line['quantity'], $line['unit']) }}</span> {{ $unitLabel($line['unit']) }}@if($line['returned'] > 0)<div class="rp-muted" style="color:var(--rp-red)">واپسی: <span class="rp-num">{{ $qty($line['returned'], $line['unit']) }}</span></div>@endif</td><td><span class="rp-money">{{ $money($line['amount']) }}</span></td><td>{{ $line['customer'] }}</td></tr>
+                    {{-- One row per bill; items sold together are listed in it, one per line. --}}
+                    @forelse($report['lines'] as $bill)
+                        <tr class="rp-bill"><td><span class="is-num">{{ \Carbon\Carbon::parse($bill['date'])->format('Y-m-d') }}</span>@if($bill['order_number'])<div class="rp-muted" dir="ltr" style="text-align:right">{{ $bill['order_number'] }}</div>@endif</td>
+                            <td>@foreach($bill['items'] as $item)<div class="rp-bill-item"><strong>{{ $item['name'] }}</strong>@if($item['color'] && $item['color'] !== 'عام')<span class="rp-muted"> · {{ $item['color'] }}</span>@endif</div>@endforeach</td>
+                            <td>@foreach($bill['items'] as $item)<div class="rp-bill-item rp-muted">{{ $item['category'] }}</div>@endforeach</td>
+                            <td>@foreach($bill['items'] as $item)<div class="rp-bill-item"><span class="rp-num">{{ $qty($item['quantity'], $item['unit']) }}</span> {{ $unitLabel($item['unit']) }}@if($item['returned'] > 0)<span class="rp-muted" style="color:var(--rp-red)"> · واپسی <span class="rp-num">{{ $qty($item['returned'], $item['unit']) }}</span></span>@endif</div>@endforeach</td>
+                            <td><span class="rp-money">{{ $money($bill['amount']) }}</span>@if(count($bill['items']) > 1)<div class="rp-muted">{{ count($bill['items']) }} آئٹمز</div>@endif</td>
+                            <td>{{ $bill['customer'] }}</td></tr>
                     @empty
                         <tr><td colspan="6" class="rp-empty">اس مدت میں کوئی فروخت نہیں۔</td></tr>
                     @endforelse

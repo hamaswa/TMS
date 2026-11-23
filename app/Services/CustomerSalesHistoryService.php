@@ -46,6 +46,37 @@ class CustomerSalesHistoryService
             ->groupBy(fn($sale) => $sale->counter_sale_receipt_id
                 ? 'receipt-' . $sale->counter_sale_receipt_id
                 : 'legacy-' . $sale->created_at?->format('Y-m-d H:i:s'));
+        $stockSales = $this->stockRows($stockGroups, $ownerId, fn () => app(CustomerLedgerService::class)->receiptBalances($ownerId, (int) $customer->id));
+
+        return $legacySales->concat($stockSales)->sortByDesc('created_at')->take($limit)->values();
+    }
+
+    /**
+     * The same rows as forCustomer() for specific counter receipts, keyed by receipt id, so a sale listed
+     * elsewhere (e.g. All Sales) can open the same return / cancel popup.
+     */
+    public function forReceipts(int $ownerId, Collection $receiptIds): Collection
+    {
+        if ($receiptIds->isEmpty()) {
+            return collect();
+        }
+        $groups = SaleStock::where('user_id', $ownerId)
+            ->whereIn('counter_sale_receipt_id', $receiptIds)
+            ->with(['type:id,name', 'brand:id,name', 'receipt.returns', 'receipt.payments'])
+            ->withSum('returnItems as returned_quantity', 'quantity')
+            ->get()
+            ->groupBy(fn ($sale) => 'receipt-'.$sale->counter_sale_receipt_id);
+        $ledger = app(CustomerLedgerService::class);
+        $balances = $groups->map(fn ($items) => (int) $items->first()->c_id)->unique()->filter()
+            ->reduce(fn (Collection $all, int $customerId) => $all->union($ledger->receiptBalances($ownerId, $customerId)), collect());
+
+        return $this->stockRows($groups, $ownerId, fn () => $balances)
+            ->keyBy(fn ($row) => $row->receipt?->id);
+    }
+
+    /** One row per group of cloth sale lines (a counter receipt, or older lines sold together). */
+    private function stockRows(Collection $stockGroups, int $ownerId, callable $receiptBalances): Collection
+    {
         $stockTransactions = Transaction::where('userId', (string) $ownerId)
             ->where('Order_type', 'Sale')
             ->whereIn('sale_id', $stockGroups->map(fn($items) => $items->first()->id))
@@ -57,8 +88,9 @@ class CustomerSalesHistoryService
             ->with('counterOrder:id,reference,serial_number')
             ->get()
             ->keyBy('source_record_id');
-        $receiptBalances = app(CustomerLedgerService::class)->receiptBalances($ownerId, (int) $customer->id);
-        $stockSales = $stockGroups
+        $receiptBalances = $receiptBalances();
+
+        return $stockGroups
             ->map(function ($items) use ($stockTransactions, $counterOrderLinks, $receiptBalances) {
                 $first = $items->first();
                 $transaction = $stockTransactions->get($first->id);
@@ -96,7 +128,5 @@ class CustomerSalesHistoryService
                 ];
             })
             ->values();
-
-        return $legacySales->concat($stockSales)->sortByDesc('created_at')->take($limit)->values();
     }
 }

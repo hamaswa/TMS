@@ -397,6 +397,12 @@
             gap: 16px
         }
 
+        .co-left {
+            display: grid;
+            gap: 16px;
+            min-width: 0
+        }
+
         .co-total {
             padding: 20px
         }
@@ -1398,7 +1404,11 @@
                 );
                 $activeReceipts = $receiptLinks->where('status', '!=', 'cancelled');
             @endphp
-            <div class="co-main">
+            <div class="co-main {{ $itemBoxes ? 'has-item-boxes' : '' }}">
+                <div class="co-left">
+                @if ($itemBoxes)
+                    @include('counter-orders.partials.item-boxes')
+                @endif
                 <section class="co-panel">
                     <div class="co-panel-head">
                         <div>
@@ -1413,7 +1423,7 @@
                                         class="fas fa-print"></i>
                                     {{ $canAddCloth && $canAddTailoring ? 'مشترکہ رسید' : 'آرڈر رسید' }}</a>
                                 @endif @if (!$counterOrder->isClosed())
-                                    @if ($canAddCloth)
+                                    @if ($canAddCloth && !$itemBoxes)
                                         <button id="co-add-cloth-button" class="co-btn is-primary co-add-row-button"
                                             type="button" aria-expanded="{{ old('cloth_id') ? 'true' : 'false' }}"
                                             aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> آئٹم شامل کریں</button>
@@ -1503,7 +1513,11 @@
                         </div>
                     </div>
                 </section>
+                </div>
                 <aside class="co-side">
+                    @if ($itemBoxes)
+                        @include('counter-orders.partials.item-cart')
+                    @endif
                     <section class="co-panel">
                         <div class="co-total">
                             <h2 class="h6 font-weight-bold mb-3">موجودہ خلاصہ</h2>
