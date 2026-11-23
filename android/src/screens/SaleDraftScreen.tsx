@@ -16,8 +16,10 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScannerModal } from '../components/ScannerModal';
 import {
+  countsWholeItems,
   CustomerMode,
   EXISTING_SALES_PERMISSION,
+  lineLabel,
   lineTotal,
   remainingAmount,
   SaleLine,
@@ -44,7 +46,12 @@ const BLUE = '#123b5d';
 const GREEN = '#147a5a';
 const BACKGROUND = '#f4f7f9';
 // Price fields for a newly added line, matching how the shop sells this set (per suit or per metre).
-const stockPricing = (stock: Pick<InventorySet, 'salePrice' | 'defaultSaleLength' | 'salePriceBasis'>): Partial<SaleLine> => {
+const stockPricing = (stock: Pick<InventorySet, 'salePrice' | 'defaultSaleLength' | 'salePriceBasis' | 'stockUnit'>): Partial<SaleLine> => {
+  const stockUnit = stock.stockUnit || 'meter';
+  if (stockUnit !== 'meter') {
+    // Packed suits and pieces (perfume, cap) are sold by count; one sold takes one from stock.
+    return { unitPrice: stock.salePrice, salePriceBasis: 'per_suit', quantity: '1', suitLength: '1', length: '1', stockUnit };
+  }
   const salePriceBasis = stock.salePriceBasis || 'per_meter';
   const defaultLength = stock.defaultSaleLength || '';
   return {
@@ -53,8 +60,19 @@ const stockPricing = (stock: Pick<InventorySet, 'salePrice' | 'defaultSaleLength
     quantity: '1',
     suitLength: salePriceBasis === 'per_suit' ? defaultLength : '',
     length: defaultLength,
+    stockUnit,
   };
 };
+
+// The parts of a stock record that identify the line; piece items may have no brand or type.
+const stockIdentity = (stock: Pick<InventorySet, 'setCode' | 'setName' | 'brandId' | 'brand' | 'clothTypeId' | 'clothType'>): Partial<SaleLine> => ({
+  setCode: stock.setCode,
+  setName: stock.setName ?? '',
+  brandId: stock.brandId,
+  brand: stock.brand ?? '',
+  clothTypeId: stock.clothTypeId,
+  clothType: stock.clothType ?? '',
+});
 
 const PAYMENT_METHODS = ['Cash', 'Easypaisa', 'JazzCash', 'Bank transfer', 'Raast', 'Cheque', 'Other'] as const;
 
@@ -124,7 +142,7 @@ export function SaleDraftScreen() {
       lookupInventorySet(setCode)
         .then(({ data }) => {
           draft.lines
-            .filter((line: SaleLine) => line.setCode === setCode && line.salePriceBasis !== data.salePriceBasis)
+            .filter((line: SaleLine) => line.setCode === setCode && !countsWholeItems({ stockUnit: data.stockUnit || 'meter' }) && line.salePriceBasis !== data.salePriceBasis)
             .forEach((line: SaleLine) => {
               const pricing = stockPricing(data);
               updateLine(line.localId, {
@@ -220,11 +238,7 @@ export function SaleDraftScreen() {
       const colors = uniqueColors(result.data.colors.map((color) => color.name));
       const requiresColor = result.data.colorTrackingMode !== 'none';
       addScannedLine({
-        setCode: result.data.setCode,
-        brandId: result.data.brandId,
-        brand: result.data.brand,
-        clothTypeId: result.data.clothTypeId,
-        clothType: result.data.clothType,
+        ...stockIdentity(result.data),
         ...stockPricing(result.data),
         availableColors: colors,
         requiresColor,
@@ -269,11 +283,7 @@ export function SaleDraftScreen() {
     const colors = uniqueColors(item.colors.map((color) => color.color));
     const requiresColor = item.colorTrackingMode !== 'none';
     addScannedLine({
-      setCode: item.setCode,
-      brandId: item.brandId,
-      brand: item.brand,
-      clothTypeId: item.clothTypeId,
-      clothType: item.clothType,
+      ...stockIdentity(item),
       ...stockPricing(item),
       availableColors: colors,
       requiresColor,
@@ -441,7 +451,7 @@ export function SaleDraftScreen() {
         onScanned={handleScannedSet}
         cartItems={draft.lines
           .filter((line) => line.setCode || line.brand || line.clothType)
-          .map((line) => ({ id: line.localId, label: `${line.brand} ${line.clothType}`.trim(), total: money(lineTotal(line)) }))}
+          .map((line) => ({ id: line.localId, label: lineLabel(line), total: money(lineTotal(line)) }))}
       />
 
       {manualPickerVisible ? (
@@ -559,21 +569,23 @@ function ManualInventoryModal({
   onClose: () => void;
   onRetry: () => void;
 }) {
+  // Piece items (perfume, cap) may have no brand; they are grouped under "No brand" (key 0).
   const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
+  const brandKey = (item: InventoryListItem) => item.brandId ?? 0;
 
   const query = search.trim().toLocaleLowerCase();
   const filtered = inventory.filter((item) =>
-    !query || [item.setCode, item.brand, item.clothType]
+    !query || [item.setCode, item.setName, item.brand, item.clothType, item.category]
       .some((value) => String(value ?? '').toLocaleLowerCase().includes(query)),
   );
   const brands = filtered.reduce<{ id: number; name: string }[]>((options, item) => {
-    if (!options.some((option) => option.id === item.brandId)) {
-      options.push({ id: item.brandId, name: item.brand });
+    if (!options.some((option) => option.id === brandKey(item))) {
+      options.push({ id: brandKey(item), name: item.brand || 'No brand' });
     }
     return options;
   }, []);
-  const brandStock = selectedBrandId
-    ? filtered.filter((item) => item.brandId === selectedBrandId)
+  const brandStock = selectedBrandId !== null
+    ? filtered.filter((item) => brandKey(item) === selectedBrandId)
     : [];
 
   return (
@@ -581,8 +593,8 @@ function ManualInventoryModal({
       <SafeAreaView style={styles.manualSafeArea}>
         <View style={styles.manualHeader}>
           <View style={styles.manualHeaderText}>
-            <Text style={styles.manualTitle}>Add cloth without QR</Text>
-            <Text style={styles.manualSubtitle}>Use the same brand and cloth-type choices as the shop sale form.</Text>
+            <Text style={styles.manualTitle}>Add item without QR</Text>
+            <Text style={styles.manualSubtitle}>Choose the brand, then the cloth or item (perfume, cap…).</Text>
           </View>
           <Pressable accessibilityRole="button" onPress={onClose} hitSlop={12}>
             <Text style={styles.manualClose}>Close</Text>
@@ -594,7 +606,7 @@ function ManualInventoryModal({
           autoCapitalize="none"
           value={search}
           onChangeText={onSearchChange}
-          placeholder="Search set code, brand, or cloth type"
+          placeholder="Search name, brand, cloth type or category"
           placeholderTextColor="#8796a1"
           style={styles.manualSearch}
         />
@@ -626,12 +638,14 @@ function ManualInventoryModal({
                   </Pressable>
                 ))}
               </View>
-              <Text style={styles.pickerStep}>2. Choose cloth type / model</Text>
-              {!selectedBrandId ? <Text style={styles.pickerHint}>Choose a brand first.</Text> : null}
+              <Text style={styles.pickerStep}>2. Choose cloth or item</Text>
+              {selectedBrandId === null ? <Text style={styles.pickerHint}>Choose a brand first.</Text> : null}
             </>
           ) : null}
           {!loading && !error ? brandStock.map((item) => {
             const availableLength = Number(item.availableLength) || 0;
+            const unit = item.stockUnit || 'meter';
+            const unitText = unit === 'piece' ? 'pcs' : unit === 'suit' ? 'suits' : 'm';
             return (
               <Pressable
                 accessibilityRole="button"
@@ -640,9 +654,9 @@ function ManualInventoryModal({
                 style={styles.inventoryItem}
               >
                 <View style={styles.inventoryText}>
-                  <Text style={styles.inventoryName}>{item.clothType}</Text>
+                  <Text style={styles.inventoryName}>{unit === 'piece' ? (item.setName || 'Item') : item.clothType}</Text>
                   <Text style={styles.inventoryMeta}>
-                    {item.brand} · Set {item.setCode || 'without code'} · {item.colorTrackingMode === 'per_color' ? `${item.colors.length} tracked colors` : item.colorTrackingMode === 'display_only' ? `${item.colors.length} selectable colors · shared stock` : 'no colors'} · {availableLength.toLocaleString('en-PK')} available
+                    {[item.brand, item.category].filter(Boolean).join(' · ')}{item.brand || item.category ? ' · ' : ''}Set {item.setCode || 'without code'} · {item.colorTrackingMode === 'per_color' ? `${item.colors.length} tracked colors` : item.colorTrackingMode === 'display_only' ? `${item.colors.length} selectable colors · shared stock` : 'no colors'} · {availableLength.toLocaleString('en-PK')} {unitText} available
                   </Text>
                 </View>
                 <View style={styles.inventoryPriceWrap}>
@@ -662,7 +676,7 @@ type FieldProps = {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
-  keyboardType?: 'default' | 'phone-pad' | 'decimal-pad';
+  keyboardType?: 'default' | 'phone-pad' | 'decimal-pad' | 'number-pad';
   multiline?: boolean;
 };
 
@@ -731,8 +745,11 @@ function SaleLineCard({
   onRemove: () => void;
   onChooseStock: () => void;
 }) {
-  const hasStockItem = Boolean(line.brandId && line.clothTypeId);
+  // A piece item (perfume, cap) has a set code but may have no brand or cloth type.
+  const hasStockItem = Boolean(line.setCode || (line.brandId && line.clothTypeId));
   const perSuit = line.salePriceBasis === 'per_suit';
+  const whole = countsWholeItems(line);
+  const piece = line.stockUnit === 'piece';
 
   return (
     <Section title={`Item ${number}`}>
@@ -744,8 +761,9 @@ function SaleLineCard({
         </View>
       ) : null}
       {hasStockItem && line.setCode ? <Text style={styles.scanned}>Stock set: {line.setCode}</Text> : null}
-      {hasStockItem ? <LockedField label="Brand" value={line.brand} /> : null}
-      {hasStockItem ? <LockedField label="Cloth type / model" value={line.clothType} /> : null}
+      {hasStockItem && piece ? <LockedField label="Item" value={line.setName || 'Item'} /> : null}
+      {hasStockItem && line.brand ? <LockedField label="Brand" value={line.brand} /> : null}
+      {hasStockItem && !piece ? <LockedField label="Cloth type / model" value={line.clothType} /> : null}
       {hasStockItem && line.requiresColor ? (
         <>
           <Text style={styles.fieldLabel}>Color *</Text>
@@ -762,11 +780,19 @@ function SaleLineCard({
         </>
       ) : null}
       {hasStockItem && !line.requiresColor ? (
-        <Text style={styles.help}>This set is stored without color tracking. No color selection is needed.</Text>
+        <Text style={styles.help}>{piece ? 'This item has no colours to choose.' : 'This set is stored without color tracking. No color selection is needed.'}</Text>
       ) : null}
       {hasStockItem ? (
         <>
-          {perSuit ? (
+          {whole ? (
+            <Field
+              label={piece ? 'Quantity (pieces)' : 'Suits'}
+              value={line.quantity}
+              // Each piece or packed suit is one stock unit, so the stock taken equals the count.
+              onChangeText={(quantity) => onChange({ quantity, length: quantity })}
+              keyboardType="number-pad"
+            />
+          ) : perSuit ? (
             <>
               <View style={styles.twoColumns}>
                 <View style={styles.column}>
@@ -795,7 +821,7 @@ function SaleLineCard({
           )}
           <View style={styles.twoColumns}>
             <View style={styles.column}>
-              <Field label={perSuit ? 'Price per suit' : 'Price per metre'} value={line.unitPrice} onChangeText={(value) => onChange({ unitPrice: value })} keyboardType="decimal-pad" />
+              <Field label={piece ? 'Price per piece' : perSuit ? 'Price per suit' : 'Price per metre'} value={line.unitPrice} onChangeText={(value) => onChange({ unitPrice: value })} keyboardType="decimal-pad" />
             </View>
             <View style={styles.column}>
               <Text style={styles.itemTotal}>Item total: {money(lineTotal(line))}</Text>

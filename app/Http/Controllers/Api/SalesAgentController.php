@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessRole;
 use App\Models\Cloth;
+use App\Models\ClothCategory;
 use App\Models\Customers;
 use App\Models\SaleSession;
 use App\Models\User;
@@ -81,7 +82,7 @@ class SalesAgentController extends Controller
     public function inventory(Request $request): JsonResponse
     {
         $cloths = Cloth::where('user_id', $request->user()->businessOwnerId())
-            ->with(['brand:id,name', 'type:id,name', 'colors:id,cloth_id,color,length'])
+            ->with(['brand:id,name', 'type:id,name', 'category.parent', 'colors:id,cloth_id,color,length'])
             ->get()->map(fn (Cloth $cloth) => [
                 'id' => $cloth->id,
                 'setCode' => $cloth->set_code,
@@ -93,6 +94,9 @@ class SalesAgentController extends Controller
                 'salePrice' => (string) (($cloth->sellsPerSuit() ? $cloth->suit_sale_price : $cloth->sale_price) ?? ''),
                 'defaultSaleLength' => (string) ($cloth->default_sale_length ?? ''),
                 'salePriceBasis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
+                // meter, suit or piece; suits and pieces are sold by count, never cut.
+                'stockUnit' => $cloth->stock_unit ?: ClothCategory::UNIT_METER,
+                'category' => $cloth->category?->fullName(),
                 'colorTrackingMode' => $cloth->color_tracking_mode,
                 'availableLength' => (string) $cloth->colors->sum('length'),
                 'colors' => collect($cloth->selectableColorNames())->map(fn ($name) => [
@@ -114,7 +118,7 @@ class SalesAgentController extends Controller
                 $query->where('set_code', $normalized)
                     ->orWhere('stock_code', $normalized);
             })
-            ->with(['brand:id,name', 'type:id,name', 'colors:id,cloth_id,color,length'])
+            ->with(['brand:id,name', 'type:id,name', 'category.parent', 'colors:id,cloth_id,color,length'])
             ->firstOrFail();
 
         return response()->json(['data' => [
@@ -127,6 +131,9 @@ class SalesAgentController extends Controller
             'salePrice' => (string) (($cloth->sellsPerSuit() ? $cloth->suit_sale_price : $cloth->sale_price) ?? ''),
             'defaultSaleLength' => (string) ($cloth->default_sale_length ?? ''),
             'salePriceBasis' => $cloth->sale_price_basis ?: Cloth::SALE_PRICE_PER_METER,
+            // meter, suit or piece; suits and pieces are sold by count, never cut.
+            'stockUnit' => $cloth->stock_unit ?: ClothCategory::UNIT_METER,
+            'category' => $cloth->category?->fullName(),
             'colorTrackingMode' => $cloth->color_tracking_mode,
             'availableLength' => (string) $cloth->colors->sum('length'),
             'colors' => collect($cloth->selectableColorNames())->map(fn ($name) => [
@@ -207,6 +214,8 @@ class SalesAgentController extends Controller
             'items.*.unitPrice' => ['nullable'],
             'items.*.salePriceBasis' => ['nullable', Rule::in([Cloth::SALE_PRICE_PER_METER, Cloth::SALE_PRICE_PER_SUIT])],
             'items.*.rack' => ['nullable', 'string', 'max:100'],
+            'items.*.setName' => ['nullable', 'string', 'max:255'],
+            'items.*.stockUnit' => ['nullable', Rule::in(ClothCategory::UNITS)],
             'payment' => ['required', 'array'],
             'payment.method' => ['required', 'string', 'max:50'],
             'payment.receivedAmount' => ['nullable'],

@@ -3,10 +3,13 @@ export const EXISTING_SALES_PERMISSION = 'clothing.sales' as const;
 export type CustomerMode = 'existing' | 'new' | 'walk-in';
 export type LocalSaveState = 'loading' | 'saving' | 'saved' | 'failed';
 export type SalePriceBasis = 'per_meter' | 'per_suit';
+/** meter: cloth cut from a roll; suit and piece (perfume, cap): sold by count, never cut. */
+export type StockUnit = 'meter' | 'suit' | 'piece';
 
 export type SaleLine = {
   localId: string;
   setCode: string;
+  setName: string;
   brand: string;
   brandId: number | null;
   clothType: string;
@@ -20,6 +23,7 @@ export type SaleLine = {
   salePriceBasis: SalePriceBasis;
   /** Metres in one suit; only used when the cloth is sold per suit. */
   suitLength: string;
+  stockUnit: StockUnit;
 };
 
 export type SaleDraft = {
@@ -45,6 +49,7 @@ export const makeId = () =>
 export const createSaleLine = (): SaleLine => ({
   localId: makeId(),
   setCode: '',
+  setName: '',
   brand: '',
   brandId: null,
   clothType: '',
@@ -57,6 +62,7 @@ export const createSaleLine = (): SaleLine => ({
   unitPrice: '',
   salePriceBasis: 'per_meter',
   suitLength: '',
+  stockUnit: 'meter',
 });
 
 export const createSaleDraft = (): SaleDraft => ({
@@ -75,6 +81,14 @@ export const createSaleDraft = (): SaleDraft => ({
   note: '',
   updatedAt: new Date().toISOString(),
 });
+
+export const countsWholeItems = (line: Pick<SaleLine, 'stockUnit'>) =>
+  line.stockUnit === 'suit' || line.stockUnit === 'piece';
+
+/** What the line is called on screen: a perfume by its name, cloth by brand and type. */
+export const lineLabel = (line: Pick<SaleLine, 'setName' | 'brand' | 'clothType' | 'stockUnit'>) =>
+  (line.stockUnit === 'piece' ? line.setName : `${line.brand ?? ''} ${line.clothType ?? ''}`.trim())
+  || line.setName || 'Stock item';
 
 const numberValue = (value: string) => {
   const parsed = Number(value);
@@ -104,6 +118,11 @@ export const addScannedUnit = (line: SaleLine, scanned: Partial<SaleLine>): Sale
   // Prices and basis come fresh from the server so an old line picks up price changes.
   const fresh = { ...line, ...scanned, color: line.color, localId: line.localId };
   const quantity = decimalText(numberValue(line.quantity || '1') + 1);
+
+  if (countsWholeItems(fresh)) {
+    // A packed suit or a piece is one stock unit, so the stock taken is the count.
+    return { ...fresh, quantity, salePriceBasis: 'per_suit', suitLength: '1', length: quantity };
+  }
 
   if (fresh.salePriceBasis === 'per_suit') {
     const suitLength = fresh.suitLength || scanned.length || '';

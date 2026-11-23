@@ -184,6 +184,11 @@ class SaleSessionService
             $item['brandId'] = $cloth?->cloth_brand_id;
             $item['clothTypeId'] = $cloth?->cloth_type_id;
             $item['clothId'] = $cloth?->id;
+            if ($cloth?->countsWholeItems()) {
+                // Packed suits and pieces are never cut: the stock taken is the count sold.
+                $item['salePriceBasis'] = Cloth::SALE_PRICE_PER_SUIT;
+                $item['length'] = (string) max(1, (float) ($item['quantity'] ?? 1));
+            }
 
             return $item;
         });

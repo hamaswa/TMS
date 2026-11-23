@@ -341,6 +341,95 @@ class SaleSessionWorkflowTest extends TestCase
             ->assertOk()->assertJsonPath('data.status', 'completed')->assertJsonStructure(['data' => ['receipt']]);
     }
 
+    public function test_perfume_sold_from_the_app_takes_whole_pieces_from_stock(): void
+    {
+        Notification::fake();
+        [$owner, $agent] = $this->businessUsers();
+        $perfumes = \App\Models\ClothCategory::create([
+            'user_id' => $owner->id, 'name' => 'Perfumes', 'name_ur' => 'پرفیوم', 'slug' => 'perfumes',
+            'stock_unit' => \App\Models\ClothCategory::UNIT_PIECE,
+        ]);
+        $perfume = Cloth::create([
+            'name' => 'Oud Night', 'cloth_category_id' => $perfumes->id, 'price' => 1200, 'sale_price' => 2000,
+            'suit_sale_price' => 2000, 'default_sale_length' => 1, 'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
+            'color_tracking_mode' => Cloth::COLOR_TRACKING_NONE, 'user_id' => $owner->id,
+        ]);
+        $stock = ClothColor::create(['cloth_id' => $perfume->id, 'color' => 'عام', 'length' => 10, 'average_unit_cost' => 1200, 'user_id' => $owner->id]);
+        $token = $this->login($agent);
+
+        // The app learns the item is sold by the piece and has no brand or cloth type.
+        $this->withToken($token)->getJson('/api/sales-agent/inventory/sets/'.$perfume->fresh()->set_code)
+            ->assertOk()->assertJsonPath('data.stockUnit', 'piece')->assertJsonPath('data.category', 'Perfumes')
+            ->assertJsonPath('data.setName', 'Oud Night')->assertJsonPath('data.brandId', null);
+
+        $uuid = 'perfume-session';
+        $this->withToken($token)->postJson("/api/sales-agent/sessions/{$uuid}/attention", $this->payload(0, [
+            'customerMode' => 'walk-in',
+            'items' => [[
+                'localId' => 'perfume-line', 'setCode' => $perfume->fresh()->set_code, 'setName' => 'Oud Night',
+                'brandId' => null, 'brand' => '', 'clothTypeId' => null, 'clothType' => '', 'stockUnit' => 'piece',
+                'color' => '', 'quantity' => '3', 'length' => '3', 'unitPrice' => '2000', 'salePriceBasis' => 'per_suit',
+            ]],
+            'payment' => ['method' => 'Cash', 'receivedAmount' => '6000', 'reference' => null],
+        ]))->assertOk();
+        auth('web')->logout();
+        $this->app['auth']->forgetGuards();
+
+        $session = SaleSession::where('uuid', $uuid)->firstOrFail();
+        $this->actingAs($owner)->get(route('admin.counter-orders.sale-session', $session))->assertRedirect();
+        $order = \App\Models\CounterOrder::where('sale_session_id', $session->id)->firstOrFail();
+        $item = $order->items()->firstOrFail();
+        $this->assertEquals(1, (float) $item->length);
+        $this->assertEquals(3, (float) $item->quantity);
+        $this->assertEquals(6000, (float) $item->line_total);
+
+        $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $order), [
+            'payment' => 6000, 'payment_method' => 'cash',
+        ])->assertSessionHasNoErrors();
+        $this->assertEquals(7, (float) $stock->fresh()->length);
+    }
+
+    public function test_several_suits_of_cloth_from_the_app_take_their_metres_once(): void
+    {
+        Notification::fake();
+        [$owner, $agent] = $this->businessUsers();
+        [$cloth, $color] = $this->stock($owner);
+        $cloth->update([
+            'color_tracking_mode' => Cloth::COLOR_TRACKING_NONE, 'sale_price_basis' => Cloth::SALE_PRICE_PER_SUIT,
+            'default_sale_length' => 4.5, 'suit_sale_price' => 2000,
+        ]);
+        $color->update(['length' => 20]);
+        $token = $this->login($agent);
+
+        // The app sends the total metres for both suits.
+        $uuid = 'two-suits-session';
+        $this->withToken($token)->postJson("/api/sales-agent/sessions/{$uuid}/attention", $this->payload(0, [
+            'customerMode' => 'walk-in',
+            'items' => [[
+                'localId' => 'suit-line', 'setCode' => $cloth->set_code,
+                'brandId' => $cloth->cloth_brand_id, 'brand' => $cloth->brand->name,
+                'clothTypeId' => $cloth->cloth_type_id, 'clothType' => $cloth->type->name,
+                'color' => '', 'quantity' => '2', 'length' => '9', 'unitPrice' => '2000', 'salePriceBasis' => 'per_suit',
+            ]],
+            'payment' => ['method' => 'Cash', 'receivedAmount' => '4000', 'reference' => null],
+        ]))->assertOk();
+        auth('web')->logout();
+        $this->app['auth']->forgetGuards();
+
+        $session = SaleSession::where('uuid', $uuid)->firstOrFail();
+        $this->actingAs($owner)->get(route('admin.counter-orders.sale-session', $session))->assertRedirect();
+        $order = \App\Models\CounterOrder::where('sale_session_id', $session->id)->firstOrFail();
+        $item = $order->items()->firstOrFail();
+        $this->assertEquals(4.5, (float) $item->length);
+        $this->assertEquals(2, (float) $item->quantity);
+        $this->assertEquals(4000, (float) $item->line_total);
+
+        $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $order), [
+            'payment' => 4000, 'payment_method' => 'cash',
+        ])->assertSessionHasNoErrors();
+        $this->assertEquals(11, (float) $color->fresh()->length);
+    }
+
     private function businessUsers(): array
     {
         $ownerRole = Role::firstOrCreate(['name' => 'shop_owner', 'guard_name' => 'web']);

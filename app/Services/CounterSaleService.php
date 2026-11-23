@@ -23,11 +23,12 @@ class CounterSaleService
     {
         $validated = Validator::make($input, [
             'brand_name' => ['required', 'array', 'min:1'],
-            'brand_name.*' => ['required', 'integer'],
+            // Piece items (perfume, cap) have no cloth type and may have no brand.
+            'brand_name.*' => ['nullable', 'integer'],
             'cloth_id' => ['nullable', 'array'],
             'cloth_id.*' => ['nullable', 'integer'],
             'cloth_type' => ['required', 'array'],
-            'cloth_type.*' => ['required', 'integer'],
+            'cloth_type.*' => ['nullable', 'integer'],
             'color' => ['required', 'array'],
             'color.*' => ['nullable', 'string', 'max:100'],
             'item_total' => ['nullable', 'array'],

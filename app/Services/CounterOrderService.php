@@ -95,6 +95,15 @@ class CounterOrderService
 
                 $length = (float) (data_get($line, 'length') ?: data_get($line, 'quantity') ?: 1);
                 $quantity = max(1, (float) (data_get($line, 'quantity') ?: 1));
+                // Order items keep the length of ONE suit; confirming takes length × quantity from stock.
+                if ($cloth->countsWholeItems()) {
+                    // A packed suit or a piece is one stock unit.
+                    $length = 1.0;
+                    $line['salePriceBasis'] = Cloth::SALE_PRICE_PER_SUIT;
+                } elseif (($line['salePriceBasis'] ?? null) === Cloth::SALE_PRICE_PER_SUIT) {
+                    // The app sends the total metres for all suits, e.g. 9 m for 2 suits of 4.5 m.
+                    $length = round($length / $quantity, 2);
+                }
                 $unitPrice = (float) (data_get($line, 'unitPrice') ?: 0);
                 $lineTotal = ($line['salePriceBasis'] ?? null) === Cloth::SALE_PRICE_PER_SUIT
                     ? round($unitPrice * $quantity, 2)

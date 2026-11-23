@@ -36,6 +36,9 @@ export async function loadDraft(userId: number): Promise<SaleDraft | null> {
       ...line,
       salePriceBasis: line.salePriceBasis || 'per_meter',
       suitLength: line.suitLength ?? '',
+      // Drafts saved before units existed only held cloth.
+      setName: line.setName ?? '',
+      stockUnit: line.stockUnit || 'meter',
     })),
   } as SaleDraft;
 }

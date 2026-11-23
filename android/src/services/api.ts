@@ -97,15 +97,22 @@ export type CustomerResult = { id: number; name: string; phone_number1: string }
 export const searchCustomers = (query: string) =>
   request<{ data: CustomerResult[] }>(`/sales-agent/customers?q=${encodeURIComponent(query)}`);
 
+/** meter: cloth cut from a roll; suit and piece (perfume, cap): sold by count, never cut. */
+export type StockUnit = 'meter' | 'suit' | 'piece';
+
 export type InventorySet = {
   setCode: string;
-  brandId: number;
-  brand: string;
-  clothTypeId: number;
-  clothType: string;
+  setName: string | null;
+  /** Null for piece items that have no brand or cloth type. */
+  brandId: number | null;
+  brand: string | null;
+  clothTypeId: number | null;
+  clothType: string | null;
   salePrice: string;
   defaultSaleLength: string;
   salePriceBasis: 'per_meter' | 'per_suit';
+  stockUnit?: StockUnit;
+  category?: string | null;
   colorTrackingMode: 'none' | 'display_only' | 'per_color';
   availableLength: string;
   colors: { name: string; availableLength: string | null }[];
@@ -114,13 +121,16 @@ export type InventorySet = {
 export type InventoryListItem = {
   id: number;
   setCode: string;
-  brandId: number;
-  brand: string;
-  clothTypeId: number;
-  clothType: string;
+  setName: string | null;
+  brandId: number | null;
+  brand: string | null;
+  clothTypeId: number | null;
+  clothType: string | null;
   salePrice: string;
   defaultSaleLength: string;
   salePriceBasis: 'per_meter' | 'per_suit';
+  stockUnit?: StockUnit;
+  category?: string | null;
   colorTrackingMode: 'none' | 'display_only' | 'per_color';
   availableLength: string;
   colors: { color: string; length: string | null }[];
