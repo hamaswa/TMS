@@ -10,6 +10,7 @@
         .serial{width:70mm;min-height:20mm;margin:20px auto;padding:4mm;background:white;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;white-space:nowrap;direction:ltr}
         @media print{@page{size:80mm 30mm;margin:0}body{background:white}nav{display:none}.serial{margin:0;width:80mm;height:30mm;padding:3mm}}
     </style>
+    @include('print.partials.bold-ink')
 </head>
 <body>
     <nav><button type="button" onclick="window.print()">صرف سیریل پرنٹ کریں</button></nav>

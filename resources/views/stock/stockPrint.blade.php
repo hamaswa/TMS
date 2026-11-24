@@ -278,6 +278,7 @@
     </style>
     @include('print.partials.document-styles')
     @include('stock.partials.pos80-styles')
+    @include('print.partials.bold-ink')
 </head>
 
 <body class="tms-stock-print">

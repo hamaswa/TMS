@@ -397,17 +397,68 @@
         }
 
         @media print {
-            @page {
-                size: 80mm auto;
-                margin: 6mm 0 3mm
-            }
+            /* The roll is 80 mm wide; A4 receipts print on a full page. */
+            @if ($printConfig['paper'] === \App\Models\Setting::PRINT_PAPER_A4)
+                @page {
+                    size: A4;
+                    margin: 12mm
+                }
+            @else
+                @page {
+                    size: 80mm auto;
+                    margin: 4mm 0 3mm
+                }
+            @endif
 
             /* The buttons are for the screen only; the paper shows just the receipt. */
             .print-toolbar {
                 display: none !important
             }
+
+            body {
+                background: #fff
+            }
+
+            /* 80 mm thermal printers (POS-80C) print only ~72 mm, so the receipt fills exactly that,
+               with no shadow or outer margin; wider content would be cut off on the left. */
+            .tms-paper-receipt_80 .receipt {
+                width: 72mm;
+                max-width: 72mm;
+                min-height: 0;
+                margin: 0 auto;
+                padding: 0 1.5mm;
+                box-shadow: none
+            }
+
+            .tms-paper-receipt_80 .receipt * {
+                max-width: 100%;
+                overflow-wrap: break-word
+            }
+
+            .tms-paper-receipt_80 .receipt-head {
+                flex-wrap: wrap;
+                gap: 6px 10px;
+                margin: 10px 0 8px
+            }
+
+            /* Shaded boxes print as grey dots; a plain border reads better. */
+            .tms-paper-receipt_80 .customer {
+                padding: 6px 0;
+                border-radius: 0;
+                background: none;
+                border-bottom: 1px solid #000
+            }
+
+            .tms-paper-a4 .receipt {
+                width: auto;
+                min-height: 0;
+                margin: 0;
+                padding: 0;
+                box-shadow: none
+            }
         }
     </style>
+    @include('print.partials.bold-ink')
 </head>
 
 <body class="tms-counter-order-print tms-paper-{{ $printConfig['paper'] }}">

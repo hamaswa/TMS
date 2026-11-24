@@ -124,6 +124,7 @@
                 }
      </style>
     @include('print.partials.document-styles')
+        @include('print.partials.bold-ink')
     </head>
     <body class="tms-sale-print">
     @include('print.partials.toolbar')

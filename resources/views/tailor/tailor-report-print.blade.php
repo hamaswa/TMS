@@ -308,6 +308,7 @@
             }
         }
     </style>
+    @include('print.partials.bold-ink')
 </head>
 
 <body>

@@ -429,6 +429,7 @@
             }
         }
     </style>
+    @include('print.partials.bold-ink', ['printOnly' => true])
 @endpush
 
 @section('content')

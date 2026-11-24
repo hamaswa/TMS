@@ -4,7 +4,18 @@
     "آرڈر میں شامل کریں" then adds the whole cart to the order as draft items.
 --}}
 @php
-    $boxItems = $cloths->map(function ($cloth) {
+    $tabIcon = function ($category) {
+        $name = mb_strtolower(($category?->name ?? '').' '.($category?->name_ur ?? ''));
+        return match (true) {
+            $name === ' ' => 'fa-tag',
+            (bool) preg_match('/women|ladies|girl|زنانہ|خواتین/u', $name) => 'fa-female',
+            (bool) preg_match('/ready|stitched|abaya|ریڈی|عبایا/u', $name) => 'fa-user-tie',
+            (bool) preg_match('/access|perfume|cap|متفرق|پرفیوم|ٹوپی/u', $name) => 'fa-shopping-bag',
+            (bool) preg_match('/men|gent|مردانہ/u', $name) => 'fa-tshirt',
+            default => 'fa-tag',
+        };
+    };
+    $boxItems = $cloths->map(function ($cloth) use ($tabIcon) {
         $colorStock = $cloth->tracksColors()
             ? $cloth->colors->mapWithKeys(fn ($c) => [$c->color => round((float) $c->length, 2)])
             : collect();
@@ -18,8 +29,9 @@
             'brand' => $cloth->brand?->name ?? '',
             'meta' => collect([$cloth->brand?->name, $cloth->countsPieces() ? null : $cloth->type?->name])->filter()->implode(' · '),
             'main' => $cloth->category?->parent?->localizedName() ?? $cloth->category?->localizedName() ?? 'دیگر',
-            // English name too, so the tab icon can be picked whatever language the shop named it in.
-            'mainKey' => strtolower($cloth->category?->parent?->name ?? $cloth->category?->name ?? ''),
+            // Tab icon picked here from the category's English and Urdu names (kept out of the page script,
+            // which English mode translates).
+            'mainIcon' => $tabIcon($cloth->category?->parent ?? $cloth->category),
             'sub' => $cloth->category?->parent ? $cloth->category->localizedName() : '',
             'unit' => $cloth->stock_unit ?: 'meter',
             'unitLabel' => $cloth->stockUnitLabel(),
@@ -127,16 +139,6 @@
             var metres = function(value) {
                 return Number(value).toLocaleString('en-PK', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' م';
             };
-            // An icon for each main category, matched on its English or Urdu name.
-            var tabIcon = function(main, key) {
-                var name = (key + ' ' + main).toLowerCase();
-                if (!main) return 'fa-th-large';
-                if (/women|ladies|girl|زنانہ|خواتین/.test(name)) return 'fa-female';
-                if (/ready|stitched|abaya|ریڈی|عبایا/.test(name)) return 'fa-user-tie';
-                if (/access|perfume|cap|متفرق|پرفیوم|ٹوپی/.test(name)) return 'fa-shopping-bag';
-                if (/men|gent|مردانہ/.test(name)) return 'fa-tshirt';
-                return 'fa-tag';
-            };
             // Stock left for one item (and colour), so the cart never asks for more than the shop has.
             var stockFor = function(item, color) {
                 return item.colors.length && Object.keys(item.colorStock).length ? Number(item.colorStock[color] || 0) : Number(item.stock);
@@ -156,12 +158,12 @@
             function renderTabs() {
                 var mains = [];
                 items.forEach(function(item) {
-                    if (!mains.some(function(entry) { return entry.main === item.main; })) mains.push({main: item.main, key: item.mainKey});
+                    if (!mains.some(function(entry) { return entry.main === item.main; })) mains.push({main: item.main, icon: item.mainIcon});
                 });
-                tabs.innerHTML = [{main: '', key: ''}].concat(mains).map(function(entry) {
+                tabs.innerHTML = [{main: '', icon: 'fa-th-large'}].concat(mains).map(function(entry) {
                     var active = entry.main === activeMain;
                     return '<button type="button" role="tab" class="co-boxes-tab' + (active ? ' is-active' : '') +
-                        '" data-main="' + esc(entry.main) + '" aria-selected="' + active + '"><i class="fas ' + tabIcon(entry.main, entry.key) +
+                        '" data-main="' + esc(entry.main) + '" aria-selected="' + active + '"><i class="fas ' + esc(entry.icon) +
                         '"></i>' + esc(entry.main || 'سب') + '</button>';
                 }).join('');
                 tabs.hidden = mains.length < 2;

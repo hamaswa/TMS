@@ -587,7 +587,35 @@
         /* .printbtn{
                 position: relative;
             } */
+
+        /* 80 mm thermal printers (POS-80C) print only ~72 mm; a wider slip is cut off on the left. */
+        @media print {
+            body.tms-paper-receipt_80 #invoice-POS {
+                width: 72mm !important;
+                max-width: 72mm !important;
+                margin: 0 auto !important;
+                padding: 0 1.5mm !important;
+                box-shadow: none !important
+            }
+
+            body.tms-paper-receipt_80 #invoice-POS img {
+                max-width: 100%
+            }
+
+            /* Label takes only the space it needs; the value (a name, a date) gets the rest and wraps at spaces. */
+            body.tms-paper-receipt_80 #invoice-POS .order-detail-row .order-detail-label {
+                flex: 0 1 auto !important;
+                max-width: 62%;
+            }
+
+            body.tms-paper-receipt_80 #invoice-POS .order-detail-row .order-detail-value {
+                flex: 1 1 0 !important;
+                overflow-wrap: break-word !important;
+                word-break: normal !important;
+            }
+        }
     </style>
+    @include('print.partials.bold-ink')
 </head>
 
 <body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
