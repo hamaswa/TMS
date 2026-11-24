@@ -508,7 +508,8 @@ class CounterOrderController extends Controller
      */
     private function trackingQr(CounterOrder $counterOrder, PrintDocumentService $documents): array
     {
-        $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $counterOrder->id]);
+        // Short link: a full signed URL makes the QR too dense to scan from a thermal print.
+        $trackingUrl = \App\Support\OrderTrackingLink::url($counterOrder->id);
 
         return [$trackingUrl, $documents->qrSvg($trackingUrl, 180)];
     }

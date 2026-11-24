@@ -587,33 +587,6 @@
         /* .printbtn{
                 position: relative;
             } */
-
-        /* 80 mm thermal printers (POS-80C) print only ~72 mm; a wider slip is cut off on the left. */
-        @media print {
-            body.tms-paper-receipt_80 #invoice-POS {
-                width: 72mm !important;
-                max-width: 72mm !important;
-                margin: 0 auto !important;
-                padding: 0 1.5mm !important;
-                box-shadow: none !important
-            }
-
-            body.tms-paper-receipt_80 #invoice-POS img {
-                max-width: 100%
-            }
-
-            /* Label takes only the space it needs; the value (a name, a date) gets the rest and wraps at spaces. */
-            body.tms-paper-receipt_80 #invoice-POS .order-detail-row .order-detail-label {
-                flex: 0 1 auto !important;
-                max-width: 62%;
-            }
-
-            body.tms-paper-receipt_80 #invoice-POS .order-detail-row .order-detail-value {
-                flex: 1 1 0 !important;
-                overflow-wrap: break-word !important;
-                word-break: normal !important;
-            }
-        }
     </style>
     @include('print.partials.bold-ink')
 </head>
@@ -646,7 +619,8 @@
                     <p align="center"><img src="{{ $setting->logo_url }}" width="100"
                             alt="{{ $setting->name }} لوگو"></p>
                 @endif
-                <h1 class="text-center" style="text-align: center;margin-top:-10px; ">{{ $setting->name }}
+                {{-- Pulled up under the logo only; without a logo it would slide off the top of the slip. --}}
+                <h1 class="text-center" style="text-align: center;margin-top:{{ $setting?->logo_url ? '-10px' : '0' }}; ">{{ $setting->name }}
                 </h1>
                 <div class="pl-3 pr-3" style="margin-top: 0px">
                     <div class="d-flex justify-content-between">

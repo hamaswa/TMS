@@ -68,7 +68,8 @@ class PrintDocumentService
             encoding: new Encoding('UTF-8'),
             errorCorrectionLevel: ErrorCorrectionLevel::Medium,
             size: $size,
-            margin: 4,
+            // Scanners need a white border about four squares wide; 4px was barely one, so printed codes didn't scan.
+            margin: 16,
         );
         $result = (new SvgWriter)->write($qrCode);
 

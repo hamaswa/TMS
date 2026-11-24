@@ -6,10 +6,20 @@ use App\Models\Business;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Services\CustomerLedgerService;
+use App\Support\OrderTrackingLink;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class PublicOrderTrackingController extends Controller
 {
+    /** Opens the tracking page from the short link in a receipt QR code. */
+    public function short(int $order, string $code): RedirectResponse
+    {
+        abort_unless(OrderTrackingLink::isValid($order, $code), 403);
+
+        return redirect()->to(OrderTrackingLink::signedUrl($order));
+    }
+
     public function show(Order $order, CustomerLedgerService $customerLedger): View
     {
         $order->load('customers');

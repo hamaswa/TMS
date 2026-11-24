@@ -697,7 +697,7 @@ class OrderController extends Controller
         $status = "default";
         $printDocumentService = app(\App\Services\PrintDocumentService::class);
         $printConfig = $printDocumentService->make($setting, request(), 'tailor-order', $order->id);
-        $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $order->id]);
+        $trackingUrl = \App\Support\OrderTrackingLink::url($order->id);
         $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
         $counterOrderItem = CounterOrderItem::query()
             ->where('source_record_type', 'tailoring_order')
@@ -754,7 +754,7 @@ class OrderController extends Controller
         $status = "default";
         $printDocumentService = app(\App\Services\PrintDocumentService::class);
         $printConfig = $printDocumentService->make($setting, request(), 'tailor-order-copy', $order->id);
-        $trackingUrl = \Illuminate\Support\Facades\URL::signedRoute('orders.track', ['order' => $order->id]);
+        $trackingUrl = \App\Support\OrderTrackingLink::url($order->id);
         $trackingQrSvg = $printDocumentService->qrSvg($trackingUrl, 180);
         $counterOrderItem = CounterOrderItem::query()
             ->where('source_record_type', 'tailoring_order')

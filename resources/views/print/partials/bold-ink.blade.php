@@ -19,23 +19,13 @@
         -webkit-text-stroke: .4px #000;
     }
 
-    /* Faint divider lines print as gaps; make them solid. */
-    body hr,
-    body :is(table, th, td, tr):not(.print-toolbar *) {
-        border-color: #000 !important;
-    }
-
-    /* Logos and QR codes print as drawn, with sharp edges on the QR. */
-    body img,
-    body svg {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    body svg,
-    body img[src*="qr"],
-    body img[alt*="QR"] {
-        image-rendering: pixelated;
+    /* QR codes (the only SVGs on prints) print at least 34 mm with sharp squares, so a thermal printer
+       gives each square enough dots to scan; smaller codes smudged together and didn't scan. */
+    body svg[viewBox] {
+        flex-shrink: 0 !important;
+        min-width: 34mm !important;
+        min-height: 34mm !important;
+        shape-rendering: crispEdges;
     }
 CSS;
 @endphp
@@ -46,12 +36,5 @@ CSS;
         }
     @else
         {!! $boldInkCss !!}
-
-        @media print {
-            body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-        }
     @endif
 </style>

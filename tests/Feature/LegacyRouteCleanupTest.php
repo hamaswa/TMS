@@ -284,8 +284,11 @@ class LegacyRouteCleanupTest extends TestCase
             ->assertViewHas('previousBalance', 0.0)
             ->assertViewHas('latestBalance', 0.0)
             ->assertSee('class="order-tracking-qr"', false)
-            ->assertSee(e($trackingUrl), false)
+            // The QR holds the short link (a full signed URL is too dense to scan from a thermal print),
+            // which opens the same signed status page.
+            ->assertSee(e(\App\Support\OrderTrackingLink::url($order->id)), false)
             ->assertSee('<svg', false);
+        $this->get(\App\Support\OrderTrackingLink::url($order->id))->assertRedirect($trackingUrl);
 
         $this->actingAs($owner)
             ->get(route('admin.order-prints', $order))

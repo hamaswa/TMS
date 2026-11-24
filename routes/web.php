@@ -143,6 +143,15 @@ Route::post('/shops/{storefront:slug}/tailoring-bookings/{reference}/access', [P
 Route::get('/order-status/{order}', [PublicOrderTrackingController::class, 'show'])
     ->middleware(['signed', 'throttle:60,1'])
     ->name('orders.track');
+// Short link printed in receipt QR codes (a full signed URL is too dense for thermal printers to print scannably).
+// The QR spells it in capitals (/T/...) for a compact code; /t/... works too when typed.
+Route::get('/T/{order}/{code}', [PublicOrderTrackingController::class, 'short'])
+    ->whereNumber('order')->where('code', '[A-Za-z0-9]{12}')
+    ->middleware('throttle:60,1')
+    ->name('orders.track.short');
+Route::get('/t/{order}/{code}', [PublicOrderTrackingController::class, 'short'])
+    ->whereNumber('order')->where('code', '[A-Za-z0-9]{12}')
+    ->middleware('throttle:60,1');
 
 Route::group(['prefix' => 'employee/security', 'middleware' => ['auth', 'business.status', 'business.activity'], 'as' => 'employee.password.'], function () {
     Route::get('/password', [EmployeePasswordController::class, 'edit'])->name('edit');
