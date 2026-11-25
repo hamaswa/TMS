@@ -17,7 +17,7 @@
         @font-face {
             font-family: 'Noto Nastaliq Urdu';
             src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
-            font-weight: 100 900;
+            font-weight: 200 400;
             font-style: normal;
             font-display: swap;
         }
@@ -568,9 +568,7 @@
     <style>
         /* The bold-ink outline fills in Nastaliq's thin overlapping strokes, so words print blotchy like spread ink.
            Text here is already solid black at full weight, so this slip prints without the outline. */
-        body *:not(button):not(.btn) {
-            -webkit-text-stroke: 0 !important;
-        }
+
     </style>
 </head>
 

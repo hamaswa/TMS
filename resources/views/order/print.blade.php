@@ -17,7 +17,7 @@
         @font-face {
             font-family: 'Noto Nastaliq Urdu';
             src: url('/assets/fonts/noto-nastaliq-urdu/NotoNastaliqUrdu-VariableFont_wght.woff2') format('woff2');
-            font-weight: 100 900;
+            font-weight: 200 400;
             font-style: normal;
             font-display: swap;
         }
