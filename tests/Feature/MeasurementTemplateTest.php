@@ -134,6 +134,33 @@ class MeasurementTemplateTest extends TestCase
             ->assertSeeText('گھٹنے کی چوڑائی');
     }
 
+    public function test_unticked_template_field_leaves_the_form_but_stays_listed(): void
+    {
+        $owner = $this->owner();
+        $template = app(TailoringOptionDefaultsService::class)->seedMeasurementTemplateForOwner($owner->id);
+        $kept = $this->field($owner, 'کہنی');
+        $dropped = $this->field($owner, 'چاک تیار');
+        $kept->update(['measurement_template_id' => $template->id]);
+        $dropped->update(['measurement_template_id' => $template->id]);
+        $template->update(['custom_field_ids' => [$kept->id, $dropped->id]]);
+
+        $this->actingAs($owner)->put(route('admin.measurement-templates.update', $template), [
+            'name' => $template->name,
+            'system_fields' => ['length'],
+            'custom_field_ids' => [$kept->id],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame([$kept->id], $template->fresh()->custom_field_ids);
+        $this->assertTrue($dropped->fresh()->is_active);
+
+        $html = $this->actingAs($owner)->get(route('admin.measurement-templates.edit', $template))
+            ->assertOk()
+            ->assertSeeText('چاک تیار')
+            ->getContent();
+        $this->assertMatchesRegularExpression('/value="'.$kept->id.'" data-source="custom\.'.$kept->id.'"[^>]*checked/', $html);
+        $this->assertDoesNotMatchRegularExpression('/value="'.$dropped->id.'" data-source="custom\.'.$dropped->id.'"[^>]*checked/', $html);
+    }
+
     public function test_dragged_layout_order_columns_and_column_count_are_saved(): void
     {
         $owner = $this->owner();

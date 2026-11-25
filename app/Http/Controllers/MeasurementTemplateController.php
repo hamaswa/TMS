@@ -125,14 +125,17 @@ class MeasurementTemplateController extends Controller
         ]);
 
         $selectedSystem = array_values(array_intersect($systemKeys, $validated['system_fields'] ?? []));
+        $tickedCustom = array_map('intval', $validated['custom_field_ids'] ?? []);
         if ($templateId) {
             MeasurementField::where('user_id', $ownerId)->whereNull('measurement_template_id')
-                ->whereIn('id', array_map('intval', $validated['custom_field_ids'] ?? []))
+                ->whereIn('id', $tickedCustom)
                 ->update(['measurement_template_id' => $templateId]);
         }
+        // Only the template's own fields that are ticked go on the form; unticked ones stay listed for later.
         $selectedCustom = $templateId
             ? MeasurementField::where('user_id', $ownerId)->where('measurement_template_id', $templateId)
-            ->where('is_active', true)->orderBy('sort_order')->orderBy('label')->pluck('id')->map(fn($id) => (int) $id)->all()
+            ->where('is_active', true)->whereIn('id', $tickedCustom)
+            ->orderBy('sort_order')->orderBy('label')->pluck('id')->map(fn($id) => (int) $id)->all()
             : [];
         if ($selectedSystem === [] && $selectedCustom === []) {
             throw ValidationException::withMessages(['system_fields' => 'کم از کم ایک پیمائش خانہ منتخب کریں۔']);

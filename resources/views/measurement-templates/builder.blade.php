@@ -170,7 +170,10 @@
                                                             : ($field->unit === 'cm'
                                                                 ? 'سینٹی میٹر'
                                                                 : 'اپنی قدر')),
-                                                'checked' => true,
+                                                'checked' => in_array(
+                                                    $field->id,
+                                                    array_map('intval', $template->custom_field_ids ?? []),
+                                                    true),
                                                 'defaultColumn' =>
                                                     $field->field_type === 'select' ? 'left' : 'right',
                                             ])<button

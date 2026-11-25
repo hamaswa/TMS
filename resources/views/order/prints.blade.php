@@ -169,18 +169,19 @@
             color: #000 !important;
             font-size: 16px !important;
             font-weight: 900 !important;
-            line-height: 1.6 !important;
+            line-height: 2 !important;
         }
 
         .measurement-row {
             align-items: flex-start;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
 
+        /* Nastaliq letters reach far above and below the line, so rows and wrapped notes need tall lines to stay apart. */
         .measurement-row,
         .measurement-row * {
             box-sizing: border-box;
-            line-height: 1.5 !important;
+            line-height: 2.1 !important;
         }
 
         .measurement-label {
@@ -233,8 +234,9 @@
             overflow-wrap: normal;
         }
 
+        /* The printer's page margin already leaves room at the top, so the header adds only a little. */
         .measurement-header {
-            padding: 7mm 8px 0;
+            padding: 1mm 8px 0;
             break-inside: avoid;
             page-break-inside: avoid;
         }
@@ -294,7 +296,7 @@
             align-items: baseline;
             gap: 5px;
             min-width: 0;
-            padding: 5px 3px;
+            padding: 2px 3px;
             white-space: nowrap;
         }
 
@@ -376,7 +378,8 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 14px;
-            min-height: 30px;
+            min-height: 34px;
+            padding: 3px 0;
             background-image: linear-gradient(to right, #b8b8b8, #b8b8b8);
             background-position: left bottom;
             background-repeat: no-repeat;
@@ -388,7 +391,7 @@
             color: #000;
             font-size: 18px;
             font-weight: 900;
-            line-height: 1.65;
+            line-height: 2.1;
             text-align: right;
         }
 
@@ -399,7 +402,7 @@
             direction: ltr;
             font-size: 18px;
             font-weight: 800;
-            line-height: 1.5;
+            line-height: 2.1;
             overflow-wrap: anywhere;
             text-align: left;
         }
@@ -417,7 +420,7 @@
             color: #000 !important;
             font-size: 13px !important;
             font-weight: 900 !important;
-            line-height: 1.45 !important;
+            line-height: 2 !important;
         }
 
         .order-footer p {
@@ -462,7 +465,7 @@
             color: #000;
             font-size: 12px;
             font-weight: 900;
-            line-height: 1.9;
+            line-height: 2.1;
             text-align: right;
         }
 
@@ -535,7 +538,12 @@
 
             #sizeSection {
                 margin-top: 0 !important;
-                padding-top: 4mm !important;
+                padding-top: 0 !important;
+            }
+
+            /* Printed under the order slip (مکمل): keep room to tear between the two. */
+            #orderSection:not([style*="display: none"]) + #sizeSection {
+                padding-top: 6mm !important;
             }
 
             #orderSection>p:first-child {
@@ -557,6 +565,13 @@
             } */
     </style>
     @include('print.partials.bold-ink')
+    <style>
+        /* The bold-ink outline fills in Nastaliq's thin overlapping strokes, so words print blotchy like spread ink.
+           Text here is already solid black at full weight, so this slip prints without the outline. */
+        body *:not(button):not(.btn) {
+            -webkit-text-stroke: 0 !important;
+        }
+    </style>
 </head>
 
 <body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
@@ -646,7 +661,7 @@
                         <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
                     </aside>
                     <div>
-                        <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;">
+                        <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;line-height:2.1;">
                             {{ $orderDetail->remarks }}
                         </h3>
                     </div>
@@ -670,7 +685,7 @@
                     <h1 class="text-center measurement-shop-name">{{ $setting->name }}</h1>
                 </div>
                 <div class="pl-1 pr-1 measurement-meta">
-                    <hr style="margin-top:4px;">
+                    <hr style="margin:2px 0 4px;">
                     {{-- Item serial centered --}}
                     <div class="measurement-meta-list">
                         {{-- Serial: full row (longest value) --}}
@@ -778,7 +793,7 @@
                     @endphp
 
                     @if ($allMeasurements->count())
-                        <hr>
+                        <hr style="margin:4px 0 8px;">
 
                         @for ($i = 0; $i < $rows; $i++)
                             <div class="row measurement-row"
