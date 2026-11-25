@@ -134,6 +134,91 @@ class MeasurementTemplateTest extends TestCase
             ->assertSeeText('گھٹنے کی چوڑائی');
     }
 
+    public function test_template_saves_sections_each_with_their_own_columns(): void
+    {
+        $owner = $this->owner();
+        $template = app(TailoringOptionDefaultsService::class)->seedMeasurementTemplateForOwner($owner->id);
+
+        $this->actingAs($owner)->put(route('admin.measurement-templates.update', $template), [
+            'name' => $template->name,
+            'system_fields' => ['length', 'necktype', 'shalwar', 'pancha'],
+            'layout_sections' => [
+                ['title' => 'قمیض', 'columns' => 2],
+                ['title' => 'شلوار', 'columns' => 1],
+            ],
+            'field_layout' => [
+                ['source' => 'system.length', 'column' => 'right', 'order' => 10, 'section' => 0],
+                ['source' => 'system.necktype', 'column' => 'left', 'order' => 10, 'section' => 0],
+                ['source' => 'system.shalwar', 'column' => 'right', 'order' => 10, 'section' => 1],
+                ['source' => 'system.pancha', 'column' => 'right', 'order' => 20, 'section' => 1],
+            ],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $template->refresh();
+        $this->assertSame([
+            ['title' => 'قمیض', 'columns' => 2],
+            ['title' => 'شلوار', 'columns' => 1],
+        ], $template->layout_sections);
+        $this->assertSame(2, $template->layout_columns);
+        $layout = collect($template->field_layout)->keyBy('source');
+        $this->assertSame(['source' => 'system.shalwar', 'section' => 1, 'column' => 'right', 'order' => 1010], $layout['system.shalwar']);
+        $this->assertSame(['source' => 'system.necktype', 'section' => 0, 'column' => 'left', 'order' => 10], $layout['system.necktype']);
+        // Forms that only sort by order still list the first section before the second.
+        $this->assertSame(['system.length', 'system.necktype', 'system.shalwar', 'system.pancha'],
+            collect($template->field_layout)->pluck('source')->all());
+
+        $this->actingAs($owner)->get(route('admin.measurement-templates.edit', $template))
+            ->assertOk()
+            ->assertSee('id="templateSections"', false)
+            ->assertSeeText('نیا سیکشن');
+    }
+
+    public function test_template_without_sections_reads_as_one_section(): void
+    {
+        $template = new MeasurementTemplate(['layout_columns' => 1, 'layout_sections' => null]);
+
+        $this->assertSame([['title' => null, 'columns' => 1]], $template->sections());
+    }
+
+    public function test_print_slip_follows_the_template_sections(): void
+    {
+        $template = new MeasurementTemplate([
+            'layout_columns' => 2,
+            'layout_sections' => [['title' => 'قمیض', 'columns' => 2], ['title' => 'شلوار', 'columns' => 1], ['title' => 'خالی', 'columns' => 2]],
+            'field_layout' => [
+                ['source' => 'system.length', 'section' => 0, 'column' => 'right', 'order' => 10],
+                ['source' => 'system.necktype', 'section' => 0, 'column' => 'left', 'order' => 10],
+                // Left in a one-column section still prints in its single column.
+                ['source' => 'system.pancha', 'section' => 1, 'column' => 'left', 'order' => 1020],
+                ['source' => 'system.shalwar', 'section' => 1, 'column' => 'right', 'order' => 1010],
+            ],
+        ]);
+        $rows = collect([
+            'system.length' => (object) ['source_key' => 'system.length', 'label' => 'لمبائی', 'value' => '39'],
+            'system.necktype' => (object) ['source_key' => 'system.necktype', 'label' => 'گلہ', 'value' => 'کالر'],
+            'system.shalwar' => (object) ['source_key' => 'system.shalwar', 'label' => 'شلوار', 'value' => '41'],
+            'system.pancha' => (object) ['source_key' => 'system.pancha', 'label' => 'پانچہ', 'value' => '7.5'],
+        ]);
+
+        $sections = MeasurementTemplate::arrangeForPrint($template, $rows);
+
+        // The empty third section is left off the slip.
+        $this->assertCount(2, $sections);
+        $this->assertSame(['system.length'], $sections[0]['right']);
+        $this->assertSame(['system.necktype'], $sections[0]['left']);
+        $this->assertSame(1, $sections[1]['columns']);
+        $this->assertSame(['system.shalwar', 'system.pancha'], $sections[1]['right']);
+
+        $html = view('order.partials.measurement-print-sections', ['tpl' => $template, 'allMeasurements' => $rows])->render();
+        $this->assertSame(1, substr_count($html, 'measurement-section-divider"'));
+        $this->assertStringNotContainsString('خالی', $html);
+        // Each row writes its left cell first, so check the right column's order across rows and sections.
+        $positions = array_map(fn ($text) => mb_strpos($html, $text), ['قمیض', 'لمبائی', 'شلوار</div>', '41', '7.5']);
+        $sorted = $positions;
+        sort($sorted);
+        $this->assertSame($sorted, $positions);
+    }
+
     public function test_unticked_template_field_leaves_the_form_but_stays_listed(): void
     {
         $owner = $this->owner();

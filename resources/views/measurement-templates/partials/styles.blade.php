@@ -184,4 +184,17 @@
         grid-template-columns: 1fr;
     }
 }
+/* Form sections: each has a title, its own one/two column switch and its own lanes. */
+.layout-sections{display:grid;gap:.85rem}
+.layout-section{border:1px solid #dbe6f1;border-radius:14px;padding:.75rem;background:#fbfdff}
+.layout-section-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem}
+.layout-section-number{flex:0 0 auto;padding:.2rem .6rem;border-radius:999px;background:#e8f2ff;color:#1769aa;font-weight:800;font-size:.85rem}
+.layout-section-head .form-control{flex:1 1 auto;min-width:0;height:34px;min-height:34px;padding:.2rem .6rem;font-size:.95rem}
+.section-remove{flex:0 0 auto;display:grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid #f1c9cf;border-radius:8px;background:#fff;color:#b23b48}
+.layout-section .preview-list{max-height:none}
+.preview-item{grid-template-columns:28px minmax(0,1fr) auto}
+.preview-item-actions{display:flex;gap:.25rem}
+.preview-item-actions [hidden]{display:none}
+.move-section{display:grid;place-items:center;width:26px;height:28px;padding:0;border:0;border-radius:7px;background:#f1f5f9;color:#526575;cursor:pointer}
+#addTemplateSection:disabled{opacity:.5}
 </style>

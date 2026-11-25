@@ -5,7 +5,11 @@
         $selectedSystem = old('system_fields', $template?->system_fields ?? []);
         $selectedCustom = array_map('intval', old('custom_field_ids', $template?->custom_field_ids ?? []));
         $selectedLayout = old('field_layout', $template?->field_layout ?? []);
-        $selectedColumns = (int) old('layout_columns', $template?->layout_columns ?? 2);
+        $selectedSections = collect(old('layout_sections', $template?->sections() ?? [['title' => null, 'columns' => 2]]))
+            ->map(fn ($section) => [
+                'title' => $section['title'] ?? null,
+                'columns' => (int) ($section['columns'] ?? 2) === 1 ? 1 : 2,
+            ])->values()->all();
         $fieldTypeLabels = ['number' => 'نمبر', 'text' => 'تحریر', 'select' => 'فہرست'];
         $fieldUnitLabels = ['inch' => 'انچ', 'cm' => 'سینٹی میٹر', 'none' => 'بغیر اکائی'];
     @endphp
@@ -192,24 +196,14 @@
                         <aside class="builder-preview card template-card">
                             <div class="card-body p-4">
                                 <span class="preview-label">گاہک فارم کی ترتیب</span>
-                                <h2 class="h5 font-weight-bold mt-2">فارم کے کالم اور ترتیب</h2>
-                                <p class="text-muted small">ایک یا دو کالم منتخب کریں۔ کارڈ پکڑ کر اوپر نیچے کریں، یا تیر سے
-                                    دوسرے کالم میں بھیجیں۔</p>
-                                <div class="column-mode" role="radiogroup" aria-label="فارم کے کالم"><label><input
-                                            type="radio" name="layout_columns" value="1"
-                                            @checked($selectedColumns === 1)><span><i class="fas fa-bars"></i> ایک کالم</span></label><label><input type="radio" name="layout_columns"
-                                            value="2" @checked($selectedColumns !== 1)><span><i class="fas fa-columns"></i>
-                                            دو کالم</span></label></div>
-                                <div id="templatePreview" class="layout-preview">
-                                    <div class="layout-lane" data-column="right"><strong class="lane-title">دائیں
-                                            کالم</strong>
-                                        <div id="templatePreviewRight" class="preview-list" data-column="right"></div>
-                                    </div>
-                                    <div class="layout-lane" data-column="left"><strong class="lane-title">بائیں
-                                            کالم</strong>
-                                        <div id="templatePreviewLeft" class="preview-list" data-column="left"></div>
-                                    </div>
-                                </div>
+                                <h2 class="h5 font-weight-bold mt-2">فارم کے سیکشن، کالم اور ترتیب</h2>
+                                <p class="text-muted small">فارم کو سیکشنز میں بانٹیں اور ہر سیکشن کے لیے ایک یا دو کالم چنیں۔
+                                    کارڈ پکڑ کر اوپر نیچے یا دوسرے سیکشن میں لے جائیں، یا تیر سے دوسرے کالم میں بھیجیں۔ پرنٹ رسید بھی
+                                    اسی ترتیب سے چھپے گی۔</p>
+                                <div id="templateSections" class="layout-sections"
+                                    data-max="{{ \App\Models\MeasurementTemplate::MAX_SECTIONS }}"></div>
+                                <button type="button" id="addTemplateSection" class="btn btn-outline-primary btn-block mt-2"><i
+                                        class="fas fa-plus ml-1"></i> نیا سیکشن</button>
                                 <div id="templatePreviewEmpty" class="preview-empty">ابھی کوئی خانہ منتخب نہیں کیا گیا۔
                                 </div>
                                 <button class="btn btn-primary btn-lg btn-block mt-4"><i class="fas fa-save ml-1"></i>
@@ -378,50 +372,170 @@
         document.addEventListener('DOMContentLoaded', function() {
             if (window.jQuery) window.jQuery('.template-field-modal').appendTo(document.body);
             var builder = document.getElementById('templateBuilder'),
-                preview = document.getElementById('templatePreview'),
-                right = document.getElementById('templatePreviewRight'),
-                left = document.getElementById('templatePreviewLeft'),
+                sectionsBox = document.getElementById('templateSections'),
+                addSectionButton = document.getElementById('addTemplateSection'),
                 empty = document.getElementById('templatePreviewEmpty');
-            if (!builder || !preview || !right || !left) return;
+            if (!builder || !sectionsBox) return;
+            var maxSections = Number(sectionsBox.dataset.max || 8);
+            var savedSections = @json($selectedSections);
+            // Where each field sits: its section, column and order (order counts 1000 per section).
             var layout = {};
             var dragged = null;
             @foreach ($selectedLayout as $item)
                 layout[@json($item['source'] ?? '')] = {
+                    section: {{ (int) ($item['section'] ?? 0) }},
                     column: @json($item['column'] ?? 'right'),
                     order: {{ (int) ($item['order'] ?? 0) }}
                 };
             @endforeach
 
-            function columnCount() {
-                var selected = builder.querySelector('[name="layout_columns"]:checked');
-                return selected ? Number(selected.value) : 2;
+            function sectionEls() {
+                return Array.from(sectionsBox.querySelectorAll('.layout-section'));
+            }
+
+            function sectionColumns(section) {
+                return Number(section.querySelector('[data-section-columns]').value) === 1 ? 1 : 2;
+            }
+
+            function lists(section) {
+                return {
+                    right: section.querySelector('.preview-list[data-column="right"]'),
+                    left: section.querySelector('.preview-list[data-column="left"]')
+                };
+            }
+
+            function setColumns(section, columns) {
+                section.querySelector('[data-section-columns]').value = columns;
+                section.querySelectorAll('.column-mode input').forEach(function(radio) {
+                    radio.checked = Number(radio.value) === columns;
+                });
+                var l = lists(section);
+                if (columns === 1) Array.from(l.left.children).forEach(function(item) {
+                    l.right.appendChild(item);
+                });
+                section.querySelector('.layout-preview').classList.toggle('is-one-column', columns === 1);
+            }
+
+            function makeSection(data) {
+                var uid = 'section-columns-' + Math.random().toString(36).slice(2, 8);
+                var section = document.createElement('div');
+                section.className = 'layout-section';
+                // The column radios belong to no form (form="no-form"); a hidden input carries the posted value.
+                section.innerHTML =
+                    '<div class="layout-section-head">' +
+                    '<span class="layout-section-number"></span>' +
+                    '<input type="text" class="form-control form-control-sm" data-section-title maxlength="60" placeholder="سیکشن کا نام (اختیاری)">' +
+                    '<button type="button" class="section-remove" title="سیکشن ہٹائیں" aria-label="سیکشن ہٹائیں"><i class="fas fa-trash-alt"></i></button>' +
+                    '</div>' +
+                    '<input type="hidden" data-section-columns>' +
+                    '<div class="column-mode" role="radiogroup" aria-label="اس سیکشن کے کالم">' +
+                    '<label><input type="radio" form="no-form" name="' + uid + '" value="1"><span><i class="fas fa-bars"></i> ایک کالم</span></label>' +
+                    '<label><input type="radio" form="no-form" name="' + uid + '" value="2"><span><i class="fas fa-columns"></i> دو کالم</span></label>' +
+                    '</div>' +
+                    '<div class="layout-preview">' +
+                    '<div class="layout-lane" data-column="right"><strong class="lane-title">دائیں کالم</strong><div class="preview-list" data-column="right"></div></div>' +
+                    '<div class="layout-lane" data-column="left"><strong class="lane-title">بائیں کالم</strong><div class="preview-list" data-column="left"></div></div>' +
+                    '</div>';
+                section.querySelector('[data-section-title]').value = (data && data.title) || '';
+                setColumns(section, data && Number(data.columns) === 1 ? 1 : 2);
+                section.querySelectorAll('.column-mode input').forEach(function(radio) {
+                    radio.addEventListener('change', function() {
+                        setColumns(section, Number(radio.value));
+                        syncLayout();
+                    });
+                });
+                section.querySelector('.section-remove').addEventListener('click', function() {
+                    var all = sectionEls();
+                    if (all.length < 2) return;
+                    var index = all.indexOf(section);
+                    // Its fields move into the section above (or below, for the first one).
+                    var target = all[index === 0 ? 1 : index - 1];
+                    var from = lists(section),
+                        to = lists(target),
+                        oneColumn = sectionColumns(target) === 1;
+                    Array.from(from.right.children).forEach(function(item) {
+                        to.right.appendChild(item);
+                    });
+                    Array.from(from.left.children).forEach(function(item) {
+                        (oneColumn ? to.right : to.left).appendChild(item);
+                    });
+                    section.remove();
+                    syncLayout();
+                });
+                return section;
+            }
+
+            function moveToSection(item, step) {
+                var all = sectionEls();
+                var target = all[all.indexOf(item.closest('.layout-section')) + step];
+                if (!target) return;
+                var column = item.parentElement.dataset.column;
+                var l = lists(target);
+                (sectionColumns(target) === 1 || column === 'right' ? l.right : l.left).appendChild(item);
+                syncLayout();
+                item.scrollIntoView({
+                    block: 'nearest'
+                });
             }
 
             function syncLayout() {
                 var index = 0;
-                [right, left].forEach(function(list) {
-                    Array.from(list.children).forEach(function(item, position) {
-                        var column = list.dataset.column;
-                        layout[item.dataset.source] = {
-                            column: column,
-                            order: (position + 1) * 10
-                        };
-                        item.querySelector('[data-layout-column]').value = column;
-                        item.querySelector('[data-layout-order]').value = (position + 1) * 10;
-                        item.querySelectorAll('[data-layout-input]').forEach(function(input) {
-                            input.name = 'field_layout[' + index + '][' + input.dataset
-                                .layoutInput + ']';
+                var all = sectionEls();
+                all.forEach(function(section, s) {
+                    var oneColumn = sectionColumns(section) === 1;
+                    section.querySelector('.layout-section-number').textContent = 'سیکشن ' + (s + 1);
+                    section.querySelector('[data-section-title]').name = 'layout_sections[' + s + '][title]';
+                    section.querySelector('[data-section-columns]').name = 'layout_sections[' + s + '][columns]';
+                    section.querySelector('.section-remove').hidden = all.length < 2;
+                    var l = lists(section);
+                    [l.right, l.left].forEach(function(list) {
+                        Array.from(list.children).forEach(function(item, position) {
+                            var column = list.dataset.column;
+                            var order = (position + 1) * 10;
+                            layout[item.dataset.source] = {
+                                section: s,
+                                column: column,
+                                order: s * 1000 + order
+                            };
+                            item.querySelector('[data-layout-column]').value = column;
+                            item.querySelector('[data-layout-order]').value = order;
+                            item.querySelector('[data-layout-section]').value = s;
+                            item.querySelectorAll('[data-layout-input]').forEach(function(input) {
+                                input.name = 'field_layout[' + index + '][' + input.dataset.layoutInput + ']';
+                            });
+                            var arrow = item.querySelector('.move-column');
+                            arrow.hidden = oneColumn;
+                            arrow.title = column === 'right' ? 'بائیں کالم میں بھیجیں' : 'دائیں کالم میں بھیجیں';
+                            arrow.setAttribute('aria-label', arrow.title);
+                            arrow.querySelector('i').className = column === 'right' ? 'fas fa-arrow-left' :
+                                'fas fa-arrow-right';
+                            item.querySelector('.move-section-up').hidden = s === 0;
+                            item.querySelector('.move-section-down').hidden = s === all.length - 1;
+                            index++;
                         });
-                        var arrow = item.querySelector('.move-column');
-                        arrow.hidden = columnCount() === 1;
-                        arrow.title = column === 'right' ? 'بائیں کالم میں بھیجیں' :
-                            'دائیں کالم میں بھیجیں';
-                        arrow.setAttribute('aria-label', arrow.title);
-                        arrow.querySelector('i').className = column === 'right' ?
-                            'fas fa-arrow-left' : 'fas fa-arrow-right';
-                        index++;
                     });
                 });
+                addSectionButton.disabled = all.length >= maxSections;
+            }
+
+            function smallButton(className, icon, title) {
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = className;
+                if (title) {
+                    button.title = title;
+                    button.setAttribute('aria-label', title);
+                }
+                button.innerHTML = '<i class="fas ' + icon + '"></i>';
+                return button;
+            }
+
+            function hiddenInput(name) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.dataset.layoutInput = name;
+                input.setAttribute('data-layout-' + name, '');
+                return input;
             }
 
             function makeItem(input) {
@@ -430,38 +544,26 @@
                 item.className = 'preview-item';
                 item.dataset.source = source;
                 item.draggable = true;
-                var handle = document.createElement('button');
-                handle.type = 'button';
-                handle.className = 'drag-handle';
-                handle.title = 'پکڑ کر ترتیب بدلیں';
-                handle.setAttribute('aria-label', handle.title);
-                handle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
                 var label = document.createElement('span');
                 label.className = 'preview-item-label';
                 label.textContent = input.dataset.label || '';
-                var move = document.createElement('button');
-                move.type = 'button';
-                move.className = 'move-column';
-                move.innerHTML = '<i class="fas fa-arrow-left"></i>';
-                var sourceInput = document.createElement('input');
-                sourceInput.type = 'hidden';
-                sourceInput.dataset.layoutInput = 'source';
-                sourceInput.dataset.layoutSource = '';
+                var actions = document.createElement('span');
+                actions.className = 'preview-item-actions';
+                var up = smallButton('move-section move-section-up', 'fa-chevron-up', 'اوپر والے سیکشن میں بھیجیں');
+                var down = smallButton('move-section move-section-down', 'fa-chevron-down', 'نیچے والے سیکشن میں بھیجیں');
+                var move = smallButton('move-column', 'fa-arrow-left', '');
+                actions.appendChild(up);
+                actions.appendChild(down);
+                actions.appendChild(move);
+                var sourceInput = hiddenInput('source');
                 sourceInput.value = source;
-                var columnInput = document.createElement('input');
-                columnInput.type = 'hidden';
-                columnInput.dataset.layoutInput = 'column';
-                columnInput.dataset.layoutColumn = '';
-                var orderInput = document.createElement('input');
-                orderInput.type = 'hidden';
-                orderInput.dataset.layoutInput = 'order';
-                orderInput.dataset.layoutOrder = '';
-                item.appendChild(handle);
+                item.appendChild(smallButton('drag-handle', 'fa-grip-vertical', 'پکڑ کر ترتیب بدلیں'));
                 item.appendChild(label);
-                item.appendChild(move);
+                item.appendChild(actions);
                 item.appendChild(sourceInput);
-                item.appendChild(columnInput);
-                item.appendChild(orderInput);
+                item.appendChild(hiddenInput('column'));
+                item.appendChild(hiddenInput('order'));
+                item.appendChild(hiddenInput('section'));
                 item.addEventListener('dragstart', function(event) {
                     dragged = item;
                     item.classList.add('is-dragging');
@@ -477,71 +579,92 @@
                     syncLayout();
                 });
                 move.addEventListener('click', function() {
-                    (item.parentElement === right ? left : right).appendChild(item);
+                    var l = lists(item.closest('.layout-section'));
+                    (item.parentElement === l.right ? l.left : l.right).appendChild(item);
                     syncLayout();
+                });
+                up.addEventListener('click', function() {
+                    moveToSection(item, -1);
+                });
+                down.addEventListener('click', function() {
+                    moveToSection(item, 1);
                 });
                 return item;
             }
 
             function renderPreview() {
+                // Keep where cards were moved to before rebuilding the lists.
+                syncLayout();
+                var all = sectionEls();
+                all.forEach(function(section) {
+                    var l = lists(section);
+                    l.right.innerHTML = '';
+                    l.left.innerHTML = '';
+                });
                 var chosen = Array.from(builder.querySelectorAll('.field-choice input:checked'));
-                right.innerHTML = '';
-                left.innerHTML = '';
                 chosen.sort(function(a, b) {
                     var aLayout = layout[a.dataset.source],
                         bLayout = layout[b.dataset.source];
-                    return (aLayout ? aLayout.order : 9999) - (bLayout ? bLayout.order : 9999);
+                    return (aLayout ? aLayout.order : 99999) - (bLayout ? bLayout.order : 99999);
                 });
-                chosen.forEach(function(input, index) {
+                chosen.forEach(function(input) {
                     var source = input.dataset.source;
+                    // A newly ticked field joins the last section.
                     if (!layout[source]) layout[source] = {
+                        section: all.length - 1,
                         column: input.dataset.defaultColumn || 'right',
-                        order: (index + 1) * 10
+                        order: 99999
                     };
-                    (layout[source].column === 'left' ? left : right).appendChild(makeItem(input));
+                    var section = all[Math.min(Math.max(layout[source].section || 0, 0), all.length - 1)];
+                    var l = lists(section);
+                    var column = sectionColumns(section) === 1 ? 'right' : layout[source].column;
+                    (column === 'left' ? l.left : l.right).appendChild(makeItem(input));
                 });
-                if (columnCount() === 1) Array.from(left.children).forEach(function(item) {
-                    right.appendChild(item);
-                });
-                preview.classList.toggle('is-one-column', columnCount() === 1);
                 syncLayout();
                 empty.hidden = chosen.length > 0;
             }
 
-            [right, left].forEach(function(list) {
-                list.addEventListener('dragover', function(event) {
-                    event.preventDefault();
-                    if (!dragged || (columnCount() === 1 && list === left)) return;
-                    var after = Array.from(list.querySelectorAll('.preview-item:not(.is-dragging)'))
-                        .find(function(item) {
-                            return event.clientY < item.getBoundingClientRect().top + item
-                                .offsetHeight / 2;
-                        });
-                    if (dragged.parentElement !== list || dragged.nextElementSibling !== (after || null)) {
-                        list.insertBefore(dragged, after || null);
-                        // The card moves live while dragging; keep the posted payload in step,
-                        // since drop/dragend do not reliably fire for a node moved mid-drag.
-                        syncLayout();
-                    }
-                });
-                list.addEventListener('drop', function(event) {
-                    event.preventDefault();
+            sectionsBox.addEventListener('dragover', function(event) {
+                var list = event.target.closest('.preview-list');
+                if (!list || !dragged) return;
+                event.preventDefault();
+                if (list.dataset.column === 'left' && sectionColumns(list.closest('.layout-section')) === 1) return;
+                var after = Array.from(list.querySelectorAll('.preview-item:not(.is-dragging)'))
+                    .find(function(item) {
+                        return event.clientY < item.getBoundingClientRect().top + item.offsetHeight / 2;
+                    });
+                if (dragged.parentElement !== list || dragged.nextElementSibling !== (after || null)) {
+                    list.insertBefore(dragged, after || null);
+                    // The card moves live while dragging; keep the posted payload in step,
+                    // since drop/dragend do not reliably fire for a node moved mid-drag.
                     syncLayout();
+                }
+            });
+            sectionsBox.addEventListener('drop', function(event) {
+                event.preventDefault();
+                syncLayout();
+            });
+            addSectionButton.addEventListener('click', function() {
+                if (sectionEls().length >= maxSections) return;
+                var section = makeSection({
+                    title: '',
+                    columns: 2
                 });
+                sectionsBox.appendChild(section);
+                syncLayout();
+                section.querySelector('[data-section-title]').focus();
             });
             builder.addEventListener('change', function(event) {
-                if (event.target.name === 'layout_columns') {
-                    if (columnCount() === 1) Array.from(left.children).forEach(function(item) {
-                        right.appendChild(item);
-                    });
-                    preview.classList.toggle('is-one-column', columnCount() === 1);
-                    syncLayout();
-                    return;
-                }
                 if (event.target.closest('.field-choice')) renderPreview();
             });
             // Always post exactly what the preview shows, whatever drag events fired.
             builder.addEventListener('submit', syncLayout);
+            (savedSections.length ? savedSections : [{
+                title: '',
+                columns: 2
+            }]).forEach(function(data) {
+                sectionsBox.appendChild(makeSection(data));
+            });
             renderPreview();
 
             document.querySelectorAll('.template-field-modal').forEach(function(modal) {

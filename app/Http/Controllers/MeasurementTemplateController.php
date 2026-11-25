@@ -121,7 +121,13 @@ class MeasurementTemplateController extends Controller
             'field_layout.*.source' => ['required', 'string', 'max:100'],
             'field_layout.*.column' => ['required', Rule::in(['right', 'left'])],
             'field_layout.*.order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'field_layout.*.section' => ['nullable', 'integer', 'min:0', 'max:' . (MeasurementTemplate::MAX_SECTIONS - 1)],
             'layout_columns' => ['nullable', 'integer', Rule::in([1, 2])],
+            'layout_sections' => ['nullable', 'array', 'max:' . MeasurementTemplate::MAX_SECTIONS],
+            'layout_sections.*.title' => ['nullable', 'string', 'max:60'],
+            'layout_sections.*.columns' => ['required', 'integer', Rule::in([1, 2])],
+        ], [
+            'layout_sections.max' => 'زیادہ سے زیادہ ' . MeasurementTemplate::MAX_SECTIONS . ' سیکشن بنائے جا سکتے ہیں۔',
         ]);
 
         $selectedSystem = array_values(array_intersect($systemKeys, $validated['system_fields'] ?? []));
@@ -141,17 +147,37 @@ class MeasurementTemplateController extends Controller
             throw ValidationException::withMessages(['system_fields' => 'کم از کم ایک پیمائش خانہ منتخب کریں۔']);
         }
 
+        // Sections in order; a post without them (older forms) is one section with layout_columns.
+        $sections = collect($validated['layout_sections'] ?? [])->values()->map(fn(array $section) => [
+            'title' => filled($section['title'] ?? null) ? trim($section['title']) : null,
+            'columns' => (int) $section['columns'],
+        ]);
+        if ($sections->isEmpty()) {
+            $sections = collect([['title' => null, 'columns' => (int) ($validated['layout_columns'] ?? 2)]]);
+        }
+        $lastSection = $sections->count() - 1;
+
+        // Each section owns a block of 1000 in the order, so forms that only sort by order
+        // still list fields section by section. The column is kept as sent; a one-column
+        // section simply shows and prints everything in its single column.
+        $placeInSection = fn(int $section, string $column, int $order): array => [
+            'section' => $section,
+            'column' => $column,
+            'order' => $section * 1000 + min(max($order, 0), 990),
+        ];
+
         $allowedSources = collect($selectedSystem)->map(fn(string $key) => 'system.' . $key)
             ->merge(collect($selectedCustom)->map(fn(int $id) => 'custom.' . $id))->all();
         $layout = collect($validated['field_layout'] ?? [])
             ->filter(fn(array $item) => in_array($item['source'], $allowedSources, true))
             ->unique('source')
             ->values()
-            ->map(fn(array $item, int $index) => [
-                'source' => $item['source'],
-                'column' => $item['column'],
-                'order' => (int) ($item['order'] ?? (($index + 1) * 10)),
-            ]);
+            ->map(function (array $item, int $index) use ($placeInSection, $lastSection) {
+                $section = min((int) ($item['section'] ?? 0), $lastSection);
+                $order = (int) ($item['order'] ?? (($index + 1) * 10)) % 1000;
+
+                return ['source' => $item['source']] + $placeInSection($section, $item['column'], $order);
+            });
 
         $customTypes = MeasurementField::whereIn('id', $selectedCustom)->pluck('field_type', 'id');
 
@@ -166,11 +192,7 @@ class MeasurementTemplateController extends Controller
                 ? ((MeasurementService::SYSTEM_FIELDS[$systemKey]['unit'] ?? '') === '' ? 'left' : 'right')
                 : (($customTypes[$customId] ?? null) === 'select' ? 'left' : 'right');
 
-            $layout->push([
-                'source' => $source,
-                'column' => $column,
-                'order' => ($index + 1) * 10,
-            ]);
+            $layout->push(['source' => $source] + $placeInSection(0, $column, 500 + $index));
         }
 
         return [
@@ -179,7 +201,9 @@ class MeasurementTemplateController extends Controller
             'system_fields' => $selectedSystem,
             'custom_field_ids' => $selectedCustom,
             'field_layout' => $layout->sortBy('order')->values()->all(),
-            'layout_columns' => (int) ($validated['layout_columns'] ?? 2),
+            'layout_sections' => $sections->all(),
+            // Forms without sections use the first section's column count.
+            'layout_columns' => $sections[0]['columns'],
         ];
     }
 
