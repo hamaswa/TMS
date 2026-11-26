@@ -169,19 +169,19 @@
             color: #000 !important;
             font-size: 16px !important;
             font-weight: 900 !important;
-            line-height: 2 !important;
+            line-height: 1.6 !important;
         }
 
+        /* Compact rows, as the slip printed before: tall Nastaliq line spacing used too much paper. */
         .measurement-row {
             align-items: flex-start;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
-        /* Nastaliq letters reach far above and below the line, so rows and wrapped notes need tall lines to stay apart. */
         .measurement-row,
         .measurement-row * {
             box-sizing: border-box;
-            line-height: 2.1 !important;
+            line-height: 1.5 !important;
         }
 
         .measurement-label {
@@ -378,8 +378,7 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 14px;
-            min-height: 34px;
-            padding: 3px 0;
+            min-height: 30px;
             background-image: linear-gradient(to right, #b8b8b8, #b8b8b8);
             background-position: left bottom;
             background-repeat: no-repeat;
@@ -391,7 +390,7 @@
             color: #000;
             font-size: 18px;
             font-weight: 900;
-            line-height: 2.1;
+            line-height: 1.65;
             text-align: right;
         }
 
@@ -402,7 +401,7 @@
             direction: ltr;
             font-size: 18px;
             font-weight: 800;
-            line-height: 2.1;
+            line-height: 1.5;
             overflow-wrap: anywhere;
             text-align: left;
         }
@@ -420,7 +419,7 @@
             color: #000 !important;
             font-size: 13px !important;
             font-weight: 900 !important;
-            line-height: 2 !important;
+            line-height: 1.45 !important;
         }
 
         .order-footer p {
@@ -465,7 +464,7 @@
             color: #000;
             font-size: 12px;
             font-weight: 900;
-            line-height: 2.1;
+            line-height: 1.9;
             text-align: right;
         }
 
@@ -659,7 +658,7 @@
                         <div class="order-tracking-qr__text">آرڈر کی صورتحال اور بقایا دیکھنے کے لیے اسکین کریں۔</div>
                     </aside>
                     <div>
-                        <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;line-height:2.1;">
+                        <h3 class="text-center font-weight-bold mt-2" style="font-size:18px;line-height:1.6;">
                             {{ $orderDetail->remarks }}
                         </h3>
                     </div>

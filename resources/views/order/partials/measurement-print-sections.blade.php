@@ -114,18 +114,18 @@
     }
 
     .measurement-section-divider {
-        margin: 6px 10px 4px;
+        margin: 3px 10px 2px;
         border-top: 1px dashed #777;
     }
 
     .measurement-section-title {
-        margin: 2px 10px 4px;
+        margin: 0 10px 2px;
         color: #000;
         font-size: 17px;
         font-weight: 900;
-        line-height: 2;
+        line-height: 1.5;
         text-align: center;
         text-decoration: underline;
-        text-underline-offset: 6px;
+        text-underline-offset: 4px;
     }
 </style>
