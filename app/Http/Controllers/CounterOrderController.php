@@ -1125,6 +1125,27 @@ class CounterOrderController extends Controller
             $validated['payment_reference'] ?? null,
         );
 
+        // The counter screen closes the order with its confirmation, so there is no separate "close" step.
+        if ($request->boolean('close_after')) {
+            $items = $counterOrder->items()->where('status', '!=', CounterOrderItem::STATUS_CANCELLED)->get();
+            if ($items->isNotEmpty()
+                && $items->every(fn (CounterOrderItem $item) => $item->status === CounterOrderItem::STATUS_CONFIRMED)
+                && $items->every(fn (CounterOrderItem $item) => $this->canManageItem($request, $item))) {
+                $counterOrder->update(['status' => CounterOrder::STATUS_CLOSED, 'closed_at' => now()]);
+            }
+        }
+
+        // A confirmation that was only one stitching job prints that tailoring order's own slip (with
+        // measurements), not the counter receipt.
+        $confirmed = CounterOrderItem::whereKey($draftItems->modelKeys())->get();
+        if ($confirmed->count() === 1
+            && $confirmed->first()->type === CounterOrderItem::TYPE_TAILORING
+            && $confirmed->first()->source_record_type === 'tailoring_order'
+            && $confirmed->first()->source_record_id) {
+            return redirect()->route('admin.order-prints', ['id' => $confirmed->first()->source_record_id])
+                ->with('success', 'نئے آئٹمز تصدیق ہو گئے ہیں۔ کپڑا اسٹاک سے کم اور سلائی ورکشاپ میں شامل ہو گئی ہے۔');
+        }
+
         // Straight to the receipt with the print dialog open; closing it returns to the order.
         return redirect()->route('admin.counter-orders.print', [$counterOrder, 'autoprint' => 1])
             ->with('success', 'نئے آئٹمز تصدیق ہو گئے ہیں۔ کپڑا اسٹاک سے کم اور سلائی ورکشاپ میں شامل ہو گئی ہے۔');

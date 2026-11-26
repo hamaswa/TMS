@@ -1,6 +1,6 @@
-{{-- "Your order" panel beside the item cards: picked items with count, price and the total bill. Driven by item-boxes.blade.php. --}}
+{{-- Picked items (count, price, metres), shown at the top of the order totals panel in edit.blade.php. Driven by item-boxes.blade.php. --}}
 <style>
-    .co-cart{display:flex;flex-direction:column;border-radius:18px;box-shadow:0 12px 30px rgba(15,37,71,.08)}
+    .co-cart{display:flex;flex-direction:column;border-bottom:1px solid #eef2f7}
     .co-cart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 18px 14px;border-bottom:1px solid #eef2f7}
     .co-cart-head h2{display:flex;align-items:center;gap:14px;margin:0;color:#0f172a;font-size:1.2rem;font-weight:900}
     .co-cart-icon{position:relative;display:grid;place-items:center;width:46px;height:46px;border-radius:13px;background:#eef4ff;color:#1769e0;font-size:1.25rem}
@@ -30,7 +30,7 @@
     .co-cart-submit{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:50px;border:0;border-radius:13px;background:#1769e0;color:#fff;font-size:1rem;font-weight:900;box-shadow:0 10px 22px rgba(23,105,224,.25)}
     .co-cart-submit:disabled{background:#9db8e6;box-shadow:none}
 </style>
-<section class="co-panel co-cart" id="co-cart" data-order="{{ $counterOrder->id }}"
+<div class="co-cart" id="co-cart" data-order="{{ $counterOrder->id }}"
     data-action="{{ route('admin.counter-orders.cloth-items.bulk', $counterOrder) }}" data-token="{{ csrf_token() }}">
     <div class="co-cart-head">
         <h2><span class="co-cart-icon"><i class="fas fa-shopping-cart"></i><span class="co-cart-count" id="co-cart-count" hidden>0</span></span>آپ کا آرڈر</h2>
@@ -38,9 +38,8 @@
     </div>
     <div class="co-cart-lines" id="co-cart-lines"></div>
     <div class="co-cart-errors" id="co-cart-errors" role="alert" hidden></div>
-    <div class="co-cart-foot">
-        <div class="co-cart-bill"><span>کل بل</span><strong id="co-cart-total" dir="ltr">Rs. 0</strong></div>
+    <div class="co-cart-foot" id="co-cart-foot">
         <button type="button" class="co-cart-submit" id="co-cart-submit" disabled><i class="fas fa-cart-plus"></i>
             آرڈر میں شامل کریں</button>
     </div>
-</section>
+</div>

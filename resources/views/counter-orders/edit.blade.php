@@ -1427,7 +1427,7 @@
                                         <button id="co-add-cloth-button" class="co-btn is-primary co-add-row-button"
                                             type="button" aria-expanded="{{ old('cloth_id') ? 'true' : 'false' }}"
                                             aria-controls="co-new-cloth-row"><i class="fas fa-plus"></i> آئٹم شامل کریں</button>
-                                        @endif @if ($canAddTailoring)
+                                        @endif @if ($canAddTailoring && !$itemBoxes)
                                             <button class="co-btn is-tailor" id="co-add-tailoring-button" data-toggle="modal"
                                                 data-target="#tailoringItemModal" {{ $canOfferTailoring ? '' : 'hidden' }}><i class="fas fa-plus"></i> سلائی شامل کریں</button>
                                         @endif
@@ -1501,6 +1501,10 @@
                                         aria-label="منسوخ"><i class="fas fa-times"></i></button></div>
                             </form>
                         @endif
+                        @if ($itemBoxes)
+                            {{-- Picked cards, shown here as soon as they are picked; saved when the order is confirmed. --}}
+                            <div id="co-cart-rows" style="display:contents"></div>
+                        @endif
                         <div id="co-items-rows" style="display:contents">
                             @forelse($counterOrder->items as $item)
                                 @include('counter-orders.partials.item-row', ['item' => $item])
@@ -1515,12 +1519,16 @@
                 </section>
                 </div>
                 <aside class="co-side">
-                    @if ($itemBoxes)
-                        @include('counter-orders.partials.item-cart')
-                    @endif
+                    {{-- One panel: the picked cards, then the order's totals and payment, so there is one bill to read. --}}
                     <section class="co-panel">
-                        <div class="co-total">
-                            <h2 class="h6 font-weight-bold mb-3">موجودہ خلاصہ</h2>
+                        @if ($itemBoxes)
+                            @include('counter-orders.partials.item-cart')
+                        @endif
+                        <div class="co-total" id="co-total" data-draft-count="{{ $draftItems->count() }}"
+                            data-draft-total="{{ $draftTotal }}" data-previous-due="{{ $previousDue }}">
+                            @unless ($itemBoxes)
+                                <h2 class="h6 font-weight-bold mb-3">موجودہ خلاصہ</h2>
+                            @endunless
                             <div class="co-total-row"><span>تصدیق شدہ آئٹمز</span><strong
                                     id="co-confirmed-count">{{ $confirmedItems->count() }}</strong></div>
                             <div class="co-total-row"><span>نئے آئٹمز</span><strong
@@ -1536,7 +1544,7 @@
                         @if (!$counterOrder->isClosed() && $canManageAllDrafts)
                             <form id="co-confirm-form" class="co-confirm" method="POST"
                                 action="{{ route('admin.counter-orders.confirm', $counterOrder) }}"
-                                @if ($draftItems->isEmpty()) hidden @endif>@csrf<p class="co-help">
+                                @if ($draftItems->isEmpty()) hidden @endif>@csrf<input type="hidden" name="close_after" value="1"><p class="co-help">
                                     {{ $confirmationHint }}</p>
                                 <div class="form-group"><label class="d-flex justify-content-between align-items-center">
                                         <span>ابھی وصول رقم</span>
@@ -1559,12 +1567,12 @@
                                 <div class="form-group"><label>حوالہ نمبر <small class="text-muted">(اگر لاگو
                                             ہو)</small></label><input class="form-control" name="payment_reference"
                                         value="{{ old('payment_reference') }}"></div><button
-                                    class="co-btn is-primary w-100" type="submit">نئے آئٹمز کی تصدیق کریں</button>
+                                    class="co-btn is-primary w-100" type="submit">تصدیق کر کے آرڈر بند کریں</button>
                             </form>
                         @endif
                     </section>
                     @if (!$counterOrder->isClosed() && $draftItems->isEmpty() && $confirmedItems->isNotEmpty() && $canManageAllItems)
-                        <section class="co-panel co-close">
+                        <section class="co-panel co-close" id="co-close-panel">
                             <p class="co-help">{{ $moreItemsHint }} صرف معاملہ مکمل ہونے پر آرڈر بند کریں۔</p>
                             <form method="POST" action="{{ route('admin.counter-orders.close', $counterOrder) }}">
                                 @csrf<button class="co-btn w-100" type="submit">آرڈر بند کریں</button></form>
@@ -2400,22 +2408,103 @@
                     document.getElementById('co-summary-paid').textContent = money(summary.paid);
                     document.getElementById('co-summary-balance').textContent = money(summary.balance);
                     document.getElementById('co-confirmed-count').textContent = summary.confirmed_count;
-                    document.getElementById('co-draft-count').textContent = summary.draft_count;
-                    document.getElementById('co-draft-total').textContent = money(summary.draft_total);
-                    var previousDue = Number(summary.previous_due || 0),
-                        payable = Number(summary.draft_total) + previousDue;
+                    savedDrafts = {
+                        count: Number(summary.draft_count || 0),
+                        total: Number(summary.draft_total || 0),
+                        previousDue: Number(summary.previous_due || 0)
+                    };
+                    renderDraftTotals();
+                }
+
+                // Saved new items come from the server; cards picked but not yet saved (window.coCart) are added on top.
+                var savedDrafts = (function(box) {
+                    return {
+                        count: Number(box.dataset.draftCount || 0),
+                        total: Number(box.dataset.draftTotal || 0),
+                        previousDue: Number(box.dataset.previousDue || 0)
+                    };
+                })(document.getElementById('co-total'));
+
+                function renderDraftTotals() {
+                    var cart = window.coCart || {count: 0, total: 0},
+                        count = savedDrafts.count + cart.count,
+                        draftTotal = savedDrafts.total + cart.total,
+                        previousDue = savedDrafts.previousDue,
+                        payable = draftTotal + previousDue;
+                    document.getElementById('co-draft-count').textContent = count;
+                    document.getElementById('co-draft-total').textContent = money(draftTotal);
                     document.getElementById('co-previous-due').textContent = money(previousDue);
                     document.getElementById('co-previous-due-row').hidden = previousDue <= 0;
                     document.getElementById('co-payable-total').textContent = money(payable);
                     var confirmForm = document.getElementById('co-confirm-form');
                     if (confirmForm) {
-                        confirmForm.hidden = summary.draft_count < 1;
+                        confirmForm.hidden = count < 1;
+                        // Picked cards close the order with their confirmation, so the separate close box steps aside.
+                        var closePanel = document.getElementById('co-close-panel');
+                        if (closePanel) closePanel.hidden = count > 0;
                         var payment = confirmForm.querySelector('[name="payment"]');
-                        if (payment) payment.max = payable.toFixed(2);
+                        if (payment) {
+                            payment.max = payable.toFixed(2);
+                            payment.dispatchEvent(new Event('input'));
+                        }
                         var hint = document.getElementById('co-payment-hint');
                         if (hint) hint.hidden = previousDue <= 0;
                     }
                 }
+
+                // Picked cards as rows of the items list, marked as not yet confirmed, with a remove button.
+                function renderCartRows() {
+                    var holder = document.getElementById('co-cart-rows'),
+                        lines = window.coCart ? window.coCart.lines : [];
+                    if (!holder) return;
+                    var esc = function(value) {
+                        var span = document.createElement('span');
+                        span.textContent = value == null ? '' : value;
+                        return span.innerHTML;
+                    };
+                    holder.innerHTML = lines.map(function(line, index) {
+                        return '<article><div class="co-grid-row">' +
+                            '<div class="co-cell-main" data-label="آئٹم"><strong>' + esc(line.name) + '</strong>' +
+                            '<span class="co-row-status">تصدیق باقی</span></div>' +
+                            '<div data-label="رنگ / تفصیل">' + esc(line.color || 'رنگ لاگو نہیں') + '</div>' +
+                            '<div data-label="میٹر / تعداد">' + esc(line.qty) + '</div>' +
+                            '<div class="co-cell-money" data-label="کل قیمت">' + esc(money(line.total)) + '</div>' +
+                            '<div class="co-cell-note" data-label="نوٹ">—</div>' +
+                            '<div class="co-grid-actions"><button class="co-remove" type="button" data-cart-remove="' + index +
+                            '" title="ہٹائیں" aria-label="ہٹائیں"><i class="fas fa-trash-alt"></i></button></div>' +
+                            '</div></article>';
+                    }).join('');
+                    var empty = document.querySelector('#co-items-rows > .co-empty');
+                    if (empty) empty.hidden = lines.length > 0;
+                }
+                document.addEventListener('co-cart-change', function() {
+                    renderDraftTotals();
+                    renderCartRows();
+                });
+                document.addEventListener('click', function(event) {
+                    var remove = event.target.closest('[data-cart-remove]');
+                    if (remove && window.coCart) window.coCart.remove(Number(remove.dataset.cartRemove));
+                });
+                renderDraftTotals();
+                renderCartRows();
+
+                // Confirming saves the picked cards first, then confirms them with the rest of the new items.
+                (function() {
+                    var form = document.getElementById('co-confirm-form');
+                    if (!form) return;
+                    form.addEventListener('submit', function(event) {
+                        if (!window.coCart || !window.coCart.count) return;
+                        event.preventDefault();
+                        var button = form.querySelector('[type="submit"]');
+                        if (button) button.disabled = true;
+                        window.coCart.flush().then(function() {
+                            form.submit();
+                        }, function(messages) {
+                            showLiveMessage(messages[0], true);
+                            if (button) button.disabled = false;
+                        });
+                    });
+                })();
 
                 // Payment: "pay full" fills the whole payable amount; over-limit shows an Urdu message.
                 (function() {

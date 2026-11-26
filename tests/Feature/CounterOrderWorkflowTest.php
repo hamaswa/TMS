@@ -227,6 +227,29 @@ class CounterOrderWorkflowTest extends TestCase
         $this->assertSame('300.00', $counterOrder->fresh()->balance_amount);
     }
 
+    public function test_confirming_from_the_counter_screen_closes_the_order(): void
+    {
+        [$owner, $customer, $cloth, $stock] = $this->fixture();
+        $counterOrder = CounterOrder::create([
+            'reference' => 'ORD-TEST-AUTOCLOSE', 'user_id' => $owner->id, 'customer_id' => $customer->id,
+            'created_by_user_id' => $owner->id, 'status' => CounterOrder::STATUS_DRAFT,
+        ]);
+        $counterOrder->items()->create([
+            'type' => CounterOrderItem::TYPE_CLOTH, 'cloth_id' => $cloth->id, 'quantity' => 1,
+            'length' => 1, 'unit_price' => 300, 'line_total' => 300,
+            'details' => ['color' => $stock->color],
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $counterOrder), [
+            'payment' => 100, 'payment_method' => 'cash', 'close_after' => 1,
+        ])->assertRedirect(route('admin.counter-orders.print', [$counterOrder, 'autoprint' => 1]));
+
+        $counterOrder->refresh();
+        $this->assertSame(CounterOrder::STATUS_CLOSED, $counterOrder->status);
+        $this->assertNotNull($counterOrder->closed_at);
+        $this->assertSame('200.00', $counterOrder->balance_amount);
+    }
+
     public function test_confirmed_order_must_have_no_draft_items_before_it_can_close(): void
     {
         [$owner, $customer, $cloth, $stock] = $this->fixture();
@@ -419,6 +442,15 @@ class CounterOrderWorkflowTest extends TestCase
         ])->assertRedirect()->assertSessionHasNoErrors();
         $snapshot = collect($order->items()->where('type', CounterOrderItem::TYPE_TAILORING)->firstOrFail()->details['measurement_snapshot']);
         $this->assertSame('20', $snapshot->firstWhere('source_key', 'system.teraa')['value']);
+
+        // A stitching-only confirmation prints the tailoring order's own slip, not the counter receipt.
+        $response = $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $order), [
+            'payment' => 0, 'payment_method' => 'cash', 'close_after' => 1,
+        ])->assertSessionHasNoErrors();
+        $tailoringItem = $order->items()->where('type', CounterOrderItem::TYPE_TAILORING)->firstOrFail();
+        $response->assertRedirect(route('admin.order-prints', ['id' => $tailoringItem->source_record_id]));
+        $this->actingAs($owner)->get(route('admin.order-prints', ['id' => $tailoringItem->source_record_id]))
+            ->assertOk()->assertViewIs('order.prints');
     }
 
     public function test_laptop_order_desk_enforces_shop_and_tailoring_boundaries_and_retires_legacy_flows(): void

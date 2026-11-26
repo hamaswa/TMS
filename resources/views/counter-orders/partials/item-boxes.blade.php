@@ -78,7 +78,8 @@
     .co-box-stock{align-self:flex-start;margin:4px 3px 0;padding:3px 10px;border-radius:999px;background:#e7f8ee;color:#15803d;font-size:.72rem;font-weight:800}
     .co-box-colors{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 12px}.co-box-color{padding:6px 11px;border:1px solid #bcd2f7;border-radius:9px;background:#f5f9ff;color:#1e3a5f;font-size:.8rem;font-weight:800}.co-box-color small{color:#64748b}.co-box-color:disabled{opacity:.45}
     .co-boxes-empty{padding:34px;color:#64748b;text-align:center}.co-boxes-empty i{display:block;margin-bottom:8px;font-size:30px;color:#c4d0de}
-    @media(max-width:700px){.co-boxes-hero{flex-wrap:wrap}.co-boxes-search{width:100%}.co-boxes-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}}
+    .co-boxes-tailor{position:relative;z-index:1;flex:0 0 auto;min-height:46px;padding:0 18px;border-radius:999px;font-weight:800}.co-boxes-tailor[hidden]{display:none}
+    @media(max-width:700px){.co-boxes-hero{flex-wrap:wrap}.co-boxes-search{width:100%}.co-boxes-tailor{width:100%}.co-boxes-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}}
 </style>
 
 <section class="co-panel co-boxes" id="co-boxes" data-items='@json($boxItems)'>
@@ -90,6 +91,12 @@
         </div>
         <div class="co-boxes-search"><i class="fas fa-search"></i><input type="search" id="co-boxes-search"
                 placeholder="نام، برانڈ یا قسم سے تلاش کریں" aria-label="آئٹم تلاش کریں" autocomplete="off"></div>
+        @if ($canAddTailoring)
+            {{-- Tailoring sits up here with the item picker, so the whole order starts from one place.
+                 Hidden for walk-in orders until a customer is chosen (edit.blade.php toggles it). --}}
+            <button type="button" class="co-btn is-tailor co-boxes-tailor" id="co-add-tailoring-button" data-toggle="modal"
+                data-target="#tailoringItemModal" {{ $canOfferTailoring ? '' : 'hidden' }}><i class="fas fa-plus"></i> سلائی شامل کریں</button>
+        @endif
     </div>
     <div class="co-boxes-tabs" id="co-boxes-tabs" role="tablist" aria-label="کیٹیگری"></div>
     <div class="co-boxes-grid" id="co-boxes-grid"></div>
@@ -232,12 +239,45 @@
                         '<div class="co-cart-line-total">' + rs(lineTotal(line)) + '</div></div></div>';
                 }).join('') : '<div class="co-cart-empty"><i class="fas fa-shopping-cart"></i>ابھی کوئی آئٹم منتخب نہیں — کسی باکس کو دبائیں</div>';
                 var total = cart.reduce(function(sum, line) { return sum + lineTotal(line); }, 0);
-                totalBox.textContent = rs(total);
+                if (totalBox) totalBox.textContent = rs(total);
                 countBox.textContent = cart.length;
                 countBox.hidden = cart.length === 0;
                 submit.disabled = cart.length === 0;
                 clear.hidden = cart.length === 0;
                 save();
+                publish(total);
+            }
+
+            // The order page shows the picked lines in its summary and items list as soon as they change,
+            // and saves them itself when the order is confirmed (see edit.blade.php).
+            var api = window.coCart = {
+                count: 0,
+                total: 0,
+                lines: [],
+                remove: function(index) {
+                    cart.splice(index, 1);
+                    renderCart();
+                    renderGrid();
+                },
+                flush: function() { return send(); }
+            };
+            function publish(total) {
+                api.count = cart.length;
+                api.total = Math.round(total * 100) / 100;
+                api.lines = cart.map(function(line) {
+                    var item = byId[line.id],
+                        suits = !item.whole && item.length ? line.length / item.length : 0,
+                        wholeSuits = item.basis === 'per_suit' && suits >= 1 && Math.abs(suits - Math.round(suits)) < 0.001;
+                    return {
+                        name: [item.name, item.meta].filter(Boolean).join(' · '),
+                        color: line.color || '',
+                        qty: item.whole
+                            ? Number(line.qty).toFixed(0) + ' ' + item.unitLabel
+                            : (wholeSuits ? Math.round(suits) + ' سوٹ × ' : '') + Number(wholeSuits ? item.length : line.length).toFixed(2) + ' میٹر',
+                        total: lineTotal(line)
+                    };
+                });
+                document.dispatchEvent(new CustomEvent('co-cart-change'));
             }
 
             function add(item, color) {
@@ -329,10 +369,12 @@
                 renderCart();
                 renderGrid();
             });
-            submit.addEventListener('click', function() {
-                if (!cart.length) return;
+            // Saves the picked lines as new order items. Resolves with the server's reply; on failure shows
+            // the messages in the cart and rejects with them.
+            function send() {
+                if (!cart.length) return Promise.resolve(null);
                 submit.disabled = true;
-                fetch(cartPanel.dataset.action, {
+                return fetch(cartPanel.dataset.action, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -356,23 +398,31 @@
                             };
                         })
                     })
+                }).catch(function() {
+                    throw ['کنکشن کا مسئلہ، دوبارہ کوشش کریں۔'];
                 }).then(function(response) {
                     return response.json().then(function(body) { return {ok: response.ok, body: body}; });
                 }).then(function(result) {
                     if (!result.ok) {
-                        var messages = result.body.errors ? Object.values(result.body.errors).flat() : [result.body.message || 'آئٹم شامل نہیں ہو سکے۔'];
-                        showErrors(messages);
-                        submit.disabled = false;
-                        return;
+                        throw result.body.errors ? Object.values(result.body.errors).flat() : [result.body.message || 'آئٹم شامل نہیں ہو سکے۔'];
                     }
                     cart = [];
                     save();
-                    window.location.href = result.body.redirect;
-                }).catch(function() {
-                    showErrors(['کنکشن کا مسئلہ، دوبارہ کوشش کریں۔']);
+                    return result.body;
+                }).catch(function(messages) {
+                    messages = Array.isArray(messages) ? messages : ['آئٹم شامل نہیں ہو سکے۔'];
+                    showErrors(messages);
                     submit.disabled = false;
+                    throw messages;
                 });
+            }
+            submit.addEventListener('click', function() {
+                send().then(function(body) {
+                    if (body) window.location.href = body.redirect;
+                }, function() {});
             });
+            // Where this page can confirm the order, its confirm button saves the cart too, so no separate step.
+            if (document.getElementById('co-confirm-form')) document.getElementById('co-cart-foot').hidden = true;
 
             renderTabs();
             renderGrid();
