@@ -422,12 +422,10 @@
                     href="{{ route('admin.subscription.index') }}" data-side-plan
                     title="{{ $sidePlan ? $sidePlan->plan_name.' · '.$sidePlan->daysRemaining().' دن باقی' : 'پلان منتخب کریں' }}"><span class="tms-side-icon"><i
                             class="fas fa-crown" style="{{ $sidePlan ? 'color:#fbbf24' : '' }}"></i></span><span class="tms-side-label">میرا پلان@if ($sidePlan)<small class="d-block" style="font-size:.72rem;opacity:.8" dir="ltr">{{ $sidePlan->plan_name }}</small>@else<small class="d-block text-warning" style="font-size:.72rem">کوئی پلان نہیں</small>@endif</span></a>
-                <a class="tms-side-link {{ request()->routeIs('admin.setting.*') ? 'is-active' : '' }}"
+                {{-- One settings page: shop details, print and the order screen layout. --}}
+                <a class="tms-side-link {{ request()->routeIs('admin.setting.*', 'admin.add-setting', 'admin.edit-setting', 'admin.order-screen.*') ? 'is-active' : '' }}"
                     href="{{ route('admin.setting.index') }}"><span class="tms-side-icon"><i
                             class="fas fa-cog"></i></span><span class="tms-side-label">سیٹنگز</span></a>
-                <a class="tms-side-link {{ request()->routeIs('admin.order-screen.*') ? 'is-active' : '' }}"
-                    href="{{ route('admin.order-screen.edit') }}"><span class="tms-side-icon"><i
-                            class="fas fa-th-large"></i></span><span class="tms-side-label">آرڈر اسکرین</span></a>
             @endif
         </nav>
     </aside>

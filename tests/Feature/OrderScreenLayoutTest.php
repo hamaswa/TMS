@@ -27,9 +27,14 @@ class OrderScreenLayoutTest extends TestCase
         $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))->assertOk()
             ->assertSee('id="co-add-cloth-button"', false)->assertDontSee('id="co-boxes"', false);
 
-        $this->actingAs($owner)->get(route('admin.order-screen.edit'))->assertOk()->assertSeeText('آئٹم باکس');
+        // The layout is chosen on the one settings page; the old order screen link lands on its section.
+        $settingsSection = route('admin.setting.index').'#order-screen';
+        $this->actingAs($owner)->get(route('admin.order-screen.edit'))->assertRedirect($settingsSection);
+        $this->actingAs($owner)->get(route('admin.setting.index'))->assertOk()
+            ->assertSee('id="order-screen"', false)->assertSeeText('آئٹم باکس')
+            ->assertSee(route('admin.order-screen.update'), false);
         $this->actingAs($owner)->put(route('admin.order-screen.update'), ['counter_order_layout' => 'grid'])
-            ->assertSessionHasNoErrors();
+            ->assertSessionHasNoErrors()->assertRedirect($settingsSection);
         $this->assertSame(Business::ORDER_LAYOUT_GRID, $business->fresh()->counter_order_layout);
 
         $this->actingAs($owner)->get(route('admin.counter-orders.edit', $order))->assertOk()

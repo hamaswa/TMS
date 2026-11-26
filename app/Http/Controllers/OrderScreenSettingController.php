@@ -7,14 +7,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 
 /** Lets the shop choose how the order page offers stock: a dropdown row, or a box per item with a cart. */
 class OrderScreenSettingController extends Controller
 {
-    public function edit(): View
+    /** The layout choice now lives on the settings page; old links land on its section there. */
+    public function edit(): RedirectResponse
     {
-        return view('order-screen.edit', ['business' => $this->business()]);
+        return redirect()->to(route('admin.setting.index').'#order-screen');
     }
 
     public function update(Request $request): RedirectResponse
@@ -25,7 +25,8 @@ class OrderScreenSettingController extends Controller
 
         $this->business()->update($validated);
 
-        return back()->with('success', 'آرڈر اسکرین کی ترتیب محفوظ کر دی گئی ہے۔');
+        return redirect()->to(route('admin.setting.index').'#order-screen')
+            ->with('success', 'آرڈر اسکرین کی ترتیب محفوظ کر دی گئی ہے۔');
     }
 
     private function business(): Business

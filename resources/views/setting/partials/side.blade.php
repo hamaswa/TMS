@@ -9,6 +9,7 @@
             <li><i class="fas fa-check-circle"></i> رسید پر نوٹ اور پتہ</li>
             <li><i class="fas fa-check-circle"></i> ڈیفالٹ پرنٹ سائز</li>
             <li><i class="fas fa-check-circle"></i> QR حوالہ رسید پر</li>
+            <li><i class="fas fa-check-circle"></i> آرڈر اسکرین: فہرست یا آئٹم باکس</li>
         </ul>
         <div class="st-side-art" aria-hidden="true"><i class="fas fa-cut"></i></div>
     </div>

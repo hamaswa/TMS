@@ -12,7 +12,9 @@ class SettingController extends Controller
     public function list()
     {
         $settings = Setting::where('user_id',Auth::user()->businessOwnerId())->get();
-        $business = Auth::user()->business;
+        // The order screen layout is set on this page too, so the owner's business is needed even without a link.
+        $user = Auth::user()->loadMissing(['business', 'ownedBusiness']);
+        $business = $user->business ?? $user->ownedBusiness;
         return view('setting.list', compact('settings', 'business'));
     }
     public function add()

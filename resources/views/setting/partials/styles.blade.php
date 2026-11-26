@@ -1,7 +1,7 @@
 {{-- Shared look for the shop settings pages (list, add, edit). --}}
 <style>
     .st-page{min-height:calc(100vh - 65px);padding:26px 0 48px;background:#f4f7fc;direction:rtl}
-    .st-shell{width:min(100% - 32px,1320px);margin:auto}
+    .st-shell{width:calc(100% - 40px);margin:auto}
     .st-hero{position:relative;display:flex;align-items:center;gap:22px;min-height:124px;margin-bottom:22px;padding:22px 26px;overflow:hidden;border-radius:20px;background:linear-gradient(100deg,#eef4ff 0%,#dfe9ff 48%,#b9d0ff 100%)}
     .st-hero:before,.st-hero:after{content:"";position:absolute;pointer-events:none;border-radius:50%}
     .st-hero:before{inset-inline-end:-80px;top:-90px;width:520px;height:230px;background:radial-gradient(ellipse at center,rgba(255,255,255,.8),rgba(255,255,255,0) 70%);transform:rotate(-12deg)}
