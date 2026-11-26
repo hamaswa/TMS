@@ -1494,7 +1494,8 @@
                                 <div data-label="نوٹ"><input id="co-cloth-note" class="form-control" name="note"
                                         value="{{ old('note') }}" maxlength="1000" aria-label="نوٹ"
                                         placeholder="اختیاری نوٹ"></div>
-                                <div class="co-grid-actions"><button class="co-grid-save" type="submit"
+                                {{-- No tick here: the item is added as soon as it is picked (and its colour, if it has several). --}}
+                                <div class="co-grid-actions"><button class="co-grid-save" type="submit" hidden
                                         title="شامل کریں" aria-label="شامل کریں"><i
                                             class="fas fa-check"></i></button><button class="co-grid-cancel"
                                         type="button" data-inline-cancel="co-new-cloth-row" title="منسوخ"
@@ -1985,6 +1986,11 @@
                 if (addButton) {
                     addButton.addEventListener('click', function() {
                         var row = document.getElementById('co-new-cloth-row');
+                        // An item already picked in the row is saved first; the row then clears for the next one.
+                        if (pendingRow()) {
+                            if (row.reportValidity()) saveRow(row);
+                            return;
+                        }
                         closeInlineEditors(row.id);
                         row.hidden = false;
                         this.setAttribute('aria-expanded', 'true');
@@ -2011,6 +2017,7 @@
                     var cancelButton = event.target.closest('[data-inline-cancel]');
                     if (cancelButton) {
                         closeInlineEditors(null);
+                        renderDraftTotals();
                     }
                 });
                 if (cloth) {
@@ -2039,13 +2046,21 @@
                             colors = colors.filter(function(c) {
                                 return !(c in colorStock) || Number(colorStock[c]) > 0 || oldColor === c;
                             });
+                            var chooseColor = colors.length > 1 && !oldColor;
+                            if (chooseColor) {
+                                var prompt = document.createElement('option');
+                                prompt.value = '';
+                                prompt.textContent = 'رنگ منتخب کریں';
+                                prompt.selected = true;
+                                color.appendChild(prompt);
+                            }
                             colors.forEach(function(c, index) {
                                 var x = document.createElement('option'),
                                     tracked = c in colorStock;
                                 x.value = c;
                                 x.textContent = tracked ? c + ' — ' + (suitStock ? Number(colorStock[c]).toFixed(0) + wholeLabel :
                                     Number(colorStock[c]).toFixed(2) + ' میٹر') : c;
-                                x.selected = oldColor ? oldColor === c : index === 0;
+                                x.selected = oldColor ? oldColor === c : (!chooseColor && index === 0);
                                 color.appendChild(x)
                             });
                         } else {
@@ -2054,7 +2069,7 @@
                             placeholder.textContent = 'رنگ لاگو نہیں';
                             color.appendChild(placeholder);
                         }
-                        color.required = false;
+                        color.required = colors.length > 1;
                         color.disabled = !cloth.value;
                         suitOnly.hidden = o.dataset.basis !== 'per_suit';
                         length.hidden = suitStock;
@@ -2067,8 +2082,14 @@
                                 unitPrice * defaultLength).toFixed(2) : '';
                         }
                     };
+                    // Picking or changing the item only previews it in the summary; metres and price can still
+                    // be changed. It is saved by "add item" (for the next one), Enter, or confirming the order.
                     cloth.addEventListener('change', function() {
                         updateClothFields(false);
+                        renderDraftTotals();
+                    });
+                    cloth.closest('.co-cloth-form').addEventListener('input', function() {
+                        renderDraftTotals();
                     });
                     if (cloth.value) updateClothFields(true);
                     else color.disabled = true;
@@ -2427,8 +2448,9 @@
 
                 function renderDraftTotals() {
                     var cart = window.coCart || {count: 0, total: 0},
-                        count = savedDrafts.count + cart.count,
-                        draftTotal = savedDrafts.total + cart.total,
+                        picked = pendingRow(),
+                        count = savedDrafts.count + cart.count + (picked ? 1 : 0),
+                        draftTotal = savedDrafts.total + cart.total + (picked ? picked.total : 0),
                         previousDue = savedDrafts.previousDue,
                         payable = draftTotal + previousDue;
                     document.getElementById('co-draft-count').textContent = count;
@@ -2493,14 +2515,20 @@
                     var form = document.getElementById('co-confirm-form');
                     if (!form) return;
                     form.addEventListener('submit', function(event) {
-                        if (!window.coCart || !window.coCart.count) return;
+                        var picked = pendingRow(),
+                            cart = window.coCart && window.coCart.count ? window.coCart : null;
+                        if (!picked && !cart) return;
                         event.preventDefault();
+                        if (picked && !picked.form.reportValidity()) return;
                         var button = form.querySelector('[type="submit"]');
                         if (button) button.disabled = true;
-                        window.coCart.flush().then(function() {
+                        (picked ? saveRow(picked.form) : Promise.resolve(true)).then(function(saved) {
+                            if (!saved) throw ['آئٹم شامل نہیں ہو سکے۔'];
+                            return cart ? cart.flush() : null;
+                        }).then(function() {
                             form.submit();
                         }, function(messages) {
-                            showLiveMessage(messages[0], true);
+                            if (Array.isArray(messages)) showLiveMessage(messages[0], true);
                             if (button) button.disabled = false;
                         });
                     });
@@ -2530,10 +2558,23 @@
                     alert.className = 'alert co-alert ' + (isError ? 'alert-danger' : 'alert-success');
                     alert.textContent = message;
                 }
-                document.addEventListener('submit', async function(event) {
+                document.addEventListener('submit', function(event) {
                     var form = event.target.closest('.co-ajax-row-form');
                     if (!form) return;
                     event.preventDefault();
+                    saveRow(form);
+                });
+
+                // Saves an inline item row over AJAX. Resolves true when saved; a save already running is reused.
+                function saveRow(form) {
+                    if (form.savePromise) return form.savePromise;
+                    form.savePromise = saveRowNow(form).finally(function() {
+                        form.savePromise = null;
+                    });
+                    return form.savePromise;
+                }
+
+                async function saveRowNow(form) {
                     var submit = form.querySelector('[type="submit"]');
                     if (submit) submit.disabled = true;
                     try {
@@ -2551,7 +2592,7 @@
                                 first = Object.keys(errors).length ? errors[Object.keys(errors)[0]][0] : (
                                     data.message || 'تبدیلی محفوظ نہیں ہوئی۔');
                             showLiveMessage(first, true);
-                            return;
+                            return false;
                         }
                         var holder = document.createElement('div');
                         holder.innerHTML = data.row_html.trim();
@@ -2571,14 +2612,27 @@
                             length.value = '';
                             price.value = '';
                         }
-                        closeInlineEditors(null);
+                        // After adding, the new-item row stays open for the next pick.
+                        closeInlineEditors(form.id === 'co-new-cloth-row' ? form.id : null);
+                        renderDraftTotals();
                         showLiveMessage(data.message, false);
+                        return true;
                     } catch (error) {
                         showLiveMessage('تبدیلی محفوظ نہیں ہوئی۔ دوبارہ کوشش کریں۔', true);
+                        return false;
                     } finally {
                         if (submit) submit.disabled = false;
                     }
-                });
+                }
+
+                // The new-item row's item, while it is open and picked but not yet saved.
+                function pendingRow() {
+                    var row = document.getElementById('co-new-cloth-row'),
+                        select = row && row.querySelector('select[name="cloth_id"]');
+                    if (!row || row.hidden || !select || !select.value) return null;
+                    var total = row.querySelector('[name="total_price"]');
+                    return {form: row, total: Math.max(0, Number(total && total.value || 0))};
+                }
                 document.querySelectorAll('.co-tailoring-form').forEach(function(form) {
                     var profile = form.querySelector('.co-profile') || document.getElementById('co-profile'),
                         template = form.querySelector('.co-template') || document.getElementById('co-template'),
