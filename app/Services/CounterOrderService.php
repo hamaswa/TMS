@@ -282,7 +282,8 @@ class CounterOrderService
             'tailorId' => $tailor?->id,
             'rateId' => $rate?->id,
             'userId' => $ownerId,
-            'remarks' => $item->note,
+            // The order's own note wins; without one, the customer's standing note (family member first) prints.
+            'remarks' => filled($item->note) ? $item->note : ($profile->note ?: $counterOrder->customer?->note),
             'tailor_price' => $rate?->price ?? 0,
             'suitNum' => (string) ($profile->serial_number ?? $profile->id),
             'designPrice' => 0,

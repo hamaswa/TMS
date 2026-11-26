@@ -380,6 +380,34 @@ class CounterOrderWorkflowTest extends TestCase
         $this->assertStringContainsString('value="1280.00"', $updated->json('row_html'));
     }
 
+    public function test_a_lone_stitching_job_is_sent_to_the_workshop_straight_from_the_popup(): void
+    {
+        [$owner, $customer, , , $template] = $this->fixture();
+        $template->update(['system_fields' => ['length']]);
+        $customer->update(['measurement_template_id' => $template->id, 'length' => 40]);
+        $order = CounterOrder::create([
+            'reference' => 'ORD-STITCH-ONLY', 'user_id' => $owner->id,
+            'customer_id' => $customer->id, 'created_by_user_id' => $owner->id,
+            'status' => CounterOrder::STATUS_DRAFT,
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('admin.counter-orders.tailoring-items.store', $order), [
+            'measurement_profile_id' => $customer->id,
+            'measurement_template_id' => $template->id,
+            'quantity' => 1, 'unit_price' => 1500,
+            'due_date' => now()->addWeek()->toDateString(),
+            'finish_now' => 1,
+        ])->assertSessionHasNoErrors();
+
+        $item = $order->items()->firstOrFail();
+        $response->assertRedirect(route('admin.order-prints', ['id' => $item->source_record_id]));
+        $this->assertSame(CounterOrderItem::STATUS_CONFIRMED, $item->status);
+        $order->refresh();
+        $this->assertSame(CounterOrder::STATUS_CLOSED, $order->status);
+        $this->assertSame('0.00', $order->paid_amount);
+        $this->assertSame('1500.00', $order->balance_amount);
+    }
+
     public function test_stitching_templates_are_limited_to_measurements_saved_for_each_family_member(): void
     {
         [$owner, $customer, , , $shalwarTemplate] = $this->fixture();
@@ -443,6 +471,9 @@ class CounterOrderWorkflowTest extends TestCase
         $snapshot = collect($order->items()->where('type', CounterOrderItem::TYPE_TAILORING)->firstOrFail()->details['measurement_snapshot']);
         $this->assertSame('20', $snapshot->firstWhere('source_key', 'system.teraa')['value']);
 
+        // No note on this stitching job, so the customer's standing note goes to the tailor instead.
+        $customer->update(['note' => 'Always loose fitting']);
+
         // A stitching-only confirmation prints the tailoring order's own slip, not the counter receipt.
         $response = $this->actingAs($owner)->post(route('admin.counter-orders.confirm', $order), [
             'payment' => 0, 'payment_method' => 'cash', 'close_after' => 1,
@@ -450,7 +481,8 @@ class CounterOrderWorkflowTest extends TestCase
         $tailoringItem = $order->items()->where('type', CounterOrderItem::TYPE_TAILORING)->firstOrFail();
         $response->assertRedirect(route('admin.order-prints', ['id' => $tailoringItem->source_record_id]));
         $this->actingAs($owner)->get(route('admin.order-prints', ['id' => $tailoringItem->source_record_id]))
-            ->assertOk()->assertViewIs('order.prints');
+            ->assertOk()->assertViewIs('order.prints')->assertSeeText('Always loose fitting');
+        $this->assertSame('Always loose fitting', Order::findOrFail($tailoringItem->source_record_id)->remarks);
     }
 
     public function test_laptop_order_desk_enforces_shop_and_tailoring_boundaries_and_retires_legacy_flows(): void

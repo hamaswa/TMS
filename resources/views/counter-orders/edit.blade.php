@@ -1666,8 +1666,8 @@
                             </div>
                         </div>
                         <div class="modal-footer"><button class="co-btn" type="button"
-                                data-dismiss="modal">منسوخ</button><button class="co-btn is-tailor" type="submit">آرڈر
-                                میں شامل کریں</button></div>
+                                data-dismiss="modal">منسوخ</button><input type="hidden" name="finish_now" id="co-tailoring-finish" value="0"><button class="co-btn is-tailor" type="submit" id="co-tailoring-submit"><span data-label-add>آرڈر میں شامل کریں</span><span
+                                    data-label-finish hidden>ورکشاپ بھیج کر رسید پرنٹ کریں</span></button></div>
                     </form>
                 </div>
             </div>
@@ -2638,6 +2638,40 @@
                         profile.addEventListener('change', filterTemplates);
                         template.addEventListener('change', updateMeasurementLink);
                         filterTemplates();
+                    }
+                    // The customer's standing note starts as this order's note; whatever is typed here replaces it
+                    // for this order only. Switching person swaps it, unless the note was already changed by hand.
+                    var orderNote = form.querySelector('#co-tailoring-note');
+                    if (profile && orderNote) {
+                        var autoNote = '';
+                        var fillNote = function() {
+                            var option = profile.options[profile.selectedIndex],
+                                note = option ? (option.dataset.note || '') : '';
+                            if (orderNote.value.trim() === '' || orderNote.value === autoNote) {
+                                orderNote.value = note;
+                                autoNote = note;
+                            }
+                        };
+                        profile.addEventListener('change', fillNote);
+                        if (window.jQuery) jQuery(form.closest('.modal')).on('show.bs.modal', fillNote);
+                        fillNote();
+                    }
+                    // When this stitching job will be the order's only new item, saving it also confirms it
+                    // (stitching is paid at delivery), closes the order and opens the tailoring slip.
+                    var finish = form.querySelector('#co-tailoring-finish'),
+                        finishButton = form.querySelector('#co-tailoring-submit');
+                    if (finish && finishButton) {
+                        var syncFinish = function() {
+                            var draftCount = document.getElementById('co-draft-count'),
+                                alone = !!document.getElementById('co-confirm-form') && draftCount &&
+                                    Number(draftCount.textContent) === 0;
+                            finish.value = alone ? '1' : '0';
+                            finishButton.querySelector('[data-label-add]').hidden = alone;
+                            finishButton.querySelector('[data-label-finish]').hidden = !alone;
+                        };
+                        if (window.jQuery) jQuery(form.closest('.modal')).on('show.bs.modal', syncFinish);
+                        form.addEventListener('submit', syncFinish);
+                        syncFinish();
                     }
                     if (suitQuantity && tailoringPrice) {
                         suitQuantity.addEventListener('input', updateTailoringTotal);

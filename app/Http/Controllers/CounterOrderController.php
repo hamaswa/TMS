@@ -963,7 +963,7 @@ class CounterOrderController extends Controller
                 ->findOrFail((int) $rateId);
         }
 
-        $numbers->createItem($counterOrder, [
+        $item = $numbers->createItem($counterOrder, [
             'type' => CounterOrderItem::TYPE_TAILORING,
             'status' => CounterOrderItem::STATUS_DRAFT,
             'measurement_profile_id' => $profile->id,
@@ -981,7 +981,31 @@ class CounterOrderController extends Controller
         ]);
         $counterOrder->recalculate();
 
+        // Stitching is paid at delivery, so when this job is the order's only new item the popup finishes
+        // it: confirmed with nothing received, order closed, and straight to the tailoring slip.
+        if ($request->boolean('finish_now')) {
+            $drafts = $counterOrder->items()->where('status', CounterOrderItem::STATUS_DRAFT)->get();
+            if ($drafts->count() === 1 && $drafts->first()->is($item) && $this->canManageItem($request, $item)) {
+                app(CounterOrderService::class)->confirm($counterOrder->fresh(), $request->user(), 0, 'cash', null);
+                $this->closeWhenAllConfirmed($request, $counterOrder);
+
+                return redirect()->route('admin.order-prints', ['id' => $item->fresh()->source_record_id])
+                    ->with('success', 'سلائی آرڈر ورکشاپ میں بھیج دیا گیا ہے۔ ادائیگی حوالگی پر ہوگی۔');
+            }
+        }
+
         return back()->with('success', 'سلائی آرڈر میں شامل ہو گئی ہے۔');
+    }
+
+    /** Closes the order once every item on it is confirmed and the user may manage all of them. */
+    private function closeWhenAllConfirmed(Request $request, CounterOrder $counterOrder): void
+    {
+        $items = $counterOrder->items()->where('status', '!=', CounterOrderItem::STATUS_CANCELLED)->get();
+        if ($items->isNotEmpty()
+            && $items->every(fn (CounterOrderItem $item) => $item->status === CounterOrderItem::STATUS_CONFIRMED)
+            && $items->every(fn (CounterOrderItem $item) => $this->canManageItem($request, $item))) {
+            $counterOrder->update(['status' => CounterOrder::STATUS_CLOSED, 'closed_at' => now()]);
+        }
     }
 
     public function updateItem(
@@ -1127,12 +1151,7 @@ class CounterOrderController extends Controller
 
         // The counter screen closes the order with its confirmation, so there is no separate "close" step.
         if ($request->boolean('close_after')) {
-            $items = $counterOrder->items()->where('status', '!=', CounterOrderItem::STATUS_CANCELLED)->get();
-            if ($items->isNotEmpty()
-                && $items->every(fn (CounterOrderItem $item) => $item->status === CounterOrderItem::STATUS_CONFIRMED)
-                && $items->every(fn (CounterOrderItem $item) => $this->canManageItem($request, $item))) {
-                $counterOrder->update(['status' => CounterOrder::STATUS_CLOSED, 'closed_at' => now()]);
-            }
+            $this->closeWhenAllConfirmed($request, $counterOrder);
         }
 
         // A confirmation that was only one stitching job prints that tailoring order's own slip (with
