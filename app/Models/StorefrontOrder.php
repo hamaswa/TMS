@@ -136,6 +136,18 @@ class StorefrontOrder extends Model
         return $this->belongsTo(Storefront::class);
     }
 
+    /**
+     * Orders of one shop's storefronts. Same result as whereHas('storefront.business', owner_user_id = ...),
+     * but an IN on storefront_id lets MySQL use its index instead of checking every shop's orders.
+     */
+    public function scopeForBusinessOwner($query, int $ownerUserId)
+    {
+        return $query->whereIn('storefront_orders.storefront_id', Storefront::query()
+            ->select('storefronts.id')
+            ->join('businesses', 'businesses.id', '=', 'storefronts.business_id')
+            ->where('businesses.owner_user_id', $ownerUserId));
+    }
+
     public function cart()
     {
         return $this->belongsTo(StorefrontCart::class, 'storefront_cart_id');

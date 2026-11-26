@@ -64,7 +64,7 @@ class ReportDashboardService
                 ->whereBetween('sales.created_at', [$from, $to]), 'sales.created_at', 'saledetails.quantity * saledetails.price', 'cloth');
             $add(OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
                 ->whereRaw('LOWER(status) != ?', ['cancelled']), 'created_at', 'price * length', 'cloth');
-            $add(StorefrontOrder::whereHas('storefront.business', fn ($query) => $query->where('owner_user_id', $userId))
+            $add(StorefrontOrder::forBusinessOwner($userId)
                 ->whereBetween('placed_at', [$from, $to])->where('status', '!=', StorefrontOrder::STATUS_CANCELLED), 'placed_at', 'subtotal', 'cloth');
         }
         if (in_array('tailoring', $modules, true)) {

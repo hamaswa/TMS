@@ -12,9 +12,15 @@
     // The customer's dues on other orders, so the return can come off them instead of being paid out.
     $canSeeDues = auth()->user()->hasBusinessPermission(\App\Models\BusinessRole::CUSTOMER_BALANCES);
     $receiptDues = max(0, round((float) $sale->balance, 2));
+    // Pages list many receipts per customer, so look the total up once per customer per request.
+    // userId / customerId are text columns: compare as strings so MySQL can use their index.
+    $duesKey = 'receipt_return_modal.customer_dues.'.$customer->id;
+    if ($canSeeDues && ! request()->attributes->has($duesKey)) {
+        request()->attributes->set($duesKey, (float) \App\Models\Transaction::where('userId', (string) auth()->user()->businessOwnerId())
+            ->where('customerId', (string) $customer->id)->sum('remainingBalance'));
+    }
     $otherDues = $canSeeDues
-        ? max(0, round((float) \App\Models\Transaction::where('userId', auth()->user()->businessOwnerId())
-            ->where('customerId', $customer->id)->sum('remainingBalance') - max(0, (float) $sale->balance), 2))
+        ? max(0, round((float) request()->attributes->get($duesKey) - max(0, (float) $sale->balance), 2))
         : 0;
 @endphp
 <div class="modal fade rr-modal" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-hidden="true">

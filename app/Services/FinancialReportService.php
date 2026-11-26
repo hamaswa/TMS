@@ -45,10 +45,7 @@ class FinancialReportService
             : 0;
         $legacyOnlineRevenue = $clothingEnabled ? (float) OnlineOrder::where('admin_user_id', $userId)->whereBetween('created_at', [$from, $to])
             ->whereRaw('LOWER(status) != ?', ['cancelled'])->sum(DB::raw('price * length')) : 0;
-        $storefrontRevenue = $clothingEnabled ? (float) StorefrontOrder::whereHas(
-            'storefront.business',
-            fn ($query) => $query->where('owner_user_id', $userId)
-        )->whereBetween('placed_at', [$from, $to])->where('status', '!=', StorefrontOrder::STATUS_CANCELLED)->sum('subtotal') : 0;
+        $storefrontRevenue = $clothingEnabled ? (float) StorefrontOrder::forBusinessOwner($userId)->whereBetween('placed_at', [$from, $to])->where('status', '!=', StorefrontOrder::STATUS_CANCELLED)->sum('subtotal') : 0;
         $storefrontReturnRevenue = $clothingEnabled ? (float) DB::table('storefront_order_returns')
             ->join('storefront_orders', 'storefront_orders.id', '=', 'storefront_order_returns.storefront_order_id')
             ->join('storefronts', 'storefronts.id', '=', 'storefront_orders.storefront_id')

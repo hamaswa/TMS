@@ -77,10 +77,10 @@ class ClothStockController extends Controller
 
             // New Code
            $cloths = Cloth::where('user_id', auth()->user()->businessOwnerId())
-           ->with(['colors.latestCostedStockAddition', 'images'])
+           ->with(['type:id,name', 'brand:id,name', 'colors.latestCostedStockAddition', 'images'])
            ->latest()
            ->get();
-           
+
            return view('stock.index', compact('cloths'));
         } catch (\Throwable $th) {
             throw $th;
