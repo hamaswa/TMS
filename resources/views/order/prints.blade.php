@@ -584,6 +584,25 @@
     <div class="serial-label-toolbar" style="text-align:center;padding:10px">
         <a target="_blank" rel="noopener"
             href="{{ route('admin.order-prints', ['id' => $order->id, 'serial_only' => 1]) }}">صرف سیریل پرنٹ</a>
+        @if (Auth::user()->hasBusinessPermission('settings.manage'))
+            <button type="button" class="btn btn-outline-primary btn-sm slip-spacing-toggle mr-2" aria-expanded="false"
+                aria-controls="slipSpacingPanel"><i class="fas fa-sliders-h"></i> پرنٹ کی ترتیب</button>
+            {{-- Line height and row gap for this shop's slips: changes show at once, "save" keeps them. --}}
+            <div class="slip-spacing" id="slipSpacingPanel" hidden
+                data-url="{{ route('admin.setting.print-spacing') }}" data-token="{{ csrf_token() }}">
+                <label>لائن کی اونچائی <output data-out="line"></output>
+                    <input type="range" min="1" max="2.6" step="0.05" data-slip="line"
+                        value="{{ (float) ($setting->print_line_height ?? 1.7) ?: 1.7 }}"></label>
+                <label>قطاروں میں فاصلہ <output data-out="gap"></output>
+                    <input type="range" min="0" max="20" step="1" data-slip="gap"
+                        value="{{ (int) ($setting->print_row_gap ?? 6) }}"></label>
+                <div class="slip-spacing-actions">
+                    <button type="button" class="btn btn-primary btn-sm" data-slip-save>محفوظ کریں</button>
+                    <button type="button" class="btn btn-light btn-sm" data-slip-reset>ڈیفالٹ</button>
+                    <span class="slip-spacing-msg" data-slip-msg></span>
+                </div>
+            </div>
+        @endif
     </div>
     <style>
         @media print {
@@ -601,28 +620,7 @@
                     <button class="btn btn-primary btn-sm naap">پیمائش</button>
                     <button class="btn btn-primary btn-sm order">آرڈر تفصیل</button>
                     <button class="btn btn-primary btn-sm full">مکمل </button>
-                    @if (Auth::user()->hasBusinessPermission('settings.manage'))
-                        <button type="button" class="btn btn-outline-primary btn-sm slip-spacing-toggle" aria-expanded="false"
-                            aria-controls="slipSpacingPanel"><i class="fas fa-sliders-h"></i> پرنٹ کی ترتیب</button>
-                    @endif
                 </div>
-                @if (Auth::user()->hasBusinessPermission('settings.manage'))
-                    {{-- Line height and row gap for this shop's slips: changes show at once, "save" keeps them. --}}
-                    <div class="slip-spacing" id="slipSpacingPanel" hidden
-                        data-url="{{ route('admin.setting.print-spacing') }}" data-token="{{ csrf_token() }}">
-                        <label>لائن کی اونچائی <output data-out="line"></output>
-                            <input type="range" min="1" max="2.6" step="0.05" data-slip="line"
-                                value="{{ (float) ($setting->print_line_height ?? 1.7) ?: 1.7 }}"></label>
-                        <label>قطاروں میں فاصلہ <output data-out="gap"></output>
-                            <input type="range" min="0" max="20" step="1" data-slip="gap"
-                                value="{{ (int) ($setting->print_row_gap ?? 6) }}"></label>
-                        <div class="slip-spacing-actions">
-                            <button type="button" class="btn btn-primary btn-sm" data-slip-save>محفوظ کریں</button>
-                            <button type="button" class="btn btn-light btn-sm" data-slip-reset>ڈیفالٹ</button>
-                            <span class="slip-spacing-msg" data-slip-msg></span>
-                        </div>
-                    </div>
-                @endif
             </div><!--End Info-->
         </center><!--End InvoiceTop-->
         <div id="fullSection">
@@ -1067,6 +1065,7 @@
         /* The slip below is pulled up 60px and sat over the buttons, so clicks never reached them. */
         #top .info,
         .naap-button,
+        .serial-label-toolbar,
         .slip-spacing {
             position: relative;
             z-index: 20;
@@ -1074,8 +1073,7 @@
 
         .slip-spacing {
             max-width: 350px;
-            /* The slip below is pulled up 60px, so leave room for it. */
-            margin: 8px auto 68px;
+            margin: 8px auto 0;
             padding: 10px 12px;
             border: 1px solid #cfd8e3;
             border-radius: 10px;
