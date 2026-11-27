@@ -119,6 +119,18 @@ class SettingController extends Controller
         return back()->with('delete','دکان کی ترتیب غیر فعال ہو گئی ہے۔');
     }
 
+    /** Saves the tailoring slip's line height and row gap, set from the slip itself while previewing it. */
+    public function printSpacing(Request $request)
+    {
+        $validated = $request->validate([
+            'print_line_height' => ['required', 'numeric', 'between:1,3'],
+            'print_row_gap' => ['required', 'integer', 'between:0,24'],
+        ]);
+        Setting::ensureDefaultFor(Auth::user())->update($validated);
+
+        return response()->json(['message' => 'پرنٹ کی ترتیب محفوظ ہو گئی ہے۔']);
+    }
+
     public function langChange(Request $request)
     {
 

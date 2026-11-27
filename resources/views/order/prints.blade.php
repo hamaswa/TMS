@@ -172,16 +172,17 @@
             line-height: 1.6 !important;
         }
 
-        /* Compact rows, as the slip printed before: tall Nastaliq line spacing used too much paper. */
+        /* Line height and row gap come from the shop's print settings (--slip-line, --slip-gap on <body>),
+           adjustable from the slip's "print settings" button to suit the printer. */
         .measurement-row {
             align-items: flex-start;
-            margin-bottom: 4px;
+            margin-bottom: var(--slip-gap, 6px);
         }
 
         .measurement-row,
         .measurement-row * {
             box-sizing: border-box;
-            line-height: 1.5 !important;
+            line-height: var(--slip-line, 1.7) !important;
         }
 
         .measurement-label {
@@ -379,6 +380,7 @@
             justify-content: space-between;
             gap: 14px;
             min-height: 30px;
+            padding-bottom: calc(var(--slip-gap, 6px) - 4px);
             background-image: linear-gradient(to right, #b8b8b8, #b8b8b8);
             background-position: left bottom;
             background-repeat: no-repeat;
@@ -390,7 +392,7 @@
             color: #000;
             font-size: 18px;
             font-weight: 900;
-            line-height: 1.65;
+            line-height: calc(var(--slip-line, 1.7) + .15);
             text-align: right;
         }
 
@@ -401,7 +403,7 @@
             direction: ltr;
             font-size: 18px;
             font-weight: 800;
-            line-height: 1.5;
+            line-height: var(--slip-line, 1.7);
             overflow-wrap: anywhere;
             text-align: left;
         }
@@ -571,7 +573,8 @@
     </style>
 </head>
 
-<body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}">
+<body class="tms-order-print tms-paper-{{ $printConfig['paper'] }}"
+    style="--slip-line: {{ (float) ($setting->print_line_height ?? 1.7) ?: 1.7 }}; --slip-gap: {{ (int) ($setting->print_row_gap ?? 6) }}px;">
     @php
         $displaySerial =
             $receiptSerial ??
@@ -598,7 +601,28 @@
                     <button class="btn btn-primary btn-sm naap">پیمائش</button>
                     <button class="btn btn-primary btn-sm order">آرڈر تفصیل</button>
                     <button class="btn btn-primary btn-sm full">مکمل </button>
+                    @if (Auth::user()->hasBusinessPermission('settings.manage'))
+                        <button type="button" class="btn btn-outline-primary btn-sm slip-spacing-toggle" aria-expanded="false"
+                            aria-controls="slipSpacingPanel"><i class="fas fa-sliders-h"></i> پرنٹ کی ترتیب</button>
+                    @endif
                 </div>
+                @if (Auth::user()->hasBusinessPermission('settings.manage'))
+                    {{-- Line height and row gap for this shop's slips: changes show at once, "save" keeps them. --}}
+                    <div class="slip-spacing" id="slipSpacingPanel" hidden
+                        data-url="{{ route('admin.setting.print-spacing') }}" data-token="{{ csrf_token() }}">
+                        <label>لائن کی اونچائی <output data-out="line"></output>
+                            <input type="range" min="1" max="2.6" step="0.05" data-slip="line"
+                                value="{{ (float) ($setting->print_line_height ?? 1.7) ?: 1.7 }}"></label>
+                        <label>قطاروں میں فاصلہ <output data-out="gap"></output>
+                            <input type="range" min="0" max="20" step="1" data-slip="gap"
+                                value="{{ (int) ($setting->print_row_gap ?? 6) }}"></label>
+                        <div class="slip-spacing-actions">
+                            <button type="button" class="btn btn-primary btn-sm" data-slip-save>محفوظ کریں</button>
+                            <button type="button" class="btn btn-light btn-sm" data-slip-reset>ڈیفالٹ</button>
+                            <span class="slip-spacing-msg" data-slip-msg></span>
+                        </div>
+                    </div>
+                @endif
             </div><!--End Info-->
         </center><!--End InvoiceTop-->
         <div id="fullSection">
@@ -1038,6 +1062,111 @@
         //         openPrintViewInNewTab(orderId);
         //     }
         // };
+    </script>
+    <style>
+        /* The slip below is pulled up 60px and sat over the buttons, so clicks never reached them. */
+        #top .info,
+        .naap-button,
+        .slip-spacing {
+            position: relative;
+            z-index: 20;
+        }
+
+        .slip-spacing {
+            max-width: 350px;
+            /* The slip below is pulled up 60px, so leave room for it. */
+            margin: 8px auto 68px;
+            padding: 10px 12px;
+            border: 1px solid #cfd8e3;
+            border-radius: 10px;
+            background: #f7f9fc;
+            direction: rtl;
+            text-align: right;
+        }
+
+        .slip-spacing label {
+            display: block;
+            margin: 0 0 8px;
+            font-size: 14px;
+        }
+
+        .slip-spacing output {
+            display: inline-block;
+            min-width: 38px;
+            margin-inline-start: 6px;
+            direction: ltr;
+            font-weight: 900;
+        }
+
+        .slip-spacing input[type=range] {
+            display: block;
+            width: 100%;
+        }
+
+        .slip-spacing-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slip-spacing-msg {
+            font-size: 13px;
+        }
+
+        @media print {
+            .slip-spacing,
+            .slip-spacing-toggle {
+                display: none !important;
+            }
+        }
+    </style>
+    <script>
+        // Print settings on the slip: the sliders change line height and row gap at once (CSS variables on
+        // <body>); "save" keeps them for this shop's slips, "default" goes back to 1.7 and 6px.
+        (function() {
+            var panel = document.getElementById('slipSpacingPanel'),
+                toggle = document.querySelector('.slip-spacing-toggle');
+            if (!panel || !toggle) return;
+            var line = panel.querySelector('[data-slip="line"]'),
+                gap = panel.querySelector('[data-slip="gap"]'),
+                message = panel.querySelector('[data-slip-msg]');
+            var apply = function() {
+                document.body.style.setProperty('--slip-line', line.value);
+                document.body.style.setProperty('--slip-gap', gap.value + 'px');
+                panel.querySelector('[data-out="line"]').textContent = Number(line.value).toFixed(2);
+                panel.querySelector('[data-out="gap"]').textContent = gap.value + 'px';
+                message.textContent = '';
+            };
+            toggle.addEventListener('click', function() {
+                panel.hidden = !panel.hidden;
+                toggle.setAttribute('aria-expanded', String(!panel.hidden));
+            });
+            line.addEventListener('input', apply);
+            gap.addEventListener('input', apply);
+            panel.querySelector('[data-slip-reset]').addEventListener('click', function() {
+                line.value = 1.7;
+                gap.value = 6;
+                apply();
+            });
+            panel.querySelector('[data-slip-save]').addEventListener('click', function() {
+                var body = new FormData();
+                body.append('_method', 'PATCH');
+                body.append('print_line_height', line.value);
+                body.append('print_row_gap', gap.value);
+                fetch(panel.dataset.url, {
+                    method: 'POST',
+                    body: body,
+                    headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': panel.dataset.token}
+                }).then(function(response) {
+                    return response.json().then(function(data) {
+                        message.textContent = response.ok ? data.message : (data.message || 'محفوظ نہیں ہو سکا۔');
+                    });
+                }).catch(function() {
+                    message.textContent = 'محفوظ نہیں ہو سکا۔';
+                });
+            });
+            apply();
+        })();
     </script>
 </body>
 

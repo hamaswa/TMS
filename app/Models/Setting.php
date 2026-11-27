@@ -25,12 +25,16 @@ class Setting extends Model
         'shop_slug',
         'print_paper_size',
         'print_show_qr',
+        'print_line_height',
+        'print_row_gap',
     ];
 
     protected function casts(): array
     {
         return [
             'print_show_qr' => 'boolean',
+            'print_line_height' => 'float',
+            'print_row_gap' => 'integer',
         ];
     }
 

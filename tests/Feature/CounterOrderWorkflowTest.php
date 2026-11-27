@@ -406,6 +406,18 @@ class CounterOrderWorkflowTest extends TestCase
         $this->assertSame(CounterOrder::STATUS_CLOSED, $order->status);
         $this->assertSame('0.00', $order->paid_amount);
         $this->assertSame('1500.00', $order->balance_amount);
+
+        // The slip's line height and row gap can be set from the slip and are used on every slip after.
+        $slip = route('admin.order-prints', ['id' => $item->source_record_id]);
+        $this->actingAs($owner)->get($slip)->assertOk()
+            ->assertSee('--slip-line: 1.7; --slip-gap: 6px;', false)->assertSee('id="slipSpacingPanel"', false);
+        $this->actingAs($owner)->patchJson(route('admin.setting.print-spacing'), [
+            'print_line_height' => 5, 'print_row_gap' => 4,
+        ])->assertJsonValidationErrors('print_line_height');
+        $this->actingAs($owner)->patchJson(route('admin.setting.print-spacing'), [
+            'print_line_height' => 1.8, 'print_row_gap' => 9,
+        ])->assertOk();
+        $this->actingAs($owner)->get($slip)->assertOk()->assertSee('--slip-line: 1.8; --slip-gap: 9px;', false);
     }
 
     public function test_stitching_templates_are_limited_to_measurements_saved_for_each_family_member(): void
