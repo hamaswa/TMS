@@ -379,12 +379,15 @@ class CounterOrderController extends Controller
             && $item->status === CounterOrderItem::STATUS_CONFIRMED);
         [$trackingUrl, $trackingQrSvg] = $hasStitching ? $this->trackingQr($counterOrder, $documents) : [null, null];
         $returnedItems = $this->returnedOrderItems($counterOrder, $request->user()->businessOwnerId());
-        $returnBalanceReduction = (float) CounterSaleReturn::where('user_id', $request->user()->businessOwnerId())
+        $orderReturns = CounterSaleReturn::where('user_id', $request->user()->businessOwnerId())
             ->whereIn('counter_sale_receipt_id', $counterOrder->items
                 ->where('source_record_type', 'counter_sale_receipt')->pluck('source_record_id')->unique())
-            ->sum('balance_reduction');
+            ->get(['balance_reduction', 'refund_amount']);
+        $returnBalanceReduction = (float) $orderReturns->sum('balance_reduction');
+        // Cash handed back on returns, shown so total − returns − received + cash back = remaining adds up.
+        $returnRefund = (float) $orderReturns->sum('refund_amount');
 
-        return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig', 'trackingUrl', 'trackingQrSvg', 'returnedItems', 'returnBalanceReduction'));
+        return view('counter-orders.print', compact('counterOrder', 'setting', 'printConfig', 'trackingUrl', 'trackingQrSvg', 'returnedItems', 'returnBalanceReduction', 'returnRefund'));
     }
 
     /**

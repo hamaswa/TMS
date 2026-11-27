@@ -314,6 +314,35 @@ class CounterSaleItemReturnTest extends TestCase
         $this->assertSame('credit', CounterSaleReturn::sole()->settlement_type);
     }
 
+    public function test_no_cash_goes_back_for_a_return_the_customer_never_paid_for(): void
+    {
+        $owner = $this->userWithRole('shop_owner');
+        $type = ClothType::create(['name' => 'Lawn', 'user_id' => $owner->id]);
+        $brand = ClothBrand::create(['name' => 'Alkaram', 'user_id' => $owner->id]);
+        $cloth = Cloth::create(['cloth_type_id' => $type->id, 'cloth_brand_id' => $brand->id, 'price' => 100, 'sale_price' => 150, 'color_tracking_mode' => Cloth::COLOR_TRACKING_PER_COLOR, 'user_id' => $owner->id]);
+        ClothColor::create(['cloth_id' => $cloth->id, 'color' => 'White', 'length' => 20, 'average_unit_cost' => 100, 'user_id' => $owner->id]);
+        $customer = Customers::create(['name' => 'Bilal', 'phone_number1' => '03001234567', 'user_id' => $owner->id]);
+        $this->actingAs($owner)->post(route('admin.sellStock'), [
+            'brand_name' => [$brand->id], 'cloth_type' => [$type->id], 'color' => ['White'], 'per_meter' => [150],
+            'clothes_rack' => ['A-1'], 'length' => [2], 'c_name' => $customer->name.'|'.$customer->id,
+            'payment' => 0, 'remain' => 300, 'payment_method' => 'cash', 'paid_on' => now()->toDateString(),
+        ]);
+        $receipt = CounterSaleReceipt::where('user_id', $owner->id)->sole();
+        $item = SaleStock::where('counter_sale_receipt_id', $receipt->id)->sole();
+        $return = fn (array $extra) => $this->actingAs($owner)->post(route('admin.counter-sales.returns.store', $receipt), [
+            'items' => [$item->id => 2], 'reason' => 'Colour did not suit', 'restock' => 1,
+        ] + $extra);
+
+        // Nothing was paid, so no cash can be handed back for the 300 return.
+        $return(['refund_amount' => 300, 'payment_method' => 'cash'])->assertSessionHasErrors('refund_amount');
+        $this->assertSame(0, CounterSaleReturn::count());
+
+        // With nothing paid out, the whole return comes off the dues: nothing is owed any more.
+        $return(['refund_amount' => 0])->assertSessionHasNoErrors();
+        $this->assertEquals(300, (float) CounterSaleReturn::sole()->balance_reduction);
+        $this->assertEquals(0, (float) Transaction::where('customerId', $customer->id)->sum('remainingBalance'));
+    }
+
     public function test_cash_on_an_unpaid_return_stays_on_the_customers_dues(): void
     {
         $owner = $this->userWithRole('shop_owner');

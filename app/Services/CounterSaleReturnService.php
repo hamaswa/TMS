@@ -79,6 +79,20 @@ class CounterSaleReturnService
             if ($refund > $returnTotal) {
                 throw ValidationException::withMessages(['refund_amount' => 'آئٹم کی قیمت Rs '.number_format($returnTotal, 2).' ہے، اس سے زیادہ نہیں دے سکتے']);
             }
+            // Cash can only go back out of what the customer has actually paid the shop (less earlier refunds).
+            // Handing back money never received left the full sale on the dues, so an unpaid return showed the
+            // old balance; what isn't paid out comes off the dues instead.
+            $cashIn = round((float) Transaction::where('userId', (string) $ownerId)
+                ->when($customerId,
+                    fn ($query) => $query->where('customerId', (string) $customerId),
+                    fn ($query) => $query->where('counter_sale_receipt_id', $lockedReceipt->id))
+                ->sum('recivedPayment'), 2);
+            $maxRefund = max($minRefund, min($returnTotal, max(0, $cashIn)));
+            if ($refund > $maxRefund) {
+                throw ValidationException::withMessages(['refund_amount' => $maxRefund > 0
+                    ? 'گاہک نے Rs '.number_format($maxRefund, 2).' ہی ادا کیے ہیں، اس سے زیادہ نقد واپس نہیں دے سکتے۔ باقی رقم بقایا سے کم ہوگی۔'
+                    : 'گاہک نے ابھی کوئی رقم ادا نہیں کی، اس لیے نقد واپس نہیں دے سکتے۔ 0 لکھیں، پوری رقم بقایا سے کم ہوگی۔']);
+            }
             if ($refund > 0 && (blank($data['payment_method'] ?? null)
                 || (PaymentMethods::requiresReference($data['payment_method']) && blank($data['payment_reference'] ?? null)))) {
                 throw ValidationException::withMessages(['payment_method' => 'رقم واپسی کا طریقہ اور ضروری حوالہ درج کریں۔']);

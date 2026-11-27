@@ -232,10 +232,13 @@
             margin-bottom: 0;
         }
 
+        /* Thermal paper prints only black (red came out faint grey), so "returned" is large, extra bold black text. */
         .returned-note {
-            color: #b02a37;
-            font-weight: 700;
-            font-size: 11px;
+            display: inline-block;
+            color: #000;
+            font-weight: 900;
+            font-size: 15px;
+            line-height: 1.8;
         }
 
         .item--returned .item-price {
@@ -513,12 +516,20 @@
             </aside>
         @endif
         <section class="summary">
-            <div class="summary-row total"><span>{{ isset($singleItem) ? 'آئٹم کی رقم' : 'کل آرڈر' }}</span><strong>Rs. {{ number_format((float) (isset($singleItem) ? $singleItem->line_total : $counterOrder->subtotal - $returnedTotal), 2) }}</strong>
+            {{-- With returns the slip reads: order total, minus what came back, (minus received, plus cash given
+                 back), and what is still owed. --}}
+            <div class="summary-row total"><span>{{ isset($singleItem) ? 'آئٹم کی رقم' : 'کل آرڈر' }}</span><strong>Rs. {{ number_format((float) (isset($singleItem) ? $singleItem->line_total : $counterOrder->subtotal), 2) }}</strong>
             </div>
             @unless (isset($singleItem))
-                @unless ($returnedTotal > 0)
+                @if ($returnedTotal > 0)
+                    <div class="summary-row"><span>واپسی</span><strong>− Rs. {{ number_format($returnedTotal, 2) }}</strong></div>
+                @endif
+                @if ($returnedTotal <= 0 || (float) $counterOrder->paid_amount > 0)
                     <div class="summary-row"><span>وصول شدہ</span><strong>Rs. {{ number_format((float) $counterOrder->paid_amount, 2) }}</strong></div>
-                @endunless
+                @endif
+                @if (($returnRefund ?? 0) > 0)
+                    <div class="summary-row"><span>نقد واپس دیا</span><strong>Rs. {{ number_format((float) $returnRefund, 2) }}</strong></div>
+                @endif
                 <div class="summary-row balance"><span>اس آرڈر کا بقایا</span><strong>Rs. {{ number_format(max(0, (float) $counterOrder->balance_amount - (float) ($returnBalanceReduction ?? 0)), 2) }}</strong></div>
             @endunless
         </section>
