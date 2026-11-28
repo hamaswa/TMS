@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Business;
 use App\Models\CounterOrder;
 use App\Models\CounterOrderItem;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +32,11 @@ class CounterOrderNumberService
                     'updated_at' => now(),
                 ]);
 
-            return 'ORD-'.str_pad((string) $number, 6, '0', STR_PAD_LEFT);
+            // The shop picks the style in Settings; both styles share one running number, so switching
+            // carries on from the last order (ORD-000108, then 109).
+            $simple = Business::where('owner_user_id', $ownerId)->value('order_serial_style') === Business::SERIAL_STYLE_SIMPLE;
+
+            return $simple ? (string) $number : 'ORD-'.str_pad((string) $number, 6, '0', STR_PAD_LEFT);
         });
     }
 
@@ -42,9 +47,21 @@ class CounterOrderNumberService
             $sequence = max(1, (int) $lockedOrder->next_item_sequence);
             $lockedOrder->forceFill(['next_item_sequence' => $sequence + 1])->save();
 
+            // A suit follows its order's own number style: 108-1 for a plain-number order, ORD-000108-01 otherwise,
+            // so orders made before a style change keep matching suit numbers.
+            $orderNumber = (string) $lockedOrder->displayNumber();
+            $simple = ctype_digit($orderNumber);
+            $serial = $orderNumber.'-'.($simple ? (string) $sequence : str_pad((string) $sequence, 2, '0', STR_PAD_LEFT));
+            // Simple numbers: the order's first stitching job is the plain order number (109) for the tailor's
+            // slip and tag; later jobs and cloth items keep 109-N, so no two items share a number.
+            if ($simple && ($attributes['type'] ?? null) === CounterOrderItem::TYPE_TAILORING
+                && ! $lockedOrder->items()->where('item_serial', $orderNumber)->exists()) {
+                $serial = $orderNumber;
+            }
+
             return $lockedOrder->items()->create(array_merge($attributes, [
                 'item_sequence' => $sequence,
-                'item_serial' => $lockedOrder->displayNumber().'-'.str_pad((string) $sequence, 2, '0', STR_PAD_LEFT),
+                'item_serial' => $serial,
             ]));
         });
     }

@@ -340,6 +340,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth', 'business.status', '
         Route::patch('setting/deactive/{id}', [SettingController::class, 'deactive'])->name('deactive-setting');
         Route::get('order-screen', [OrderScreenSettingController::class, 'edit'])->name('order-screen.edit');
         Route::put('order-screen', [OrderScreenSettingController::class, 'update'])->name('order-screen.update');
+        Route::put('order-serial', [OrderScreenSettingController::class, 'updateSerialStyle'])->name('order-serial.update');
         Route::patch('setting/print-spacing', [SettingController::class, 'printSpacing'])->name('setting.print-spacing');
     });
     Route::get('/user-details', [UserController::class, 'index'])->name('users');

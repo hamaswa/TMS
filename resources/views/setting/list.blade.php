@@ -37,6 +37,7 @@
                 <a href="#shop"><i class="fas fa-store"></i> دکان کی معلومات</a>
                 <a href="#print"><i class="fas fa-print"></i> رسید اور پرنٹ</a>
                 <a href="#order-screen"><i class="fas fa-th-large"></i> آرڈر اسکرین</a>
+                <a href="#order-serial"><i class="fas fa-hashtag"></i> آرڈر نمبر</a>
                 @if ($business?->shop_code)
                     <a href="#portal"><i class="fas fa-user-tie"></i> درزی پورٹل</a>
                 @endif
@@ -91,6 +92,7 @@
                 @endif
 
                 @include('setting.partials.order-screen')
+                @include('setting.partials.order-serial')
 
                 @if ($business?->shop_code)
                     <section class="st-card {{ $settings->count() > 1 ? '' : 'is-full' }}" id="portal">

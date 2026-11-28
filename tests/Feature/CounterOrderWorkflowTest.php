@@ -683,6 +683,46 @@ class CounterOrderWorkflowTest extends TestCase
         $this->assertSame($legacy->id, CounterOrder::whereIdentifier('ORD-261001-OLD01')->value('id'));
     }
 
+    public function test_a_shop_can_switch_to_simple_order_numbers_for_new_orders(): void
+    {
+        [$owner, $customer, $cloth, $stock] = $this->fixture();
+        $numbers = app(\App\Services\CounterOrderNumberService::class);
+        $itemFor = fn (CounterOrder $order) => $numbers->createItem($order, [
+            'type' => CounterOrderItem::TYPE_CLOTH, 'cloth_id' => $cloth->id, 'quantity' => 1,
+            'length' => 1, 'unit_price' => 300, 'line_total' => 300, 'details' => ['color' => $stock->color],
+        ]);
+
+        $this->actingAs($owner)->post(route('admin.counter-orders.store'), ['customer_id' => $customer->id])->assertRedirect();
+        $standard = CounterOrder::latest('id')->firstOrFail();
+        $this->assertSame('ORD-000001', $standard->serial_number);
+
+        // The settings page offers the choice; simple numbers carry on from the last order.
+        $this->actingAs($owner)->get(route('admin.setting.index'))->assertOk()
+            ->assertSee('id="order-serial"', false)->assertSee(route('admin.order-serial.update'), false);
+        $this->actingAs($owner)->put(route('admin.order-serial.update'), ['order_serial_style' => 'fancy'])
+            ->assertSessionHasErrors('order_serial_style');
+        $this->actingAs($owner)->put(route('admin.order-serial.update'), ['order_serial_style' => 'simple'])
+            ->assertSessionHasNoErrors()->assertRedirect(route('admin.setting.index').'#order-serial');
+
+        $this->actingAs($owner)->post(route('admin.counter-orders.store'), ['customer_id' => $customer->id])->assertRedirect();
+        $simple = CounterOrder::latest('id')->firstOrFail();
+        $this->assertSame('2', $simple->serial_number);
+        $this->assertSame('2-1', $itemFor($simple)->item_serial);
+        $this->assertSame('2-2', $itemFor($simple)->item_serial);
+        $this->assertSame($simple->id, CounterOrder::whereIdentifier('2')->value('id'));
+
+        // The order's first stitching job is the plain order number; another one gets the next 2-N.
+        $stitchFor = fn (CounterOrder $order) => $numbers->createItem($order, [
+            'type' => CounterOrderItem::TYPE_TAILORING, 'quantity' => 1, 'unit_price' => 1500, 'line_total' => 1500,
+        ]);
+        $this->assertSame('2', $stitchFor($simple)->item_serial);
+        $this->assertSame('2-4', $stitchFor($simple)->item_serial);
+
+        // An order made before the switch keeps its own style for new suits and stitching.
+        $this->assertSame('ORD-000001-01', $itemFor($standard)->item_serial);
+        $this->assertSame('ORD-000001-02', $stitchFor($standard)->item_serial);
+    }
+
     public function test_item_serials_are_stable_not_reused_and_prints_remain_backward_compatible(): void
     {
         [$owner, $customer, $cloth] = $this->fixture();

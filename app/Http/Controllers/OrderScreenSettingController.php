@@ -29,6 +29,19 @@ class OrderScreenSettingController extends Controller
             ->with('success', 'آرڈر اسکرین کی ترتیب محفوظ کر دی گئی ہے۔');
     }
 
+    /** Order number style for new orders: ORD-000108 (standard) or plain 108 with suits 108-1 (simple). */
+    public function updateSerialStyle(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'order_serial_style' => ['required', Rule::in(Business::SERIAL_STYLES)],
+        ]);
+
+        $this->business()->update($validated);
+
+        return redirect()->to(route('admin.setting.index').'#order-serial')
+            ->with('success', 'آرڈر نمبر کی ترتیب محفوظ کر دی گئی ہے۔');
+    }
+
     private function business(): Business
     {
         $user = Auth::user()->loadMissing(['business', 'ownedBusiness']);

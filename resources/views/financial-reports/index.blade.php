@@ -1181,7 +1181,7 @@
             </div>
 
             <div class="rp-row">
-                <section class="rp-card">
+                {{-- <section class="rp-card">
                     <div class="rp-card-head">
                         <h3>{{ $isSales ? 'فروخت کا رجحان' : 'سلائی آمدنی کا رجحان' }}</h3>
                         <div class="rp-legend">
@@ -1257,7 +1257,7 @@
                     @else
                         <div class="rp-empty">اس مدت میں کچھ نہیں۔</div>
                     @endif
-                </section>
+                </section> --}}
             </div>
 
             <div class="rp-row">

@@ -32,6 +32,10 @@ class Business extends Model
     public const ORDER_LAYOUT_LIST = 'list';
     public const ORDER_LAYOUT_GRID = 'grid';
     public const ORDER_LAYOUTS = [self::ORDER_LAYOUT_LIST, self::ORDER_LAYOUT_GRID];
+    /** New counter order numbers: ORD-000108 with suits ORD-000108-01 (standard), or 108 with suits 108-1 (simple). */
+    public const SERIAL_STYLE_STANDARD = 'standard';
+    public const SERIAL_STYLE_SIMPLE = 'simple';
+    public const SERIAL_STYLES = [self::SERIAL_STYLE_STANDARD, self::SERIAL_STYLE_SIMPLE];
 
     protected $fillable = [
         'name',
@@ -43,6 +47,7 @@ class Business extends Model
         'clothing_enabled',
         'tailoring_status_mode',
         'counter_order_layout',
+        'order_serial_style',
         'status',
         'is_demo',
         'approved_at',
